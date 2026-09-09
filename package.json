@@ -9,6 +9,10 @@
   "scripts": {
     "dev": "pnpm --filter @ecommerce/web dev",
     "build": "pnpm --filter @ecommerce/web build",
+    "build:cloudflare": "pnpm --filter @ecommerce/web build:cloudflare",
+    "preview:cloudflare": "pnpm --filter @ecommerce/web preview:cloudflare",
+    "deploy": "pnpm build:cloudflare && wrangler deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "pnpm --filter @ecommerce/web start",
     "lint": "pnpm --filter @ecommerce/web lint",
     "typecheck": "pnpm --filter @ecommerce/web typecheck",
@@ -17,6 +21,7 @@
     "format:check": "prettier --check ."
   },
   "devDependencies": {
-    "prettier": "^3.6.2"
+    "prettier": "^3.6.2",
+    "wrangler": "^4.130.0"
   }
 }
