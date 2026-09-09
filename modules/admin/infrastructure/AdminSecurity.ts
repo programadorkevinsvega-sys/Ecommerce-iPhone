@@ -1,4 +1,4 @@
-import type { AdminRole } from "../application/Rbac";
+import type { AdminRole } from "../domain/AdminRole";
 
 const ITERATIONS = 150_000;
 const KEY_LENGTH = 256;
