@@ -1,34 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "ecommerce-iphone",
+  "name": "ecommerce-iphone-production",
   "main": "apps/web/.open-next/worker.js",
   "compatibility_date": "2026-09-09",
   "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
   "assets": { "directory": "apps/web/.open-next/assets", "binding": "ASSETS" },
   "migrations_dir": "migrations",
-  "vars": {
-    "APP_ENV": "production"
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "ecommerce-iphone",
-      "database_id": "REPLACE_WITH_PRODUCTION_DATABASE_ID"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "MEDIA_BUCKET",
-      "bucket_name": "ecommerce-iphone-media"
-    }
-  ],
-  "queues": {
-    "producers": [
-      {
-        "binding": "EVENTS_QUEUE",
-        "queue": "ecommerce-iphone-events"
-      }
-    ]
-  }
+  "vars": { "APP_ENV": "production" },
+  "d1_databases": [{ "binding": "DB", "database_name": "ecommerce-iphone", "database_id": "REPLACE_WITH_PRODUCTION_DATABASE_ID" }],
+  "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "ecommerce-iphone-media" }],
+  "queues": { "producers": [{ "binding": "EVENTS_QUEUE", "queue": "ecommerce-iphone-events" }] }
 }
