@@ -1,34 +1,37 @@
 # Cloudflare deployment
 
-The repository is prepared for GitHub Actions deployment to Cloudflare Workers using OpenNext, with one D1 database per environment.
+The repository is prepared for a **single production environment** on Cloudflare Workers using OpenNext.
 
-## Environments
+## Production resources
 
-| Environment | Worker | D1 | R2 | Queue |
-| --- | --- | --- | --- | --- |
-| development | `ecommerce-iphone-development` | `ecommerce-iphone-development` | `ecommerce-iphone-development-media` | `ecommerce-iphone-development-events` |
-| staging | `ecommerce-iphone-staging` | `ecommerce-iphone-staging` | `ecommerce-iphone-staging-media` | `ecommerce-iphone-staging-events` |
-| production | `ecommerce-iphone-production` | `ecommerce-iphone` | `ecommerce-iphone-media` | `ecommerce-iphone-events` |
+| Resource | Name |
+| --- | --- |
+| Worker | `ecommerce-iphone-production` |
+| D1 | `ecommerce-iphone` |
+| R2 | `ecommerce-iphone-media` |
+| Queue | `ecommerce-iphone-events` |
+
+Development uses local tooling and local D1 for tests. There is no staging environment in this project.
 
 ## GitHub Actions
 
 `.github/workflows/ci.yml` performs architecture checks, linting, typechecking, unit tests, Next.js/OpenNext builds and local D1/E2E validation.
 
-`.github/workflows/deploy.yml` supports:
+`.github/workflows/deploy.yml` is production-only:
 
-- push to `main` -> production deployment;
-- manual deployment -> staging or production;
+- every push to `main` -> production deployment;
+- manual `workflow_dispatch` -> production deployment;
 - architecture and type checks before deployment;
 - unit tests before deployment;
 - OpenNext Cloudflare build;
 - remote D1 migrations before Worker deployment;
-- serialized deployments per environment.
+- serialized production deployments.
 
 The workflow does not bypass failed quality checks.
 
 ## Required GitHub environment secrets
 
-Create `staging` and `production` GitHub Environments and add these secrets to each environment:
+Create one GitHub Environment named `production` and add:
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
@@ -37,19 +40,20 @@ The API token should have only the permissions required to deploy Workers and ma
 
 ## Cloudflare resources required once
 
-Create the following resources in the Cloudflare account and put their real D1 IDs in `wrangler.jsonc`:
+Create these resources in the target Cloudflare account:
 
-- `ecommerce-iphone-development`
-- `ecommerce-iphone-staging`
-- `ecommerce-iphone`
+- D1 database: `ecommerce-iphone`
+- R2 bucket: `ecommerce-iphone-media`
+- Queue: `ecommerce-iphone-events`
+- Worker: `ecommerce-iphone-production`
 
-Also create the R2 buckets and Queues named in `wrangler.jsonc`.
+Put the real D1 database ID in `wrangler.jsonc` in place of `REPLACE_WITH_PRODUCTION_DATABASE_ID`.
 
-GitHub cannot safely invent these account-specific IDs. They must correspond to real resources in the target Cloudflare account.
+GitHub cannot safely invent account-specific resource IDs.
 
 ## Provider secrets
 
-Payment provider secrets are runtime secrets and should be configured in the corresponding Cloudflare Worker environment, not committed to Git:
+Payment provider secrets are runtime secrets and must be configured in the production Worker environment, not committed to Git:
 
 - Wompi
 - Stripe
@@ -60,23 +64,23 @@ Payment provider secrets are runtime secrets and should be configured in the cor
 
 The exact variables are documented in `.env.example` and `docs/payments.md`.
 
-## Domains
+## Domain
 
-Replace the placeholder `ALLOWED_ORIGIN` values in `wrangler.jsonc` with the real staging and production origins before enabling public traffic. Configure custom domains/routes in Cloudflare after the real domains are known.
+The production origin is intentionally not hardcoded until the real domain is selected. Configure the Cloudflare custom domain/route and then set the corresponding production origin policy in the Worker configuration.
 
-## First deployment sequence
+## First production deployment
 
-1. Create the three D1 databases.
-2. Create the R2 buckets.
-3. Create the Queues.
-4. Replace the three D1 placeholder IDs in `wrangler.jsonc`.
-5. Configure GitHub `staging` and `production` environment secrets.
-6. Configure Cloudflare runtime secrets for payment providers.
-7. Deploy `staging` manually from GitHub Actions.
-8. Verify D1 migrations and application behavior.
-9. Configure the production domain.
-10. Push to `main` for the production deployment.
+1. Create the production D1 database.
+2. Create the production R2 bucket.
+3. Create the production Queue.
+4. Put the real D1 ID in `wrangler.jsonc`.
+5. Create the GitHub `production` Environment.
+6. Add `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` as environment secrets.
+7. Configure payment provider secrets in the Cloudflare Worker.
+8. Configure the production custom domain.
+9. Run the production workflow manually once to validate the initial deployment.
+10. After that, normal pushes to `main` deploy production automatically.
 
 ## Important limitation
 
-The repository and workflows can be prepared from GitHub, but actual Cloudflare account provisioning, D1 IDs, custom domains and secrets require authorization to the target Cloudflare account. A successful GitHub commit is therefore not evidence that the application is already deployed in Cloudflare.
+A GitHub commit does not mean the application is already deployed. Actual Cloudflare account provisioning, the D1 database ID, custom domain and secrets require authorization to the target Cloudflare account.
