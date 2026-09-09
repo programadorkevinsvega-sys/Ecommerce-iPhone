@@ -51,7 +51,7 @@ export class ServiceRequest extends AggregateRoot<string> {
   assign(technicianId: string): void { if (!technicianId.trim()) throw new DomainError("Technician is required"); this.props = { ...this.props, assignedTechnicianId: technicianId, updatedAt: new Date().toISOString() }; }
   attachPayment(paymentId: string): void { if (!paymentId.trim()) throw new DomainError("Payment is required"); this.props = { ...this.props, paymentId, updatedAt: new Date().toISOString() }; }
   resolve(notes: string): void { if (!notes.trim()) throw new DomainError("Resolution notes are required"); this.props = { ...this.props, resolutionNotes: notes.trim(), status: "COMPLETED", updatedAt: new Date().toISOString() }; }
-  toPrimitives(): ServiceRequestProps & { id: string } { return { id: this.getId(), ...this.props, deviceSerialLast4: this.props.deviceSerialLast4, imeiLast4: this.props.imeiLast4 }; }
+  toPrimitives(): ServiceRequestProps & { id: string } { return { id: this.getId(), ...this.props }; }
 }
 
 export const SERVICE_CATALOG = [
