@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "../../../../../lib/adminAuth";
+import { requireAdmin } from "../../../../lib/adminAuth";
 import { PERMISSIONS, hashPassword } from "../../../../../../modules/admin/infrastructure/AdminSecurity";
 import { AdminUser } from "../../../../../../modules/admin/domain/AdminUser";
 import type { AdminRole } from "../../../../../../modules/admin/application/Rbac";
