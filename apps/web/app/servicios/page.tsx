@@ -1,9 +1,11 @@
-import type { Metadata } from "next";
+"use client";
 import Link from "next/link";
-import { SERVICE_CATALOG } from "../../../../modules/services/domain/ServiceRequest";
+import { useEffect, useState } from "react";
 
-export const metadata: Metadata = { title: "Servicios para dispositivos", description: "Servicios legítimos de desbloqueo de operador, diagnóstico, reparación y configuración de dispositivos.", alternates: { canonical: "/servicios" } };
+type ServiceType={code:string;name:string;description:string;category:string;workflow:{quoteRequired:boolean;paymentRequired:boolean}};
 
-export default function ServicesPage() {
-  return <main className="store-shell"><header className="store-header"><Link className="brand" href="/">Ecommerce iPhone</Link><nav><Link href="/catalog">Catálogo</Link><Link href="/cart">Carrito</Link></nav></header><section className="catalog-hero"><p className="eyebrow">Servicios</p><h1>Soporte técnico para tu dispositivo.</h1><p>Solicita un servicio legítimo con seguimiento, cotización y estados claros.</p><Link className="primary-button" href="/servicios/solicitar">Solicitar servicio</Link></section><section className="section"><div className="category-grid">{SERVICE_CATALOG.map(service => <article className="category-card" key={service.type}><h2>{service.name}</h2><p>{service.description}</p><Link href="/servicios/solicitar">Solicitar →</Link></article>)}</div></section></main>;
+export default function ServicesPage(){
+  const [services,setServices]=useState<ServiceType[]>([]);
+  useEffect(()=>{fetch("/api/services").then(r=>r.json()).then(j=>setServices(j.services??[])).catch(()=>setServices([]));},[]);
+  return <main className="store-shell"><header className="store-header"><Link className="brand" href="/">Ecommerce iPhone</Link><nav><Link href="/catalog">Catálogo</Link><Link href="/cart">Carrito</Link></nav></header><section className="catalog-hero"><p className="eyebrow">Servicios</p><h1>Soporte técnico configurable.</h1><p>El catálogo y sus requisitos se gestionan desde la configuración operativa del negocio.</p><Link className="primary-button" href="/servicios/solicitar">Solicitar servicio</Link></section><section className="section"><div className="category-grid">{services.map(service=><article className="category-card" key={service.code}><h2>{service.name}</h2><p>{service.description}</p><small>{service.workflow.quoteRequired?"Cotización":"Precio definido"}{service.workflow.paymentRequired?" · Pago requerido":""}</small><br/><Link href={`/servicios/solicitar?type=${encodeURIComponent(service.code)}`}>Solicitar →</Link></article>)}</div>{services.length===0&&<p>No hay servicios disponibles en este momento.</p>}</section></main>;
 }
