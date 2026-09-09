@@ -12,7 +12,7 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -41,8 +41,11 @@ jobs:
       - name: Unit tests
         run: pnpm test
 
-      - name: Build
+      - name: Next.js build
         run: pnpm build
+
+      - name: Cloudflare OpenNext build
+        run: pnpm build:cloudflare
 
       - name: Install Playwright browser
         run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
