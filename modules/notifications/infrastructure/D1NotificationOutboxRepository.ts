@@ -12,7 +12,7 @@ export class D1NotificationOutboxRepository implements NotificationOutboxReposit
     const rows = await this.db.prepare("SELECT * FROM notification_outbox WHERE status IN ('PENDING','FAILED') AND available_at<=CURRENT_TIMESTAMP ORDER BY created_at ASC LIMIT ?").bind(Math.max(1, Math.min(limit, 100))).all<any>();
     return rows.results.map(r => ({ id:r.id,eventType:r.event_type,aggregateId:r.aggregate_id,payload:JSON.parse(r.payload_json),createdAt:r.created_at,status:r.status,attempts:r.attempts,availableAt:r.available_at }));
   }
-  async markQueued(id:string){await this.db.prepare("UPDATE notification_outbox SET status='QUEUED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status IN ('PENDING','FAILED')").bind(id).run();}
+  async markQueued(id:string){await this.db.prepare("UPDATE notification_outbox SET status='QUEUED' WHERE id=? AND status IN ('PENDING','FAILED')").bind(id).run();}
   async markProcessed(id:string){await this.db.prepare("UPDATE notification_outbox SET status='PROCESSED',processed_at=CURRENT_TIMESTAMP,last_error=NULL WHERE id=?").bind(id).run();}
   async markFailed(id:string,error:string,retryAt:string){await this.db.prepare("UPDATE notification_outbox SET status='FAILED',attempts=attempts+1,last_error=?,available_at=? WHERE id=?").bind(error.slice(0,1000),retryAt,id).run();}
   async hasDelivery(outboxId:string,channel:"EMAIL",recipient:string,template:string){const row=await this.db.prepare("SELECT 1 AS found FROM notification_deliveries WHERE outbox_id=? AND channel=? AND recipient=? AND template=? AND status='SENT' LIMIT 1").bind(outboxId,channel,recipient,template).first<{found:number}>();return Boolean(row);}
