@@ -4,6 +4,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { D1ServiceRequestRepository } from "../../../../../modules/services/infrastructure/D1ServiceRequestRepository";
 import { D1ServiceTypeRepository } from "../../../../../modules/services/infrastructure/D1ServiceTypeRepository";
 import { ServiceRequest } from "../../../../../modules/services/domain/ServiceRequest";
+import { publishNotificationEvent } from "../../../lib/notifications";
 
 const last4 = (value: unknown) => { const v=String(value??"").replace(/\D/g,""); return v.length>=4?v.slice(-4):undefined; };
 
@@ -36,7 +37,9 @@ export async function POST(request:Request){
     if(policy.customerOwnershipProofRequired && !service.toPrimitives().imeiLast4 && !service.toPrimitives().deviceSerialLast4) return NextResponse.json({error:"Device ownership information is required for this service"},{status:400});
     const repo=new D1ServiceRequestRepository(env.DB);
     await repo.save(service);
-    await repo.audit(service.getId(),"ServiceRequestCreated",{type,customerId:customerId??null,deviceBrand:service.toPrimitives().deviceBrand,deviceModel:service.toPrimitives().deviceModel,imeiProvided:Boolean(body.imei),serialProvided:Boolean(body.serial),policy:{quoteRequired:policy.quoteRequired,paymentRequired:policy.paymentRequired,technicianApprovalRequired:policy.technicianApprovalRequired,adminApprovalRequired:policy.adminApprovalRequired}});
-    return NextResponse.json({request:service.toPrimitives(),serviceType:definition.toPrimitives()}, {status:201});
+    const p=service.toPrimitives();
+    await repo.audit(service.getId(),"ServiceRequestCreated",{type,customerId:customerId??null,deviceBrand:p.deviceBrand,deviceModel:p.deviceModel,imeiProvided:Boolean(body.imei),serialProvided:Boolean(body.serial),policy:{quoteRequired:policy.quoteRequired,paymentRequired:policy.paymentRequired,technicianApprovalRequired:policy.technicianApprovalRequired,adminApprovalRequired:policy.adminApprovalRequired}});
+    await publishNotificationEvent({eventType:"ServiceRequestCreated",aggregateId:p.id,payload:{email,serviceRequestId:p.id,status:p.status,deviceBrand:p.deviceBrand,deviceModel:p.deviceModel}});
+    return NextResponse.json({request:p,serviceType:definition.toPrimitives()}, {status:201});
   } catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Invalid service request"},{status:400});}
 }
