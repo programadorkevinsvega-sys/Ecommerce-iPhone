@@ -1,6 +1,7 @@
 // OpenNext owns HTTP routing; this wrapper adds Cloudflare Queue and Scheduled handlers.
 // @ts-ignore OpenNext generates this module during build.
 import nextWorker from "./.open-next/worker.js";
+import type { D1Database, Queue } from "@cloudflare/workers-types";
 import { D1NotificationOutboxRepository } from "../../modules/notifications/infrastructure/D1NotificationOutboxRepository";
 import { NotificationService } from "../../modules/notifications/application/NotificationService";
 import { ResendEmailProvider } from "../../modules/notifications/infrastructure/ResendEmailProvider";
