@@ -1,0 +1,22 @@
+{
+  "name": "ecommerce-iphone",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @ecommerce/web dev",
+    "build": "pnpm --filter @ecommerce/web build",
+    "start": "pnpm --filter @ecommerce/web start",
+    "lint": "pnpm --filter @ecommerce/web lint",
+    "typecheck": "pnpm --filter @ecommerce/web typecheck",
+    "test": "pnpm --filter @ecommerce/web test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}
