@@ -34,11 +34,12 @@ export class ServiceTypeDefinition extends ValueObject<ServiceTypeDefinitionProp
     if (!props.name.trim()) throw new DomainError("Service type name is required");
     if (!props.description.trim()) throw new DomainError("Service type description is required");
     if (!props.workflow) throw new DomainError("Service workflow is required");
+    if (!props.workflow.allowedStatuses.includes("PENDING")) throw new DomainError("Service workflow must allow PENDING");
     const now = new Date().toISOString();
     return new ServiceTypeDefinition({ ...props, name: props.name.trim(), description: props.description.trim(), createdAt: props.createdAt ?? now, updatedAt: props.updatedAt ?? now });
   }
 
-  get value(): ServiceTypeDefinitionProps { return super.value; }
+  toPrimitives(): ServiceTypeDefinitionProps { return this.props; }
 }
 
 export const DEFAULT_SERVICE_TYPES: ReadonlyArray<Omit<ServiceTypeDefinitionProps, "createdAt" | "updatedAt">> = [
