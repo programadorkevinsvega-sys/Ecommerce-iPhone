@@ -19,7 +19,7 @@ There is no staging environment.
 
 `.github/workflows/deploy.yml` deploys production after architecture checks, typechecking, unit tests and the OpenNext Cloudflare build. It applies remote D1 migrations and then deploys the Worker. Deployments are serialized.
 
-The Wrangler configuration is root-level production-only; there are no `--env production` or staging deployment flags.
+The Wrangler configuration is root-level production-only; there are no staging deployment flags.
 
 ## Required GitHub environment secrets
 
@@ -36,9 +36,18 @@ The repository expects:
 
 - D1 binding `DB` -> `ecommerce-iphone`
 - R2 binding `MEDIA_BUCKET` -> `ecommerce-iphone-media`
-- Queue producer binding `EVENTS_QUEUE` -> `ecommerce-iphone-events`
+- Queue producer/consumer binding `EVENTS_QUEUE` -> `ecommerce-iphone-events`
 
 Replace `REPLACE_WITH_PRODUCTION_DATABASE_ID` in `wrangler.jsonc` with the real D1 UUID from the Cloudflare account before the first remote deployment.
+
+## Notifications
+
+The Worker also requires:
+
+- `RESEND_API_KEY` as a Cloudflare secret
+- `EMAIL_FROM` as a Worker variable
+
+The notification outbox is stored in D1. A Cron Trigger dispatches pending records to the Queue and the same Worker consumes the Queue and calls Resend. Cloudflare supports configuring Queue consumers directly in Wrangler and scheduled handlers through Cron Triggers.
 
 ## Admin bootstrap secret
 
@@ -58,11 +67,12 @@ Payment and email provider secrets are runtime secrets and must remain outside G
 2. Put the real D1 database ID in `wrangler.jsonc`.
 3. Create the GitHub `production` Environment.
 4. Add the Cloudflare GitHub secrets.
-5. Configure provider secrets in the Worker.
-6. Configure `ADMIN_BOOTSTRAP_TOKEN` temporarily.
-7. Run the production workflow manually.
-8. Bootstrap the first administrator.
-9. Rotate/remove the bootstrap secret.
-10. Configure the production custom domain.
+5. Configure `RESEND_API_KEY` and `EMAIL_FROM`.
+6. Configure other provider secrets.
+7. Configure `ADMIN_BOOTSTRAP_TOKEN` temporarily.
+8. Run the production workflow manually.
+9. Bootstrap the first administrator.
+10. Rotate/remove the bootstrap secret.
+11. Configure the production custom domain.
 
 A successful Git commit alone does not prove that the production Worker is live; the external GitHub Actions and Cloudflare execution must complete successfully.
