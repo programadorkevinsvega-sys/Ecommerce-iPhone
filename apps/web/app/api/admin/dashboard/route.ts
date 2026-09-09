@@ -4,7 +4,7 @@ import { PERMISSIONS } from "../../../../../../modules/admin/infrastructure/Admi
 
 export async function GET() {
   try {
-    const { repo, env } = await requireAdmin(PERMISSIONS.dashboardRead);
+    const { admin, repo, env } = await requireAdmin(PERMISSIONS.dashboardRead);
     const [orders, customers, products, services, revenue, pendingPayments, lowStock] = await Promise.all([
       env.DB.prepare("SELECT COUNT(*) AS count FROM orders").first<{count:number}>(),
       env.DB.prepare("SELECT COUNT(*) AS count FROM customers").first<{count:number}>(),
@@ -15,7 +15,7 @@ export async function GET() {
       env.DB.prepare("SELECT COUNT(*) AS count FROM products WHERE active=1 AND stock <= 2").first<{count:number}>(),
     ]);
     const recent = await env.DB.prepare("SELECT id,order_number,email,status,total_in_cents,currency,created_at FROM orders ORDER BY created_at DESC LIMIT 10").all();
-    await repo.audit((await requireAdmin(PERMISSIONS.dashboardRead)).admin.id, "ADMIN_DASHBOARD_VIEW", "dashboard", null, {});
+    await repo.audit(admin.id, "ADMIN_DASHBOARD_VIEW", "dashboard", null, {});
     return NextResponse.json({ metrics: { orders: orders?.count ?? 0, customers: customers?.count ?? 0, products: products?.count ?? 0, openServices: services?.count ?? 0, revenueInCents: revenue?.total ?? 0, pendingPayments: pendingPayments?.count ?? 0, lowStock: lowStock?.count ?? 0 }, recentOrders: recent.results });
   } catch (error) {
     const status = error instanceof Error && error.message === "FORBIDDEN" ? 403 : 401;
