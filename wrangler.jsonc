@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "ecommerce-iphone-production",
+  "name": "ecommerce-iphone",
   "main": "apps/web/worker.ts",
   "compatibility_date": "2026-09-09",
   "compatibility_flags": ["nodejs_compat"],
@@ -9,7 +9,7 @@
   "migrations_dir": "migrations",
   "vars": { "APP_ENV": "production" },
   "triggers": { "crons": ["* * * * *"] },
-  "d1_databases": [{ "binding": "DB", "database_name": "ecommerce-iphone", "database_id": "REPLACE_WITH_PRODUCTION_DATABASE_ID" }],
+  "d1_databases": [{ "binding": "DB", "database_name": "ecommerce-iphone", "database_id": "39074683-f121-4841-ad80-3759aa739dde" }],
   "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "ecommerce-iphone-media" }],
   "queues": {
     "producers": [{ "binding": "EVENTS_QUEUE", "queue": "ecommerce-iphone-events" }],
