@@ -1,6 +1,8 @@
 name: Deploy
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -14,11 +16,18 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: cloudflare-deploy-${{ github.event_name == 'push' && 'production' || inputs.environment }}
+  cancel-in-progress: false
+
+env:
+  DEPLOY_ENV: ${{ github.event_name == 'push' && 'production' || inputs.environment }}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-    timeout-minutes: 20
+    environment: ${{ github.event_name == 'push' && 'production' || inputs.environment }}
+    timeout-minutes: 35
 
     steps:
       - name: Checkout
@@ -33,15 +42,32 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
+      - name: Architecture boundary check
+        run: pnpm architecture:check
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
       - name: Build Cloudflare bundle
         run: pnpm build:cloudflare
 
-      - name: Deploy to Cloudflare
-        run: pnpm exec wrangler deploy --env "${{ inputs.environment }}"
+      - name: Apply remote D1 migrations
+        run: pnpm exec wrangler d1 migrations apply "$DB_NAME" --env "$DEPLOY_ENV" --remote
+        env:
+          DB_NAME: ${{ github.event_name == 'push' && 'ecommerce-iphone' || (inputs.environment == 'staging' && 'ecommerce-iphone-staging' || 'ecommerce-iphone') }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Deploy Worker and assets
+        run: pnpm exec wrangler deploy --env "$DEPLOY_ENV"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
