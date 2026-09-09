@@ -7,6 +7,7 @@ declare global {
     EVENTS_QUEUE: Queue;
     APP_ENV: string;
     ALLOWED_ORIGIN: string;
+    ADMIN_BOOTSTRAP_TOKEN?: string;
   }
 }
 
