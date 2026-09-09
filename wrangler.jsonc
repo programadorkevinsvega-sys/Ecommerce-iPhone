@@ -7,27 +7,28 @@
   "observability": { "enabled": true },
   "assets": { "directory": "apps/web/.open-next/assets", "binding": "ASSETS" },
   "migrations_dir": "migrations",
-  "env": {
-    "development": {
-      "name": "ecommerce-iphone-development",
-      "vars": { "APP_ENV": "development", "ALLOWED_ORIGIN": "http://localhost:3000" },
-      "d1_databases": [{ "binding": "DB", "database_name": "ecommerce-iphone-development", "database_id": "REPLACE_WITH_DEVELOPMENT_DATABASE_ID" }],
-      "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "ecommerce-iphone-development-media" }],
-      "queues": { "producers": [{ "binding": "EVENTS_QUEUE", "queue": "ecommerce-iphone-development-events" }] }
-    },
-    "staging": {
-      "name": "ecommerce-iphone-staging",
-      "vars": { "APP_ENV": "staging", "ALLOWED_ORIGIN": "https://staging.example.com" },
-      "d1_databases": [{ "binding": "DB", "database_name": "ecommerce-iphone-staging", "database_id": "REPLACE_WITH_STAGING_DATABASE_ID" }],
-      "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "ecommerce-iphone-staging-media" }],
-      "queues": { "producers": [{ "binding": "EVENTS_QUEUE", "queue": "ecommerce-iphone-staging-events" }] }
-    },
-    "production": {
-      "name": "ecommerce-iphone-production",
-      "vars": { "APP_ENV": "production", "ALLOWED_ORIGIN": "https://example.com" },
-      "d1_databases": [{ "binding": "DB", "database_name": "ecommerce-iphone", "database_id": "REPLACE_WITH_PRODUCTION_DATABASE_ID" }],
-      "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "ecommerce-iphone-media" }],
-      "queues": { "producers": [{ "binding": "EVENTS_QUEUE", "queue": "ecommerce-iphone-events" }] }
+  "vars": {
+    "APP_ENV": "production"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ecommerce-iphone",
+      "database_id": "REPLACE_WITH_PRODUCTION_DATABASE_ID"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "ecommerce-iphone-media"
+    }
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "EVENTS_QUEUE",
+        "queue": "ecommerce-iphone-events"
+      }
+    ]
   }
 }
