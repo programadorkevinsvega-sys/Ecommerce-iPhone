@@ -17,5 +17,5 @@ export interface NotificationOutboxRepository {
 }
 
 export interface EmailProvider {
-  send(input: { to: string; subject: string; html: string; text: string; tags?: Record<string, string> }): Promise<{ id?: string }>;
+  send(input: { to: string; subject: string; html: string; text: string; tags?: Record<string, string> }): Promise<{ id: string }>;
 }
