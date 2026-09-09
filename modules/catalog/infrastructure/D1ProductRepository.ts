@@ -1,0 +1,64 @@
+import type { ProductSearch, ProductSearchRepository, ProductSearchResult } from "../application/SearchProducts";
+import type { ProductRepository } from "../application/ProductRepository";
+import { Product, type ProductCondition } from "../domain/Product";
+import { ProductId } from "../domain/ProductId";
+
+type ProductRow = {
+  id: string; name: string; slug: string; brand: string; model: string; description: string;
+  condition: ProductCondition; price_in_cents: number; currency: string; stock: number; active: number;
+  seo_title: string | null; seo_description: string | null; warranty_months: number;
+  battery_health: number | null; storage_gb: number | null; color: string | null; specs_json: string;
+};
+type ImageRow = { url: string; alt_text: string };
+
+const hydrate = (row: ProductRow, images: readonly ImageRow[] = []): Product => Product.create(new ProductId(row.id), {
+  name: row.name, slug: row.slug, brand: row.brand, model: row.model, description: row.description,
+  condition: row.condition, priceInCents: row.price_in_cents, currency: row.currency, stock: row.stock,
+  images: images.map((image) => image.url), active: row.active === 1,
+  seoTitle: row.seo_title ?? undefined, seoDescription: row.seo_description ?? undefined,
+  warrantyMonths: row.warranty_months, batteryHealth: row.battery_health ?? undefined,
+  storageGb: row.storage_gb ?? undefined, color: row.color ?? undefined,
+  specs: JSON.parse(row.specs_json || "{}") as Record<string, string>,
+});
+
+export class D1ProductRepository implements ProductSearchRepository, ProductRepository {
+  constructor(private readonly db: D1Database) {}
+
+  async findById(id: ProductId): Promise<Product | null> {
+    const row = await this.db.prepare("SELECT * FROM products WHERE id = ? LIMIT 1").bind(id.value).first<ProductRow>();
+    if (!row) return null;
+    const images = await this.db.prepare("SELECT url, alt_text FROM product_images WHERE product_id = ? ORDER BY sort_order ASC").bind(row.id).all<ImageRow>();
+    return hydrate(row, images.results);
+  }
+
+  async findBySlug(slug: string): Promise<Product | null> {
+    const row = await this.db.prepare("SELECT * FROM products WHERE slug = ? AND active = 1 LIMIT 1").bind(slug).first<ProductRow>();
+    if (!row) return null;
+    const images = await this.db.prepare("SELECT url, alt_text FROM product_images WHERE product_id = ? ORDER BY sort_order ASC").bind(row.id).all<ImageRow>();
+    return hydrate(row, images.results);
+  }
+
+  async save(product: Product): Promise<void> {
+    const p = product.toPrimitives();
+    await this.db.prepare(`INSERT INTO products (id,name,slug,brand,model,description,condition,price_in_cents,currency,stock,active,seo_title,seo_description,warranty_months,battery_health,storage_gb,color,specs_json,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP)
+      ON CONFLICT(id) DO UPDATE SET name=excluded.name,slug=excluded.slug,brand=excluded.brand,model=excluded.model,description=excluded.description,condition=excluded.condition,price_in_cents=excluded.price_in_cents,currency=excluded.currency,stock=excluded.stock,active=excluded.active,seo_title=excluded.seo_title,seo_description=excluded.seo_description,warranty_months=excluded.warranty_months,battery_health=excluded.battery_health,storage_gb=excluded.storage_gb,color=excluded.color,specs_json=excluded.specs_json,updated_at=CURRENT_TIMESTAMP`)
+      .bind(p.id,p.name,p.slug,p.brand,p.model,p.description,p.condition,p.priceInCents,p.currency,p.stock,p.active ? 1 : 0,p.seoTitle ?? null,p.seoDescription ?? null,p.warrantyMonths,p.batteryHealth ?? null,p.storageGb ?? null,p.color ?? null,JSON.stringify(p.specs)).run();
+  }
+
+  async search(criteria: ProductSearch): Promise<ProductSearchResult> {
+    const page = Math.max(1, criteria.page ?? 1);
+    const pageSize = Math.min(48, Math.max(1, criteria.pageSize ?? 12));
+    const where = ["active = 1"];
+    const values: unknown[] = [];
+    if (criteria.q?.trim()) { where.push("(name LIKE ? OR model LIKE ? OR brand LIKE ?)"); const q = `%${criteria.q.trim()}%`; values.push(q,q,q); }
+    if (criteria.brand) { where.push("brand = ?"); values.push(criteria.brand); }
+    if (criteria.condition) { where.push("condition = ?"); values.push(criteria.condition); }
+    if (criteria.minPriceInCents !== undefined) { where.push("price_in_cents >= ?"); values.push(criteria.minPriceInCents); }
+    if (criteria.maxPriceInCents !== undefined) { where.push("price_in_cents <= ?"); values.push(criteria.maxPriceInCents); }
+    const predicate = where.join(" AND ");
+    const count = await this.db.prepare(`SELECT COUNT(*) AS total FROM products WHERE ${predicate}`).bind(...values).first<{ total: number }>();
+    const rows = await this.db.prepare(`SELECT * FROM products WHERE ${predicate} ORDER BY created_at DESC LIMIT ? OFFSET ?`).bind(...values, pageSize, (page-1)*pageSize).all<ProductRow>();
+    return { items: rows.results.map((row) => hydrate(row).toPrimitives()), total: Number(count?.total ?? 0), page, pageSize };
+  }
+}
