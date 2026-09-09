@@ -18,18 +18,19 @@ Production-oriented e-commerce platform for smartphones and legitimate device se
 ## Phase status
 
 ### FASE 01 — Foundation
-
 Implemented: modular boundaries, shared domain kernel, catalog vertical slice, Cloudflare/OpenNext runtime, D1/R2/Queues bindings, environment separation, security headers, RBAC/audit/rate-limit ports, unit/E2E test setup, CI and controlled deployment workflow.
 
 ### FASE 02 — Storefront + Catalog
-
 Implemented: premium responsive storefront, D1-backed catalog, product domain model, search/filter/pagination, inventory visibility, product detail pages, clean iPhone SEO URLs, legacy redirects, dynamic metadata, canonical URLs, Product structured data, sitemap integration, D1 migration/seed data and Cloudflare-runtime Playwright setup.
 
 ### FASE 03 — Commerce Core
-
 Implemented: customer aggregate and addresses, guest/customer session cookies, persistent D1 cart, quantity validation, server-side price/stock validation, checkout flow, order aggregate/state machine, order snapshots, atomic stock allocation, 15-minute inventory reservations, expired-reservation release routine, order events, protected order lookup, cart/checkout/order UI and commerce domain tests.
 
-Payment authorization is deliberately not faked here: orders enter `PENDING_PAYMENT` and FASE 04 owns provider integration and payment confirmation.
+### FASE 04 — Payments
+Implemented: provider-agnostic payment ledger and state machine, idempotency, webhook event deduplication, Wompi/Stripe/Mercado Pago/PayPal/Binance Pay adapters, server-side amount validation, hosted checkout/payment intents, refunds boundary and protected payment confirmation flow. Production validation still requires real provider sandbox credentials and webhook configuration.
+
+### FASE 05 — Device Services
+Implemented: legitimate carrier-unlock, diagnostics, repair and configuration catalog; service-request aggregate with explicit workflow; D1 persistence; audit ledger; customer request API; private request lookup; customer service request form; quote/assignment/status/completion application ports; identifier privacy controls that retain only IMEI/serial suffixes; tests and documentation.
 
 ## Data model boundary
 
@@ -72,14 +73,19 @@ pnpm db:migrate:production
 - `GET /api/customer` — read the current customer session
 - `POST /api/customer` — create/reuse a customer and optionally save an address
 - `GET /api/orders/:id` — read an order only for its customer session
+- `GET /api/services` — service catalog and current customer's requests
+- `POST /api/services` — create a service request
+- `GET /api/services/:id` — read a service request only for its customer session
 
 ## Documentation
 
 - `docs/architecture.md` — architecture and bounded-context rules
 - `docs/development.md` — local, Cloudflare and migration workflow
 - `docs/security.md` — security baseline
+- `docs/payments.md` — payment provider architecture and webhook boundaries
+- `docs/services.md` — service workflow and device-data privacy
 - `modules/README.md` — module boundary overview
 
 ## Security
 
-No credentials, payment secrets or Cloudflare secrets belong in Git. Use environment variables locally and Cloudflare/GitHub secret stores for deployment. Browser redirects are never treated as payment confirmation.
+No credentials, payment secrets or Cloudflare secrets belong in Git. Use environment variables locally and Cloudflare/GitHub secret stores for deployment. Browser redirects are never treated as payment confirmation. Device identifiers are private and never exposed in full.
