@@ -1,11 +1,15 @@
 node_modules/
 .next/
+.open-next/
 out/
 .wrangler/
 .dev.vars
+.dev.vars.*
 .env
 .env.*
 !.env.example
 coverage/
+playwright-report/
+test-results/
 .DS_Store
 *.log
