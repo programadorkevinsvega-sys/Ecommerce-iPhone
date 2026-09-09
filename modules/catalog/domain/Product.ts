@@ -1,10 +1,22 @@
-import { AggregateRoot, type DomainEvent } from "../../shared-kernel";
+import { AggregateRoot, DomainError, type DomainEvent } from "../../shared-kernel";
 import { ProductId } from "./ProductId";
+
+export type ProductCondition = "NEW" | "USED" | "REFURBISHED";
 
 export type ProductProps = Readonly<{
   name: string;
   slug: string;
+  brand: string;
+  model: string;
+  description: string;
+  condition: ProductCondition;
+  priceInCents: number;
+  currency: string;
+  stock: number;
+  images: readonly string[];
   active: boolean;
+  seoTitle?: string;
+  seoDescription?: string;
 }>;
 
 export class Product extends AggregateRoot<string> {
@@ -16,24 +28,16 @@ export class Product extends AggregateRoot<string> {
   }
 
   static create(id: ProductId, props: ProductProps): Product {
-    if (!props.name.trim()) throw new Error("Product name cannot be empty.");
-    if (!props.slug.trim()) throw new Error("Product slug cannot be empty.");
-    return new Product(id, { ...props });
+    if (!props.name.trim()) throw new DomainError("Product name is required");
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(props.slug)) throw new DomainError("Invalid product slug");
+    if (props.priceInCents < 0) throw new DomainError("Product price cannot be negative");
+    if (props.stock < 0) throw new DomainError("Product stock cannot be negative");
+    if (!props.currency.trim()) throw new DomainError("Product currency is required");
+    return new Product(id, { ...props, images: [...props.images] });
   }
 
-  activate(): void {
-    this.props = { ...this.props, active: true };
-  }
-
-  deactivate(): void {
-    this.props = { ...this.props, active: false };
-  }
-
-  toPrimitives(): ProductProps & { id: string } {
-    return { id: this.getId(), ...this.props };
-  }
-
-  record(event: DomainEvent): void {
-    this.addDomainEvent(event);
-  }
+  activate(): void { this.props = { ...this.props, active: true }; }
+  deactivate(): void { this.props = { ...this.props, active: false }; }
+  toPrimitives(): ProductProps & { id: string } { return { id: this.getId(), ...this.props }; }
+  record(event: DomainEvent): void { this.addDomainEvent(event); }
 }
