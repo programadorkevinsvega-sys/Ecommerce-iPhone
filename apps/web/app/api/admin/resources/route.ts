@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "../../../../../lib/adminAuth";
-import { publishNotificationEvent } from "../../../../../lib/notifications";
+import { requireAdmin } from "../../../../lib/adminAuth";
+import { publishNotificationEvent } from "../../../../lib/notifications";
 import { PERMISSIONS } from "../../../../../../modules/admin/infrastructure/AdminSecurity";
 
 const json = (value: unknown) => JSON.stringify(value);
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     if(resource==="products")return NextResponse.json({items:(await env.DB.prepare("SELECT p.*, (SELECT COUNT(*) FROM product_images i WHERE i.product_id=p.id) AS image_count FROM products p WHERE (?='' OR p.name LIKE ? OR p.slug LIKE ? OR p.brand LIKE ?) ORDER BY p.created_at DESC LIMIT 100").bind(q,`%${q}%`,`%${q}%`,`%${q}%`).all()).results});
     if(resource==="customers")return NextResponse.json({items:(await env.DB.prepare("SELECT id,email,first_name,last_name,phone,created_at,updated_at FROM customers WHERE (?='' OR email LIKE ? OR first_name LIKE ? OR last_name LIKE ?) ORDER BY created_at DESC LIMIT 100").bind(q,`%${q}%`,`%${q}%`,`%${q}%`).all()).results});
     if(resource==="services")return NextResponse.json({items:(await env.DB.prepare("SELECT id,customer_id,email,type,service_type_code,device_brand,device_model,imei_last4,device_serial_last4,carrier,problem_description,status,quote_in_cents,currency,assigned_technician_id,created_at,updated_at FROM service_requests WHERE (?='' OR email LIKE ? OR device_brand LIKE ? OR device_model LIKE ? OR status LIKE ?) ORDER BY created_at ASC LIMIT 100").bind(q,`%${q}%`,`%${q}%`,`%${q}%`,`%${q}%`,`%${q}%`).all()).results});
-    return NextResponse.json({items:(await env.DB.prepare("SELECT o.*, (SELECT COUNT(*) FROM order_items i WHERE i.order_id=o.id) AS item_count FROM orders o WHERE (?='' OR o.order_number LIKE ? OR o.email LIKE ? OR o.status LIKE ?) ORDER BY o.created_at DESC LIMIT 100").bind(q,`%${q}%`,`%${q}%`,`%${q}%`).all()).results});
+    return NextResponse.json({items:(await env.DB.prepare("SELECT o.*, (SELECT COUNT(*) FROM order_items i WHERE i.order_id=o.id) AS item_count FROM orders o WHERE (?='' OR o.order_number LIKE ? OR o.email LIKE ? OR o.status LIKE ?) ORDER BY o.created_at DESC LIMIT 100").bind(q,`%${q}%`,`%${q}%`,`%${q}%`,`%${q}%`).all()).results});
   } catch(error){const status=error instanceof Error&&error.message==="FORBIDDEN"?403:401;return NextResponse.json({error:status===403?"Forbidden":"Authentication required"},{status});}
 }
 
