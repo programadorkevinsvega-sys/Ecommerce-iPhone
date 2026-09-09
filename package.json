@@ -22,5 +22,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
-  "devDependencies": { "prettier": "^3.6.2", "wrangler": "^4.130.0" }
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260908.1",
+    "prettier": "^3.6.2",
+    "wrangler": "^4.130.0"
+  }
 }
