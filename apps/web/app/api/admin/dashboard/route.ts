@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "../../../../../lib/adminAuth";
+import { requireAdmin } from "../../../../lib/adminAuth";
 import { PERMISSIONS } from "../../../../../../modules/admin/infrastructure/AdminSecurity";
 
 export async function GET() {
