@@ -1,4 +1,26 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { checkoutUseCase } from "../../../lib/commerce";
-export async function POST(request:Request){try{const jar=await cookies();const cartId=jar.get("cart_id")?.value;if(!cartId)return NextResponse.json({error:"Cart not found"},{status:400});const body=await request.json() as any;for(const key of ["email","firstName","lastName","phone","shippingAddress","shippingMethod"])if(!body[key])return NextResponse.json({error:`${key} is required`},{status:400});const {context,checkout}=await checkoutUseCase();const cart=await context.cartRepo.getOrCreate(cartId);const customer=await context.customerRepo.save({email:String(body.email).trim().toLowerCase(),firstName:String(body.firstName).trim(),lastName:String(body.lastName).trim(),phone:String(body.phone).trim()});const address=body.shippingAddress;const shippingAddress={recipientName:String(address.recipientName??`${body.firstName} ${body.lastName}`).trim(),phone:String(address.phone??body.phone).trim(),addressLine1:String(address.addressLine1??"").trim(),addressLine2:address.addressLine2?String(address.addressLine2).trim():undefined,city:String(address.city??"").trim(),state:String(address.state??"").trim(),postalCode:address.postalCode?String(address.postalCode).trim():undefined,countryCode:String(address.countryCode??"CO").toUpperCase()};if(!shippingAddress.addressLine1||!shippingAddress.city||!shippingAddress.state)return NextResponse.json({error:"Complete shipping address is required"},{status:400});await context.customerRepo.addAddress(customer.getId(),{label:"Principal",...shippingAddress,isDefault:true});const order=await checkout.execute(cart,{email:customer.toPrimitives().email,shippingAddress,shippingMethod:String(body.shippingMethod) as "PICKUP"|"DELIVERY",customerId:customer.getId()});const response=NextResponse.json({order},{status:201});response.cookies.set("customer_id",customer.getId(),{httpOnly:true,sameSite:"lax",secure:process.env.NODE_ENV==="production",path:"/",maxAge:60*60*24*90});return response;}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Checkout failed"},{status:400});}}
+import { publishNotificationEvent } from "../../../lib/notifications";
+
+export async function POST(request:Request){
+  try{
+    const jar=await cookies();
+    const cartId=jar.get("cart_id")?.value;
+    if(!cartId)return NextResponse.json({error:"Cart not found"},{status:400});
+    const body=await request.json() as any;
+    for(const key of ["email","firstName","lastName","phone","shippingAddress","shippingMethod"])if(!body[key])return NextResponse.json({error:`${key} is required`},{status:400});
+    const {context,checkout}=await checkoutUseCase();
+    const cart=await context.cartRepo.getOrCreate(cartId);
+    const customer=await context.customerRepo.save({email:String(body.email).trim().toLowerCase(),firstName:String(body.firstName).trim(),lastName:String(body.lastName).trim(),phone:String(body.phone).trim()});
+    const address=body.shippingAddress;
+    const shippingAddress={recipientName:String(address.recipientName??`${body.firstName} ${body.lastName}`).trim(),phone:String(address.phone??body.phone).trim(),addressLine1:String(address.addressLine1??"").trim(),addressLine2:address.addressLine2?String(address.addressLine2).trim():undefined,city:String(address.city??"").trim(),state:String(address.state??"").trim(),postalCode:address.postalCode?String(address.postalCode).trim():undefined,countryCode:String(address.countryCode??"CO").toUpperCase()};
+    if(!shippingAddress.addressLine1||!shippingAddress.city||!shippingAddress.state)return NextResponse.json({error:"Complete shipping address is required"},{status:400});
+    await context.customerRepo.addAddress(customer.getId(),{label:"Principal",...shippingAddress,isDefault:true});
+    const order=await checkout.execute(cart,{email:customer.toPrimitives().email,shippingAddress,shippingMethod:String(body.shippingMethod) as "PICKUP"|"DELIVERY",customerId:customer.getId()});
+    await publishNotificationEvent({eventType:"OrderCreated",aggregateId:order.id,payload:{email:customer.toPrimitives().email,orderId:order.id,orderNumber:order.orderNumber,status:order.status,totalInCents:order.totalInCents,currency:order.currency}});
+    const response=NextResponse.json({order},{status:201});
+    response.cookies.set("customer_id",customer.getId(),{httpOnly:true,sameSite:"lax",secure:process.env.NODE_ENV==="production",path:"/",maxAge:60*60*24*90});
+    return response;
+  }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Checkout failed"},{status:400});}
+}
