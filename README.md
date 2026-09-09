@@ -44,7 +44,22 @@ Production uses a single D1 database containing tables for the bounded contexts.
 
 ## Cloudflare provisioning boundary
 
-Production resources are external account resources. The repository contains their bindings and migrations; the real D1 ID and runtime secrets must remain outside Git.
+Production resources are external account resources. The repository contains their bindings and migrations; runtime secrets stay outside Git. Cloudflare Workers Builds should use the repository's pnpm workspace explicitly because the monorepo is standardized on pnpm.
+
+Recommended Workers Builds configuration:
+
+```text
+Build command:
+pnpm install --no-frozen-lockfile && pnpm build:cloudflare
+
+Deploy command:
+pnpm exec wrangler deploy
+
+Root directory:
+/
+```
+
+Do not use `npm run build` + `npx wrangler deploy` for the production Worker, because the first command runs the regular Next.js build rather than the OpenNext Cloudflare build.
 
 ## Commands
 
