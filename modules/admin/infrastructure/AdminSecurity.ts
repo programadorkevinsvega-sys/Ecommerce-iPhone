@@ -1,0 +1,75 @@
+import type { AdminRole } from "../application/Rbac";
+
+const ITERATIONS = 150_000;
+const KEY_LENGTH = 256;
+const HASH_ALGORITHM = "SHA-256";
+
+const bytesToBase64 = (bytes: Uint8Array) => {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+};
+const base64ToBytes = (value: string) => Uint8Array.from(atob(value), c => c.charCodeAt(0));
+
+export async function hashPassword(password: string): Promise<string> {
+  if (password.length < 12 || password.length > 128) throw new Error("Password must contain 12-128 characters");
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: ITERATIONS, hash: HASH_ALGORITHM }, key, KEY_LENGTH);
+  return `pbkdf2-sha256$${ITERATIONS}$${bytesToBase64(salt)}$${bytesToBase64(new Uint8Array(bits))}`;
+}
+
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a[i]! ^ b[i]!;
+  return diff === 0;
+}
+
+export async function verifyPassword(password: string, encoded: string): Promise<boolean> {
+  const [scheme, iterationText, saltText, hashText] = encoded.split("$");
+  if (scheme !== "pbkdf2-sha256" || !iterationText || !saltText || !hashText) return false;
+  const iterations = Number(iterationText);
+  if (!Number.isInteger(iterations) || iterations < 100_000 || iterations > 500_000) return false;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: base64ToBytes(saltText), iterations, hash: HASH_ALGORITHM }, key, KEY_LENGTH);
+  return timingSafeEqual(new Uint8Array(bits), base64ToBytes(hashText));
+}
+
+export async function sha256(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return bytesToBase64(new Uint8Array(digest));
+}
+
+export type AdminPrincipal = { id: string; email: string; role: AdminRole; firstName: string; lastName: string };
+
+export const PERMISSIONS = {
+  dashboardRead: "dashboard:read",
+  productsRead: "products:read",
+  productsWrite: "products:write",
+  ordersRead: "orders:read",
+  ordersWrite: "orders:write",
+  customersRead: "customers:read",
+  servicesRead: "services:read",
+  servicesWrite: "services:write",
+  refundsCreate: "refunds:create",
+  serviceTypesWrite: "service_types:write",
+  adminsManage: "admins:manage",
+  auditRead: "audit:read",
+  inventoryWrite: "inventory:write",
+} as const;
+
+const all = Object.values(PERMISSIONS);
+export const ROLE_PERMISSIONS: Record<AdminRole, readonly string[]> = {
+  SUPER_ADMIN: all,
+  ADMIN: all.filter(x => x !== PERMISSIONS.adminsManage),
+  MANAGER: [PERMISSIONS.dashboardRead, PERMISSIONS.productsRead, PERMISSIONS.productsWrite, PERMISSIONS.ordersRead, PERMISSIONS.ordersWrite, PERMISSIONS.customersRead, PERMISSIONS.servicesRead, PERMISSIONS.servicesWrite, PERMISSIONS.inventoryWrite, PERMISSIONS.auditRead],
+  SALES: [PERMISSIONS.dashboardRead, PERMISSIONS.productsRead, PERMISSIONS.ordersRead, PERMISSIONS.ordersWrite, PERMISSIONS.customersRead, PERMISSIONS.servicesRead],
+  SUPPORT: [PERMISSIONS.dashboardRead, PERMISSIONS.ordersRead, PERMISSIONS.customersRead, PERMISSIONS.servicesRead, PERMISSIONS.servicesWrite],
+  INVENTORY: [PERMISSIONS.dashboardRead, PERMISSIONS.productsRead, PERMISSIONS.productsWrite, PERMISSIONS.inventoryWrite, PERMISSIONS.ordersRead],
+  FINANCE: [PERMISSIONS.dashboardRead, PERMISSIONS.ordersRead, PERMISSIONS.refundsCreate, PERMISSIONS.auditRead],
+  CONTENT_EDITOR: [PERMISSIONS.dashboardRead, PERMISSIONS.productsRead, PERMISSIONS.productsWrite, PERMISSIONS.serviceTypesWrite],
+  TECHNICIAN: [PERMISSIONS.dashboardRead, PERMISSIONS.servicesRead, PERMISSIONS.servicesWrite],
+};
+
+export function hasPermission(role: AdminRole, permission: string): boolean { return ROLE_PERMISSIONS[role]?.includes(permission) ?? false; }
