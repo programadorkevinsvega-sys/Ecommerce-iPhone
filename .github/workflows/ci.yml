@@ -13,44 +13,34 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 10.15.0
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
-
       - name: Architecture boundary check
         run: pnpm architecture:check
-
       - name: Lint
         run: pnpm lint
-
       - name: Typecheck
         run: pnpm typecheck
-
       - name: Unit tests
         run: pnpm test
-
       - name: Next.js build
         run: pnpm build
-
       - name: Cloudflare OpenNext build
         run: pnpm build:cloudflare
-
+      - name: Prepare local D1
+        run: pnpm db:migrate:local
       - name: Install Playwright browser
         run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
-
       - name: E2E smoke tests
         run: pnpm --filter @ecommerce/web test:e2e
