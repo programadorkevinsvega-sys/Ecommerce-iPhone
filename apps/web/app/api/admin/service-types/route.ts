@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "../../../../../lib/adminAuth";
+import { requireAdmin } from "../../../../lib/adminAuth";
 import { PERMISSIONS } from "../../../../../../modules/admin/infrastructure/AdminSecurity";
 import { D1ServiceTypeRepository } from "../../../../../../modules/services/infrastructure/D1ServiceTypeRepository";
 import { ServiceTypeDefinition } from "../../../../../../modules/services/domain/ServiceTypeDefinition";
