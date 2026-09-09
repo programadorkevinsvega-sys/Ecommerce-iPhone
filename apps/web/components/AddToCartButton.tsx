@@ -1,0 +1,4 @@
+"use client";
+import { useState } from "react";
+import Link from "next/link";
+export function AddToCartButton({productId,disabled=false}:{productId:string;disabled?:boolean}){const [busy,setBusy]=useState(false);const [added,setAdded]=useState(false);async function add(){if(busy||disabled)return;setBusy(true);try{const res=await fetch("/api/cart",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({productId,quantity:1})});if(!res.ok)throw new Error((await res.json()).error??"No se pudo agregar");setAdded(true);}catch(error){alert(error instanceof Error?error.message:"No se pudo agregar al carrito");}finally{setBusy(false);}}return added?<Link className="button primary" href="/cart">Ir al carrito</Link>:<button className="button primary" type="button" onClick={add} disabled={disabled||busy}>{busy?"Agregando…":"Agregar al carrito"}</button>}

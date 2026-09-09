@@ -1,0 +1,3 @@
+import { describe,expect,it } from "vitest";
+import { assertCartQuantity,cartTotals } from "./Cart";
+describe("Cart domain",()=>{it("calculates totals from immutable line snapshots",()=>{const cart={id:"c",currency:"COP",items:[{productId:"p",productName:"Phone",slug:"phone",quantity:2,unitPriceInCents:1000,currency:"COP",stock:5}]};expect(cartTotals(cart)).toEqual({subtotalInCents:2000,itemCount:2,currency:"COP"});});it("rejects invalid quantities",()=>{expect(()=>assertCartQuantity(0)).toThrow();expect(()=>assertCartQuantity(100)).toThrow();expect(()=>assertCartQuantity(2)).not.toThrow();});});
