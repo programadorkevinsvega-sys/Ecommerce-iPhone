@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminRepository, newSessionToken, requestFingerprint, setAdminSession, sessionExpiry } from "../../../../../lib/adminAuth";
-import { sha256, verifyPassword } from "../../../../../../modules/admin/infrastructure/AdminSecurity";
+import { sha256, verifyPassword } from "../../../../../../../modules/admin/infrastructure/AdminSecurity";
 
 export async function POST(request: Request) {
   try {
