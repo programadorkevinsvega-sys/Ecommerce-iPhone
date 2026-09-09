@@ -4,29 +4,22 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Cloudflare environment"
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
 
 permissions:
   contents: read
 
 concurrency:
-  group: cloudflare-deploy-${{ github.event_name == 'push' && 'production' || inputs.environment }}
+  group: cloudflare-production
   cancel-in-progress: false
 
 env:
-  DEPLOY_ENV: ${{ github.event_name == 'push' && 'production' || inputs.environment }}
+  DEPLOY_ENV: production
+  DB_NAME: ecommerce-iphone
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.event_name == 'push' && 'production' || inputs.environment }}
+    environment: production
     timeout-minutes: 35
 
     steps:
@@ -62,7 +55,6 @@ jobs:
       - name: Apply remote D1 migrations
         run: pnpm exec wrangler d1 migrations apply "$DB_NAME" --env "$DEPLOY_ENV" --remote
         env:
-          DB_NAME: ${{ github.event_name == 'push' && 'ecommerce-iphone' || (inputs.environment == 'staging' && 'ecommerce-iphone-staging' || 'ecommerce-iphone') }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
