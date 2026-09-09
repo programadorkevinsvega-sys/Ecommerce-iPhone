@@ -3,9 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "packageManager": "pnpm@10.15.0",
-  "engines": {
-    "node": ">=22.0.0"
-  },
+  "engines": { "node": ">=22.0.0" },
   "scripts": {
     "dev": "pnpm --filter @ecommerce/web dev",
     "build": "pnpm --filter @ecommerce/web build",
@@ -13,16 +11,17 @@
     "preview:cloudflare": "pnpm --filter @ecommerce/web preview:cloudflare",
     "deploy": "pnpm build:cloudflare && wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "db:migrate:local": "wrangler d1 migrations apply ecommerce-iphone-development --local",
+    "db:migrate:staging": "wrangler d1 migrations apply ecommerce-iphone-staging --env staging --remote",
+    "db:migrate:production": "wrangler d1 migrations apply ecommerce-iphone --env production --remote",
     "start": "pnpm --filter @ecommerce/web start",
     "lint": "pnpm --filter @ecommerce/web lint",
     "typecheck": "pnpm --filter @ecommerce/web typecheck",
     "test": "pnpm --filter @ecommerce/web test",
+    "test:e2e": "pnpm --filter @ecommerce/web test:e2e",
     "architecture:check": "node scripts/check-architecture.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
-  "devDependencies": {
-    "prettier": "^3.6.2",
-    "wrangler": "^4.130.0"
-  }
+  "devDependencies": { "prettier": "^3.6.2", "wrangler": "^4.130.0" }
 }
