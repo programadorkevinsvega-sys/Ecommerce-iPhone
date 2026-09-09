@@ -15,9 +15,11 @@ export type AdminUserProps = Readonly<{
   updatedAt: string;
 }>;
 
+type AdminUserCreateProps = Omit<AdminUserProps, "createdAt" | "updatedAt" | "lockedUntil" | "lastLoginAt"> & Partial<Pick<AdminUserProps, "createdAt" | "updatedAt" | "lockedUntil" | "lastLoginAt">>;
+
 export class AdminUser extends Entity<string> {
   private constructor(id: string, private props: AdminUserProps) { super(id); }
-  static create(id: string, props: Omit<AdminUserProps, "createdAt" | "updatedAt"> & Partial<Pick<AdminUserProps, "createdAt" | "updatedAt">>): AdminUser {
+  static create(id: string, props: AdminUserCreateProps): AdminUser {
     const email=props.email.trim().toLowerCase();
     if(!email.includes("@")||email.length>254)throw new DomainError("Valid admin email is required");
     if(!props.firstName.trim()||!props.lastName.trim())throw new DomainError("Admin name is required");
