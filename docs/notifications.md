@@ -11,7 +11,7 @@ The application uses a transactional notification outbox in D1 and the already-p
 5. Resend sends the email.
 6. `notification_deliveries` records the provider response and prevents duplicate sends.
 
-Cloudflare Queue consumers support batching and retries; the Worker is configured with a batch size of 10, five-second timeout and five retries. citehttps://developers.cloudflare.com/queues/configuration/configure-queues/
+Cloudflare Queue consumers support batching and retries; the Worker is configured with a batch size of 10, five-second timeout and five retries.
 
 ## Required production configuration
 
