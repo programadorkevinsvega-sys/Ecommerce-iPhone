@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { adminRepository, clearAdminSession, currentAdmin, requestFingerprint } from "../../../../../lib/adminAuth";
+import { adminRepository, clearAdminSession, currentAdmin, requestFingerprint } from "../../../../lib/adminAuth";
 import { sha256 } from "../../../../../../modules/admin/infrastructure/AdminSecurity";
 
 export async function GET() { const admin = await currentAdmin(); return NextResponse.json({ authenticated: Boolean(admin), admin }); }
