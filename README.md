@@ -9,7 +9,7 @@ Production-oriented e-commerce platform for smartphones and legitimate device se
 - Clean Architecture
 - Next.js + TypeScript
 - Cloudflare Workers + OpenNext
-- Cloudflare D1
+- Cloudflare D1 (one database per environment, not one per module)
 - Cloudflare R2
 - Cloudflare Queues
 - Explicit application ports/adapters
@@ -19,11 +19,21 @@ Production-oriented e-commerce platform for smartphones and legitimate device se
 
 ### FASE 01 — Foundation
 
-Implemented in the repository: modular boundaries, shared domain kernel, catalog vertical slice, Cloudflare/OpenNext runtime, D1/R2/Queues bindings, environment separation, security headers, RBAC/audit/rate-limit ports, unit/E2E test setup, CI and controlled deployment workflow.
+Implemented: modular boundaries, shared domain kernel, catalog vertical slice, Cloudflare/OpenNext runtime, D1/R2/Queues bindings, environment separation, security headers, RBAC/audit/rate-limit ports, unit/E2E test setup, CI and controlled deployment workflow.
 
 ### FASE 02 — Storefront + Catalog
 
-Implemented: premium responsive storefront, D1-backed catalog, product domain model, search/filter/pagination, inventory visibility, product detail pages, clean iPhone SEO URLs, legacy URL redirects, dynamic metadata, canonical URLs, Product structured data, sitemap integration, D1 migration/seed data, Cloudflare-runtime Playwright setup and catalog E2E coverage.
+Implemented: premium responsive storefront, D1-backed catalog, product domain model, search/filter/pagination, inventory visibility, product detail pages, clean iPhone SEO URLs, legacy redirects, dynamic metadata, canonical URLs, Product structured data, sitemap integration, D1 migration/seed data and Cloudflare-runtime Playwright setup.
+
+### FASE 03 — Commerce Core
+
+Implemented: customer aggregate and addresses, guest/customer session cookies, persistent D1 cart, quantity validation, server-side price/stock validation, checkout flow, order aggregate/state machine, order snapshots, atomic stock allocation, 15-minute inventory reservations, expired-reservation release routine, order events, protected order lookup, cart/checkout/order UI and commerce domain tests.
+
+Payment authorization is deliberately not faked here: orders enter `PENDING_PAYMENT` and FASE 04 owns provider integration and payment confirmation.
+
+## Data model boundary
+
+Production uses a single D1 database containing tables for the bounded contexts. Code boundaries remain independent through repositories and application contracts. A module can be extracted to its own service/database later without redesigning the domain model.
 
 ## Cloudflare provisioning boundary
 
@@ -53,6 +63,16 @@ pnpm db:migrate:staging
 pnpm db:migrate:production
 ```
 
+## Commerce API
+
+- `GET /api/cart` — read the current guest cart
+- `POST /api/cart` — add/update a cart item
+- `DELETE /api/cart` — remove a cart item
+- `POST /api/checkout` — validate cart, create customer/address, allocate stock and create a pending-payment order
+- `GET /api/customer` — read the current customer session
+- `POST /api/customer` — create/reuse a customer and optionally save an address
+- `GET /api/orders/:id` — read an order only for its customer session
+
 ## Documentation
 
 - `docs/architecture.md` — architecture and bounded-context rules
@@ -62,4 +82,4 @@ pnpm db:migrate:production
 
 ## Security
 
-No credentials, payment secrets or Cloudflare secrets belong in Git. Use environment variables locally and Cloudflare/GitHub secret stores for deployment.
+No credentials, payment secrets or Cloudflare secrets belong in Git. Use environment variables locally and Cloudflare/GitHub secret stores for deployment. Browser redirects are never treated as payment confirmation.
