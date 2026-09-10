@@ -1,6 +1,6 @@
 const BASE_URL = (process.env.PRODUCTION_URL ?? "https://ecommerce-iphone.programadorkevinsvega.workers.dev").replace(/\/$/, "");
 const timeoutMs = Number(process.env.HEALTH_TIMEOUT_MS ?? "15000");
-const retries = Number(process.env.HEALTH_RETRIES ?? "6");
+const retries = Number(process.env.HEALTH_RETRIES ?? "30");
 const retryDelayMs = Number(process.env.HEALTH_RETRY_DELAY_MS ?? "10000");
 
 function sleep(ms) {
