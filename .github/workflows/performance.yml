@@ -1,15 +1,21 @@
 name: Storefront performance
 
 on:
+  schedule:
+    - cron: "17 */6 * * *"
   workflow_dispatch:
     inputs:
       perf_base_url:
-        description: "Production base URL, for example https://ecommerce-iphone.example.com"
-        required: true
+        description: "Production base URL"
+        required: false
+        default: "https://ecommerce-iphone.programadorkevinsvega.workers.dev"
         type: string
 
 permissions:
   contents: read
+
+env:
+  PERF_BASE_URL: https://ecommerce-iphone.programadorkevinsvega.workers.dev
 
 jobs:
   performance:
@@ -33,5 +39,5 @@ jobs:
         run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
       - name: Run production performance smoke
         env:
-          PERF_BASE_URL: ${{ inputs.perf_base_url }}
+          PERF_BASE_URL: ${{ inputs.perf_base_url || env.PERF_BASE_URL }}
         run: pnpm performance:production
