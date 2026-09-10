@@ -36,7 +36,7 @@ for (const binding of ["API_RATE_LIMITER", "SENSITIVE_RATE_LIMITER"]) {
 
 const worker = await readFile("apps/web/worker.ts", "utf8");
 for (const path of ["/api/health/live", "/api/health/ready"]) {
-  if (!worker.includes(path)) failures.push(`${path} is not enforced by the Worker");
+  if (!worker.includes(path)) failures.push(`${path} is not enforced by the Worker`);
 }
 
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
