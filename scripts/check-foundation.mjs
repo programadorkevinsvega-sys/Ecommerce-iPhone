@@ -14,6 +14,9 @@ const requiredFiles = [
   "apps/web/next.config.ts",
   "apps/web/middleware.ts",
   "apps/web/worker.ts",
+  "apps/web/app/api/health/live/route.ts",
+  "apps/web/app/api/health/ready/route.ts",
+  "apps/web/app/api/admin/resources/route.ts",
   "scripts/check-foundation.mjs",
   ".github/workflows/ci.yml",
 ];
@@ -30,9 +33,10 @@ for (const environment of ["development", "staging"]) {
 for (const binding of ["API_RATE_LIMITER", "SENSITIVE_RATE_LIMITER"]) {
   if (!wrangler.includes(`\"name\": \"${binding}\"`)) failures.push(`rate-limit binding is not declared: ${binding}`);
 }
+
+const worker = await readFile("apps/web/worker.ts", "utf8");
 for (const path of ["/api/health/live", "/api/health/ready"]) {
-  if (path === "/api/health/live" && !await fileContains("apps/web/worker.ts", path)) failures.push("liveness endpoint is not enforced by the Worker");
-  if (path === "/api/health/ready" && !await fileContains("apps/web/worker.ts", path)) failures.push("readiness endpoint is not enforced by the Worker");
+  if (!worker.includes(path)) failures.push(`${path} is not enforced by the Worker");
 }
 
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
@@ -50,6 +54,10 @@ if (!ci.includes("pnpm install --frozen-lockfile")) failures.push("CI must use f
 if (!ci.includes("pnpm foundation:check")) failures.push("CI must run foundation:check");
 if (!ci.includes("pnpm architecture:check")) failures.push("CI must run architecture:check");
 
+const adminRoute = await readFile("apps/web/app/api/admin/resources/route.ts", "utf8");
+if (/\.prepare\s*\(/.test(adminRoute)) failures.push("admin presentation route must not execute SQL directly");
+if (/modules\/[^\"']+\/infrastructure/.test(adminRoute)) failures.push("admin presentation route must not import infrastructure directly");
+
 if (failures.length) {
   console.error("Foundation invariant check failed:");
   for (const failure of failures) console.error(`- ${failure}`);
@@ -57,8 +65,3 @@ if (failures.length) {
 }
 
 console.log("Foundation invariant check passed.");
-
-async function fileContains(file, value) {
-  const content = await readFile(file, "utf8");
-  return content.includes(value);
-}
