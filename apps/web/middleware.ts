@@ -1,19 +1,39 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const allowedOrigin = process.env.ALLOWED_ORIGIN ?? "";
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
+
+function requestId(request: NextRequest): string {
+  const supplied = request.headers.get("x-request-id")?.trim();
+  return supplied && REQUEST_ID_PATTERN.test(supplied) ? supplied : crypto.randomUUID();
+}
 
 export function middleware(request: NextRequest): Response {
   if (!request.nextUrl.pathname.startsWith("/api/")) {
     return NextResponse.next();
   }
 
+  const currentOrigin = request.nextUrl.origin;
   const origin = request.headers.get("origin");
+  const isAllowedOrigin = !origin || origin === currentOrigin;
+
+  if (!isAllowedOrigin && (request.method === "OPTIONS" || MUTATING_METHODS.has(request.method))) {
+    return NextResponse.json(
+      { error: { code: "ORIGIN_NOT_ALLOWED", message: "Request origin is not allowed." } },
+      { status: 403, headers: { "X-Request-Id": requestId(request) } },
+    );
+  }
+
   const response = request.method === "OPTIONS"
     ? new NextResponse(null, { status: 204 })
     : NextResponse.next();
 
-  if (origin && allowedOrigin && origin === allowedOrigin) {
-    response.headers.set("Access-Control-Allow-Origin", origin);
+  const id = requestId(request);
+  response.headers.set("X-Request-Id", id);
+  response.headers.set("Cache-Control", "no-store");
+
+  if (origin === currentOrigin) {
+    response.headers.set("Access-Control-Allow-Origin", currentOrigin);
     response.headers.set("Vary", "Origin");
     response.headers.set("Access-Control-Allow-Credentials", "true");
   }
