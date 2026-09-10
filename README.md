@@ -53,10 +53,17 @@ Build command:
 pnpm install --no-frozen-lockfile && pnpm build:cloudflare
 
 Deploy command:
-pnpm exec wrangler deploy
+pnpm deploy:cloudflare
 
 Root directory:
 /
+```
+
+The production deploy script applies pending remote D1 migrations before deploying the Worker:
+
+```text
+pnpm db:migrate:production
+pnpm exec wrangler deploy
 ```
 
 Do not use `npm run build` + `npx wrangler deploy` for the production Worker, because the first command runs the regular Next.js build rather than the OpenNext Cloudflare build.
