@@ -1,0 +1,55 @@
+name: Controlled Production Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_id:
+        description: "Stable Worker version ID to activate"
+        required: true
+        type: string
+      verify_url:
+        description: "Production URL used for post-rollback verification"
+        required: true
+        default: "https://ecommerce-iphone.programadorkevinsvega.workers.dev"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-rollback
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Roll back Worker
+        run: pnpm exec wrangler rollback "${{ inputs.version_id }}" --name ecommerce-iphone --message "Controlled Foundation rollback"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Verify rolled back Worker
+        run: pnpm exec node scripts/verify-production.mjs
+        env:
+          PRODUCTION_URL: ${{ inputs.verify_url }}
