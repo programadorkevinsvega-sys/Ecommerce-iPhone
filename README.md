@@ -9,7 +9,7 @@ Production-oriented e-commerce platform for smartphones and legitimate device se
 - Clean Architecture
 - Next.js + TypeScript
 - Cloudflare Workers + OpenNext
-- Cloudflare D1 (single production database)
+- Cloudflare D1
 - Cloudflare R2
 - Cloudflare Queues
 - Explicit application ports/adapters
@@ -18,7 +18,7 @@ Production-oriented e-commerce platform for smartphones and legitimate device se
 ## Phase status
 
 ### FASE 01 — Foundation
-Implemented: modular boundaries, shared domain kernel, catalog vertical slice, Cloudflare/OpenNext runtime, D1/R2/Queues bindings, security headers, test setup, CI and controlled deployment workflow.
+Foundation is implemented as the platform baseline: modular boundaries, shared domain kernel, catalog vertical slice, Cloudflare/OpenNext runtime, D1/R2/Queues bindings, HTTP security baseline, request tracing, CI quality gates, reproducible pnpm installation, and explicit development/staging/production deployment paths. Final closure requires real staging provisioning/verification, distributed rate-limit enforcement on abuse-sensitive routes, runtime CI verification, and complete removal of business/SQL logic from presentation adapters.
 
 ### FASE 02 — Storefront + Catalog
 Implemented: responsive storefront, D1-backed catalog, product domain model, search/filter/pagination, inventory visibility, product detail pages, iPhone SEO URLs, redirects, dynamic metadata, canonical URLs, Product structured data and sitemap.
@@ -40,30 +40,37 @@ Implemented: transactional notification outbox, D1 delivery ledger, Cloudflare Q
 
 ## Data model boundary
 
-Production uses a single D1 database containing tables for the bounded contexts. Code boundaries remain independent through repositories and application contracts. A module can be extracted to its own service/database later without redesigning the domain model.
+D1 contains tables for the bounded contexts. Code boundaries remain independent through repositories and application contracts. A module can be extracted to its own service/database later without redesigning the domain model.
 
 ## Cloudflare provisioning boundary
 
-Production resources are external account resources. The repository contains their bindings and migrations; runtime secrets stay outside Git. Cloudflare Workers Builds should use the repository's pnpm workspace explicitly because the monorepo is standardized on pnpm.
+Cloudflare resources are external account resources. The repository contains their bindings and migrations; runtime secrets stay outside Git. Workers Builds should use the repository's pnpm workspace explicitly because the monorepo is standardized on pnpm.
 
 Recommended Workers Builds configuration:
 
 ```text
 Build command:
-pnpm install --no-frozen-lockfile && pnpm build:cloudflare
+pnpm install --frozen-lockfile && pnpm build:cloudflare
 
 Deploy command:
-pnpm deploy:cloudflare
+pnpm deploy:production
 
 Root directory:
 /
 ```
 
-The production deploy script applies pending remote D1 migrations before deploying the Worker:
+Production deployment applies pending remote D1 migrations before deploying the Worker:
 
 ```text
 pnpm db:migrate:production
+pnpm build:cloudflare
 pnpm exec wrangler deploy
+```
+
+For staging:
+
+```text
+pnpm deploy:staging
 ```
 
 Do not use `npm run build` + `npx wrangler deploy` for the production Worker, because the first command runs the regular Next.js build rather than the OpenNext Cloudflare build.
@@ -71,9 +78,8 @@ Do not use `npm run build` + `npx wrangler deploy` for the production Worker, be
 ## Commands
 
 ```bash
-pnpm install
-pnpm db:migrate:production
-pnpm dev
+pnpm install --frozen-lockfile
+pnpm foundation:check
 pnpm architecture:check
 pnpm lint
 pnpm typecheck
@@ -81,6 +87,8 @@ pnpm test
 pnpm build
 pnpm build:cloudflare
 pnpm test:e2e
+pnpm deploy:staging
+pnpm deploy:production
 ```
 
 ## Commerce API
@@ -101,11 +109,13 @@ pnpm test:e2e
 
 - `docs/architecture.md` — architecture and bounded-context rules
 - `docs/development.md` — local and Cloudflare workflow
+- `docs/foundation.md` — Fase 1 Foundation implementation and closure checklist
 - `docs/security.md` — security baseline
 - `docs/payments.md` — payment boundary
 - `docs/services.md` — service workflow and device-data privacy
 - `docs/notifications.md` — Resend, outbox and Queue architecture
 - `modules/README.md` — module boundary overview
+- `docs/auditoria-fases-1-7.md` — deep audit and master implementation plan
 
 ## Security
 
