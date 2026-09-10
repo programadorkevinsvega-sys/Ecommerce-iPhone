@@ -24,8 +24,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: pnpm
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
+      - name: Foundation invariant check
+        run: pnpm foundation:check
       - name: Architecture boundary check
         run: pnpm architecture:check
       - name: Lint
