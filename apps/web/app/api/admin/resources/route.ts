@@ -1,36 +1,71 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/adminAuth";
-import { publishNotificationEvent } from "../../../../lib/notifications";
-import { PERMISSIONS } from "../../../../../../modules/admin/infrastructure/AdminSecurity";
+import { adminResources } from "../../../../lib/adminResources";
+import { permissionFor, type ResourceName } from "../../../../../../modules/admin/application/AdminResources";
 
-const json = (value: unknown) => JSON.stringify(value);
-const clean = (value: unknown, max: number) => String(value ?? "").trim().slice(0, max);
-const bool = (value: unknown) => value === true || value === 1 || value === "1";
-function permissionFor(resource: string, write = false) { if (resource === "customers") return PERMISSIONS.customersRead; if (resource === "services") return write ? PERMISSIONS.servicesWrite : PERMISSIONS.servicesRead; if (resource === "products") return write ? PERMISSIONS.productsWrite : PERMISSIONS.productsRead; return write ? PERMISSIONS.ordersWrite : PERMISSIONS.ordersRead; }
-
-export async function GET(request: Request) {
-  try { const url=new URL(request.url),resource=url.searchParams.get("resource")??"orders",q=clean(url.searchParams.get("q"),100); const {env}=await requireAdmin(permissionFor(resource));
-    if(resource==="products")return NextResponse.json({items:(await env.DB.prepare("SELECT p.*, (SELECT COUNT(*) FROM product_images i WHERE i.product_id=p.id) AS image_count FROM products p WHERE (?='' OR p.name LIKE ? OR p.slug LIKE ? OR p.brand LIKE ?) ORDER BY p.created_at DESC LIMIT 100").bind(q,`%${q}%`,`%${q}%`,`%${q}%`).all()).results});
-    if(resource==="customers")return NextResponse.json({items:(await env.DB.prepare("SELECT id,email,first_name,last_name,phone,created_at,updated_at FROM customers WHERE (?='' OR email LIKE ? OR first_name LIKE ? OR last_name LIKE ?) ORDER BY created_at DESC LIMIT 100").bind(q,`%${q}%`,`%${q}%`,`%${q}%`).all()).results});
-    if(resource==="services")return NextResponse.json({items:(await env.DB.prepare("SELECT id,customer_id,email,type,service_type_code,device_brand,device_model,imei_last4,device_serial_last4,carrier,problem_description,status,quote_in_cents,currency,assigned_technician_id,created_at,updated_at FROM service_requests WHERE (?='' OR email LIKE ? OR device_brand LIKE ? OR device_model LIKE ? OR status LIKE ?) ORDER BY created_at ASC LIMIT 100").bind(q,`%${q}%`,`%${q}%`,`%${q}%`,`%${q}%`,`%${q}%`).all()).results});
-    return NextResponse.json({items:(await env.DB.prepare("SELECT o.*, (SELECT COUNT(*) FROM order_items i WHERE i.order_id=o.id) AS item_count FROM orders o WHERE (?='' OR o.order_number LIKE ? OR o.email LIKE ? OR o.status LIKE ?) ORDER BY o.created_at DESC LIMIT 100").bind(q,`%${q}%`,`%${q}%`,`%${q}%`,`%${q}%`).all()).results});
-  } catch(error){const status=error instanceof Error&&error.message==="FORBIDDEN"?403:401;return NextResponse.json({error:status===403?"Forbidden":"Authentication required"},{status});}
+function bodyRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("INVALID_BODY");
+  return value as Record<string, unknown>;
 }
 
-export async function POST(request: Request) {
-  try { const body=await request.json() as Record<string,unknown>,resource=clean(body.resource,30); const {admin,repo,env}=await requireAdmin(permissionFor(resource,true));
-    if(resource==="products"){const name=clean(body.name,180),slug=clean(body.slug,180),brand=clean(body.brand,80),model=clean(body.model,120),description=clean(body.description,5000),condition=clean(body.condition,20),price=Number(body.price_in_cents),stock=Number(body.stock??0); if(!name||!slug||!brand||!model||!description||!["NEW","USED","REFURBISHED"].includes(condition)||!Number.isInteger(price)||price<0||!Number.isInteger(stock)||stock<0)return NextResponse.json({error:"Invalid product"},{status:400}); const id=crypto.randomUUID(); await env.DB.prepare("INSERT INTO products (id,name,slug,brand,model,description,condition,price_in_cents,currency,stock,active,warranty_months,battery_health,storage_gb,color,specs_json) VALUES (?,?,?,?,?,?,?,?,?,1,?,?,?,?,?,?)").bind(id,name,slug,brand,model,description,condition,price,"COP",stock,Number(body.warranty_months??12),body.battery_health==null?null:Number(body.battery_health),body.storage_gb==null?null:Number(body.storage_gb),body.color?clean(body.color,80):null,body.specs_json?String(body.specs_json):"{}").run(); await repo.audit(admin.id,"ADMIN_PRODUCT_CREATED","product",id,{name,slug}); return NextResponse.json({created:true,id},{status:201});}
-    if(resource==="services"){const id=clean(body.id,100),amount=Number(body.quote_in_cents); if(!id||!Number.isInteger(amount)||amount<0)return NextResponse.json({error:"Valid service id and quote are required"},{status:400}); const current=await env.DB.prepare("SELECT status,email FROM service_requests WHERE id=?").bind(id).first<{status:string;email:string}>(); if(!current)return NextResponse.json({error:"Service request not found"},{status:404}); await env.DB.prepare("UPDATE service_requests SET quote_in_cents=?,status='QUOTED',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(amount,id).run(); await env.DB.prepare("INSERT INTO service_audit_events (id,service_request_id,event_type,payload_json) VALUES (?,?,?,?)").bind(crypto.randomUUID(),id,"AdminServiceQuoted",json({amountInCents:amount,adminId:admin.id})).run(); await repo.audit(admin.id,"ADMIN_SERVICE_QUOTED","service_request",id,{amountInCents:amount}); await publishNotificationEvent({eventType:"ServiceStatusChanged",aggregateId:id,payload:{email:current.email,serviceRequestId:id,status:"QUOTED",quoteInCents:amount}}); return NextResponse.json({updated:true});}
-    return NextResponse.json({error:"Unsupported resource"},{status:400});
-  } catch(error){const status=error instanceof Error&&error.message==="FORBIDDEN"?403:error instanceof Error&&error.message==="UNAUTHORIZED"?401:400;return NextResponse.json({error:status===403?"Forbidden":status===401?"Authentication required":"Unable to create resource"},{status});}
+function errorResponse(error: unknown): Response {
+  const code = error instanceof Error ? error.message : "UNKNOWN";
+  const status = code === "UNAUTHORIZED" ? 401 : code === "FORBIDDEN" ? 403 : code.endsWith("_NOT_FOUND") ? 404 : 400;
+  const messages: Record<string, string> = {
+    UNAUTHORIZED: "Authentication required",
+    FORBIDDEN: "Forbidden",
+    INVALID_BODY: "Invalid request body",
+    INVALID_PRODUCT: "Invalid product",
+    INVALID_SERVICE_QUOTE: "Valid service id and quote are required",
+    INVALID_ORDER_STATUS: "Invalid order status",
+    INVALID_SERVICE_STATUS: "Invalid service status",
+    NO_EDITABLE_FIELDS: "No editable fields",
+    SERVICE_NOT_FOUND: "Service request not found",
+    ORDER_NOT_FOUND: "Order not found",
+    UNSUPPORTED_RESOURCE: "Unsupported resource",
+    UNSUPPORTED_CREATE: "Unsupported resource",
+    UNSUPPORTED_UPDATE: "Unsupported resource",
+  };
+  return NextResponse.json({ error: messages[code] ?? "Unable to process request" }, { status });
 }
 
-export async function PATCH(request: Request) {
-  try { const body=await request.json() as Record<string,unknown>,resource=clean(body.resource,30),id=clean(body.id,100); if(!id)return NextResponse.json({error:"Resource id is required"},{status:400}); const {admin,repo,env}=await requireAdmin(permissionFor(resource,true));
-    if(resource==="products"){const allowed=new Set(["name","description","price_in_cents","stock","active","seo_title","seo_description","warranty_months","battery_health","storage_gb","color","specs_json"]),fields=Object.keys(body).filter(k=>allowed.has(k)); if(!fields.length)return NextResponse.json({error:"No editable fields"},{status:400}); const values=fields.map(k=>k==="active"?(bool(body[k])?1:0):body[k]); await env.DB.prepare(`UPDATE products SET ${fields.map(k=>`${k}=?`).join(",")},updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(...values,id).run();}
-    else if(resource==="orders"){const status=clean(body.status,30),allowed=["PENDING_PAYMENT","PAYMENT_PROCESSING","PAID","PROCESSING","READY_TO_SHIP","SHIPPED","DELIVERED","CANCELLED","REFUND_PENDING","REFUNDED"]; if(!allowed.includes(status))return NextResponse.json({error:"Invalid order status"},{status:400}); const current=await env.DB.prepare("SELECT status,email,order_number FROM orders WHERE id=?").bind(id).first<{status:string;email:string;order_number:string}>(); if(!current)return NextResponse.json({error:"Order not found"},{status:404}); await env.DB.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(status,id).run(); await env.DB.prepare("INSERT INTO order_events (id,order_id,event_type,payload_json) VALUES (?,?,?,?)").bind(crypto.randomUUID(),id,"AdminOrderStatusChanged",json({from:current.status,to:status,adminId:admin.id})).run(); if(current.status!==status)await publishNotificationEvent({eventType:status==="PAID"?"OrderPaid":"OrderStatusChanged",aggregateId:id,payload:{email:current.email,orderId:id,orderNumber:current.order_number,status}});}
-    else if(resource==="services"){const status=clean(body.status,30),allowed=["PENDING","QUOTED","PAYMENT_PENDING","PAID","PROCESSING","WAITING_CUSTOMER","COMPLETED","REJECTED","REFUNDED"]; if(!allowed.includes(status))return NextResponse.json({error:"Invalid service status"},{status:400}); const current=await env.DB.prepare("SELECT email,status FROM service_requests WHERE id=?").bind(id).first<{email:string;status:string}>(); if(!current)return NextResponse.json({error:"Service request not found"},{status:404}); await env.DB.prepare("UPDATE service_requests SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(status,id).run(); await env.DB.prepare("INSERT INTO service_audit_events (id,service_request_id,event_type,payload_json) VALUES (?,?,?,?)").bind(crypto.randomUUID(),id,"AdminServiceStatusChanged",json({from:current.status,to:status,adminId:admin.id})).run(); if(current.status!==status)await publishNotificationEvent({eventType:"ServiceStatusChanged",aggregateId:id,payload:{email:current.email,serviceRequestId:id,status}});}
-    else return NextResponse.json({error:"Unsupported resource"},{status:400});
-    await repo.audit(admin.id,"ADMIN_RESOURCE_UPDATED",resource,id,body); return NextResponse.json({updated:true});
-  } catch(error){const status=error instanceof Error&&error.message==="FORBIDDEN"?403:error instanceof Error&&error.message==="UNAUTHORIZED"?401:400;return NextResponse.json({error:status===403?"Forbidden":status===401?"Authentication required":"Unable to update resource"},{status});}
+export async function GET(request: Request): Promise<Response> {
+  try {
+    const url = new URL(request.url);
+    const resource = (url.searchParams.get("resource") ?? "orders") as ResourceName;
+    await requireAdmin(permissionFor(resource));
+    const { service } = adminResources();
+    const items = await service.list({ resource, query: url.searchParams.get("q") });
+    return NextResponse.json({ items });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function POST(request: Request): Promise<Response> {
+  try {
+    const body = bodyRecord(await request.json());
+    const resource = body.resource as ResourceName;
+    const { admin } = await requireAdmin(permissionFor(resource, true));
+    const { service } = adminResources();
+    const result = await service.create({ actor: admin, resource, body });
+    return NextResponse.json({ created: Boolean(result.id), ...result }, { status: result.id ? 201 : 200 });
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function PATCH(request: Request): Promise<Response> {
+  try {
+    const body = bodyRecord(await request.json());
+    const resource = body.resource as ResourceName;
+    const id = String(body.id ?? "").trim();
+    if (!id) return NextResponse.json({ error: "Resource id is required" }, { status: 400 });
+    const { admin } = await requireAdmin(permissionFor(resource, true));
+    const { service } = adminResources();
+    await service.update({ actor: admin, resource, id, body });
+    return NextResponse.json({ updated: true });
+  } catch (error) {
+    return errorResponse(error);
+  }
 }
