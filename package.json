@@ -10,6 +10,7 @@
     "build:cloudflare": "pnpm --filter @ecommerce/web build:cloudflare",
     "preview:cloudflare": "pnpm --filter @ecommerce/web preview:cloudflare",
     "deploy": "pnpm build:cloudflare && wrangler deploy",
+    "deploy:cloudflare": "pnpm db:migrate:production && pnpm exec wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "db:migrate:local": "wrangler d1 migrations apply ecommerce-iphone-development --local",
     "db:migrate:production": "wrangler d1 migrations apply ecommerce-iphone --remote",
