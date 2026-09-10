@@ -1,4 +1,4 @@
-import type { Review, ReviewProps } from "../domain/Review";
+import { Review, type ReviewProps } from "../domain/Review";
 
 export type PublicReview = ReviewProps & { id:string; customerName:string };
 export interface ReviewRepository {
