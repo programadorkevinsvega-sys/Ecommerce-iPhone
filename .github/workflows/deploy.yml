@@ -37,10 +37,16 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
+
+      - name: Foundation invariant check
+        run: pnpm foundation:check
 
       - name: Architecture boundary check
         run: pnpm architecture:check
+
+      - name: Lint
+        run: pnpm lint
 
       - name: Typecheck
         run: pnpm typecheck
