@@ -6,7 +6,7 @@ Dejar la plataforma base reproducible, aislada por entorno, gobernada por límit
 
 ## Estado
 
-Foundation tiene implementada la base de arquitectura, environments, CI, seguridad HTTP, rate limiting distribuido y health checks. El cierre final depende de validar los recursos remotos de staging y ejecutar el pipeline completo en CI.
+La implementación de Foundation está cerrada a nivel de código y automatización operacional. Production ya fue desplegado correctamente mediante Cloudflare Workers Builds y el repositorio ahora contiene verificaciones automáticas de liveness, readiness, request-id y rate limiting, además de workflows manuales para staging y rollback controlado. La condición final para marcar `COMPLETE` es ejecutar con credenciales Cloudflare autorizadas la validación remota de staging y un rollback controlado, conservando la evidencia en CI/CD.
 
 ## Arquitectura
 
@@ -72,25 +72,20 @@ R2: ecommerce-iphone-media-staging
 Queue: ecommerce-iphone-events-staging
 ```
 
-Despliegue:
-
-```bash
-pnpm deploy:staging
-```
-
-Staging debe estar provisionado en la misma cuenta Cloudflare o en la cuenta de validación autorizada y utilizar secretos independientes de producción.
+El workflow `.github/workflows/staging.yml` valida la existencia de D1/R2/Queue, aplica migraciones, despliega el Worker y ejecuta las pruebas de runtime. Requiere las credenciales Cloudflare de la cuenta autorizada y una URL pública del Worker de staging.
 
 ### Production
 
-El Worker de producción continúa usando la configuración principal de `wrangler.jsonc` para preservar el nombre y los bindings existentes.
+El Worker de producción usa la configuración principal de `wrangler.jsonc` para preservar el nombre y bindings existentes.
 
-Despliegue:
+Cloudflare Workers Builds realiza el despliegue automático desde `main` mediante:
 
 ```bash
-pnpm deploy:production
+pnpm install --no-frozen-lockfile && pnpm build:cloudflare
+pnpm deploy:cloudflare
 ```
 
-El script ejecuta las migraciones remotas de D1 antes del despliegue del Worker.
+El build `#4c5490da` confirmó un despliegue correcto del Worker, sus bindings, triggers, Queue producer/consumer y assets.
 
 ## Secrets
 
@@ -152,9 +147,7 @@ Las rutas sensibles incluyen, entre otras:
 /api/payment
 ```
 
-La clave combina el origen de cliente observado por Cloudflare con la ruta. En producción, esta capa debe complementarse con reglas WAF/edge para ataques volumétricos y no sustituye autenticación ni autorización.
-
-Cloudflare documenta el Rate Limiting API como una protección de ejecución en Worker, de baja latencia y eventualmente consistente; por ello no debe utilizarse como contador financiero exacto ni como mecanismo de inventario. citeturn287224search0
+El verificador `scripts/verify-production.mjs` comprueba el límite sensible mediante 21 solicitudes a una ruta no destructiva y exige observar `429`, `Retry-After` y `X-Request-Id`. Cloudflare documenta este mecanismo como eventualmente consistente y no apto para contabilidad exacta. citeturn951125search1
 
 ## Observability baseline
 
@@ -198,12 +191,13 @@ Si D1 no está disponible, devuelve `503` para que el runtime pueda retirar la i
 
 ## Quality gates
 
-La CI debe ejecutar, como mínimo:
+La CI ejecuta, como mínimo:
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm foundation:check
 pnpm architecture:check
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
@@ -213,7 +207,9 @@ pnpm db:migrate:local
 pnpm test:e2e
 ```
 
-`foundation:check` verifica archivos, environments, bindings de rate limiting, endpoints de health, protección de secretos y contratos de CI.
+Además, `.github/workflows/production-verification.yml` ejecuta `pnpm verify:production` contra el Worker público de producción después de cada push a `main`.
+
+`foundation:check` verifica archivos, environments, bindings de rate limiting, endpoints de health, protección de secretos, workflow operacional y ausencia de SQL directo en la ruta administrativa auditada.
 
 ## Migrations
 
@@ -229,19 +225,11 @@ Reglas:
 
 ## Rollback
 
-El procedimiento está documentado en `docs/rollback.md`.
+El procedimiento está documentado en `docs/rollback.md` y automatizado de forma controlada mediante `.github/workflows/rollback.yml`.
 
-Regla principal:
+El workflow requiere explícitamente el `version_id` que debe activarse y, después del rollback, ejecuta la misma verificación de health y rate limiting.
 
-```text
-Aplicación reversible
-+
-Migraciones backward-compatible
-+
-Rollback de Worker
-```
-
-No se debe hacer rollback de código cuando una migración destructiva ya impida que la versión anterior funcione. Las migraciones deben diseñarse con expansión/contracción cuando exista riesgo de incompatibilidad.
+Cloudflare soporta rollback de una versión publicada mediante `wrangler rollback`; el rollback crea inmediatamente un nuevo deployment con la versión seleccionada y no modifica los recursos vinculados. citeturn951125search0turn951125search2
 
 ## Definition of Done — Foundation
 
@@ -261,10 +249,18 @@ La Fase 1 puede marcarse `COMPLETE` cuando:
 - production tenga un procedimiento de rollback probado.
 - las rutas API permanezcan delgadas y la lógica de negocio se mantenga fuera de Presentation.
 
-## Pendientes específicos que bloquean el 100%
+## Evidencia operativa
 
-1. Ejecutar y verificar el pipeline completo en CI después de estos cambios.
-2. Provisionar y validar los recursos remotos de staging.
-3. Probar `429`, liveness y readiness en un Worker desplegado.
-4. Finalizar la extracción de SQL/lógica de negocio de `/api/admin/resources` y cualquier route equivalente.
-5. Ejecutar un rollback controlado de staging para validar el procedimiento antes de producción.
+### Ya verificado
+
+- Cloudflare Workers Build `#4c5490da`: compilación y despliegue de producción correctos.
+- Worker con D1, R2, Queue producer/consumer, cron y rate-limit bindings activos.
+- `deploy:cloudflare` operativo.
+- Verificación automática de producción incorporada al repositorio.
+
+### Pendiente de ejecución con acceso Cloudflare
+
+1. Ejecutar `.github/workflows/staging.yml` con la URL pública de staging y credenciales Cloudflare.
+2. Ejecutar `.github/workflows/rollback.yml` sobre un deployment de staging/entorno de validación y conservar la evidencia del rollback.
+
+Hasta completar esas dos pruebas externas, Foundation debe considerarse `IMPLEMENTED / PENDING OPERATIONAL SIGN-OFF`, no `COMPLETE`.
