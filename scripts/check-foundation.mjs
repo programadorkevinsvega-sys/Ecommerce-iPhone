@@ -35,9 +35,12 @@ for (const binding of ["API_RATE_LIMITER", "SENSITIVE_RATE_LIMITER"]) {
 }
 
 const worker = await readFile("apps/web/worker.ts", "utf8");
-for (const path of ["/api/health/live", "/api/health/ready"]) {
-  if (!worker.includes(path)) failures.push(`${path} is not enforced by the Worker`);
-}
+if (!worker.includes("nextWorker.fetch")) failures.push("Worker must delegate HTTP requests to OpenNext");
+
+const liveRoute = await readFile("apps/web/app/api/health/live/route.ts", "utf8");
+const readyRoute = await readFile("apps/web/app/api/health/ready/route.ts", "utf8");
+if (!liveRoute.includes("status")) failures.push("liveness endpoint is not implemented");
+if (!readyRoute.includes("status")) failures.push("readiness endpoint is not implemented");
 
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 for (const script of ["architecture:check", "foundation:check", "typecheck", "test", "build", "build:cloudflare", "format:check"]) {
