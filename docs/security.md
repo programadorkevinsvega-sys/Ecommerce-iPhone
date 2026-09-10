@@ -3,7 +3,10 @@
 ## Application
 
 - Security response headers are configured in `apps/web/next.config.ts`.
-- API CORS is explicit and origin allowlisted through `ALLOWED_ORIGIN`.
+- API requests are restricted to the same request origin for browser state-changing calls.
+- API preflight handling is explicit and rejects disallowed origins before the route executes.
+- Every API response receives a validated or generated `X-Request-Id` for tracing.
+- API responses are marked `no-store` to avoid accidental caching of customer/admin data.
 - Errors should be translated at the presentation boundary; domain errors must not expose infrastructure details.
 - Secrets are excluded from Git and documented through `.env.example` only by name.
 
