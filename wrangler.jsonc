@@ -3,51 +3,37 @@
   "name": "ecommerce-iphone",
   "main": "apps/web/worker.ts",
   "compatibility_date": "2026-09-09",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
-  "observability": {
-    "enabled": true
-  },
-  "assets": {
-    "directory": "apps/web/.open-next/assets",
-    "binding": "ASSETS"
-  },
-  "vars": {
-    "APP_ENV": "production"
-  },
-  "triggers": {
-    "crons": [
-      "* * * * *"
-    ]
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "ecommerce-iphone",
-      "database_id": "39074683-f121-4841-ad80-3759aa739dde"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "MEDIA_BUCKET",
-      "bucket_name": "ecommerce-iphone-media"
-    }
-  ],
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {"enabled": true},
+  "assets": {"directory": "apps/web/.open-next/assets", "binding": "ASSETS"},
+  "vars": {"APP_ENV": "production"},
+  "triggers": {"crons": ["* * * * *"]},
+  "d1_databases": [{"binding": "DB", "database_name": "ecommerce-iphone", "database_id": "39074683-f121-4841-ad80-3759aa739dde"}],
+  "r2_buckets": [{"binding": "MEDIA_BUCKET", "bucket_name": "ecommerce-iphone-media"}],
   "queues": {
-    "producers": [
-      {
-        "binding": "EVENTS_QUEUE",
-        "queue": "ecommerce-iphone-events"
+    "producers": [{"binding": "EVENTS_QUEUE", "queue": "ecommerce-iphone-events"}],
+    "consumers": [{"queue": "ecommerce-iphone-events", "max_batch_size": 10, "max_batch_timeout": 5, "max_retries": 5}]
+  },
+  "env": {
+    "development": {
+      "workers_dev": true,
+      "vars": {"APP_ENV": "development"},
+      "d1_databases": [{"binding": "DB", "database_name": "ecommerce-iphone-development"}],
+      "r2_buckets": [{"binding": "MEDIA_BUCKET", "bucket_name": "ecommerce-iphone-media-development"}],
+      "queues": {
+        "producers": [{"binding": "EVENTS_QUEUE", "queue": "ecommerce-iphone-events-development"}],
+        "consumers": [{"queue": "ecommerce-iphone-events-development", "max_batch_size": 10, "max_batch_timeout": 5, "max_retries": 5}]
       }
-    ],
-    "consumers": [
-      {
-        "queue": "ecommerce-iphone-events",
-        "max_batch_size": 10,
-        "max_batch_timeout": 5,
-        "max_retries": 5
+    },
+    "staging": {
+      "workers_dev": true,
+      "vars": {"APP_ENV": "staging"},
+      "d1_databases": [{"binding": "DB", "database_name": "ecommerce-iphone-staging"}],
+      "r2_buckets": [{"binding": "MEDIA_BUCKET", "bucket_name": "ecommerce-iphone-media-staging"}],
+      "queues": {
+        "producers": [{"binding": "EVENTS_QUEUE", "queue": "ecommerce-iphone-events-staging"}],
+        "consumers": [{"queue": "ecommerce-iphone-events-staging", "max_batch_size": 10, "max_batch_timeout": 5, "max_retries": 5}]
       }
-    ]
+    }
   }
 }
