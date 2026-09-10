@@ -15,6 +15,7 @@
     "deploy:staging": "pnpm db:migrate:staging && pnpm build:cloudflare && wrangler deploy --env staging",
     "deploy:production": "pnpm db:migrate:production && pnpm build:cloudflare && wrangler deploy --env=\"\"",
     "verify:production": "node scripts/verify-production.mjs",
+    "performance:production": "pnpm --filter @ecommerce/web exec node ../../scripts/performance-smoke.mjs",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "db:migrate:local": "wrangler d1 migrations apply ecommerce-iphone-development --local",
     "db:migrate:staging": "wrangler d1 migrations apply ecommerce-iphone-staging --remote --env staging",
