@@ -11,7 +11,7 @@
     "preview:cloudflare": "pnpm --filter @ecommerce/web preview:cloudflare",
     "start": "pnpm --filter @ecommerce/web start",
     "deploy": "pnpm deploy:production",
-    "deploy:cloudflare": "wrangler deploy --env=\"\" && node scripts/verify-production.mjs",
+    "deploy:cloudflare": "wrangler deploy --env=\"\" && pnpm db:migrate:production && node scripts/verify-production.mjs",
     "deploy:staging": "pnpm db:migrate:staging && pnpm build:cloudflare && wrangler deploy --env staging",
     "deploy:production": "pnpm db:migrate:production && pnpm build:cloudflare && wrangler deploy --env=\"\"",
     "verify:production": "node scripts/verify-production.mjs",
