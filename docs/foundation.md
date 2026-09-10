@@ -6,7 +6,7 @@ Dejar la plataforma base reproducible, aislada por entorno, gobernada por límit
 
 ## Estado
 
-Foundation está implementada en su mayor parte. Esta fase debe considerarse cerrada únicamente cuando todos los invariantes de este documento pasen en CI y los recursos remotos de staging estén provisionados y verificados.
+Foundation tiene implementada la base de arquitectura, environments, CI, seguridad HTTP, rate limiting distribuido y health checks. El cierre final depende de validar los recursos remotos de staging y ejecutar el pipeline completo en CI.
 
 ## Arquitectura
 
@@ -40,12 +40,6 @@ El enforcement está centralizado en `scripts/check-architecture.mjs` y se ejecu
 
 ### Development
 
-Worker/environment:
-
-```text
-ecommerce-iphone-development
-```
-
 Recursos aislados:
 
 ```text
@@ -70,12 +64,6 @@ pnpm exec wrangler dev --env development
 
 ### Staging
 
-Worker/environment:
-
-```text
-ecommerce-iphone-staging
-```
-
 Recursos aislados:
 
 ```text
@@ -90,7 +78,7 @@ Despliegue:
 pnpm deploy:staging
 ```
 
-Antes del primer despliegue remoto se debe confirmar que los recursos de staging están creados en la cuenta correcta y que las credenciales usadas por CI tienen permisos mínimos necesarios.
+Staging debe estar provisionado en la misma cuenta Cloudflare o en la cuenta de validación autorizada y utilizar secretos independientes de producción.
 
 ### Production
 
@@ -129,7 +117,7 @@ Los secretos remotos deben administrarse mediante Wrangler/Cloudflare o el secre
 - CORS explícito para el mismo origen
 - `Access-Control-Allow-Credentials` únicamente para el origen permitido
 - `X-Request-Id` validado o generado
-- `Cache-Control: no-store` para APIs
+- `Cache-Control: no-store`
 
 `apps/web/next.config.ts` mantiene los response headers de seguridad:
 
@@ -139,19 +127,74 @@ Los secretos remotos deben administrarse mediante Wrangler/Cloudflare o el secre
 - `Permissions-Policy`
 - `Strict-Transport-Security`
 
+## Rate limiting
+
+La protección distribuida se ejecuta en el Worker mediante los bindings nativos de Cloudflare Rate Limiting.
+
+Se definen dos perfiles:
+
+```text
+API_RATE_LIMITER
+    120 requests / 60s
+
+SENSITIVE_RATE_LIMITER
+     20 requests / 60s
+```
+
+Las rutas sensibles incluyen, entre otras:
+
+```text
+/api/checkout
+/api/customer
+/api/admin
+/api/services
+/api/auth
+/api/payment
+```
+
+La clave combina el origen de cliente observado por Cloudflare con la ruta. En producción, esta capa debe complementarse con reglas WAF/edge para ataques volumétricos y no sustituye autenticación ni autorización.
+
+Cloudflare documenta el Rate Limiting API como una protección de ejecución en Worker, de baja latencia y eventualmente consistente; por ello no debe utilizarse como contador financiero exacto ni como mecanismo de inventario. citeturn287224search0
+
 ## Observability baseline
 
 El Worker mantiene Cloudflare Observability habilitado.
 
-Toda API debe poder correlacionarse mediante:
+Las respuestas API reciben `X-Request-Id` y la aplicación debe conservar ese identificador al generar logs/eventos.
+
+Los eventos de negocio deben conservar sus identificadores propios, por ejemplo:
 
 ```text
-X-Request-Id
 request_id
 correlation_id
+event_id
+order_id
+payment_id
+customer_id
 ```
 
-Los eventos de negocio deben conservar sus identificadores propios, por ejemplo `order_id`, `payment_id` o `event_id`.
+## Health checks
+
+El Worker expone dos estados distintos:
+
+```text
+GET /api/health/live
+GET /api/health/ready
+```
+
+### Liveness
+
+Confirma que el proceso/Worker responde. No comprueba dependencias externas.
+
+### Readiness
+
+Comprueba D1 mediante una consulta mínima:
+
+```sql
+SELECT 1 AS ok
+```
+
+Si D1 no está disponible, devuelve `503` para que el runtime pueda retirar la instancia del tráfico sin confundir una caída de dependencia con un proceso muerto.
 
 ## Quality gates
 
@@ -170,41 +213,7 @@ pnpm db:migrate:local
 pnpm test:e2e
 ```
 
-`foundation:check` verifica archivos y contratos estructurales esenciales.
-
-## Rate limiting
-
-El dominio no debe implementar límites mediante estado global en memoria del proceso. La arquitectura debe consumir un port de rate limiting y delegar el enforcement distribuido al runtime/edge.
-
-Las rutas prioritarias son:
-
-```text
-login
-customer/session
-checkout
-payment webhooks
-admin authentication
-service request creation
-```
-
-El rate limiting debe ser adicional a autenticación/autorización, nunca un sustituto.
-
-## Health checks
-
-La aplicación dispone de un endpoint de health básico:
-
-```text
-GET /api/health
-```
-
-En una fase posterior debe diferenciarse entre:
-
-```text
-liveness
-readiness
-```
-
-para que una dependencia crítica caída pueda provocar un estado de no-readiness sin indicar que el proceso está muerto.
+`foundation:check` verifica archivos, environments, bindings de rate limiting, endpoints de health, protección de secretos y contratos de CI.
 
 ## Migrations
 
@@ -215,8 +224,24 @@ Reglas:
 - Nunca modificar silenciosamente una migración ya aplicada en producción.
 - Las migraciones nuevas deben ser backward-compatible cuando sea necesario para despliegues progresivos.
 - CI debe probar las migraciones contra D1 local.
-- Production debe aplicar migraciones como paso controlado del despliegue.
 - Staging debe recibir las migraciones antes de validar el release.
+- Production debe aplicar migraciones como paso controlado del despliegue.
+
+## Rollback
+
+El procedimiento está documentado en `docs/rollback.md`.
+
+Regla principal:
+
+```text
+Aplicación reversible
++
+Migraciones backward-compatible
++
+Rollback de Worker
+```
+
+No se debe hacer rollback de código cuando una migración destructiva ya impida que la versión anterior funcione. Las migraciones deben diseñarse con expansión/contracción cuando exista riesgo de incompatibilidad.
 
 ## Definition of Done — Foundation
 
@@ -229,16 +254,17 @@ La Fase 1 puede marcarse `COMPLETE` cuando:
 - lint/typecheck/unit/build/OpenNext/E2E pasen en CI.
 - secrets no estén versionados.
 - seguridad HTTP esté aplicada.
+- rate limiting distribuido esté activo para rutas sensibles.
+- liveness/readiness estén separados.
 - migrations puedan reproducirse desde un estado limpio.
 - staging haya sido desplegado y verificado.
-- production tenga un procedimiento de rollback documentado.
+- production tenga un procedimiento de rollback probado.
 - las rutas API permanezcan delgadas y la lógica de negocio se mantenga fuera de Presentation.
 
 ## Pendientes específicos que bloquean el 100%
 
-1. Verificar en CI/runner real todos los comandos; esta auditoría no sustituye la ejecución.
+1. Ejecutar y verificar el pipeline completo en CI después de estos cambios.
 2. Provisionar y validar los recursos remotos de staging.
-3. Implementar/enchufar el rate limiter distribuido para las rutas sensibles.
-4. Separar de forma completa liveness/readiness.
-5. Seguir reduciendo SQL y lógica de negocio directa en API routes, especialmente en administración.
-6. Definir y probar rollback de Worker + D1 antes de declarar producción completamente cerrada.
+3. Probar `429`, liveness y readiness en un Worker desplegado.
+4. Finalizar la extracción de SQL/lógica de negocio de `/api/admin/resources` y cualquier route equivalente.
+5. Ejecutar un rollback controlado de staging para validar el procedimiento antes de producción.
