@@ -7,7 +7,12 @@ export class D1ReviewRepository implements ReviewRepository {
   constructor(private readonly db:D1Database) {}
   async listApproved(productId:string):Promise<readonly PublicReview[]> {
     const r=await this.db.prepare("SELECT r.id,r.customer_id,trim(c.first_name||' '||c.last_name) customer_name,r.rating,r.title,r.body,r.status,r.verified_purchase,r.admin_response FROM product_reviews r JOIN customers c ON c.id=r.customer_id WHERE r.product_id=? AND r.status='APPROVED' ORDER BY r.created_at DESC").bind(productId).all<Row>();
-    return r.results.map(x=>({id:x.id,productId,customerId:x.customer_id,orderId:"",rating:x.rating,title:x.title??undefined,body:x.body,status:x.status,verifiedPurchase:x.verified_purchase===1,adminResponse:x.admin_response??undefined,customerName:x.customer_name}));
+    return r.results.map(x=>({
+      id:x.id,productId,customerId:x.customer_id,orderId:"",rating:x.rating,body:x.body,status:x.status,
+      verifiedPurchase:x.verified_purchase===1,customerName:x.customer_name,
+      ...(x.title!==null?{title:x.title}:{}),
+      ...(x.admin_response!==null?{adminResponse:x.admin_response}:{}),
+    }));
   }
   async hasVerifiedPurchase(customerId:string,productId:string,orderId:string){const r=await this.db.prepare("SELECT 1 FROM orders o JOIN order_items oi ON oi.order_id=o.id WHERE o.id=? AND o.customer_id=? AND oi.product_id=? AND o.status='DELIVERED' LIMIT 1").bind(orderId,customerId,productId).first();return !!r;}
   async exists(customerId:string,productId:string,orderId:string){const r=await this.db.prepare("SELECT 1 FROM product_reviews WHERE customer_id=? AND product_id=? AND order_id=? LIMIT 1").bind(customerId,productId,orderId).first();return !!r;}
