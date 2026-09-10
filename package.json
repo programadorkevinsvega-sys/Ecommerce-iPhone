@@ -11,6 +11,7 @@
     "preview:cloudflare": "pnpm --filter @ecommerce/web preview:cloudflare",
     "start": "pnpm --filter @ecommerce/web start",
     "deploy": "pnpm deploy:production",
+    "deploy:cloudflare": "wrangler deploy",
     "deploy:staging": "pnpm db:migrate:staging && pnpm build:cloudflare && wrangler deploy --env staging",
     "deploy:production": "pnpm db:migrate:production && pnpm build:cloudflare && wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
