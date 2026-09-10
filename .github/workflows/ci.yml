@@ -31,6 +31,8 @@ jobs:
         run: pnpm foundation:check
       - name: Architecture boundary check
         run: pnpm architecture:check
+      - name: Format check
+        run: pnpm format:check
       - name: Lint
         run: pnpm lint
       - name: Typecheck
