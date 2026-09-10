@@ -1,23 +1,28 @@
-name: Manual Cloudflare Deploy
+name: Cloudflare Production Deploy
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: cloudflare-manual-deploy
+  group: cloudflare-production-deploy
   cancel-in-progress: false
 
 env:
   DB_NAME: ecommerce-iphone
+  PRODUCTION_URL: https://ecommerce-iphone.programadorkevinsvega.workers.dev
+  PERF_BASE_URL: https://ecommerce-iphone.programadorkevinsvega.workers.dev
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
-    timeout-minutes: 35
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -69,3 +74,15 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Verify production health and protection
+        run: pnpm verify:production
+
+      - name: Install Playwright browser
+        run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
+
+      - name: Production performance gate
+        run: pnpm performance:production
+
+      - name: Deployment gate passed
+        run: echo "Production deploy, health verification, smoke checks and performance gate passed."
