@@ -14,6 +14,20 @@ type Env = CloudflareEnv & {
 type QueueMessage = { body: NotificationEvent | string; ack(): void; retry(): void };
 type QueueBatch = { messages: QueueMessage[] };
 
+function sanitizeRequestHeaders(request: Request): Request {
+  const headers = new Headers(request.headers);
+  const ipCity = headers.get("cf-ipcity");
+
+  if (ipCity) {
+    const asciiCity = ipCity.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^\x00-\x7F]/g, "?");
+    if (asciiCity !== ipCity) {
+      headers.set("cf-ipcity", asciiCity);
+    }
+  }
+
+  return new Request(request, { headers });
+}
+
 const service = (env: Env) => new NotificationService(
   new D1NotificationOutboxRepository(env.DB),
   new ResendEmailProvider(env.RESEND_API_KEY ?? "", env.EMAIL_FROM ?? ""),
@@ -21,7 +35,7 @@ const service = (env: Env) => new NotificationService(
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
-    return nextWorker.fetch(request, env, ctx);
+    return nextWorker.fetch(sanitizeRequestHeaders(request), env, ctx);
   },
   async scheduled(_event: ScheduledEvent, env: Env) {
     const repo = new D1NotificationOutboxRepository(env.DB);
