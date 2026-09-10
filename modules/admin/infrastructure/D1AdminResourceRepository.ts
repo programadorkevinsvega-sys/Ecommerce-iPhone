@@ -1,3 +1,4 @@
+import type { D1Database } from "@cloudflare/workers-types";
 import type { AdminResourceRepository, MutationOrder, MutationService, ProductCreation } from "../application/AdminResourceRepository";
 import type { ResourceName } from "../application/AdminResources";
 import type { D1AdminRepository } from "./D1AdminRepository";
