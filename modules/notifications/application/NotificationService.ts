@@ -20,8 +20,9 @@ export class NotificationService {
     if (!template) { await this.outbox.markProcessed(event.id); return; }
     if (await this.outbox.hasDelivery(event.id,"EMAIL",recipient,template)) { await this.outbox.markProcessed(event.id); return; }
     const rendered = renderEmail(template,payload);
+    const idempotencyKey = `ecommerce-iphone/email/${event.eventType}/${event.aggregateId}/${event.id}`.slice(0, 256);
     try {
-      const result = await this.email.send({to:recipient,...rendered,tags:{event_type:event.eventType,aggregate_id:event.aggregateId}});
+      const result = await this.email.send({to:recipient,...rendered,tags:{event_type:event.eventType,aggregate_id:event.aggregateId},idempotencyKey});
       await this.outbox.recordDelivery({outboxId:event.id,channel:"EMAIL",recipient,template,provider:"resend",providerMessageId:result.id,status:"SENT",attempts:1});
       await this.outbox.markProcessed(event.id);
     } catch (error) {
