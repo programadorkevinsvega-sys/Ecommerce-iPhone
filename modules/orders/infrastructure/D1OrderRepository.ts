@@ -2,7 +2,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 import type { CheckoutCart } from "../application/CheckoutCart";
 import type { CheckoutInput, OrderCheckoutRepository } from "../application/CheckoutInput";
 import type { OrderRepository } from "../application/OrderRepository";
-import type { Order } from "../domain/Order";
+import { assertOrderTransition, type Order, type OrderStatus } from "../domain/Order";
 
 export class D1OrderRepository implements OrderCheckoutRepository, OrderRepository {
   constructor(private readonly db: D1Database) {}
@@ -120,13 +120,14 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
   }
 
   async transitionStatus(id: string, from: string, to: string): Promise<boolean> {
-    const result = await this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(to, id, from).run();
-    if (result.meta.changes === 1) {
-      await this.db.prepare("INSERT INTO order_events(id,order_id,event_type,payload_json) VALUES(?,?,?,?)").bind(
+    assertOrderTransition(from as OrderStatus, to as OrderStatus);
+    const result = await this.db.batch([
+      this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(to, id, from),
+      this.db.prepare("INSERT INTO order_events(id,order_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
         crypto.randomUUID(), id, "OrderStatusChanged", JSON.stringify({ from, to }),
-      ).run();
-    }
-    return result.meta.changes === 1;
+      ),
+    ]);
+    return result[0]?.meta.changes === 1;
   }
 
   private async refreshServerPricing(cart: CheckoutCart): Promise<CheckoutCart> {
