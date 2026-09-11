@@ -29,7 +29,7 @@ const SENSITIVE_PREFIXES = [
   "/api/admin",
   "/api/services",
   "/api/auth",
-  "/api/payment",
+  "/api/payments",
 ];
 
 function requestId(request: Request): string {
