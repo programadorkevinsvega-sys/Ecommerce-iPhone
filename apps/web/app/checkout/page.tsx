@@ -5,8 +5,8 @@ import { useState } from "react";
 export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [orderId, setOrderId] = useState("");
   const [idempotencyKey] = useState(() => crypto.randomUUID());
+  const [paymentIdempotencyKey] = useState(() => crypto.randomUUID());
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -31,22 +31,27 @@ export default function CheckoutPage() {
       },
     };
     try {
-      const r = await fetch("/api/checkout", {
+      const orderResponse = await fetch("/api/checkout", {
         method: "POST",
         headers: { "content-type": "application/json", "Idempotency-Key": idempotencyKey },
         body: JSON.stringify(body),
       });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error ?? "No se pudo crear el pedido");
-      setOrderId(data.order.id);
+      const orderData = await orderResponse.json();
+      if (!orderResponse.ok) throw new Error(orderData.error ?? "No se pudo crear el pedido");
+
+      const paymentResponse = await fetch("/api/payments/intent", {
+        method: "POST",
+        headers: { "content-type": "application/json", "Idempotency-Key": paymentIdempotencyKey },
+        body: JSON.stringify({ orderId: orderData.order.id }),
+      });
+      const paymentData = await paymentResponse.json();
+      if (!paymentResponse.ok) throw new Error(paymentData.error ?? "No se pudo preparar el pago");
+      window.location.assign(paymentData.checkout.checkoutUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo completar el checkout");
-    } finally {
       setLoading(false);
     }
   }
 
-  if (orderId) return <main className="store-shell"><section className="empty-state"><p className="eyebrow">Pedido creado</p><h1>Tu pedido está listo para pagar.</h1><p>Referencia: {orderId}</p><p>El siguiente paso será seleccionar y confirmar el medio de pago.</p><Link className="button primary" href={`/orders/${orderId}`}>Ver pedido</Link></section></main>;
-
-  return <main className="store-shell"><header className="store-header"><Link href="/" className="brand-mark">Ecommerce iPhone</Link><nav><Link href="/cart">Carrito</Link><Link href="/catalog">Catálogo</Link></nav></header><section className="catalog-hero"><p className="eyebrow">Checkout</p><h1>Datos de entrega.</h1><p>Por ahora el pedido se crea como pendiente de pago. La integración de proveedores de pago pertenece a la siguiente fase.</p></section><form className="checkout-form" onSubmit={submit}><fieldset><legend>Contacto</legend><label>Nombre<input name="firstName" required /></label><label>Apellido<input name="lastName" required /></label><label>Email<input name="email" type="email" required /></label><label>Teléfono<input name="phone" required /></label></fieldset><fieldset><legend>Entrega</legend><label>Método<select name="shippingMethod" defaultValue="DELIVERY"><option value="DELIVERY">Envío a domicilio — $15.000</option><option value="PICKUP">Recogida — gratis</option></select></label><label>Nombre del destinatario<input name="recipientName" required /></label><label>Dirección<input name="addressLine1" required /></label><label>Apartamento / complemento<input name="addressLine2" /></label><label>Ciudad<input name="city" required /></label><label>Departamento<input name="state" required /></label><label>Código postal<input name="postalCode" /></label></fieldset>{error&&<p role="alert" className="form-error">{error}</p>}<button className="button primary" disabled={loading}>{loading?"Creando pedido…":"Crear pedido"}</button></form></main>;
+  return <main className="store-shell"><header className="store-header"><Link href="/" className="brand-mark">Ecommerce iPhone</Link><nav><Link href="/cart">Carrito</Link><Link href="/catalog">Catálogo</Link></nav></header><section className="catalog-hero"><p className="eyebrow">Checkout seguro</p><h1>Datos de entrega y pago.</h1><p>El pedido se crea con precio y stock validados en servidor. El pago se procesa mediante Wompi y la confirmación definitiva llega únicamente por webhook firmado.</p></section><form className="checkout-form" onSubmit={submit}><fieldset><legend>Contacto</legend><label>Nombre<input name="firstName" required /></label><label>Apellido<input name="lastName" required /></label><label>Email<input name="email" type="email" required /></label><label>Teléfono<input name="phone" required /></label></fieldset><fieldset><legend>Entrega</legend><label>Método<select name="shippingMethod" defaultValue="DELIVERY"><option value="DELIVERY">Envío a domicilio — $15.000</option><option value="PICKUP">Recogida — gratis</option></select></label><label>Nombre del destinatario<input name="recipientName" required /></label><label>Dirección<input name="addressLine1" required /></label><label>Apartamento / complemento<input name="addressLine2" /></label><label>Ciudad<input name="city" required /></label><label>Departamento<input name="state" required /></label><label>Código postal<input name="postalCode" /></label></fieldset>{error&&<p role="alert" className="form-error">{error}</p>}<button className="button primary" disabled={loading}>{loading?"Preparando pago seguro…":"Continuar al pago"}</button></form></main>;
 }
