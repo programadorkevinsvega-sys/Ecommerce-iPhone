@@ -104,14 +104,12 @@ export default {
     return withHeaders(response, {"X-Request-Id": id});
   },
   async scheduled(_event: ScheduledEvent, env: Env) {
-    // Release expired checkout reservations independently of new checkout traffic.
-    // The reservation repository is idempotent and only restores stock for orders
-    // that are still in a payment-hold state.
     await new D1ReservationRepository(env.DB).releaseExpired();
 
     const repo = new D1NotificationOutboxRepository(env.DB);
     const pending = await repo.pending(50);
     for (const event of pending) {
+      if (!(await repo.claim(event.id, 300))) continue;
       try {
         await env.EVENTS_QUEUE.send(JSON.stringify(event));
         await repo.markQueued(event.id);
