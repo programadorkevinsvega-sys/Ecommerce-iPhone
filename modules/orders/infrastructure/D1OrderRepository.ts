@@ -22,6 +22,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     const totalInCents = subtotalInCents + shippingInCents;
     const orderId = crypto.randomUUID();
     const orderNumber = `EIP-${new Date().getUTCFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    const orderItems = effectiveCart.items.map((item) => ({ ...item, id: crypto.randomUUID() }));
     const statements: ReturnType<D1Database["prepare"]>[] = [
       this.db.prepare("INSERT INTO checkout_idempotency(idempotency_key,customer_id,order_id,expires_at) VALUES(?,?,?,datetime('now','+24 hours'))").bind(input.idempotencyKey, input.customerId, orderId),
     ];
@@ -37,12 +38,12 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
       input.shippingAddress.addressLine2 ?? null, input.shippingAddress.city, input.shippingAddress.state, input.shippingAddress.postalCode ?? null, input.shippingAddress.countryCode,
     ));
 
-    for (const item of effectiveCart.items) {
+    for (const item of orderItems) {
       statements.push(this.db.prepare("INSERT INTO inventory_reservations(id,cart_id,product_id,quantity,expires_at,order_id) VALUES(?,?,?,?,datetime('now','+15 minutes'),?)").bind(
         crypto.randomUUID(), effectiveCart.id, item.productId, item.quantity, orderId,
       ));
       statements.push(this.db.prepare("INSERT INTO order_items(id,order_id,product_id,variant_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents) VALUES(?,?,?,?,?,?,?,?,?)").bind(
-        crypto.randomUUID(), orderId, item.productId, item.variantId ?? null, item.productName, item.slug, item.quantity, item.unitPriceInCents, item.quantity * item.unitPriceInCents,
+        item.id, orderId, item.productId, item.variantId ?? null, item.productName, item.slug, item.quantity, item.unitPriceInCents, item.quantity * item.unitPriceInCents,
       ));
     }
 
@@ -75,7 +76,16 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
       totalInCents,
       shippingMethod: input.shippingMethod,
       shippingAddress: input.shippingAddress,
-      items: effectiveCart.items.map((item) => ({ id: crypto.randomUUID(), productId: item.productId, ...(item.variantId ? { variantId: item.variantId } : {}), productName: item.productName, productSlug: item.slug, quantity: item.quantity, unitPriceInCents: item.unitPriceInCents, lineTotalInCents: item.quantity * item.unitPriceInCents })),
+      items: orderItems.map((item) => ({
+        id: item.id,
+        productId: item.productId,
+        ...(item.variantId ? { variantId: item.variantId } : {}),
+        productName: item.productName,
+        productSlug: item.slug,
+        quantity: item.quantity,
+        unitPriceInCents: item.unitPriceInCents,
+        lineTotalInCents: item.quantity * item.unitPriceInCents,
+      })),
     };
   }
 
