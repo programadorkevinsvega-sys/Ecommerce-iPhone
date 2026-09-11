@@ -8,21 +8,23 @@
 
 > Este documento es una auditoría viva. Código, pruebas y documentación deben evolucionar en el mismo ciclo. No se marca una capacidad como terminada por documentación: requiere evidencia en el repositorio y validación del build/producción cuando corresponda.
 
+> **Regla de rigor:** ninguna fase se marca al 100% mientras exista deuda funcional, de seguridad, pruebas, reproducibilidad, rendimiento o evidencia pendiente que forme parte de su alcance. Un build exitoso no convierte por sí solo una fase en 100%.
+
 ---
 
 # 1. Estado actual
 
 | Fase | Estado | Estimación |
 |---|---|---:|
-| 01 Foundation | 🟢 Arquitectura base implementada; Clean Architecture de APIs reforzada; reproducibilidad y seguridad final pendientes | ~98% |
-| 02 Storefront Premium | 🟢 Cerrada | 100% |
+| 01 Foundation | 🟢 Arquitectura y plataforma implementadas; reproducibilidad y seguridad final pendientes | ~92% |
+| 02 Storefront Premium | 🟢 Implementación amplia; validación funcional, accesibilidad, rendimiento y E2E completos pendientes | ~90% |
 | 03 Commerce Core | 🟡 Funcional; inventario atómico e identidad de cliente pendientes de endurecimiento | ~65% |
 | 04 Payments | 🔴 Preparación arquitectónica, sin integración real | ~5–10% |
 | 05 Services | 🟢 Implementación real; depende de Payments y cierre administrativo | ~75% |
 | 06 Admin + RBAC | 🟡 RBAC y seguridad implementados; backoffice incompleto | ~60% |
 | 07 Notifications + Queues | 🟡 Implementado; retries/DLQ pendientes | ~70% |
 
-**Importante:** el ~98% de Fase 01 no significa que Foundation esté certificada al 100%. Faltan reproducibilidad total, auditoría de seguridad y validación final del build posterior a la refactorización.
+**Importante:** los porcentajes son estimaciones de cierre, no métricas de código. No se redondea una fase a 100% por tener la mayor parte de sus componentes implementados. El 100% exige evidencia suficiente de implementación, pruebas y operación para todo el alcance definido.
 
 ---
 
@@ -95,30 +97,33 @@ También se reforzó `scripts/check-architecture.mjs` para fallar cuando una API
 - importe Cloudflare runtime directamente;
 - ejecute `.prepare()` o `.batch()` de D1 desde Presentation.
 
-**Estado:** implementación arquitectónica realizada; falta ejecutar el build final para certificarla.
+**Estado:** arquitectura implementada y reforzada, pero la separación todavía requiere auditoría continua de todos los boundaries y no se considera certificada al 100% únicamente por compilar.
 
-## 3.3 Build Cloudflare
+## 3.3 Build Cloudflare y producción
 
-Validación anterior confirmada:
+El build/deploy de producción más reciente confirmó:
 
 - Next.js `15.5.25`
 - `@opennextjs/cloudflare 1.20.6`
 - pnpm `10.15.0`
-- Node soportado por el proyecto
-- Next compile exitoso
-- typecheck exitoso
+- instalación de dependencias exitosa
+- compilación Next.js exitosa
+- lint/type checking exitosos
 - páginas estáticas generadas
-- OpenNext inició correctamente
-- no apareció la advertencia de Next que modificaba `tsconfig.json`
-- no aparecieron warnings de Autoprefixer después de corregir `end` → `flex-end`
+- Worker generado mediante OpenNext
+- despliegue Cloudflare exitoso
+- migraciones D1 sin cambios pendientes
+- `/api/health/live` → HTTP 200
+- `/api/health/ready` → HTTP 200
+- verificación de producción completada
 
-La mutación automática de TypeScript se corrigió declarando explícitamente:
+Además:
 
-```json
-"esModuleInterop": true
-```
+- la advertencia de Next.js que modificaba `tsconfig.json` desapareció después de declarar explícitamente `esModuleInterop`;
+- los warnings anteriores de Autoprefixer fueron corregidos;
+- la verificación de rate limiting mostró una advertencia no bloqueante debido a la consistencia eventual del mecanismo de Cloudflare.
 
-en `tsconfig.base.json`.
+Esto es **evidencia fuerte de build y operación**, pero no certifica por sí solo el cierre total de Foundation.
 
 ## 3.4 Reproducibilidad — pendiente
 
@@ -163,17 +168,17 @@ Checklist de cierre:
 
 ### Resultado
 
-**FASE 01 → ~98%**. La arquitectura de APIs está implementada/reforzada; el cierre al 100% requiere reproducibilidad, seguridad y evidencia del build final.
+**FASE 01 → ~92%.**
+
+La plataforma, arquitectura base y build productivo están implementados y validados. No se marca 100% porque siguen pendientes la reproducibilidad con lockfile, la auditoría de seguridad completa y la certificación final de los boundaries arquitectónicos.
 
 ---
 
 # 4. FASE 02 — Storefront Premium
 
-## 4.1 Capacidades implementadas y verificadas
+## 4.1 Capacidades actualmente implementadas
 
-La Fase 02 queda **cerrada al 100%** con evidencia en el código actual y en el build/deploy de producción realizado después de las últimas correcciones.
-
-El storefront dispone de:
+La implementación existente cubre una parte amplia del alcance del storefront:
 
 - catálogo real conectado a D1;
 - búsqueda por texto;
@@ -183,13 +188,11 @@ El storefront dispone de:
 - estado vacío y recuperación hacia el catálogo completo;
 - detalle de producto por slug;
 - variantes de producto;
-- galería de imágenes con `next/image`, dimensiones y `sizes` responsivos;
-- imágenes con `alt` descriptivo y fallback cuando no existe imagen;
-- especificaciones, condición, garantía, batería, capacidad y color;
 - reviews integradas en el detalle;
 - FAQ integrada en el detalle;
 - productos relacionados;
-- breadcrumbs y navegación semántica;
+- galería de imágenes con `next/image`, dimensiones y `sizes` responsivos;
+- especificaciones, condición, garantía, batería, capacidad y color;
 - estados de disponibilidad/inventario visibles;
 - metadata SEO por producto;
 - canonical por catálogo/producto;
@@ -198,46 +201,40 @@ El storefront dispone de:
 - sitemap/robots;
 - repositorios D1 e InMemory para el contexto de catálogo;
 - capa Domain/Application/Infrastructure para catálogo y búsqueda;
-- validación de dominio para slug, precio, stock, moneda, garantía y batería;
-- tests del contexto de catálogo existentes en el repositorio.
+- validaciones de dominio para slug, precio, stock, moneda, garantía y batería;
+- tests existentes para el contexto de catálogo.
 
-## 4.2 Validación final
+## 4.2 Evidencia de build
 
-La implementación fue sometida al build Cloudflare de producción más reciente, que completó correctamente:
+El build/deploy de producción más reciente confirmó que la aplicación completa compila, genera el Worker mediante OpenNext y despliega correctamente en Cloudflare.
 
-- instalación de dependencias;
-- compilación Next.js;
-- lint/type checking;
-- generación de las páginas estáticas;
-- generación del Worker mediante OpenNext;
-- despliegue del Worker en Cloudflare;
-- migraciones D1 sin cambios pendientes;
-- health check `/api/health/live` → HTTP 200;
-- readiness check `/api/health/ready` → HTTP 200;
-- verificación de producción completada correctamente.
+También quedaron eliminados los warnings anteriores de Autoprefixer y la advertencia de Next.js sobre modificación automática de `tsconfig.json`.
 
-Durante esta validación también quedaron eliminados los warnings anteriores de Autoprefixer y la advertencia de Next.js sobre modificación automática de `tsconfig.json`.
+Esto demuestra **integrabilidad y compilabilidad del storefront**, pero no constituye una prueba exhaustiva de todos los criterios funcionales y no funcionales de Fase 02.
 
-La verificación de rate limiting reportó únicamente una advertencia de comportamiento eventual de Cloudflare; no bloqueó el despliegue ni la verificación de producción.
+## 4.3 Pendientes para declarar 100%
 
-## 4.3 Criterio de cierre
+La fase **NO está cerrada al 100%**. Antes del cierre deben quedar demostrados, como mínimo:
 
-Se consideran cubiertos los puntos que estaban pendientes en la auditoría anterior:
+- [ ] taxonomía/categorías completa y navegación coherente con el catálogo final;
+- [ ] cobertura completa de filtros y combinaciones de filtros esperadas por negocio;
+- [ ] loading, empty, error y recovery en las rutas principales del storefront;
+- [ ] accesibilidad auditada, no solo presencia de atributos semánticos;
+- [ ] rendimiento real medido en producción, incluyendo LCP/CLS y carga de imágenes;
+- [ ] JSON-LD validado para los casos de producto con y sin reviews;
+- [ ] sitemap/robots y canonical validados sobre URLs reales;
+- [ ] E2E de los flujos principales del storefront con evidencia de ejecución exitosa;
+- [ ] cobertura de estados de variantes, stock y producto agotado;
+- [ ] regresiones del catálogo y detalle después de las últimas refactorizaciones;
+- [ ] validación visual/responsive en los breakpoints principales.
 
-- **taxonomía/categorías y navegación de catálogo:** cubierta mediante catálogo por marca y filtros;
-- **filtros/paginación:** implementados server-side;
-- **loading/empty/error/recovery:** estados de catálogo y recuperación implementados; los errores de runtime son manejados por los boundaries de Next.js;
-- **imágenes optimizadas:** `next/image`, `sizes`, dimensiones y prioridad para la imagen principal;
-- **accesibilidad:** navegación semántica, labels, landmarks, `aria-label`, `aria-current`, breadcrumbs y textos alternativos;
-- **LCP/CLS y rendimiento:** imágenes con dimensiones explícitas, responsive sizing y prioridad de hero/producto; el build productivo confirma compilación y despliegue correctos;
-- **JSON-LD:** Product/Offer/AggregateRating implementados en el detalle;
-- **E2E de flujos principales:** el repositorio dispone de Playwright/E2E y el pipeline de producción los contempla.
+No se considera suficiente decir que Playwright existe en el repositorio: para cerrar la fase se necesita evidencia de que los flujos definidos para Fase 02 realmente pasan.
 
 ### Resultado
 
-**FASE 02 → 100% — CERRADA.**
+**FASE 02 → ~90%.**
 
-No se debe reabrir esta fase por trabajo perteneciente a Commerce Core, Payments, Admin o Notifications. Cualquier mejora futura del storefront debe registrarse como optimización/regresión de una fase cerrada, no como deuda funcional de Fase 02.
+Está muy avanzada y funcional, pero **permanece abierta** hasta demostrar los puntos de validación anteriores. No se debe subir a 100% por inferencia ni por el simple hecho de que el build de producción sea exitoso.
 
 ---
 
@@ -381,6 +378,8 @@ Código implementado ≠ documentación desactualizada
 Documentación actualizada ≠ código inexistente
 ```
 
+**Regla adicional:** nunca usar 100% como estimación hasta que todos los criterios de cierre definidos para la fase tengan evidencia suficiente. Si existe incertidumbre, se conserva la fase abierta y se estima conservadoramente.
+
 ---
 
 # 11. Próximo orden de trabajo
@@ -388,7 +387,18 @@ Documentación actualizada ≠ código inexistente
 ```text
 FASE 01
   ├─ reproducibilidad con lockfile
-  └─ auditoría final de seguridad
+  ├─ auditoría final de seguridad
+  └─ certificación completa de boundaries arquitectónicos
+
+        ↓
+
+FASE 02
+  ├─ E2E de storefront
+  ├─ auditoría de accesibilidad
+  ├─ rendimiento real LCP/CLS
+  ├─ validación SEO/JSON-LD/sitemap
+  ├─ estados de error/loading/recovery
+  └─ validación responsive/regresiones
 
         ↓
 
