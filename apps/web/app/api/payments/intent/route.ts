@@ -1,15 +1,16 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { paymentContext } from "../../../../../lib/payments";
+import { paymentContext, parsePaymentProvider } from "../../../../../lib/payments";
 import { commerceContext } from "../../../../../lib/commerce";
 
 export async function POST(request: Request) {
   try {
     const idempotencyKey = request.headers.get("Idempotency-Key")?.trim();
     if (!idempotencyKey || idempotencyKey.length > 255) return NextResponse.json({ error: "A valid Idempotency-Key header is required" }, { status: 400 });
-    const body = await request.json() as { orderId?: unknown };
+    const body = await request.json() as { orderId?: unknown; paymentProvider?: unknown };
     const orderId = typeof body.orderId === "string" ? body.orderId.trim() : "";
     if (!orderId) return NextResponse.json({ error: "orderId is required" }, { status: 400 });
+    const paymentProvider = parsePaymentProvider(body.paymentProvider);
 
     const requestCookies = await cookies();
     const sessionToken = requestCookies.get("customer_session")?.value;
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
     if (!order || order.customerId !== session.customerId) return NextResponse.json({ error: "Order not found" }, { status: 404 });
     if (order.status !== "PENDING_PAYMENT") return NextResponse.json({ error: "Order is not awaiting payment" }, { status: 409 });
 
-    const result = await payments.service.createIntent({
+    const result = await payments.service.createIntent(paymentProvider, {
       orderId: order.id,
       customerId: session.customerId,
       amountInCents: order.totalInCents,
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
         amountInCents: result.checkout.amountInCents,
         integritySignature: result.checkout.integritySignature,
         checkoutUrl: result.checkout.checkoutUrl,
+        ...(result.checkout.clientSecret ? { clientSecret: result.checkout.clientSecret } : {}),
       },
     }, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {
