@@ -15,7 +15,8 @@ export class D1OrderRepository implements OrderCheckoutRepository {
       return existing;
     }
 
-    const subtotalInCents = cart.items.reduce((sum, item) => sum + item.quantity * item.unitPriceInCents, 0);
+    const effectiveCart = await this.refreshServerPricing(cart);
+    const subtotalInCents = effectiveCart.items.reduce((sum, item) => sum + item.quantity * item.unitPriceInCents, 0);
     const shippingInCents = input.shippingMethod === "PICKUP" ? 0 : 1500000;
     const totalInCents = subtotalInCents + shippingInCents;
     const orderId = crypto.randomUUID();
@@ -24,28 +25,27 @@ export class D1OrderRepository implements OrderCheckoutRepository {
       this.db.prepare("INSERT INTO checkout_idempotency(idempotency_key,customer_id,order_id,expires_at) VALUES(?,?,?,datetime('now','+24 hours'))").bind(input.idempotencyKey, input.customerId, orderId),
     ];
 
-    for (const item of cart.items) {
+    for (const item of effectiveCart.items) {
       statements.push(this.db.prepare("UPDATE products SET stock=stock-?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND active=1 AND stock>=?").bind(item.quantity, item.productId, item.quantity));
       statements.push(this.db.prepare("INSERT INTO checkout_guards(id) SELECT 1 WHERE changes()=0"));
-      statements.push(this.db.prepare("INSERT INTO inventory_reservations(id,cart_id,product_id,quantity,expires_at) VALUES(?,?,?,?,datetime('now','+15 minutes'))").bind(crypto.randomUUID(), cart.id, item.productId, item.quantity));
     }
 
     statements.push(this.db.prepare("INSERT INTO orders(id,order_number,customer_id,email,status,currency,subtotal_in_cents,shipping_in_cents,discount_in_cents,total_in_cents,shipping_method,shipping_recipient_name,shipping_phone,shipping_address_line1,shipping_address_line2,shipping_city,shipping_state,shipping_postal_code,shipping_country_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(
-      orderId, orderNumber, input.customerId, input.email, "PENDING_PAYMENT", cart.currency, subtotalInCents, shippingInCents, 0, totalInCents,
+      orderId, orderNumber, input.customerId, input.email, "PENDING_PAYMENT", effectiveCart.currency, subtotalInCents, shippingInCents, 0, totalInCents,
       input.shippingMethod, input.shippingAddress.recipientName, input.shippingAddress.phone, input.shippingAddress.addressLine1,
       input.shippingAddress.addressLine2 ?? null, input.shippingAddress.city, input.shippingAddress.state, input.shippingAddress.postalCode ?? null, input.shippingAddress.countryCode,
     ));
 
-    for (const item of cart.items) {
+    for (const item of effectiveCart.items) {
       statements.push(this.db.prepare("INSERT INTO order_items(id,order_id,product_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents) VALUES(?,?,?,?,?,?,?,?)").bind(
         crypto.randomUUID(), orderId, item.productId, item.productName, item.slug, item.quantity, item.unitPriceInCents, item.quantity * item.unitPriceInCents,
       ));
     }
 
     statements.push(this.db.prepare("INSERT INTO order_events(id,order_id,event_type,payload_json) VALUES(?,?,?,?)").bind(
-      crypto.randomUUID(), orderId, "OrderCreated", JSON.stringify({ orderId, orderNumber, totalInCents, currency: cart.currency }),
+      crypto.randomUUID(), orderId, "OrderCreated", JSON.stringify({ orderId, orderNumber, totalInCents, currency: effectiveCart.currency }),
     ));
-    statements.push(this.db.prepare("DELETE FROM cart_items WHERE cart_id=?").bind(cart.id));
+    statements.push(this.db.prepare("DELETE FROM cart_items WHERE cart_id=?").bind(effectiveCart.id));
 
     try {
       await this.db.batch(statements);
@@ -64,14 +64,14 @@ export class D1OrderRepository implements OrderCheckoutRepository {
       customerId: input.customerId,
       email: input.email,
       status: "PENDING_PAYMENT",
-      currency: cart.currency,
+      currency: effectiveCart.currency,
       subtotalInCents,
       shippingInCents,
       discountInCents: 0,
       totalInCents,
       shippingMethod: input.shippingMethod,
       shippingAddress: input.shippingAddress,
-      items: cart.items.map((item) => ({ id: crypto.randomUUID(), productId: item.productId, productName: item.productName, productSlug: item.slug, quantity: item.quantity, unitPriceInCents: item.unitPriceInCents, lineTotalInCents: item.quantity * item.unitPriceInCents })),
+      items: effectiveCart.items.map((item) => ({ id: crypto.randomUUID(), productId: item.productId, productName: item.productName, productSlug: item.slug, quantity: item.quantity, unitPriceInCents: item.unitPriceInCents, lineTotalInCents: item.quantity * item.unitPriceInCents })),
     };
   }
 
@@ -79,6 +79,24 @@ export class D1OrderRepository implements OrderCheckoutRepository {
     const row = await this.db.prepare("SELECT * FROM orders WHERE id=?").bind(id).first<any>();
     if (!row) return null;
     return this.hydrateOrder(row);
+  }
+
+  private async refreshServerPricing(cart: CheckoutCart): Promise<CheckoutCart> {
+    const items = [];
+    for (const item of cart.items) {
+      const product = await this.db.prepare("SELECT id,name,slug,active,price_in_cents,currency,stock FROM products WHERE id=?").bind(item.productId).first<any>();
+      if (!product || !product.active) throw new Error("Product is unavailable");
+      if (product.currency !== cart.currency) throw new Error("Cart currency does not match product currency");
+
+      let priceInCents = product.price_in_cents;
+      if (item.variantId) {
+        const variant = await this.db.prepare("SELECT price_in_cents,active FROM product_variants WHERE id=? AND product_id=?").bind(item.variantId, item.productId).first<any>();
+        if (!variant || !variant.active) throw new Error("Variant is unavailable");
+        priceInCents = variant.price_in_cents;
+      }
+      items.push({ ...item, productName: product.name, slug: product.slug, unitPriceInCents: priceInCents });
+    }
+    return { ...cart, items };
   }
 
   private async pruneExpiredIdempotency(): Promise<void> {
