@@ -90,7 +90,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
   }
 
   async findById(id: string): Promise<Order | null> {
-    const row = await this.db.prepare("SELECT * FROM orders WHERE id=?").bind(id).first<any>();
+    const row = await this.db.prepare("SELECT * FROM orders WHERE id=?").bind(id).first<OrderRow>();
     if (!row) return null;
     return this.hydrateOrder(row);
   }
@@ -100,20 +100,30 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     if (!Number.isFinite(limit) || !Number.isFinite(offset)) throw new Error("Invalid pagination");
     const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 50);
     const safeOffset = Math.max(Math.trunc(offset), 0);
-    const rows = await this.db.prepare("SELECT * FROM orders WHERE customer_id=? ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?").bind(customerId, safeLimit, safeOffset).all<any>();
+    const rows = await this.db.prepare("SELECT * FROM orders WHERE customer_id=? ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?").bind(customerId, safeLimit, safeOffset).all<OrderRow>();
     return Promise.all(rows.results.map((row) => this.hydrateOrder(row)));
+  }
+
+  async transitionStatus(id: string, from: string, to: string): Promise<boolean> {
+    const result = await this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(to, id, from).run();
+    if (result.meta.changes === 1) {
+      await this.db.prepare("INSERT INTO order_events(id,order_id,event_type,payload_json) VALUES(?,?,?,?)").bind(
+        crypto.randomUUID(), id, "OrderStatusChanged", JSON.stringify({ from, to }),
+      ).run();
+    }
+    return result.meta.changes === 1;
   }
 
   private async refreshServerPricing(cart: CheckoutCart): Promise<CheckoutCart> {
     const items = [];
     for (const item of cart.items) {
-      const product = await this.db.prepare("SELECT id,name,slug,active,price_in_cents,currency FROM products WHERE id=?").bind(item.productId).first<any>();
+      const product = await this.db.prepare("SELECT id,name,slug,active,price_in_cents,currency FROM products WHERE id=?").bind(item.productId).first<{ id: string; name: string; slug: string; active: number; price_in_cents: number; currency: string }>();
       if (!product || !product.active) throw new Error("Product is unavailable");
       if (product.currency !== cart.currency) throw new Error("Cart currency does not match product currency");
 
       let priceInCents = product.price_in_cents;
       if (item.variantId) {
-        const variant = await this.db.prepare("SELECT price_in_cents,active FROM product_variants WHERE id=? AND product_id=?").bind(item.variantId, item.productId).first<any>();
+        const variant = await this.db.prepare("SELECT price_in_cents,active FROM product_variants WHERE id=? AND product_id=?").bind(item.variantId, item.productId).first<{ price_in_cents: number; active: number }>();
         if (!variant || !variant.active) throw new Error("Variant is unavailable");
         priceInCents = variant.price_in_cents;
       }
@@ -131,8 +141,8 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     return row ? this.findById(row.order_id) : null;
   }
 
-  private async hydrateOrder(row: any): Promise<Order> {
-    const items = await this.db.prepare("SELECT id,product_id,variant_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents FROM order_items WHERE order_id=? ORDER BY id ASC").bind(row.id).all<any>();
+  private async hydrateOrder(row: OrderRow): Promise<Order> {
+    const items = await this.db.prepare("SELECT id,product_id,variant_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents FROM order_items WHERE order_id=? ORDER BY id ASC").bind(row.id).all<OrderItemRow>();
     return {
       id: row.id,
       orderNumber: row.order_number,
@@ -168,3 +178,11 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     };
   }
 }
+
+type OrderRow = {
+  id: string; order_number: string; customer_id: string | null; email: string; status: Order["status"]; currency: string;
+  subtotal_in_cents: number; shipping_in_cents: number; discount_in_cents: number; total_in_cents: number; shipping_method: string;
+  shipping_recipient_name: string; shipping_phone: string; shipping_address_line1: string; shipping_address_line2: string | null;
+  shipping_city: string; shipping_state: string; shipping_postal_code: string | null; shipping_country_code: string;
+};
+type OrderItemRow = { id: string; product_id: string; variant_id: string | null; product_name: string; product_slug: string; quantity: number; unit_price_in_cents: number; line_total_in_cents: number };
