@@ -12,6 +12,14 @@ CREATE TABLE IF NOT EXISTS customer_sessions (
 CREATE INDEX IF NOT EXISTS idx_customer_sessions_customer ON customer_sessions(customer_id, expires_at);
 CREATE INDEX IF NOT EXISTS idx_customer_sessions_active ON customer_sessions(token_hash, expires_at, revoked_at);
 
+CREATE TABLE IF NOT EXISTS checkout_idempotency (
+  idempotency_key TEXT PRIMARY KEY,
+  customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  order_id TEXT NOT NULL UNIQUE,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_checkout_idempotency_customer ON checkout_idempotency(customer_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS checkout_guards (
   id INTEGER PRIMARY KEY CHECK (id = 1)
 );
