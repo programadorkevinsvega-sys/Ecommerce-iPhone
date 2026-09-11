@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { ServiceWorkflowService } from "./ServiceWorkflowService";
 import { ServiceRequest } from "../domain/ServiceRequest";
+import type { ServiceTypeRepository } from "./ServiceTypeRepository";
+import type { ServiceRequestRepository } from "./ServiceRequestRepository";
 
 const request = () => ServiceRequest.create("svc-1", {
   customerId: "cust-1", email: "customer@example.com", type: "REPAIR", deviceBrand: "Apple",
@@ -13,12 +15,12 @@ const repos = (item = request()) => ({
   listForCustomer: async () => [item],
   listQueue: async () => [item],
   audit: async () => undefined,
-});
+}) as unknown as ServiceRequestRepository;
 
 const types = (allowedStatuses: string[] = ["PENDING", "QUOTED", "PAYMENT_PENDING", "PAID", "PROCESSING", "WAITING_CUSTOMER", "COMPLETED", "REJECTED", "REFUNDED"], quoteRequired = true) => ({
   findByCode: async () => ({ toPrimitives: () => ({ workflow: { allowedStatuses, quoteRequired } }) }),
   listEnabled: async () => [], listAll: async () => [], save: async () => undefined,
-});
+}) as unknown as ServiceTypeRepository;
 
 describe("ServiceWorkflowService", () => {
   it("rejects a status outside the configured service policy", async () => {
