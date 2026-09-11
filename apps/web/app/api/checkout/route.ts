@@ -7,7 +7,9 @@ export async function POST(request: Request) {
   try {
     const requestCookies = await cookies();
     const cartId = requestCookies.get("cart_id")?.value;
+    const idempotencyKey = request.headers.get("Idempotency-Key")?.trim();
     if (!cartId) return NextResponse.json({ error: "Cart not found" }, { status: 400 });
+    if (!idempotencyKey) return NextResponse.json({ error: "Idempotency-Key header is required" }, { status: 400 });
 
     const body = (await request.json()) as Record<string, any>;
     for (const key of ["email", "firstName", "lastName", "phone", "shippingAddress", "shippingMethod"]) {
@@ -38,7 +40,6 @@ export async function POST(request: Request) {
     if (existingCustomer && (!currentSession || currentSession.customerId !== existingCustomer.getId())) {
       return NextResponse.json({ error: "Customer session required" }, { status: 401 });
     }
-
     if (currentSession) {
       const sessionCustomer = await context.customerRepository.findById(currentSession.customerId);
       if (!sessionCustomer || sessionCustomer.getId() !== existingCustomer?.getId()) {
@@ -47,12 +48,7 @@ export async function POST(request: Request) {
     }
 
     const customerResult = await context.customer.save(
-      {
-        email: requestedEmail,
-        firstName: String(body.firstName).trim(),
-        lastName: String(body.lastName).trim(),
-        phone: String(body.phone).trim(),
-      },
+      { email: requestedEmail, firstName: String(body.firstName).trim(), lastName: String(body.lastName).trim(), phone: String(body.phone).trim() },
       { label: "Principal", ...shippingAddress, isDefault: true },
     );
 
@@ -63,6 +59,7 @@ export async function POST(request: Request) {
       shippingAddress,
       shippingMethod: String(body.shippingMethod) as "PICKUP" | "DELIVERY",
       customerId: customerResult.customer.getId(),
+      idempotencyKey,
     });
 
     await publishNotificationEvent({
@@ -92,6 +89,7 @@ export async function POST(request: Request) {
     response.cookies.set("customer_id", "", { httpOnly: true, maxAge: 0, path: "/" });
     return response;
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Checkout failed" }, { status: 400 });
+    const message = error instanceof Error ? error.message : "Checkout failed";
+    return NextResponse.json({ error: message }, { status: message.includes("session") ? 401 : 400 });
   }
 }
