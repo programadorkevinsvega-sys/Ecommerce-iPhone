@@ -1,56 +1,74 @@
 # Development
 
+## Política de entornos
+
+El proyecto mantiene **un único entorno remoto/operativo: producción**.
+
+El desarrollo y las pruebas locales pueden usar Next.js, Vitest, Playwright y D1 local/emulado, pero no existe un entorno Cloudflare remoto de development o staging.
+
 ## Requirements
 
 - Node.js 22+
 - pnpm 10.15.0
-- Cloudflare account for Workers/D1/R2/Queues workflows
+- Cloudflare account for production Workers/D1/R2/Queues
 
-## Local Next.js
+## Local
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
+Para una ejecución local del Worker/OpenNext:
+
+```bash
+pnpm build:cloudflare
+pnpm preview:cloudflare
+```
+
 ## Quality checks
 
 ```bash
 pnpm architecture:check
+pnpm foundation:check
+pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm build
-```
-
-## Cloudflare preview
-
-```bash
 pnpm build:cloudflare
-pnpm exec wrangler dev --env development
+pnpm test:e2e
 ```
 
-The development environment uses separate Cloudflare resource names. Replace the development D1/R2/Queue placeholders in `wrangler.jsonc` with real resource identifiers when using remote development.
+Estos comandos son gates de desarrollo y validación; la aceptación operativa se realiza contra producción.
 
-## Cloudflare environments
+## Producción
 
 ```bash
-pnpm exec wrangler deploy --env staging
-pnpm exec wrangler deploy --env production
+pnpm deploy:production
+pnpm verify:production
 ```
 
-Production and staging credentials must be supplied through Cloudflare/GitHub secrets. Never commit API keys or payment credentials.
+El despliegue aplica primero las migraciones D1 remotas, genera el bundle OpenNext, publica el Worker y posteriormente puede ejecutarse la verificación de producción.
+
+No usar comandos `--env staging` o `--env development`: esos entornos remotos ya no forman parte de la arquitectura operativa.
 
 ## D1 migrations
 
 Local:
 
 ```bash
-pnpm exec wrangler d1 migrations apply DB --local
+pnpm db:migrate:local
 ```
 
-Remote environments should apply migrations deliberately during deployment/change management after the correct D1 binding is configured.
+Producción:
 
-## Cloudflare secrets
+```bash
+pnpm db:migrate:production
+```
 
-Use Wrangler secrets or the deployment platform's secret store. Do not put secrets in `wrangler.jsonc`, `vars`, GitHub source, or `.env.example`.
+Nunca modificar una migración ya aplicada en producción. Crear siempre una nueva migración versionada.
+
+## Secrets
+
+Usar Wrangler secrets o el secret store de la plataforma de despliegue. No poner secretos en `wrangler.jsonc`, código, `.env.example` ni Git.
