@@ -18,16 +18,18 @@ Production-oriented e-commerce platform for smartphones and legitimate device se
 ## Phase status
 
 ### FASE 01 — Foundation
-Foundation is implemented as the platform baseline: modular boundaries, shared domain kernel, catalog vertical slice, Cloudflare/OpenNext runtime, D1/R2/Queues bindings, HTTP security baseline, request tracing, CI quality gates, reproducible pnpm installation, and explicit development/staging/production deployment paths. Final closure requires real staging provisioning/verification, distributed rate-limit enforcement on abuse-sensitive routes, runtime CI verification, and complete removal of business/SQL logic from presentation adapters.
+Foundation is implemented as the platform baseline: modular boundaries, shared domain kernel, catalog vertical slice, Cloudflare/OpenNext runtime, D1/R2/Queues bindings, HTTP security baseline, request tracing, CI quality gates and production deployment. Final closure still requires lockfile-based reproducibility and the remaining certification gates.
 
 ### FASE 02 — Storefront + Catalog
-Implemented: responsive storefront, D1-backed catalog, product domain model, search/filter/pagination, inventory visibility, product detail pages, iPhone SEO URLs, redirects, dynamic metadata, canonical URLs, Product structured data and sitemap.
+Implemented: responsive storefront, D1-backed catalog, product domain model, search/filter/pagination, inventory visibility, product detail pages, iPhone SEO URLs, redirects, dynamic metadata, canonical URLs, Product structured data and sitemap. Final certification still requires complete E2E/accessibility/performance evidence.
 
 ### FASE 03 — Commerce Core
-Implemented: customer aggregate and addresses, guest/customer session cookies, persistent D1 cart, quantity validation, server-side price/stock validation, checkout flow, order aggregate/state machine, order snapshots, stock allocation, 15-minute inventory reservations, expired-reservation release, order events, protected order lookup and commerce UI/tests.
+Implemented: customer aggregate and addresses, guest/customer session cookies, persistent D1 cart, quantity validation, server-side price/stock validation, checkout flow, order aggregate/state machine, order snapshots, stock allocation, inventory reservations, expired-reservation release, order events, protected order lookup/listing and commerce UI/tests.
 
 ### FASE 04 — Payments
-Implemented in the architecture plan as a provider-agnostic payment boundary. Production validation requires real provider credentials and webhook configuration.
+**Real production integration implemented in code.** The current provider adapter is Wompi Colombia and uses the real Web Checkout, server-generated integrity signatures, authenticated payment intents, D1 payment persistence/idempotency, signed production webhooks, provider transaction reconciliation, payment ledger/audit records, concurrency-safe order/payment transitions and inventory reservation consume/release integration. No fake provider, mock payment response or simulated transaction is used by the runtime.
+
+Production activation requires only the real Wompi production credentials/secrets to be configured outside Git and the real Wompi webhook URL to be registered in the merchant dashboard. The final phase certification additionally requires real production evidence and provider capability validation for refund/void operations.
 
 ### FASE 05 — Device Services
 Implemented: configurable legitimate device-service catalog; service-request aggregate and workflow; D1 persistence; audit ledger; customer API/form; quote/assignment/status/completion application ports; identifier privacy controls retaining only IMEI/serial suffixes.
@@ -46,7 +48,9 @@ D1 contains tables for the bounded contexts. Code boundaries remain independent 
 
 Cloudflare resources are external account resources. The repository contains their bindings and migrations; runtime secrets stay outside Git. Workers Builds should use the repository's pnpm workspace explicitly because the monorepo is standardized on pnpm.
 
-Recommended Workers Builds configuration:
+Production is the only remote operational environment. Local Next.js/Vitest/Playwright/D1 emulation is development tooling, not a second deployed environment.
+
+Recommended production build configuration:
 
 ```text
 Build command:
@@ -67,12 +71,6 @@ pnpm build:cloudflare
 pnpm exec wrangler deploy
 ```
 
-For staging:
-
-```text
-pnpm deploy:staging
-```
-
 Do not use `npm run build` + `npx wrangler deploy` for the production Worker, because the first command runs the regular Next.js build rather than the OpenNext Cloudflare build.
 
 ## Commands
@@ -87,7 +85,6 @@ pnpm test
 pnpm build
 pnpm build:cloudflare
 pnpm test:e2e
-pnpm deploy:staging
 pnpm deploy:production
 ```
 
@@ -97,6 +94,8 @@ pnpm deploy:production
 - `POST /api/cart` — add/update a cart item
 - `DELETE /api/cart` — remove a cart item
 - `POST /api/checkout` — validate cart, create customer/address, allocate stock and create a pending-payment order
+- `POST /api/payments/intent` — create/reuse a real Wompi payment intent for the authenticated order
+- `POST /api/payments/webhooks/wompi` — receive and verify signed Wompi production transaction events
 - `GET /api/customer` — read the current customer session
 - `POST /api/customer` — create/reuse a customer and optionally save an address
 - `GET /api/orders/:id` — read an order only for its customer session
@@ -111,7 +110,7 @@ pnpm deploy:production
 - `docs/development.md` — local and Cloudflare workflow
 - `docs/foundation.md` — Fase 1 Foundation implementation and closure checklist
 - `docs/security.md` — security baseline
-- `docs/payments.md` — payment boundary
+- `docs/payments.md` — real Wompi payment integration, lifecycle, webhooks and production activation
 - `docs/services.md` — service workflow and device-data privacy
 - `docs/notifications.md` — Resend, outbox and Queue architecture
 - `modules/README.md` — module boundary overview
