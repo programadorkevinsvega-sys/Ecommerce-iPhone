@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { Checkout } from "./Checkout";
 import type { CheckoutCart } from "./CheckoutCart";
 import type { CheckoutInput, OrderCheckoutRepository } from "./CheckoutInput";
-import type { ReservationRepository } from "./ReservationRepository";
 
 const cart: CheckoutCart = {
   id: "cart-1",
@@ -18,31 +17,43 @@ const input: CheckoutInput = {
   shippingAddress: { recipientName: "Customer", phone: "3000000000", addressLine1: "Calle 1", city: "Medellín", state: "Antioquia", countryCode: "CO" },
 };
 
-class Reservations implements ReservationRepository {
-  released = false;
-  async releaseExpired(): Promise<number> { this.released = true; return 0; }
-}
-
 class Orders implements OrderCheckoutRepository {
   called = false;
-  async checkout(): Promise<any> { this.called = true; return { id: "order-1" }; }
+  async checkout(): Promise<any> {
+    this.called = true;
+    return { id: "order-1" };
+  }
 }
 
 describe("Checkout", () => {
   it("requires authenticated customer identity and a valid idempotency key", async () => {
-    const reservations = new Reservations();
     const orders = new Orders();
-    const checkout = new Checkout(reservations, orders);
+    const checkout = new Checkout(orders);
     await expect(checkout.execute(cart, { ...input, customerId: "" })).rejects.toThrow("Customer authentication is required");
     await expect(checkout.execute(cart, { ...input, idempotencyKey: "short" })).rejects.toThrow("Invalid checkout idempotency key");
     expect(orders.called).toBe(false);
   });
 
-  it("releases expired reservations before checkout", async () => {
-    const reservations = new Reservations();
+  it("rejects stale cart stock before entering the checkout repository", async () => {
     const orders = new Orders();
-    await new Checkout(reservations, orders).execute(cart, input);
-    expect(reservations.released).toBe(true);
+    const checkout = new Checkout(orders);
+    await expect(checkout.execute({ ...cart, items: [{ ...cart.items[0], quantity: 2, stock: 1 } as any] }, input)).rejects.toThrow("enough stock");
+    expect(orders.called).toBe(false);
+  });
+
+  it("validates shipping policy before checkout", async () => {
+    const orders = new Orders();
+    const checkout = new Checkout(orders);
+    await expect(checkout.execute(cart, { ...input, shippingMethod: "INVALID" as any })).rejects.toThrow("Invalid shipping method");
+    await expect(checkout.execute(cart, { ...input, shippingAddress: { ...input.shippingAddress, countryCode: "US" } })).rejects.toThrow("limited to Colombia");
+    expect(orders.called).toBe(false);
+  });
+
+  it("delegates a valid checkout exactly once", async () => {
+    const orders = new Orders();
+    const checkout = new Checkout(orders);
+    const result = await checkout.execute(cart, input);
     expect(orders.called).toBe(true);
+    expect(result.id).toBe("order-1");
   });
 });
