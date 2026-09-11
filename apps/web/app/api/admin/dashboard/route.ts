@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "../../../../lib/adminAuth";
+import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
 import { getAdminDashboard } from "../../../../lib/api/adminDashboard";
-import { PERMISSIONS } from "../../../../../../modules/admin/infrastructure/AdminSecurity";
 
 export async function GET() {
   try {
