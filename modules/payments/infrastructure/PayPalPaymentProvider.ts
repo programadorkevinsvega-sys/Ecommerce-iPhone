@@ -23,6 +23,12 @@ export class PayPalPaymentProvider implements PaymentProviderPort {
     if (purchase?.reference_id !== input.orderId) throw new Error("PayPal order does not match order");
     return this.intent(body, input);
   }
+  async capturePayment(orderId: string): Promise<ProviderTransaction> {
+    const token = await this.accessToken();
+    const response = await fetch(`${PAYPAL_API}/v2/checkout/orders/${encodeURIComponent(orderId)}/capture`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Prefer: "return=representation" }, body: "{}" });
+    if (!response.ok && response.status !== 422) throw new Error(`PayPal capture failed: HTTP ${response.status}`);
+    return this.getTransaction(orderId);
+  }
   async getTransaction(transactionId: string): Promise<ProviderTransaction> {
     const token = await this.accessToken();
     const response = await fetch(`${PAYPAL_API}/v2/checkout/orders/${encodeURIComponent(transactionId)}`, { headers: { Authorization: `Bearer ${token}` } });
