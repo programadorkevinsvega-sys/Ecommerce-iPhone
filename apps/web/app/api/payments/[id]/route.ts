@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { commerceContext } from "../../../../../lib/commerce";
-import { paymentContext } from "../../../../../lib/payments";
+import { commerceContext } from "../../../../lib/commerce";
+import { paymentContext } from "../../../../lib/payments";
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
