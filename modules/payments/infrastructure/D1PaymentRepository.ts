@@ -5,8 +5,6 @@ import { assertPaymentTransition, type Payment, type PaymentProvider, type Payme
 export class D1PaymentRepository implements PaymentRepository {
   constructor(private readonly db: D1Database) {}
 
-  constructor(private readonly db: D1Database) {}
-
   async findById(id: string): Promise<Payment | null> {
     const row = await this.db.prepare("SELECT * FROM payments WHERE id=?").bind(id).first<PaymentRow>();
     return row ? this.map(row) : null;
