@@ -96,9 +96,11 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
   }
 
   async listByCustomer(customerId: string, limit: number, offset: number): Promise<readonly Order[]> {
+    if (!customerId) throw new Error("Customer authentication is required");
+    if (!Number.isFinite(limit) || !Number.isFinite(offset)) throw new Error("Invalid pagination");
     const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 50);
     const safeOffset = Math.max(Math.trunc(offset), 0);
-    const rows = await this.db.prepare("SELECT * FROM orders WHERE customer_id=? ORDER BY created_at DESC LIMIT ? OFFSET ?").bind(customerId, safeLimit, safeOffset).all<any>();
+    const rows = await this.db.prepare("SELECT * FROM orders WHERE customer_id=? ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?").bind(customerId, safeLimit, safeOffset).all<any>();
     return Promise.all(rows.results.map((row) => this.hydrateOrder(row)));
   }
 
@@ -130,7 +132,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
   }
 
   private async hydrateOrder(row: any): Promise<Order> {
-    const items = await this.db.prepare("SELECT id,product_id,variant_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents FROM order_items WHERE order_id=?").bind(row.id).all<any>();
+    const items = await this.db.prepare("SELECT id,product_id,variant_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents FROM order_items WHERE order_id=? ORDER BY created_at ASC,id ASC").bind(row.id).all<any>();
     return {
       id: row.id,
       orderNumber: row.order_number,
