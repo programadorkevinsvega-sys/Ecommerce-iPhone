@@ -20,6 +20,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid shipping method" }, { status: 400 });
     }
 
+    const promotionCode = body.promotionCode === undefined || body.promotionCode === null
+      ? undefined
+      : String(body.promotionCode).trim().toUpperCase();
+    if (promotionCode !== undefined && !/^[A-Z0-9_-]{3,64}$/.test(promotionCode)) {
+      return NextResponse.json({ error: "Invalid promotion code" }, { status: 400 });
+    }
+
     const address = body.shippingAddress;
     const shippingAddress = {
       recipientName: String(address.recipientName ?? `${body.firstName} ${body.lastName}`).trim(),
@@ -50,8 +57,6 @@ export async function POST(request: Request) {
       { label: "Principal", ...shippingAddress, isDefault: true },
     );
 
-    // Every checkout cart is claimed by the authenticated customer before it can be read.
-    // This prevents a customer from submitting another customer's cart id.
     await context.cart.claim(cartId, customerResult.customer.getId());
     const cart = await context.cart.getOwnedByCustomer(cartId, customerResult.customer.getId());
 
@@ -62,9 +67,9 @@ export async function POST(request: Request) {
       shippingMethod: body.shippingMethod,
       customerId: customerResult.customer.getId(),
       idempotencyKey,
+      ...(promotionCode ? { promotionCode } : {}),
     });
 
-    // Stable event id makes retries of the same idempotent checkout notification-safe.
     await publishNotificationEvent({
       id: `order-created:${order.id}`,
       eventType: "OrderCreated",
