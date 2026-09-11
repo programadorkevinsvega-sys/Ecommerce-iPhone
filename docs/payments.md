@@ -74,8 +74,6 @@ Se valida:
 - `amount`, `currency` y `reference` contra D1;
 - estado externo permitido.
 
-Wompi documenta que los webhooks son el mecanismo para finalizar la integración y que el redirect no debe utilizarse como validación de la transacción. citeturn0search5turn0search11
-
 ### Reconciliación
 
 El adapter consulta server-side:
@@ -84,11 +82,11 @@ El adapter consulta server-side:
 GET https://production.wompi.co/v1/transactions/{transaction_id}
 ```
 
-con la llave privada de producción. Wompi documenta que esta consulta requiere la llave privada y que los estados incluyen `PENDING`, `APPROVED`, `DECLINED`, `VOIDED` y `ERROR`. citeturn0search1
+con la llave privada de producción.
 
 ### Void
 
-Wompi expone una operación server-side de `void` para transacciones de tarjeta en estados compatibles. La aplicación no inventa una operación de refund universal: la capacidad se expone únicamente cuando el método y estado reales del proveedor la permiten. citeturn0search1
+Wompi expone una operación server-side de `void` para transacciones de tarjeta en estados compatibles. La aplicación no inventa una operación de refund universal: la capacidad se expone únicamente cuando el método y estado reales del proveedor la permiten.
 
 ## Idempotencia y concurrencia
 
