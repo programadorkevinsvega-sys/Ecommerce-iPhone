@@ -44,6 +44,7 @@ export interface PaymentProviderPort {
   createPaymentIntent(input: CreatePaymentInput): Promise<ProviderPaymentIntent>;
   recoverPaymentIntent(payment: Payment, input: CreatePaymentInput): Promise<ProviderPaymentIntent>;
   getTransaction(transactionId: string): Promise<ProviderTransaction>;
+  capturePayment?(transactionId: string): Promise<ProviderTransaction>;
 }
 
 export interface PaymentRepository {
