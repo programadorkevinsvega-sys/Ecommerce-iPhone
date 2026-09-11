@@ -8,9 +8,11 @@ class MemoryOutbox implements NotificationOutboxRepository {
   deliveries = new Set<string>();
   async enqueue(e:NotificationEvent){this.records.set(e.id,e);return true;}
   async pending(_limit:number):Promise<OutboxRecord[]>{return [];}
+  async claim(_id:string,_leaseSeconds:number){return true;}
   async markQueued(_id:string){}
   async markProcessed(id:string){this.records.delete(id)}
   async markFailed(_id:string,_error:string,_retryAt:string){}
+  async claimDelivery(_input:Parameters<NotificationOutboxRepository["claimDelivery"]>[0]){return true}
   async hasDelivery(_id:string,_channel:"EMAIL",recipient:string,template:string){return this.deliveries.has(`${recipient}:${template}`)}
   async recordDelivery(input:Parameters<NotificationOutboxRepository["recordDelivery"]>[0]){if(input.status==="SENT")this.deliveries.add(`${input.recipient}:${input.template}`)}
 }
