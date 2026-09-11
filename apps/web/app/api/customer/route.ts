@@ -3,13 +3,7 @@ import { NextResponse } from "next/server";
 import { commerceContext } from "../../../lib/commerce";
 
 function setSessionCookie(response: NextResponse, token: string) {
-  response.cookies.set("customer_session", token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  response.cookies.set("customer_session", token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30 });
 }
 
 export async function GET() {
@@ -36,13 +30,8 @@ export async function POST(request: Request) {
     const currentToken = (await cookies()).get("customer_session")?.value;
     const currentSession = currentToken ? await context.customerSession.resolve(currentToken) : null;
 
-    if (existing && (!currentSession || currentSession.customerId !== existing.getId())) {
-      return NextResponse.json({ error: "Customer session required" }, { status: 401 });
-    }
-
-    if (currentSession && currentSession.customerId !== existing?.getId()) {
-      return NextResponse.json({ error: "Customer session does not match customer" }, { status: 401 });
-    }
+    if (existing && (!currentSession || currentSession.customerId !== existing.getId())) return NextResponse.json({ error: "Customer session required" }, { status: 401 });
+    if (currentSession && currentSession.customerId !== existing?.getId()) return NextResponse.json({ error: "Customer session does not match customer" }, { status: 401 });
 
     const address = body.address ? {
       label: String(body.address.label ?? "Principal"),
@@ -58,20 +47,15 @@ export async function POST(request: Request) {
     } : undefined;
 
     const result = await context.customer.save(
-      {
-        email,
-        firstName: String(body.firstName).trim(),
-        lastName: String(body.lastName).trim(),
-        ...(body.phone ? { phone: String(body.phone).trim() } : {}),
-      },
+      { email, firstName: String(body.firstName).trim(), lastName: String(body.lastName).trim(), ...(body.phone ? { phone: String(body.phone).trim() } : {}) },
       address,
     );
 
-    const newSession = await context.customerSession.create(result.customer.getId());
-    if (currentToken) await context.customerSession.revoke(currentToken);
-
     const response = NextResponse.json({ customer: result.customer.toPrimitives(), addresses: result.addresses }, { status: 201 });
-    setSessionCookie(response, newSession.token);
+    if (!currentSession) {
+      const newSession = await context.customerSession.create(result.customer.getId());
+      setSessionCookie(response, newSession.token);
+    }
     response.cookies.set("customer_id", "", { httpOnly: true, maxAge: 0, path: "/" });
     return response;
   } catch (error) {
