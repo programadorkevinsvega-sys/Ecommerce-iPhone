@@ -1,9 +1,10 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { CheckoutCart } from "../application/CheckoutCart";
 import type { CheckoutInput, OrderCheckoutRepository } from "../application/CheckoutInput";
+import type { OrderRepository } from "../application/OrderRepository";
 import type { Order } from "../domain/Order";
 
-export class D1OrderRepository implements OrderCheckoutRepository {
+export class D1OrderRepository implements OrderCheckoutRepository, OrderRepository {
   constructor(private readonly db: D1Database) {}
 
   async checkout(cart: CheckoutCart, input: CheckoutInput): Promise<Order> {
