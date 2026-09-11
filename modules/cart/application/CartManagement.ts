@@ -8,6 +8,10 @@ export class CartManagement {
     return this.repository.getOrCreate(cartId, customerId);
   }
 
+  getOwnedByCustomer(cartId: string, customerId: string): Promise<Cart> {
+    return this.repository.getOwnedByCustomer(cartId, customerId);
+  }
+
   claim(cartId: string, customerId: string): Promise<void> {
     return this.repository.claimForCustomer(cartId, customerId);
   }
