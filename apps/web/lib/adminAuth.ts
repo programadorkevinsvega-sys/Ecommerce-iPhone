@@ -1,8 +1,9 @@
 import { cookies, headers } from "next/headers";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { D1AdminRepository } from "../../../modules/admin/infrastructure/D1AdminRepository";
-import { hasPermission, sha256, type AdminPrincipal } from "../../../modules/admin/infrastructure/AdminSecurity";
+import { hasPermission, sha256, PERMISSIONS, type AdminPrincipal } from "../../../modules/admin/infrastructure/AdminSecurity";
 
+export { PERMISSIONS };
 export const ADMIN_COOKIE = "admin_session";
 const SESSION_DAYS = 8;
 
@@ -31,19 +32,6 @@ export async function requireAdmin(permission?: string): Promise<{ admin: AdminP
   const admin = { id: p.id, email: p.email, role: p.role, firstName: p.firstName, lastName: p.lastName } satisfies AdminPrincipal;
   if (permission && !hasPermission(admin.role, permission)) throw new Error("FORBIDDEN");
   return { admin, repo, env };
-}
-
-export async function logoutAdmin() {
-  const value = (await cookies()).get(ADMIN_COOKIE)?.value;
-  const admin = await currentAdmin();
-  if (value && admin) {
-    const { repo } = await adminRepository();
-    const fingerprint = await requestFingerprint();
-    const found = await repo.findSession(await sha256(value));
-    if (found) await repo.revokeSession(found.sessionId);
-    await repo.audit(admin.id, "ADMIN_LOGOUT", "admin_user", admin.id, {}, fingerprint.ipHash);
-  }
-  await clearAdminSession();
 }
 
 export async function requestFingerprint() {
