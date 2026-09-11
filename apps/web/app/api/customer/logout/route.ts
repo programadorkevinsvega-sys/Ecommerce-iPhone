@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { commerceContext } from "../../../../../lib/commerce";
+import { commerceContext } from "../../../../lib/commerce";
 
 export async function POST() {
   const token = (await cookies()).get("customer_session")?.value;
