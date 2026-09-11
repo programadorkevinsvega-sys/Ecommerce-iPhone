@@ -1,6 +1,6 @@
 export type OrderStatus = "PENDING_PAYMENT"|"PAYMENT_PROCESSING"|"PAID"|"PROCESSING"|"READY_TO_SHIP"|"SHIPPED"|"DELIVERED"|"CANCELLED"|"REFUND_PENDING"|"REFUNDED";
 export type ShippingAddress = Readonly<{recipientName:string;phone:string;addressLine1:string;addressLine2?:string|undefined;city:string;state:string;postalCode?:string|undefined;countryCode:string}>;
-export type OrderItem = Readonly<{id:string;productId:string;productName:string;productSlug:string;quantity:number;unitPriceInCents:number;lineTotalInCents:number}>;
+export type OrderItem = Readonly<{id:string;productId:string;variantId?:string|undefined;productName:string;productSlug:string;quantity:number;unitPriceInCents:number;lineTotalInCents:number}>;
 export type Order = Readonly<{id:string;orderNumber:string;customerId?:string|undefined;email:string;status:OrderStatus;currency:string;subtotalInCents:number;shippingInCents:number;discountInCents:number;totalInCents:number;shippingMethod:string;shippingAddress:ShippingAddress;items:readonly OrderItem[]}>;
 
 export const ORDER_TRANSITIONS: Record<OrderStatus,readonly OrderStatus[]> = {
