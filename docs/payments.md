@@ -6,6 +6,8 @@ La arquitectura de pagos es multi-provider y permite utilizar **Wompi, Stripe, M
 
 Todos los adapters se registran server-side en un `PaymentProviderRegistry`. Cada payment selecciona su proveedor de forma explícita y persiste esa elección junto con su referencia externa. Las credenciales permanecen fuera de Git.
 
+**Estado de certificación:** implementación lista para certificación operativa; **los cinco flujos todavía no se declaran certificados en producción hasta obtener evidencia real de cada provider**.
+
 ## Webhooks reales
 
 Cada provider tiene su endpoint independiente y todos convergen en el mismo `PaymentService`:
@@ -254,18 +256,51 @@ Las credenciales de cada provider son independientes. Se pueden configurar las c
 - `0015_payments.sql`: modelo inicial de pagos.
 - `0016_multi_provider_payments.sql`: providers soportados y `checkout_url`.
 
-## Criterio de cierre de Fase 04
+## Certificación real de producción
 
-La implementación de código no se declara 100% certificada hasta disponer de evidencia real por cada provider habilitado:
+La certificación de Fase 04 se ejecutará exclusivamente contra el despliegue de producción y requiere evidencia observable en el provider y en D1. No se considera válida una prueba que solamente cambie estados en la base de datos ni un webhook inyectado manualmente como sustituto del evento real.
 
-1. credenciales production configuradas fuera de Git;
-2. webhook production registrado;
-3. pago real aprobado recibido y verificado;
-4. orden movida a `PAID`;
-5. reserva consumida exactamente una vez;
-6. pago real rechazado/cancelado con liberación idempotente;
-7. duplicación de webhook sin doble efecto;
-8. amount/currency/reference manipulados rechazados;
-9. reconciliación server-side exitosa;
-10. capacidades de void/refund verificadas según método real;
-11. build Cloudflare, tests, architecture check y deploy de producción exitosos.
+### Matriz obligatoria
+
+| Provider | Intent real | Pago real aprobado | Webhook real | PAID | Reserva consume | Fallo/cancelación real | Reserva release | Replay idempotente | Reconciliación |
+|---|---|---|---|---|---|---|---|---|---|
+| Wompi | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE |
+| Stripe | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE |
+| Mercado Pago | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE |
+| PayPal | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE |
+| Binance Pay | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE | PENDIENTE |
+
+### Secuencia por provider
+
+1. Crear una orden de certificación con un monto pequeño pero real.
+2. Crear el intent mediante `/api/payments/intent` con una `Idempotency-Key` nueva.
+3. Completar el pago utilizando el checkout oficial del provider.
+4. Confirmar que el provider registra la transacción real como aprobada.
+5. Confirmar recepción del webhook en producción y verificar firma/autenticidad.
+6. Confirmar reconciliación server-side contra la API del provider.
+7. Confirmar que `payments.status = PAID` y que la orden pasa a `PAID`.
+8. Confirmar que la reserva asociada se consume exactamente una vez.
+9. Repetir el mismo webhook/evento y confirmar que no existe doble consumo ni doble transición.
+10. Ejecutar una prueba de cancelación/rechazo soportada por el provider y confirmar `FAILED`/`CANCELLED` + liberación idempotente de reserva.
+11. Verificar que amount, currency, provider y referencia coinciden; cualquier mismatch debe ser rechazado y auditado.
+12. Ejecutar/revisar reconciliación server-side usando el identificador real de la transacción.
+13. Registrar transaction ID, payment ID, order ID, reservation ID, timestamps y resultado como evidencia de certificación.
+
+### Reglas de seguridad durante la certificación
+
+- Nunca pegar secretos productivos en GitHub, chat, issues, logs o documentos.
+- No registrar PAN, CVV, tokens privados ni credenciales completas.
+- Utilizar únicamente órdenes creadas para certificación y montos controlados.
+- Verificar que el webhook llega al dominio HTTPS de producción.
+- No marcar un provider como certificado por el solo hecho de que el checkout abra correctamente.
+- El resultado final exige que el ciclo completo provider → webhook → reconciliación → `PAID/FAILED` → reserva sea observable.
+
+### Prerrequisitos técnicos
+
+El despliegue ya dispone de verificación básica de producción mediante `pnpm verify:production`, que comprueba health live/ready y el probe de rate limiting. fileciteturn185file0L2-L2 La certificación de pagos es adicional y no queda cubierta por ese script.
+
+La arquitectura y el flujo documentados arriba son el contrato de certificación; la documentación actual exige evidencia real por provider antes de declarar Fase 04 cerrada. fileciteturn182file0L2-L2
+
+### Criterio de cierre de Fase 04
+
+La Fase 04 se declara **100% certificada en producción** solamente cuando los cinco providers tengan todos los campos obligatorios de la matriz en estado `PASS` y exista evidencia del build/deploy de producción correspondiente.
