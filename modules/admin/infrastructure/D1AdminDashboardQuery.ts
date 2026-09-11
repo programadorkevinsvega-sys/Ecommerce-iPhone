@@ -1,3 +1,4 @@
+import type { D1Database } from "@cloudflare/workers-types";
 import type { AdminDashboardQuery, AdminDashboardSnapshot } from "../application/AdminDashboardQuery";
 
 export class D1AdminDashboardQuery implements AdminDashboardQuery {
