@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { listAdminServices } from "../../../../lib/api/adminServices";
 import { requireAdmin, PERMISSIONS } from "../../../../lib/adminAuth";
-import { parseServiceRequestStatus } from "../../../../modules/services/application/ServiceWorkflowService";
-import type { ServiceRequestStatus } from "../../../../modules/services/domain/ServiceRequest";
+import { parseServiceRequestStatus } from "../../../../../modules/services/application/ServiceWorkflowService";
+import type { ServiceRequestStatus } from "../../../../../modules/services/domain/ServiceRequest";
 
 export async function GET(request: Request) {
   try {
