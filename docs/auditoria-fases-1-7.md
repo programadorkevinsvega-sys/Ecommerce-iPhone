@@ -4,421 +4,304 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**Política operativa:** un único entorno permanente: **producción**.
+**Última actualización:** 2026-09-11  
+**Entorno operativo:** **producción únicamente**.
 
-> Este documento es una auditoría viva. Código, pruebas y documentación deben evolucionar en el mismo ciclo. No se marca una capacidad como terminada por documentación: requiere evidencia en el repositorio y validación del build/producción cuando corresponda.
-
-> **Regla de rigor:** ninguna fase se marca al 100% mientras exista deuda funcional, de seguridad, pruebas, reproducibilidad, rendimiento o evidencia pendiente que forme parte de su alcance. Un build exitoso no convierte por sí solo una fase en 100%.
-
----
-
-# 1. Estado actual
-
-| Fase | Estado | Estimación |
-|---|---|---:|
-| 01 Foundation | 🟢 Arquitectura y plataforma implementadas; reproducibilidad y seguridad final pendientes | ~92% |
-| 02 Storefront Premium | 🟢 Implementación amplia; validación funcional, accesibilidad, rendimiento y E2E completos pendientes | ~90% |
-| 03 Commerce Core | 🟢 Núcleo endurecido y desplegado; certificación funcional profunda aún pendiente | ~90% |
-| 04 Payments | 🔴 Preparación arquitectónica, sin integración real | ~5–10% |
-| 05 Services | 🟢 Implementación real; depende de Payments y cierre administrativo | ~75% |
-| 06 Admin + RBAC | 🟡 RBAC y seguridad implementados; backoffice incompleto | ~60% |
-| 07 Notifications + Queues | 🟡 Implementado; retries/DLQ pendientes | ~70% |
-
-**Importante:** los porcentajes son estimaciones de cierre, no métricas de código. No se redondea una fase a 100% por tener la mayor parte de sus componentes implementados. El 100% exige evidencia suficiente de implementación, pruebas y operación para todo el alcance definido.
+> Esta auditoría refleja el estado real del repositorio. Una fase solo puede declararse 100% cuando código, pruebas, seguridad, reproducibilidad y evidencia operativa de su alcance estén cerrados. GitHub Actions no es criterio de aceptación.
 
 ---
 
-# 2. Arquitectura y política de entornos
+# 1. Estado de cierre
 
-La arquitectura objetivo es:
+| Fase | Estado | Cierre de código | Certificación final |
+|---|---|---:|---:|
+| 01 Foundation | 🟡 Implementada | Alta | Pendiente lockfile + auditoría final |
+| 02 Storefront | 🟡 Implementada | Alta | Pendiente E2E/performance/accessibility |
+| 03 Commerce Core | 🟢 Hardening completado | 100% | Pendiente deploy/certificación de esta última línea |
+| 04 Payments | 🔴 No iniciada como integración real | — | Fase siguiente |
+| 05 Services | 🟡 Implementada parcialmente | — | Depende de Payments/admin |
+| 06 Admin + RBAC | 🟡 Implementada parcialmente | — | Backoffice restante |
+| 07 Notifications + Queues | 🟡 Implementada parcialmente | — | DLQ/retry definitivo |
+
+**No se falsifica el 100% de las fases 1–7:** Payments, Services, Admin y Notifications todavía contienen alcance funcional explícitamente pendiente. El trabajo de este ciclo cierra el hardening de Commerce y elimina el uso de entornos remotos no necesarios.
+
+---
+
+# 2. Política de arquitectura y entornos
 
 ```text
-HTTP / Next.js Route (Presentation)
-             ↓
-      Application / Use Case
-             ↓
-            Domain
-             ↑
- Infrastructure / Adapters
+HTTP / Next.js Route
+        ↓
+Presentation
+        ↓
+Application / Use Case
+        ↓
+Domain
+        ↑
+Ports
+        ↑
+Infrastructure / Adapters
+        ↓
+Cloudflare / D1 / R2 / Queue
 ```
 
-Reglas:
+Reglas obligatorias:
 
-- Presentation no ejecuta SQL/D1 directamente.
-- Presentation no importa implementaciones `modules/*/infrastructure`.
-- Presentation no importa internals de `modules/*/domain`.
-- Application no depende de Infrastructure, Presentation, Next.js o Cloudflare.
-- Domain no depende de HTTP, Next.js, Cloudflare, D1, R2 ni SDKs externos.
-- Infrastructure implementa puertos definidos hacia dentro.
-- La composición de Cloudflare/D1 se concentra en adaptadores/composition roots bajo `apps/web/lib`.
-- Los errores se traducen en los boundaries HTTP.
-- `architecture:check` debe detectar automáticamente las violaciones.
+- Presentation no ejecuta SQL/D1.
+- Presentation no importa Infrastructure directamente.
+- Presentation no importa internals de Domain.
+- Application no depende de Next.js, Cloudflare o Infrastructure.
+- Domain no depende de frameworks ni proveedores.
+- Infrastructure implementa puertos internos.
+- `architecture:check` es el enforcement automático.
+- La composición Cloudflare/D1 está centralizada en composition roots.
 
-El proyecto tiene un único entorno Cloudflare permanente: **producción**. Tests aislados pueden usar mocks, InMemory, fixtures, D1 local/emulado o infraestructura efímera; eso no constituye un entorno operativo adicional.
+## Entornos
+
+Existe **un único entorno Cloudflare remoto: producción**.
+
+El desarrollo local puede usar Next.js, Vitest, Playwright y D1 local/emulado. Esto no es un entorno operativo adicional.
+
+Se eliminó de la configuración operativa:
+
+- deploy remoto `staging`;
+- bindings Cloudflare `staging`;
+- script `db:migrate:staging`;
+- script `deploy:staging`;
+- preview remoto `--env development`.
+
+El Worker principal queda definido directamente para producción.
 
 ---
 
-# 3. FASE 01 — Foundation
+# 3. Foundation
 
-## 3.1 Implementado
+## Implementado
 
-Existe:
-
-- monorepo modular `apps/*`, `modules/*`, `packages/*`;
+- monorepo modular;
+- DDD + Clean Architecture;
 - bounded contexts;
-- Domain/Application/Infrastructure;
-- D1, R2, Queues;
-- OpenNext + Cloudflare Workers;
-- cron y observabilidad;
+- D1/R2/Queues;
+- OpenNext + Workers;
+- cron;
+- observabilidad;
 - rate limiting;
-- unit tests y Playwright/E2E;
-- `architecture:check`;
-- producción como único entorno operativo.
+- health live/ready;
+- request-id;
+- headers de seguridad;
+- enforcement arquitectónico;
+- producción como único entorno remoto.
 
-## 3.2 Clean Architecture de APIs
+## Producción verificada anteriormente
 
-Se refactorizaron los boundaries de las APIs administrativas que tenían acceso directo a infraestructura.
-
-Ahora las rutas HTTP funcionan como Presentation delgada y delegan la composición a adapters/use cases apropiados.
-
-Se aisló especialmente:
-
-- Admin dashboard: query de aplicación + implementación D1 en Infrastructure.
-- Admin notifications: query de aplicación + implementación D1 en Infrastructure.
-- Admin service types: composición fuera de la ruta.
-- Admin users: composición fuera de la ruta.
-- Admin bootstrap/login/session: composición centralizada en `adminAuth`.
-- APIs de commerce/services/reviews consumen servicios de aplicación mediante composition roots.
-
-También se reforzó `scripts/check-architecture.mjs` para fallar cuando una API:
-
-- importe Infrastructure directamente;
-- importe internals de Domain directamente;
-- importe Cloudflare runtime directamente;
-- ejecute `.prepare()` o `.batch()` de D1 desde Presentation.
-
-**Estado:** arquitectura implementada y reforzada, pero la separación todavía requiere auditoría continua y no se considera certificada al 100% únicamente por compilar.
-
-## 3.3 Build y producción — evidencia 2026-09-11
-
-El deploy real más reciente de Cloudflare finalizó correctamente.
-
-Evidencia observada:
+Deploy Cloudflare del 2026-09-11:
 
 - pnpm `10.15.0`;
-- Node.js `24.18.0` en el entorno de build;
+- Node `24.18.0`;
 - Next.js `15.5.25`;
-- `@opennextjs/cloudflare 1.20.6`;
-- instalación de dependencias exitosa;
-- compilación Next.js exitosa;
-- lint/type checking exitosos;
-- **25/25 páginas estáticas generadas**;
-- Worker generado mediante OpenNext;
-- Worker desplegado correctamente;
-- Cloudflare Worker `ecommerce-iphone` actualizado;
-- versión desplegada: `e7f0b7fd-3e73-4897-ae2b-e3c0049e1815`;
-- `/api/health/live` → HTTP 200;
-- `/api/health/ready` → HTTP 200;
-- verificación de producción → **PASS**;
-- comando de deploy → **Success**.
-
-Bindings de producción confirmados durante el deploy:
-
-- D1 `ecommerce-iphone`;
-- R2 `ecommerce-iphone-media`;
-- Queue `ecommerce-iphone-events`;
-- rate limiter general `120 requests/60s`;
-- rate limiter sensible `20 requests/60s`;
-- `APP_ENV=production`.
-
-La comprobación automática de rate limiting mostró una advertencia no bloqueante porque no obtuvo HTTP 429 después de 21 solicitudes; el propio verificador reconoce la consistencia eventual del Rate Limiting de Cloudflare. Esto no invalidó el deploy ni los health checks.
-
-**Importante:** esta evidencia sustituye cualquier estado anterior que describiera el último deploy como pendiente. El deploy real de esta versión fue exitoso.
-
-## 3.4 Migraciones D1 de producción — aplicadas
-
-Durante el deploy del 2026-09-11 se aplicaron correctamente en la base D1 remota:
-
-- `0012_inventory_reservation_cleanup.sql` → ✅;
-- `0013_inventory_reservation_order_link.sql` → ✅.
-
-Por tanto, la documentación ya no debe indicar que estas migraciones están pendientes de producción.
-
-## 3.5 Reproducibilidad — pendiente
-
-Todavía falta completar la política de instalación determinista con `pnpm-lock.yaml` versionado y Node controlado.
-
-Objetivo:
-
-```text
-package.json
-+ pnpm-workspace.yaml
-+ pnpm-lock.yaml
-+ pnpm 10.15.0
-+ Node controlado
-        ↓
-pnpm install --frozen-lockfile
-        ↓
-build determinista
-```
-
-No se declara reproducibilidad total hasta que un build limpio pueda instalar exactamente las versiones bloqueadas.
-
-## 3.6 Seguridad final — pendiente
-
-Checklist de cierre:
-
-- [ ] secretos fuera del repositorio;
-- [ ] validación de entrada en todas las APIs;
-- [ ] autorización server-side;
-- [ ] sesiones y expiración;
-- [ ] cookies seguras;
-- [ ] CSRF donde corresponda;
-- [ ] rate limiting;
-- [ ] headers de seguridad;
-- [ ] CORS/orígenes;
-- [ ] no filtración de errores sensibles;
-- [ ] protección de endpoints administrativos;
-- [ ] autorización por recurso/tenant donde aplique;
-- [ ] idempotencia en operaciones críticas;
-- [ ] pruebas de abuso/límites;
-- [ ] auditoría de dependencias;
-- [ ] regresiones de seguridad.
-
-### Resultado
-
-**FASE 01 → ~92%.**
-
-La plataforma, arquitectura base y build productivo están implementados y validados. No se marca 100% porque siguen pendientes la reproducibilidad, la auditoría de seguridad completa y la certificación final de los boundaries arquitectónicos.
-
----
-
-# 4. FASE 02 — Storefront Premium
-
-## 4.1 Capacidades actualmente implementadas
-
-- catálogo real conectado a D1;
-- búsqueda por texto;
-- filtros por marca y condición;
-- ordenamiento por fecha y precio;
-- paginación server-side;
-- estados vacío/error/recovery existentes;
-- detalle de producto por slug;
-- variantes de producto;
-- reviews integradas;
-- FAQ integrada;
-- productos relacionados;
-- galería de imágenes con `next/image`, dimensiones y `sizes` responsivos;
-- especificaciones, condición, garantía, batería, capacidad y color;
-- disponibilidad/inventario visible;
-- metadata SEO por producto;
-- canonical;
-- Open Graph;
-- JSON-LD `Product`, `Offer` y `AggregateRating` cuando corresponde;
-- sitemap/robots;
-- repositorios D1 e InMemory;
-- Domain/Application/Infrastructure para catálogo y búsqueda;
-- validaciones de dominio para slug, precio, stock, moneda, garantía y batería.
-
-## 4.2 Evidencia de producción
-
-El deploy del 2026-09-11 confirmó que el storefront completo compila, genera el Worker mediante OpenNext y se despliega correctamente en Cloudflare.
-
-## 4.3 Pendientes para declarar 100%
-
-- [ ] taxonomía/categorías completa;
-- [ ] cobertura completa de filtros y combinaciones;
-- [ ] loading, empty, error y recovery auditados en rutas principales;
-- [ ] accesibilidad auditada;
-- [ ] rendimiento real medido en producción, incluyendo LCP/CLS;
-- [ ] JSON-LD validado en casos relevantes;
-- [ ] sitemap/robots/canonical validados con URLs reales;
-- [ ] E2E de flujos principales con evidencia de ejecución;
-- [ ] cobertura de variantes, stock y agotados;
-- [ ] regresiones del catálogo/detalle;
-- [ ] validación visual/responsive.
-
-### Resultado
-
-**FASE 02 → ~90%.**
-
-Permanece abierta hasta demostrar los puntos de validación anteriores.
-
----
-
-# 5. FASE 03 — Commerce Core
-
-## 5.1 Hardening implementado
-
-El núcleo commerce tiene implementados:
-
-- customers/customer_addresses;
-- carts/cart_items;
-- sesiones reales de cliente con token hash, expiración y revocación;
-- autorización server-side de identidad;
-- ownership explícito de carrito en Application/Repository;
-- ownership de pedidos por `customerId`;
-- checkout protegido contra carrito de otro cliente;
-- inventario con decremento atómico condicionado por `active=1 AND stock>=quantity`;
-- rollback transaccional de checkout ante falta de stock;
-- idempotencia mediante `checkout_idempotency`, incluyendo carreras;
-- precios server-side recalculados desde `products`/`product_variants` justo antes del checkout;
-- nombres/slugs/precios de líneas derivados del catálogo server-side;
-- reservas enlazadas al pedido;
-- expiración de reservas consciente del estado del pedido;
-- `releaseForOrder()` para liberar y devolver stock una sola vez;
-- `consumeForOrder()` para cerrar la reserva sin devolver stock;
-- limpieza de reservas legacy mediante migración `0012`;
-- enlace reserva → pedido mediante migración `0013`;
-- `OrderCreated` con ID determinista para evitar duplicación por reintentos;
-- pruebas adicionales para sesión, ownership de carrito, autenticación, stock, shipping y ciclo de checkout.
-
-## 5.2 Modelo de inventario actual
-
-El checkout crea el pedido en `PENDING_PAYMENT`, decrementa stock atómicamente y crea una reserva enlazada al `order_id` con expiración de 15 minutos.
-
-```text
-PENDING_PAYMENT / PAYMENT_PROCESSING + reserva expirada
-        ↓
-liberar reserva + devolver stock una sola vez
-
-PAID / PROCESSING / SHIPPED / etc. + reserva expirada
-        ↓
-cerrar reserva SIN devolver stock
-
-fallo/cancelación de pago
-        ↓
-releaseForOrder(orderId)
-        ↓
-restaurar stock una sola vez
-
-pago confirmado
-        ↓
-consumeForOrder(orderId)
-        ↓
-cerrar reserva SIN restaurar stock
-```
-
-Payments todavía no está integrado. Los hooks quedan preparados para la transición real de pago de Fase 04.
-
-## 5.3 Seguridad de carrito y cliente
-
-Para un cliente autenticado:
-
-```text
-customer_session
-      ↓
-resolve session
-      ↓
-customerId
-      ↓
-claim(cartId, customerId)
-      ↓
-getOwnedByCustomer(cartId, customerId)
-      ↓
-checkout
-```
-
-Esto elimina el problema previo de utilizar un `cart_id` perteneciente a otro cliente.
-
-Para guest checkout, el carrito anónimo se reclama al cliente creado durante el checkout. Si el email ya pertenece a un cliente, se exige una sesión válida.
-
-## 5.4 Precios server-side
-
-El precio almacenado en `cart_items` no es autoridad final para cobrar. Antes de crear el pedido, Infrastructure vuelve a consultar producto y variante activa. Subtotal y total se calculan con precios server-side.
-
-## 5.5 Idempotencia y notificaciones
-
-`Idempotency-Key` es obligatoria. El repositorio:
-
-- valida la key;
-- registra key → customer → order;
-- devuelve el pedido existente para reintentos del mismo cliente;
-- rechaza el uso de una key existente por otro cliente;
-- protege carreras mediante unicidad y relectura después del fallo del batch.
-
-El evento utiliza `order-created:{orderId}` como ID determinista.
-
-## 5.6 Evidencia de producción — 2026-09-11
-
-El hardening fue desplegado en producción y las migraciones relacionadas se aplicaron correctamente.
-
-Verificado durante el deploy:
-
-- Worker actualizado → ✅;
-- D1 remoto actualizado → ✅;
-- migración `0012` → ✅;
-- migración `0013` → ✅;
+- OpenNext Cloudflare `1.20.6`;
+- build PASS;
+- lint/typecheck PASS;
+- 25/25 páginas estáticas;
+- Worker deploy PASS;
 - `/api/health/live` → 200;
 - `/api/health/ready` → 200;
-- verificación de producción → PASS.
+- production verification → PASS;
+- D1 `0012` → aplicada;
+- D1 `0013` → aplicada.
 
-**No se considera que esto certifique automáticamente todos los escenarios de negocio críticos.** Los health checks demuestran operación de la aplicación, no concurrencia ni todas las invariantes de checkout.
+El warning del rate limiter después de 21 requests no fue considerado bloqueo porque Cloudflare Rate Limiting es eventualmente consistente.
 
-## 5.7 Pendientes de certificación funcional
+## Reproducibilidad
 
-- [ ] prueba real de dos checkouts concurrentes sobre stock limitado;
-- [ ] prueba real de dos requests con la misma `Idempotency-Key`;
-- [ ] prueba real de reintento de notificación sin duplicación en outbox;
-- [ ] prueba real de carrito A contra sesión B;
-- [ ] prueba real de checkout guest con email existente;
-- [ ] prueba real de expiración de reserva `PENDING_PAYMENT` y devolución única de stock;
-- [ ] prueba real de reserva asociada a `PAID` sin devolución de stock;
-- [ ] integración real de `releaseForOrder()`/`consumeForOrder()` con Payments;
-- [ ] validación de invariantes de checkout contra D1 de producción.
+`package.json` fija `pnpm@10.15.0`, pero todavía falta `pnpm-lock.yaml` versionado para poder exigir `pnpm install --frozen-lockfile`.
 
-### Resultado
-
-**FASE 03 → ~90%.**
-
-El hardening crítico está implementado y desplegado. El porcentaje sube respecto a la auditoría anterior porque las migraciones `0012/0013` ya fueron aplicadas en producción y el deploy completo pasó. La fase permanece abierta por certificación funcional profunda y porque Payments todavía no existe como integración real.
-
-> **Nota sobre CI:** el estado de GitHub Actions no forma parte del criterio de aceptación de esta auditoría. La evidencia operativa relevante es el build/deploy real de Cloudflare, las migraciones remotas y la verificación directa de producción.
+**No se marca reproducibilidad total hasta que ese lockfile exista y un build limpio lo consuma.**
 
 ---
 
-# 6. FASE 04 — Payments
-
-`modules/payments` sigue principalmente preparado a nivel arquitectónico/documental.
-
-Pendiente:
-
-- payment intents;
-- provider routing;
-- Wompi/Stripe/Mercado Pago/PayPal/Binance Pay;
-- webhooks y firma;
-- refunds;
-- reconciliation;
-- idempotency;
-- ledger;
-- integración con `consumeForOrder()` en pago confirmado;
-- integración con `releaseForOrder()` en pago fallido/cancelado.
-
-**Resultado: ~5–10%.**
-
----
-
-# 7. FASE 05 — Services
+# 4. Storefront Premium
 
 Implementado:
 
-- CreateServiceRequest;
-- ServiceManagement;
-- ServiceCustomerPortal;
-- ServiceWorkflowService;
-- ServiceRequestRepository;
-- ServiceTypeRepository;
-- D1 repositories;
-- workflow configurable;
-- minimización de IMEI/serial mediante last 4.
+- catálogo D1;
+- búsqueda;
+- filtros;
+- ordenamiento;
+- paginación;
+- detalle por slug;
+- variantes;
+- reviews;
+- FAQ;
+- relacionados;
+- galería responsive;
+- inventario;
+- SEO metadata;
+- canonical/Open Graph;
+- JSON-LD;
+- sitemap/robots;
+- Domain/Application/Infrastructure.
 
-Pendiente principalmente la integración real con Payments y el cierre de operaciones administrativas.
+Pendiente de certificación completa:
 
-**Resultado: ~75%.**
+- E2E de flujos principales;
+- accesibilidad;
+- métricas LCP/CLS reales;
+- validación SEO en URLs reales;
+- regresiones responsive;
+- cobertura exhaustiva de filtros/variantes/agotados.
+
+No se declara 100% sin esas evidencias.
 
 ---
 
-# 8. FASE 06 — Admin + RBAC
+# 5. Commerce Core — cierre de código
+
+## 5.1 Cliente y sesión
+
+- sesión `customer_session` HttpOnly;
+- SameSite `lax`;
+- Secure en producción;
+- expiración;
+- token aleatorio;
+- solo hash SHA-256 persistido;
+- revocación;
+- identidad server-side;
+- carrera de creación de customer por email protegida mediante relectura después de conflicto.
+
+## 5.2 Carrito
+
+- carrito guest por `cart_id`;
+- claim explícito por customer;
+- `getOwnedByCustomer()`;
+- un customer no puede reclamar carrito de otro;
+- checkout autenticado verifica identidad;
+- guest checkout con email existente exige sesión válida.
+
+## 5.3 Checkout
+
+- `Idempotency-Key` obligatoria;
+- idempotencia por customer;
+- carrera de idempotencia resuelta mediante unicidad + relectura;
+- precio recalculado desde catálogo server-side;
+- producto/variante activa verificados;
+- stock decrementado atómicamente;
+- `stock >= quantity` obligatorio;
+- batch D1 transaccional;
+- order creado en `PENDING_PAYMENT`;
+- cart limpiado al completar batch;
+- evento `OrderCreated` determinista por pedido;
+- líneas conservan `variant_id`.
+
+## 5.4 Reservas e inventario
+
+- reserva enlazada a `order_id`;
+- expiración de 15 minutos;
+- `releaseForOrder()` idempotente;
+- `consumeForOrder()` idempotente;
+- expiración dependiente del estado del pedido;
+- pedidos pagados no devuelven stock al expirar una reserva;
+- legacy cleanup mediante `0012`;
+- relación reserva→pedido mediante `0013`;
+- scheduler de Worker libera expiraciones cada minuto independientemente de nuevos checkouts.
+
+## 5.5 Pedidos
+
+Se agregó listado autenticado de pedidos del customer:
+
+```text
+GET /api/orders
+GET /api/orders?limit=20&offset=0
+GET /api/orders/:id
+```
+
+El nuevo flujo mantiene Clean Architecture:
+
+```text
+Route
+ ↓
+ListOrdersForCustomer
+ ↓
+OrderRepository
+ ↓
+D1OrderRepository
+```
+
+La consulta está limitada a 50 elementos por página y siempre filtra por `customer_id`.
+
+## 5.6 Migración 0014
+
+Existe:
+
+```text
+migrations/0014_order_item_variant_link.sql
+```
+
+Su objetivo es persistir `variant_id` en `order_items` con FK e índice.
+
+**Estado:** versionada en `main`; debe aplicarse en producción durante el próximo deploy. La evidencia anterior solo certifica hasta `0013`.
+
+## 5.7 Pruebas agregadas
+
+Existen pruebas unitarias para:
+
+- autenticación de checkout;
+- idempotency key;
+- stock;
+- shipping;
+- release de reservas;
+- ownership;
+- sesión;
+- listado de pedidos del customer.
+
+La certificación de concurrencia contra D1 real sigue siendo un gate operativo, no se puede simular como evidencia de producción.
+
+### Resultado Phase 3
+
+**Código Commerce Core: 100% del alcance definido para el núcleo pre-payment.**
+
+**Certificación productiva: pendiente de desplegar `0014` y ejecutar la batería final contra producción.**
+
+La integración real de pagos, `consumeForOrder()` después de un pago confirmado y `releaseForOrder()` después de un pago fallido pertenecen a Fase 04 Payments; no deben bloquear artificialmente el cierre del núcleo pre-payment.
+
+---
+
+# 6. Payments
+
+Pendiente:
+
+- payment intent;
+- proveedor real;
+- firma de webhooks;
+- idempotencia de pagos;
+- reconciliation;
+- refunds;
+- ledger;
+- transición `PENDING_PAYMENT → PAYMENT_PROCESSING → PAID`;
+- `consumeForOrder()` en pago confirmado;
+- `releaseForOrder()` en pago fallido/cancelado.
+
+**No se implementa artificialmente en Commerce: corresponde a Fase 04.**
+
+---
+
+# 7. Services
+
+Implementado parcialmente:
+
+- ServiceRequest;
+- ServiceManagement;
+- Customer Portal;
+- Service Workflow;
+- Service Type repositories;
+- D1 persistence;
+- minimización de IMEI/serial.
+
+Pendiente cierre de integraciones y operaciones administrativas.
+
+---
+
+# 8. Admin + RBAC
 
 Implementado:
 
@@ -429,148 +312,107 @@ Implementado:
 - fingerprinting;
 - auditoría;
 - permisos server-side;
-- admin users;
 - dashboard;
-- resources;
-- service types.
+- users/resources/service types.
 
-Pendiente:
-
-- pagos;
-- reviews;
-- cupones/promociones;
-- CMS/blog;
-- SEO administrativo;
-- settings;
-- inventario completo.
-
-**Resultado: ~60%.**
+Pendiente completar backoffice de pagos, reviews, promociones, CMS/SEO, settings e inventario administrativo.
 
 ---
 
-# 9. FASE 07 — Notifications / Queues
+# 9. Notifications + Queues
 
 Implementado:
 
-- NotificationPorts;
+- notification ports;
 - NotificationService;
 - templates;
 - D1 outbox/deliveries;
 - Resend provider;
-- Cloudflare Queue;
+- Queue;
 - cron;
-- eventos de checkout con IDs deterministas para evitar duplicados por reintento.
+- IDs deterministas para eventos de pedido.
 
 Pendiente:
 
 - DLQ explícita;
-- contador acumulativo de intentos;
-- definir un único dueño del retry;
+- política definitiva de retry;
 - replay/auditoría de fallos terminales.
 
-Modelo objetivo:
+---
 
-```text
-Queue = transporte + retry técnico
-Outbox = estado durable + auditoría
-DLQ = fallo definitivo
-```
+# 10. Reproducibilidad y seguridad — gates restantes
 
-**Resultado: ~70%.**
+## Reproducibilidad
+
+- [ ] versionar `pnpm-lock.yaml`;
+- [ ] cambiar instalación de build a `pnpm install --frozen-lockfile`;
+- [ ] fijar runtime Node del build;
+- [ ] ejecutar build limpio reproducible.
+
+## Seguridad
+
+- [ ] auditoría exhaustiva de todas las APIs;
+- [ ] validación de input completa;
+- [ ] autorización server-side completa;
+- [ ] revisión CORS/Origin;
+- [ ] revisión CSRF donde corresponda;
+- [ ] headers;
+- [ ] secrets/dependencias;
+- [ ] abuso/rate-limit;
+- [ ] regresiones de seguridad.
+
+Estos gates no se convierten en `PASS` por documentación.
 
 ---
 
-# 10. Evidencia operativa más reciente
+# 11. Criterio de cierre final
 
-**Fecha:** 2026-09-11  
-**Proveedor:** Cloudflare  
-**Worker:** `ecommerce-iphone`  
-**Version ID:** `e7f0b7fd-3e73-4897-ae2b-e3c0049e1815`
-
-Resultado:
+Para cada fase:
 
 ```text
-Build                         PASS
-Next.js compile               PASS
-TypeScript / lint             PASS
-Static pages                  25/25 PASS
-OpenNext bundle               PASS
-Cloudflare Worker deploy      PASS
-D1 migration 0012             PASS
-D1 migration 0013             PASS
-Health live                   HTTP 200
-Health ready                  HTTP 200
-Production verification       PASS
-Deploy command                Success
+Código
+  +
+Pruebas
+  +
+Seguridad
+  +
+Reproducibilidad
+  +
+Deploy cuando aplique
+  +
+Verificación de producción
+  =
+100%
 ```
 
-El único warning observado fue la prueba automática de rate limiting, que no recibió HTTP 429 tras 21 solicitudes. El warning no bloqueó el deploy y es consistente con la naturaleza eventualmente consistente del Rate Limiting de Cloudflare.
+No se usa:
+
+```text
+"compila" = 100%
+"CI verde" = 100%
+"documentado" = 100%
+```
+
+La aceptación es sobre el producto real y producción.
 
 ---
 
-# 11. Regla de actualización de esta auditoría
-
-Cada cambio debe seguir:
+# 12. Orden inmediato
 
 ```text
-1. Implementar código
-2. Añadir/ajustar pruebas
-3. Ejecutar validación disponible
-4. Validar producción cuando sea una capacidad productiva
-5. Actualizar este documento
-6. Cambiar porcentajes únicamente con evidencia
+1. Commit actual → Cloudflare build/deploy
+2. Aplicar 0014 en D1 producción
+3. Ejecutar verify:production
+4. Ejecutar tests completos
+5. Certificar invariantes de checkout/concurrencia
+6. Cerrar reproducibilidad con pnpm-lock.yaml
+7. Auditoría final de seguridad
+8. E2E/accessibility/performance del storefront
+9. Iniciar Fase 04 Payments
 ```
 
-Nunca se debe permitir:
+## Estado real al cierre de este documento
 
-```text
-Código implementado ≠ documentación desactualizada
-Documentación actualizada ≠ código inexistente
-```
+El código pendiente de Commerce Core identificado en la auditoría anterior ya fue corregido: el listado autenticado de pedidos está implementado, la política remota de entornos quedó reducida a producción y los documentos de Foundation/Development fueron sincronizados.
 
-**Regla adicional:** nunca usar 100% como estimación hasta que todos los criterios de cierre definidos para la fase tengan evidencia suficiente. Si existe incertidumbre, se conserva la fase abierta y se estima conservadoramente.
-
----
-
-# 12. Próximo orden de trabajo
-
-```text
-FASE 01
-  ├─ reproducibilidad con lockfile
-  ├─ auditoría final de seguridad
-  └─ certificación completa de boundaries arquitectónicos
-
-        ↓
-
-FASE 02
-  ├─ E2E de storefront
-  ├─ auditoría de accesibilidad
-  ├─ rendimiento real LCP/CLS
-  ├─ validación SEO/JSON-LD/sitemap
-  ├─ estados de error/loading/recovery
-  └─ validación responsive/regresiones
-
-        ↓
-
-FASE 03
-  ├─ concurrencia de stock
-  ├─ idempotencia concurrente
-  ├─ ownership guest/autenticado
-  ├─ ciclo completo de reservas
-  └─ validación profunda de invariantes contra producción
-
-        ↓
-
-FASE 04
-  ├─ Payments real
-  ├─ consumeForOrder() en pago confirmado
-  └─ releaseForOrder() en pago fallido/cancelado
-```
-
----
-
-## Última actualización
-
-**2026-09-11 — Deploy Cloudflare de producción exitoso, migraciones `0012` y `0013` aplicadas, health checks y verificación de producción PASS.**
-
-Esta auditoría queda sincronizada con el estado operativo real y no utiliza el estado de GitHub Actions como criterio de aceptación.
+**No se afirma falsamente que todo el roadmap 1–7 está al 100%: las fases 04–07 todavía tienen alcance funcional pendiente.**
