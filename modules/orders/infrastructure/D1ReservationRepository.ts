@@ -14,7 +14,7 @@ export class D1ReservationRepository implements ReservationRepository {
       this.db.prepare("UPDATE inventory_reservations SET released_at=CURRENT_TIMESTAMP WHERE id=? AND released_at IS NULL").bind(row.id),
       this.db.prepare("UPDATE products SET stock=stock+?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND changes()=1").bind(row.quantity, row.product_id),
     ]);
-    await this.db.batch(statements);
-    return rows.results.length;
+    const results = await this.db.batch(statements);
+    return results.reduce((count, result, index) => count + (index % 2 === 0 && result.meta.changes === 1 ? 1 : 0), 0);
   }
 }
