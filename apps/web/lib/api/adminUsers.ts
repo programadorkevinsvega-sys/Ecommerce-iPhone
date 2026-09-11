@@ -49,11 +49,17 @@ export async function updateAdminUser(body: Record<string, unknown>) {
 
 export async function hardenAdminLifecycle(body: Record<string, unknown>) {
   const { admin, repo } = await requireAdmin(PERMISSIONS.adminsManage);
-  const targetId = String(body.id ?? "");
+  const actor = await repo.findById(admin.id);
+  if (!actor) throw new Error("ADMIN_NOT_FOUND");
+  const targetId = String(body.id ?? "").trim();
   if (!targetId) throw new Error("ID_REQUIRED");
   const hardening = new AdminManagementHardening(repo);
-  if (body.action === "activate") return hardening.activate(await repo.findById(admin.id).then((value) => value!), targetId);
-  if (body.action === "deactivate") return hardening.deactivate(await repo.findById(admin.id).then((value) => value!), targetId);
-  if (body.action === "change_role") return hardening.changeRole(await repo.findById(admin.id).then((value) => value!), targetId, String(body.role) as AdminRole);
+  if (body.action === "activate") return hardening.activate(actor, targetId);
+  if (body.action === "deactivate") return hardening.deactivate(actor, targetId);
+  if (body.action === "change_role") {
+    const role = String(body.role ?? "") as AdminRole;
+    if (!ROLES.includes(role)) throw new Error("INVALID_ROLE");
+    return hardening.changeRole(actor, targetId, role);
+  }
   throw new Error("INVALID_ADMIN_ACTION");
 }
