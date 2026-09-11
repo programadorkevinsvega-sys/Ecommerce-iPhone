@@ -8,6 +8,10 @@ export class CartManagement {
     return this.repository.getOrCreate(cartId, customerId);
   }
 
+  claim(cartId: string, customerId: string): Promise<void> {
+    return this.repository.claimForCustomer(cartId, customerId);
+  }
+
   async addItem(input: Readonly<{ cartId: string; productId: string; quantity: number; variantId?: string }>): Promise<Cart> {
     assertCartQuantity(input.quantity);
     await this.repository.upsertItem(input.cartId, input.productId, input.quantity, input.variantId);
