@@ -6,13 +6,35 @@ La arquitectura de pagos es multi-provider y permite utilizar **Wompi, Stripe, M
 
 Todos los adapters se registran server-side en un `PaymentProviderRegistry`. Cada payment selecciona su proveedor de forma explícita y persiste esa elección junto con su referencia externa. Las credenciales permanecen fuera de Git.
 
+## Webhooks reales
+
+Cada provider tiene su endpoint independiente y todos convergen en el mismo `PaymentService`:
+
+```text
+/api/payments/webhooks/wompi
+/api/payments/webhooks/stripe
+/api/payments/webhooks/mercadopago
+/api/payments/webhooks/paypal
+/api/payments/webhooks/binance-pay
+```
+
+Antes de cualquier efecto financiero se verifica la autenticidad del evento:
+
+- Wompi: checksum/event signature.
+- Stripe: `Stripe-Signature`, timestamp y HMAC-SHA256.
+- Mercado Pago: `x-signature`, `x-request-id`, `data.id`, timestamp y HMAC-SHA256.
+- PayPal: verificación server-side contra la API oficial de PayPal usando webhook ID y headers de transmisión.
+- Binance Pay: HMAC-SHA512, timestamp, nonce y certificate serial.
+
+El webhook nunca se considera una confirmación válida solamente por contener un estado `approved`; el sistema consulta/reconcilia el recurso real del provider y valida provider, referencia, amount y currency antes de modificar la orden.
+
 ## Proveedores
 
 - Wompi Colombia: Web Checkout real, firma de integridad, eventos `transaction.updated`, checksum y reconciliación privada.
-- Stripe: PaymentIntents reales, idempotencia de API, client secret y reconciliación.
-- Mercado Pago: Checkout Preferences reales, idempotencia y consulta de pagos.
-- PayPal: Orders v2 reales con intent `CAPTURE`, OAuth server-side y consulta/reconciliación.
-- Binance Pay: Merchant API real, firma HMAC-SHA512, creación y consulta de órdenes.
+- Stripe: PaymentIntents reales, idempotencia de API, client secret, webhook firmado y reconciliación.
+- Mercado Pago: Checkout Preferences reales, idempotencia, webhook HMAC y consulta de pagos.
+- PayPal: Orders v2 reales con intent `CAPTURE`, OAuth server-side, captura después de `CHECKOUT.ORDER.APPROVED`, webhook verificado y consulta/reconciliación.
+- Binance Pay: Merchant API real, firma HMAC-SHA512, creación, webhook firmado y consulta de órdenes.
 
 Las capacidades específicas de captura, void, refund y webhook se mantienen en cada adapter; el dominio no conoce APIs externas.
 
@@ -57,6 +79,19 @@ PaymentProviderRegistry
    └── BINANCE_PAY
           ↓
       Provider API
+
+Provider Webhook
+       ↓
+Signature Verification
+       ↓
+Provider API reconciliation
+       ↓
+PaymentService
+       ↓
+PAID / FAILED / CANCELLED
+       ↓
+PAID → consumeForOrder()
+FAILED/CANCELLED → releaseForOrder()
 ```
 
 El `Payment` persistido conserva:
@@ -70,63 +105,85 @@ checkout_url
 
 La misma `Idempotency-Key` queda vinculada al provider original. Repetirla con otro provider es rechazado para evitar ambigüedad financiera.
 
-## Flujo común
+## Ciclo completo por provider
+
+### Éxito
 
 ```text
-Checkout
-  ↓
-Order PENDING_PAYMENT
-  ↓
-POST /api/payments/intent + provider
-  ↓
-Server valida customer + order + amount + currency
-  ↓
-Registry resuelve adapter
-  ↓
-Payment persistido con idempotency key
-  ↓
-Provider real
-  ↓
-Checkout/provider client flow
-  ↓
-Webhook firmado o reconciliación server-side
-  ↓
-Normalización de estado
-  ↓
-PAID / FAILED / CANCELLED
-  ↓
-PAID → consumeForOrder()
-FAILED/CANCELLED → releaseForOrder()
+intent
+ → provider checkout
+ → webhook firmado
+ → consulta server-side
+ → amount/currency/reference validation
+ → ProviderTransaction APPROVED
+ → Order PAID
+ → Payment PAID
+ → consumeForOrder() exactamente una vez
 ```
 
-El redirect del navegador solo sirve para UX. Nunca se utiliza como prueba de pago confirmado.
+### Fallo/cancelación
 
-## Wompi — integración real
+```text
+intent
+ → provider checkout
+ → webhook firmado/reconciliation
+ → ProviderTransaction DECLINED/ERROR/VOIDED
+ → Payment FAILED/CANCELLED
+ → Order CANCELLED
+ → releaseForOrder() idempotente
+```
 
-### Webhook
+### Reconciliación
+
+```text
+provider + transactionId
+ → adapter.getTransaction()
+ → normalización ProviderTransaction
+ → mismo PaymentService
+ → mismo state machine
+```
+
+Por tanto, webhook y reconciliación comparten la misma ruta de negocio y no pueden tener reglas financieras diferentes.
+
+## Wompi
 
 ```text
 POST /api/payments/webhooks/wompi
 ```
 
-Se valida:
+Se valida `environment`, `transaction.updated`, `signature.properties`, timestamp, checksum y luego se reconcilia contra Wompi antes de procesar el estado.
 
-- `environment = prod`;
-- evento `transaction.updated`;
-- `signature.properties` dinámicas;
-- valores firmados exactamente en el orden recibido;
-- `timestamp`;
-- checksum criptográfico;
-- `amount`, `currency` y `reference` contra D1;
-- estado externo permitido.
-
-### Reconciliación
+## Stripe
 
 ```text
-GET https://production.wompi.co/v1/transactions/{transaction_id}
+POST /api/payments/webhooks/stripe
 ```
 
-utilizando la llave privada de producción.
+Se valida `Stripe-Signature` sobre el **raw body** y ventana temporal. Los eventos `payment_intent.succeeded`, `payment_intent.payment_failed`, `payment_intent.canceled` y `payment_intent.processing` se reconcilian mediante el PaymentIntent real.
+
+## Mercado Pago
+
+```text
+POST /api/payments/webhooks/mercadopago
+```
+
+Se valida `x-signature` con `data.id`, `x-request-id` y timestamp mediante HMAC-SHA256. Los eventos de tipo `payment` se consultan nuevamente en Mercado Pago antes de procesarlos.
+
+## PayPal
+
+```text
+POST /api/payments/webhooks/paypal
+```
+
+La firma se verifica mediante el endpoint oficial de PayPal. Para `CHECKOUT.ORDER.APPROVED`, el servidor ejecuta la captura real del Order antes de llevar el resultado a `PaymentService`. No se considera el redirect del navegador como pago.
+
+## Binance Pay
+
+```text
+POST /api/payments/webhooks/binance-pay
+```
+
+Se valida HMAC-SHA512 con timestamp, nonce y certificate serial. La orden se consulta server-side mediante el identificador recibido y solamente después se procesa su estado normalizado.
 
 ## Idempotencia y concurrencia
 
