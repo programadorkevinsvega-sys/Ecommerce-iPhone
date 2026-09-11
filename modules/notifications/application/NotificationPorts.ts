@@ -9,15 +9,13 @@ export type OutboxRecord = NotificationEvent & Readonly<{
 export interface NotificationOutboxRepository {
   enqueue(event: NotificationEvent): Promise<boolean>;
   pending(limit: number): Promise<OutboxRecord[]>;
-  claim(id: string, leaseSeconds: number): Promise<boolean>;
   markQueued(id: string): Promise<void>;
   markProcessed(id: string): Promise<void>;
   markFailed(id: string, error: string, retryAt: string): Promise<void>;
-  claimDelivery(input: { outboxId: string; channel: "EMAIL"; recipient: string; template: string; leaseSeconds: number }): Promise<boolean>;
   hasDelivery(outboxId: string, channel: "EMAIL", recipient: string, template: string): Promise<boolean>;
   recordDelivery(input: { outboxId: string; channel: "EMAIL"; recipient: string; template: string; provider: string; providerMessageId?: string; status: "SENT" | "FAILED"; attempts: number; errorMessage?: string }): Promise<void>;
 }
 
 export interface EmailProvider {
-  send(input: { to: string; subject: string; html: string; text: string; tags?: Record<string, string> }): Promise<{ id: string }>;
+  send(input: { to: string; subject: string; html: string; text: string; tags?: Record<string, string>; idempotencyKey: string }): Promise<{ id: string }>;
 }
