@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { paymentContext } from "../../../../../../lib/payments";
+import { paymentContext } from "../../../../../lib/payments";
 import { verifyPayPalWebhook } from "../../../../../../../modules/payments/infrastructure/PayPalWebhookVerifier";
 import type { PaymentProviderPort } from "../../../../../../../modules/payments/application/PaymentPorts";
 
