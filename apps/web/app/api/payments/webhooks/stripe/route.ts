@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { paymentContext } from "../../../../../../lib/payments";
+import { paymentContext } from "../../../../../lib/payments";
 import { verifyStripeWebhook } from "../../../../../../../modules/payments/infrastructure/StripeWebhookVerifier";
 
 export async function POST(request: Request) {
