@@ -18,8 +18,18 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
 
     const effectiveCart = await this.refreshServerPricing(cart);
     const subtotalInCents = effectiveCart.items.reduce((sum, item) => sum + item.quantity * item.unitPriceInCents, 0);
+    const promotion = input.promotionCode
+      ? await this.findApplicablePromotion(input.promotionCode, subtotalInCents)
+      : null;
+    if (input.promotionCode && !promotion) throw new Error("Promotion is invalid, inactive, expired, or unavailable");
+
+    const discountInCents = promotion
+      ? promotion.discountType === "PERCENT"
+        ? Math.min(subtotalInCents, Math.floor((subtotalInCents * promotion.discountValue) / 100))
+        : Math.min(subtotalInCents, promotion.discountValue)
+      : 0;
     const shippingInCents = input.shippingMethod === "PICKUP" ? 0 : 1500000;
-    const totalInCents = subtotalInCents + shippingInCents;
+    const totalInCents = subtotalInCents + shippingInCents - discountInCents;
     const orderId = crypto.randomUUID();
     const orderNumber = `EIP-${new Date().getUTCFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
     const orderItems = effectiveCart.items.map((item) => ({ ...item, id: crypto.randomUUID() }));
@@ -32,8 +42,13 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
       statements.push(this.db.prepare("INSERT INTO checkout_guards(id) SELECT 1 WHERE changes()=0"));
     }
 
+    if (promotion) {
+      statements.push(this.db.prepare("UPDATE promotions SET used_count=used_count+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND active=1 AND starts_at<=CURRENT_TIMESTAMP AND ends_at>CURRENT_TIMESTAMP AND min_subtotal_in_cents<=? AND (max_uses IS NULL OR used_count<max_uses)").bind(promotion.id, subtotalInCents));
+      statements.push(this.db.prepare("INSERT INTO checkout_guards(id) SELECT 1 WHERE changes()=0"));
+    }
+
     statements.push(this.db.prepare("INSERT INTO orders(id,order_number,customer_id,email,status,currency,subtotal_in_cents,shipping_in_cents,discount_in_cents,total_in_cents,shipping_method,shipping_recipient_name,shipping_phone,shipping_address_line1,shipping_address_line2,shipping_city,shipping_state,shipping_postal_code,shipping_country_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(
-      orderId, orderNumber, input.customerId, input.email, "PENDING_PAYMENT", effectiveCart.currency, subtotalInCents, shippingInCents, 0, totalInCents,
+      orderId, orderNumber, input.customerId, input.email, "PENDING_PAYMENT", effectiveCart.currency, subtotalInCents, shippingInCents, discountInCents, totalInCents,
       input.shippingMethod, input.shippingAddress.recipientName, input.shippingAddress.phone, input.shippingAddress.addressLine1,
       input.shippingAddress.addressLine2 ?? null, input.shippingAddress.city, input.shippingAddress.state, input.shippingAddress.postalCode ?? null, input.shippingAddress.countryCode,
     ));
@@ -48,7 +63,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     }
 
     statements.push(this.db.prepare("INSERT INTO order_events(id,order_id,event_type,payload_json) VALUES(?,?,?,?)").bind(
-      crypto.randomUUID(), orderId, "OrderCreated", JSON.stringify({ orderId, orderNumber, totalInCents, currency: effectiveCart.currency }),
+      crypto.randomUUID(), orderId, "OrderCreated", JSON.stringify({ orderId, orderNumber, totalInCents, currency: effectiveCart.currency, ...(promotion ? { promotionCode: promotion.code, discountInCents } : {}) }),
     ));
     statements.push(this.db.prepare("DELETE FROM cart_items WHERE cart_id=?").bind(effectiveCart.id));
 
@@ -72,7 +87,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
       currency: effectiveCart.currency,
       subtotalInCents,
       shippingInCents,
-      discountInCents: 0,
+      discountInCents,
       totalInCents,
       shippingMethod: input.shippingMethod,
       shippingAddress: input.shippingAddress,
@@ -132,6 +147,10 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     return { ...cart, items };
   }
 
+  private async findApplicablePromotion(code: string, subtotalInCents: number): Promise<PromotionRow | null> {
+    return this.db.prepare("SELECT id,code,discount_type AS discountType,discount_value AS discountValue FROM promotions WHERE code=? AND active=1 AND starts_at<=CURRENT_TIMESTAMP AND ends_at>CURRENT_TIMESTAMP AND min_subtotal_in_cents<=? AND (max_uses IS NULL OR used_count<max_uses) LIMIT 1").bind(code, subtotalInCents).first<PromotionRow>();
+  }
+
   private async pruneExpiredIdempotency(): Promise<void> {
     await this.db.prepare("DELETE FROM checkout_idempotency WHERE expires_at<=CURRENT_TIMESTAMP").run();
   }
@@ -179,6 +198,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
   }
 }
 
+type PromotionRow = { id: string; code: string; discountType: "PERCENT" | "FIXED"; discountValue: number };
 type OrderRow = {
   id: string; order_number: string; customer_id: string | null; email: string; status: Order["status"]; currency: string;
   subtotal_in_cents: number; shipping_in_cents: number; discount_in_cents: number; total_in_cents: number; shipping_method: string;
