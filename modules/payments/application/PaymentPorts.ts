@@ -41,6 +41,7 @@ export type ProviderTransaction = Readonly<{
 export interface PaymentProviderPort {
   readonly provider: PaymentProvider;
   createPaymentIntent(input: CreatePaymentInput): Promise<ProviderPaymentIntent>;
+  recoverPaymentIntent(payment: Payment, input: CreatePaymentInput): Promise<ProviderPaymentIntent>;
   getTransaction(transactionId: string): Promise<ProviderTransaction>;
 }
 
