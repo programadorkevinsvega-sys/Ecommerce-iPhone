@@ -5,6 +5,8 @@ import { ServiceWorkflowService, parseServiceRequestStatus } from "../../../../m
 import type { ServiceRequestStatus } from "../../../../modules/services/domain/ServiceRequest";
 import { requireAdmin, PERMISSIONS } from "../adminAuth";
 
+export { parseServiceRequestStatus };
+
 async function context() {
   const { env } = await requireAdmin(PERMISSIONS.servicesRead);
   return { env, requests: new D1ServiceRequestRepository(env.DB), types: new D1ServiceTypeRepository(env.DB) };
