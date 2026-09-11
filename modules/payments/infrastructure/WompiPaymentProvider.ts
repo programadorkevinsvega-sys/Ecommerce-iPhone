@@ -1,58 +1,38 @@
-import type { CreatePaymentInput, PaymentProviderPort, ProviderPaymentIntent, ProviderTransaction } from "../application/PaymentPorts";
+import type { CreatePaymentInput, PaymentProviderPort, ProviderPaymentIntent, ProviderRefund, ProviderTransaction } from "../application/PaymentPorts";
 import type { Payment } from "../domain/Payment";
 
 const WOMPI_API = "https://production.wompi.co/v1";
 const WOMPI_CHECKOUT = "https://checkout.wompi.co/p/";
-
-async function sha256Hex(value: string): Promise<string> {
-  const bytes = new TextEncoder().encode(value);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
+async function sha256Hex(value: string): Promise<string> { const bytes = new TextEncoder().encode(value); const digest = await crypto.subtle.digest("SHA-256", bytes); return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join(""); }
 
 export class WompiPaymentProvider implements PaymentProviderPort {
   readonly provider = "WOMPI" as const;
-
-  constructor(
-    private readonly publicKey: string,
-    private readonly privateKey: string,
-    private readonly integritySecret: string,
-    private readonly appUrl: string,
-  ) {}
-
-  async createPaymentIntent(input: CreatePaymentInput): Promise<ProviderPaymentIntent> {
-    this.requireConfigured();
-    if (input.currency !== "COP") throw new Error("Wompi Colombia only supports COP for this integration");
-    if (!Number.isSafeInteger(input.amountInCents) || input.amountInCents <= 0) throw new Error("Invalid payment amount");
-    return this.checkout(input, this.reference(input));
-  }
-
-  async recoverPaymentIntent(payment: Payment, input: CreatePaymentInput): Promise<ProviderPaymentIntent> {
-    this.requireConfigured();
-    if (payment.provider !== this.provider || payment.providerReference !== this.reference(input)) throw new Error("Wompi payment recovery mismatch");
-    return this.checkout(input, payment.providerReference);
-  }
-
+  constructor(private readonly publicKey: string, private readonly privateKey: string, private readonly integritySecret: string, private readonly appUrl: string) {}
+  async createPaymentIntent(input: CreatePaymentInput): Promise<ProviderPaymentIntent> { this.requireConfigured(); if (input.currency !== "COP") throw new Error("Wompi Colombia only supports COP for this integration"); if (!Number.isSafeInteger(input.amountInCents) || input.amountInCents <= 0) throw new Error("Invalid payment amount"); return this.checkout(input, this.reference(input)); }
+  async recoverPaymentIntent(payment: Payment, input: CreatePaymentInput): Promise<ProviderPaymentIntent> { this.requireConfigured(); if (payment.provider !== this.provider || payment.providerReference !== this.reference(input)) throw new Error("Wompi payment recovery mismatch"); return this.checkout(input, payment.providerReference); }
   async getTransaction(transactionId: string): Promise<ProviderTransaction> {
     this.requireConfigured();
     if (!/^[A-Za-z0-9._:-]{1,128}$/.test(transactionId)) throw new Error("Invalid provider transaction id");
     const response = await fetch(`${WOMPI_API}/transactions/${encodeURIComponent(transactionId)}`, { headers: { Authorization: `Bearer ${this.privateKey}`, Accept: "application/json" } });
     if (!response.ok) throw new Error(`Wompi transaction lookup failed with HTTP ${response.status}`);
     const body = await response.json() as { data?: { id?: string; reference?: string; status?: string; amount_in_cents?: number; currency?: string } };
-    const data = body.data;
-    const amountInCents = data?.amount_in_cents;
+    const data = body.data; const amountInCents = data?.amount_in_cents;
     if (!data?.id || !data.reference || !data.status || typeof amountInCents !== "number" || !Number.isSafeInteger(amountInCents) || !data.currency) throw new Error("Wompi returned an invalid transaction payload");
     if (!["PENDING", "APPROVED", "DECLINED", "VOIDED", "ERROR"].includes(data.status)) throw new Error("Unknown Wompi transaction status");
     return { provider: this.provider, transactionId: data.id, reference: data.reference, status: data.status as ProviderTransaction["status"], amountInCents, currency: data.currency };
   }
-
+  async voidPayment(transactionId: string, idempotencyKey: string): Promise<ProviderTransaction> {
+    this.requireConfigured();
+    const response = await fetch(`${WOMPI_API}/transactions/${encodeURIComponent(transactionId)}/void`, { method: "POST", headers: { Authorization: `Bearer ${this.privateKey}`, Accept: "application/json", "Content-Type": "application/json", "X-Idempotency-Key": idempotencyKey }, body: "{}" });
+    if (!response.ok) throw new Error(`Wompi void failed with HTTP ${response.status}`);
+    return this.getTransaction(transactionId);
+  }
   private async checkout(input: CreatePaymentInput, providerReference: string): Promise<ProviderPaymentIntent> {
     const signature = await sha256Hex(`${providerReference}${input.amountInCents}${input.currency}${this.integritySecret}`);
     const redirectUrl = `${this.appUrl.replace(/\/$/, "")}/orders/${encodeURIComponent(input.orderId)}`;
     const query = new URLSearchParams({ "public-key": this.publicKey, currency: input.currency, "amount-in-cents": String(input.amountInCents), reference: providerReference, "signature:integrity": signature, "redirect-url": redirectUrl, "customer-data:email": input.customerEmail, "customer-data:full-name": input.customerName, "customer-data:phone-number": input.customerPhone, "shipping-address:address-line-1": input.shippingAddress.addressLine1, "shipping-address:address-line-2": input.shippingAddress.addressLine2 ?? "", "shipping-address:country": input.shippingAddress.countryCode, "shipping-address:city": input.shippingAddress.city, "shipping-address:phone-number": input.shippingAddress.phone, "shipping-address:region": input.shippingAddress.state });
     return { providerReference, provider: this.provider, publicKey: this.publicKey, currency: input.currency, amountInCents: input.amountInCents, integritySignature: signature, checkoutUrl: `${WOMPI_CHECKOUT}?${query.toString()}` };
   }
-
   private reference(input: CreatePaymentInput): string { return `EIP-${input.orderId.replaceAll("-", "").slice(0, 24)}-${input.idempotencyKey.replaceAll("-", "").slice(0, 24)}`.slice(0, 64); }
   private requireConfigured(): void { if (!this.publicKey || !this.privateKey || !this.integritySecret) throw new Error("Wompi production credentials are not configured"); }
 }
