@@ -14,7 +14,7 @@ export class CustomerSessionService {
 
   async create(customerId: string): Promise<Readonly<{ token: string; session: CustomerSession }>> {
     const token = await this.tokens.generate();
-    const expiresAt = new Date(Date.now() + this.ttlSeconds * 1000).toISOString();
+    const expiresAt = new Date(Date.now() + this.ttlSeconds * 1000).toISOString().slice(0, 19).replace("T", " ");
     const session = await this.repository.create(customerId, await this.tokens.hash(token), expiresAt);
     return { token, session };
   }
