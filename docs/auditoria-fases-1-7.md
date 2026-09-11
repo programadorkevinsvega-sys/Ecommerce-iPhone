@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD auditado:** `d3945066043517b150ba4cd89e888c6284af09af`  
+**HEAD de código auditado:** `b33d941008b93607454d61071ddeeb569a1ff0e9`  
 **Última actualización:** 2026-09-11  
 **Entorno operativo:** **producción únicamente**.
 
@@ -20,7 +20,7 @@
 | 02 Storefront | 🟢 Implementada | Alta | Pendiente E2E/performance/accessibility |
 | 03 Commerce Core | 🟢 Implementada | 100% | Pendiente certificación funcional exhaustiva contra producción |
 | 04 Payments | 🟡 Implementada — hardening técnico + deploy aplicado | Alta | Pendiente certificación funcional manual de proveedores |
-| 05 Services | 🟡 Implementación funcional cerrada | Alta | Pendiente build/deploy + certificación funcional administrativa/customer |
+| 05 Services | 🟡 Implementación funcional + hardening cerrados | Alta | Pendiente gates automatizados + certificación funcional producción |
 | 06 Admin + RBAC | 🟡 Implementada parcialmente | — | Backoffice restante |
 | 07 Notifications + Queues | 🟡 Implementada parcialmente | — | DLQ/retry definitivo |
 
@@ -183,28 +183,29 @@ La Fase 05 de este documento define como base existente:
 
 El bounded context ya tenía Domain/Application/Infrastructure y migraciones `0004_services.sql`, `0005_service_types.sql` y `0006_configurable_service_requests.sql`.
 
-## 7.2 Implementación completada en esta iteración
+## 7.2 Implementación completada
 
 ### Identidad y ownership del Customer Portal
 
 - Se eliminó el uso del cookie `customer_id` como fuente de autoridad para operaciones de Services.
 - `customer_session` se resuelve server-side mediante `CustomerSessionService` + `D1CustomerSessionRepository` + `WebCryptoCustomerSessionTokenGenerator`.
-- `GET /api/services` ahora obtiene el customer desde la sesión real.
+- `GET /api/services` obtiene el customer desde la sesión real.
 - `POST /api/services` vincula el request al customer autenticado cuando existe sesión.
 - `GET /api/services/:id` exige sesión y valida que el `customerId` persistido coincida con el customer autenticado.
 - Un customer distinto recibe `404` y no obtiene información del request.
 
 ### Workflow y reglas de servicio
 
-El workflow existente se conserva como Application Service y ahora tiene operaciones administrativas explícitas:
+El workflow conserva las reglas en Application + Domain y ahora valida explícitamente la entrada administrativa:
 
-- transición de estado;
-- cotización condicionada por `quoteRequired`;
-- asignación de técnico;
-- finalización condicionada por `allowedStatuses`;
+- estados limitados al conjunto `ServiceRequestStatus`;
+- estado solicitado validado antes de consultar/aplicar la política configurable;
+- quote obligatorio y estrictamente positivo, entero seguro;
+- asignación con `technicianId` no vacío y normalizado;
+- finalización con notas obligatorias y límite de 4000 caracteres;
+- transición efectiva siempre pasa por la máquina de estados del Domain;
+- completion sigue condicionada por `allowedStatuses`;
 - auditoría de actor en cada operación administrativa.
-
-La finalización ya no debe saltarse la política configurable del Service Type.
 
 ### Operaciones administrativas
 
@@ -230,35 +231,48 @@ La lectura requiere `services:read`. Las mutaciones requieren `services:write`.
 
 Todas las mutaciones pasan por `ServiceWorkflowService`; la ruta HTTP no modifica D1 directamente.
 
-### Auditoría
+### Persistencia y auditoría
 
-Las operaciones existentes de Service Workflow continúan registrando eventos en `service_audit_events`, incluyendo actor y datos de la operación. Esto mantiene trazabilidad administrativa sin acoplar Domain a D1.
+- `D1ServiceRequestRepository` filtra Customer Portal por `customer_id`.
+- La consulta administrativa usa cola por estado y excluye estados terminales cuando no se proporciona filtro.
+- Las operaciones del workflow registran `service_audit_events` con tipo de operación y `actorId`.
+- Los datos de IMEI/serial se mantienen minimizados a últimos cuatro dígitos en el request.
 
-### Tests agregados
+### Tests agregados/endurecidos
 
-Se añadieron pruebas para:
+Se cubren:
 
+- ownership de Service Request;
+- rechazo de acceso por customer diferente;
+- acceso correcto del customer propietario;
 - política de estados configurables;
 - rechazo de quote cuando el tipo no requiere cotización;
+- rechazo de quote cero/fraccionario;
 - rechazo de completion cuando la política no permite `COMPLETED`;
-- ownership de Service Request entre customers;
-- acceso correcto del customer propietario.
+- validación de notas vacías/excesivas;
+- normalización de técnico;
+- rechazo de estados arbitrarios.
 
 ## 7.3 Estado actual de Fase 05
 
-**Código funcional de la Fase 05: implementado para el alcance actualmente definido en esta auditoría.**
+**Código funcional + hardening de la Fase 05: implementado para el alcance definido en esta auditoría.**
 
-No se marca 100% todavía porque faltan las evidencias externas al código:
+Todavía **NO** se declara 100%, porque las evidencias operativas deben ejecutarse sobre este HEAD:
 
-- ejecutar `architecture:check`, lint, typecheck y tests sobre este HEAD;
+- `foundation:check`;
+- `architecture:check`;
+- format/lint/typecheck;
+- tests unitarios;
 - build Cloudflare limpio;
 - deploy exclusivamente a producción;
-- probar Customer Portal con sesión real;
-- probar aislamiento entre dos customers;
-- probar cola administrativa con roles autorizados/no autorizados;
-- probar transition/quote/assign/complete contra D1 real;
-- verificar que `service_audit_events` registre actor y operación;
-- verificar regresión de Payments/Commerce Core después del deploy.
+- Customer Portal con sesión real;
+- aislamiento entre dos customers;
+- cola administrativa con roles autorizados/no autorizados;
+- transition/quote/assign/complete contra D1 real;
+- evidencia de `service_audit_events`;
+- regresión de Payments/Commerce Core.
+
+El workflow de producción asociado a un commit de esta iteración falló antes de ejecutar pasos del job y fue puesto nuevamente en ejecución; por ello no se interpreta ese fallo de infraestructura/runner como PASS ni como FAIL del código de Services. La certificación queda pendiente hasta obtener ejecución completa.
 
 ---
 
