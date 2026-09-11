@@ -40,9 +40,10 @@ export class WompiPaymentProvider implements PaymentProviderPort {
     if (!response.ok) throw new Error(`Wompi transaction lookup failed with HTTP ${response.status}`);
     const body = await response.json() as { data?: { id?: string; reference?: string; status?: string; amount_in_cents?: number; currency?: string } };
     const data = body.data;
-    if (!data?.id || !data.reference || !data.status || !Number.isSafeInteger(data.amount_in_cents) || !data.currency) throw new Error("Wompi returned an invalid transaction payload");
+    const amountInCents = data?.amount_in_cents;
+    if (!data?.id || !data.reference || !data.status || typeof amountInCents !== "number" || !Number.isSafeInteger(amountInCents) || !data.currency) throw new Error("Wompi returned an invalid transaction payload");
     if (!["PENDING", "APPROVED", "DECLINED", "VOIDED", "ERROR"].includes(data.status)) throw new Error("Unknown Wompi transaction status");
-    return { provider: this.provider, transactionId: data.id, reference: data.reference, status: data.status as ProviderTransaction["status"], amountInCents: data.amount_in_cents, currency: data.currency };
+    return { provider: this.provider, transactionId: data.id, reference: data.reference, status: data.status as ProviderTransaction["status"], amountInCents, currency: data.currency };
   }
 
   private async checkout(input: CreatePaymentInput, providerReference: string): Promise<ProviderPaymentIntent> {
