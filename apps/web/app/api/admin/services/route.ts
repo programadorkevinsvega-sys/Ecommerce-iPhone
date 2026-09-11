@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { listAdminServices } from "../../../../lib/api/adminServices";
 import { requireAdmin, PERMISSIONS } from "../../../../lib/adminAuth";
-import type { ServiceRequestStatus } from "../../../../../modules/services/domain/ServiceRequest";
+import type { ServiceRequestStatus } from "../../../../modules/services/domain/ServiceRequest";
 
 const statuses: readonly ServiceRequestStatus[] = ["PENDING", "QUOTED", "PAYMENT_PENDING", "PAID", "PROCESSING", "WAITING_CUSTOMER", "COMPLETED", "REJECTED", "REFUNDED"];
 
