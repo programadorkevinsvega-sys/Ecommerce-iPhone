@@ -18,33 +18,9 @@ export type CreatePaymentInput = Readonly<{
     phone: string;
   }>;
 }>;
-
-export type ProviderPaymentIntent = Readonly<{
-  providerReference: string;
-  provider: PaymentProvider;
-  publicKey: string;
-  currency: string;
-  amountInCents: number;
-  integritySignature: string;
-  checkoutUrl: string;
-  clientSecret?: string;
-}>;
-
-export type ProviderTransaction = Readonly<{
-  provider: PaymentProvider;
-  transactionId: string;
-  reference: string;
-  status: "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR";
-  amountInCents: number;
-  currency: string;
-}>;
-
-export type ProviderRefund = Readonly<{
-  providerRefundId: string;
-  status: "SUCCEEDED" | "PENDING";
-  amountInCents: number;
-  currency: string;
-}>;
+export type ProviderPaymentIntent = Readonly<{ providerReference: string; provider: PaymentProvider; publicKey: string; currency: string; amountInCents: number; integritySignature: string; checkoutUrl: string; clientSecret?: string }>;
+export type ProviderTransaction = Readonly<{ provider: PaymentProvider; transactionId: string; reference: string; status: "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR"; amountInCents: number; currency: string }>;
+export type ProviderRefund = Readonly<{ providerRefundId: string; status: "SUCCEEDED" | "PENDING"; amountInCents: number; currency: string }>;
 
 export interface PaymentProviderPort {
   readonly provider: PaymentProvider;
@@ -59,6 +35,7 @@ export interface PaymentProviderPort {
 
 export interface PaymentRepository {
   findById(id: string): Promise<Payment | null>;
+  findByOrderId(orderId: string): Promise<Payment | null>;
   findByIdempotencyKey(customerId: string, key: string): Promise<Payment | null>;
   findByProviderReference(reference: string): Promise<Payment | null>;
   findByProviderTransactionId(transactionId: string): Promise<Payment | null>;
@@ -73,14 +50,5 @@ export interface PaymentRepository {
   updateRefundStatus(paymentId: string, idempotencyKey: string, status: "SUCCEEDED" | "PENDING" | "FAILED"): Promise<boolean>;
   findRefund(paymentId: string, idempotencyKey: string): Promise<Readonly<{ providerRefundId: string; amountInCents: number; currency: string; status: "SUCCEEDED" | "PENDING" | "FAILED" }> | null>;
 }
-
-export interface OrderPaymentPort {
-  findById(id: string): Promise<Readonly<{ id: string; customerId?: string | undefined; status: string; totalInCents: number; currency: string }> | null>;
-  transitionStatus(id: string, from: string, to: string): Promise<boolean>;
-}
-
-export interface ReservationPaymentPort {
-  releaseForOrder(orderId: string): Promise<number>;
-  consumeForOrder(orderId: string): Promise<number>;
-  extendForOrder(orderId: string, minutes: number): Promise<number>;
-}
+export interface OrderPaymentPort { findById(id: string): Promise<Readonly<{ id: string; customerId?: string | undefined; status: string; totalInCents: number; currency: string }> | null>; transitionStatus(id: string, from: string, to: string): Promise<boolean>; }
+export interface ReservationPaymentPort { releaseForOrder(orderId: string): Promise<number>; consumeForOrder(orderId: string): Promise<number>; extendForOrder(orderId: string, minutes: number): Promise<number>; }
