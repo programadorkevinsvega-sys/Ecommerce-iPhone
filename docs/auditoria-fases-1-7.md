@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD auditado:** `a782b0e4cf5ecce3212246fac5ae0f55b6bdf199`  
+**HEAD auditado:** `bdb9469d5d787eb3ef8508acd4c39bb5e139325f`  
 **Última actualización:** 2026-09-11  
 **Entorno operativo:** **producción únicamente**.
 
@@ -19,12 +19,12 @@
 | 01 Foundation | 🟢 Implementada | Alta | Pendiente reproducibilidad + auditoría final |
 | 02 Storefront | 🟢 Implementada | Alta | Pendiente E2E/performance/accessibility |
 | 03 Commerce Core | 🟢 Implementada | 100% | Pendiente certificación funcional exhaustiva contra producción |
-| 04 Payments | 🟡 Implementada — cierre/hardening | Alta | Pendiente pruebas completas + credenciales/webhooks reales + E2E producción |
+| 04 Payments | 🟡 Implementada — hardening técnico aplicado | Alta | Pendiente build/deploy + pruebas E2E reales |
 | 05 Services | 🟡 Implementada parcialmente | — | Depende de Payments/admin |
 | 06 Admin + RBAC | 🟡 Implementada parcialmente | — | Backoffice restante |
 | 07 Notifications + Queues | 🟡 Implementada parcialmente | — | DLQ/retry definitivo |
 
-**Estado actual:** Fases 1–3 están implementadas. Fase 4 ya tiene integración real de Payments en código y está en etapa de cierre/hardening/certificación; no se debe volver a tratar como fase no iniciada. El último deploy de producción confirmado antes de este bloque de hardening fue exitoso. Los cambios de Payments realizados después de ese deploy requieren un nuevo build/deploy antes de considerarlos evidencia operativa de producción.
+**Estado actual:** Fases 1–3 están implementadas. Fase 4 tiene integración real de Payments y el bloque de hardening detectado en auditoría de código ya fue implementado en `main`. El último deploy de producción confirmado fue anterior a este bloque; por tanto, los cambios actuales requieren nuevo build/deploy antes de considerarlos evidencia operativa de producción.
 
 ---
 
@@ -49,22 +49,18 @@ Cloudflare / D1 / R2 / Queue
 Reglas obligatorias:
 
 - Presentation no ejecuta SQL/D1.
-- Presentation no importa Infrastructure directamente.
-- Presentation no importa internals de Domain.
+- Presentation no importa Infrastructure directamente salvo composition roots autorizados.
 - Application no depende de Next.js, Cloudflare o Infrastructure.
 - Domain no depende de frameworks ni proveedores.
 - Infrastructure implementa puertos internos.
 - `architecture:check` es el enforcement automático.
-- La composición Cloudflare/D1 está centralizada en composition roots.
-- Payments sigue el mismo aislamiento y permite sustituir proveedor sin modificar Domain/Application.
+- Payments mantiene registry + ports + adapters para sustituir proveedor sin modificar Domain/Application.
 
 ## Entornos
 
 Existe **un único entorno Cloudflare remoto: producción**.
 
 El desarrollo local puede usar Next.js, Vitest, Playwright y D1 local/emulado. Esto no es un entorno operativo adicional.
-
-No se reintroducen deploys remotos `staging` ni bindings Cloudflare separados de producción salvo decisión explícita posterior.
 
 ---
 
@@ -107,7 +103,7 @@ Deploy Cloudflare confirmado el 2026-09-11 antes del último bloque de hardening
 - `/api/health/ready` → HTTP 200;
 - `verify:production` → PASS.
 
-El test de rate limiting emitió warning porque no observó HTTP 429 tras 21 requests. No se considera evidencia de fallo del despliegue: Cloudflare Rate Limiting es eventualmente consistente y puede permitir ráfagas distribuidas. Debe quedar como pendiente de validación específica de abuso, no como gate de disponibilidad.
+El test de rate limiting emitió warning porque no observó HTTP 429 tras 21 requests. Se mantiene como pendiente de validación específica de abuso y no como fallo de disponibilidad.
 
 ## Reproducibilidad
 
@@ -147,8 +143,6 @@ Pendiente de certificación completa:
 - validación SEO en URLs reales;
 - regresiones responsive;
 - cobertura exhaustiva de filtros/variantes/agotados.
-
-No se declara 100% sin esas evidencias.
 
 ---
 
@@ -198,8 +192,6 @@ No se declara 100% sin esas evidencias.
 - `consumeForOrder()` idempotente;
 - expiración dependiente del estado del pedido;
 - pedidos pagados no devuelven stock al expirar una reserva;
-- legacy cleanup mediante `0012`;
-- relación reserva→pedido mediante `0013`;
 - scheduler de Worker libera expiraciones cada minuto independientemente de nuevos checkouts.
 
 ## 5.5 Pedidos
@@ -212,78 +204,48 @@ GET /api/orders?limit=20&offset=0
 GET /api/orders/:id
 ```
 
-El nuevo flujo mantiene Clean Architecture:
-
-```text
-Route
- ↓
-ListOrdersForCustomer
- ↓
-OrderRepository
- ↓
-D1OrderRepository
-```
-
 La consulta está limitada a 50 elementos por página y siempre filtra por `customer_id`.
 
 ## 5.6 Migraciones
 
-Las migraciones de Commerce relevantes están versionadas. Las migraciones de Payments `0015` y `0016` quedaron aplicadas en producción en el último deploy confirmado. El nuevo hardening de refunds añade `0017_payment_refunds.sql`; esta migración requiere volver a ejecutar el proceso de producción antes de marcarla como aplicada en producción.
+Las migraciones de Commerce relevantes están versionadas. Las migraciones de Payments `0015` y `0016` quedaron aplicadas en el último deploy confirmado. `0017_payment_refunds.sql` ya está versionada y `0018_payment_refund_locks.sql` añade el lock atómico de refunds; ambas requieren aplicación mediante el flujo de producción antes de marcar evidencia operativa.
 
 ## 5.7 Pruebas agregadas
 
-Existen pruebas unitarias para:
+Existen pruebas unitarias para autenticación, idempotencia, stock, shipping, reservas, ownership, sesión y listado de pedidos. La certificación funcional exhaustiva contra D1/producción permanece como evidencia operativa separada.
 
-- autenticación de checkout;
-- idempotency key;
-- stock;
-- shipping;
-- release de reservas;
-- ownership;
-- sesión;
-- listado de pedidos del customer.
-
-La certificación de concurrencia contra D1 real sigue siendo un gate operativo.
-
-### Resultado Phase 3
+### Resultado Fase 03
 
 **Fase 03 está implementada. Código Commerce Core: 100% del alcance definido para el núcleo pre-payment.**
 
-La certificación funcional exhaustiva contra producción permanece como evidencia operativa separada de la implementación.
-
 ---
 
-# 6. Payments — FASE 04 IMPLEMENTADA / CIERRE EN CURSO
+# 6. Payments — FASE 04 IMPLEMENTADA / HARDENING TÉCNICO APLICADO
 
 ## 6.1 Estado real
 
-La Fase 04 **ya no está en estado “no iniciada”**. El bounded context `payments` está implementado y conectado al Commerce Core.
+El bounded context `payments` está implementado y conectado al Commerce Core. La auditoría de código detectó varios huecos que ya fueron corregidos en `main`.
 
-Implementado en código:
+Implementado:
 
 - aggregate `Payment`;
-- máquina de estados `CREATED → PENDING → PROCESSING → PAID → REFUNDED` y estados terminales de fallo/cancelación;
+- máquina de estados y transiciones terminales;
 - invariantes amount/currency;
 - protección contra doble confirmación;
 - `PaymentRepository`;
 - `PaymentProviderPort`;
-- `PaymentWebhookVerifier` por proveedor;
-- `OrderPaymentPort`;
-- `ReservationPaymentPort`;
+- verificadores por proveedor;
 - ledger financiero;
-- reconciliation;
+- reconciliation de transacciones;
 - idempotencia de payment intent;
 - idempotencia de webhook/evento;
 - ownership server-side;
 - validación server-side de amount/currency/order;
-- `PAID → consumeForOrder()`;
-- `FAILED/CANCELLED/VOIDED → releaseForOrder()`;
+- consumo/liberación idempotente de reservas;
 - late approval handling;
 - recuperación de payment intents existentes.
 
-## 6.2 Proveedores reales implementados
-
-Registry provider-agnostic con cinco adapters:
+## 6.2 Proveedores reales
 
 ```text
 PaymentProviderRegistry
@@ -296,17 +258,30 @@ PaymentProviderRegistry
 
 Credenciales permanecen server-side y no se almacenan en D1.
 
+Correcciones aplicadas:
+
+- Stripe ahora correlaciona el `PaymentIntent` por su propio ID, evitando que el webhook se pierda por usar `order_id` como referencia.
+- Mercado Pago y PayPal pueden correlacionar callbacks por `order_id` cuando ese es el identificador externo que devuelve el proveedor.
+- Mercado Pago y PayPal validan amount/currency durante recovery.
+- Binance Pay recovery valida `merchantTradeNo`, amount y currency y reutiliza el checkout previamente persistido cuando está disponible.
+- Binance `merchantTradeNo` se deriva de un hash de `orderId + idempotencyKey` para evitar colisiones por truncamiento.
+- Binance webhook acepta el formato de notificación con `data` como JSON string y conserva `bizIdStr` como event id cuando está disponible.
+
 ## 6.3 Webhooks
 
-Implementados verificadores específicos para:
+Implementados verificadores específicos para Wompi, Stripe, Mercado Pago, PayPal y Binance Pay.
 
-- Wompi;
-- Stripe;
-- Mercado Pago;
-- PayPal;
-- Binance Pay.
+Hardening aplicado:
 
-El flujo de webhook valida autenticidad antes de mutar estado y utiliza unicidad de `(provider,event_id)` en D1.
+- Stripe conserva `event.id` como identificador de deduplicación.
+- Mercado Pago conserva `x-request-id` como identificador de deduplicación.
+- PayPal conserva `event.id`.
+- Binance conserva `bizIdStr` cuando existe.
+- Wompi utiliza el checksum validado como correlación determinista cuando el proveedor no entrega un event id equivalente.
+- `PaymentService` acepta el event id real del proveedor y solo usa hash derivado como fallback.
+- Binance Pay limita timestamp del webhook a la ventana documentada de aproximadamente 1 segundo y valida nonce de 32 caracteres alfanuméricos.
+
+La tabla D1 mantiene `UNIQUE(provider,event_id)`.
 
 ## 6.4 API implementada
 
@@ -319,43 +294,33 @@ POST /api/payments/webhooks/mercadopago
 POST /api/payments/webhooks/paypal
 POST /api/payments/webhooks/binance-pay
 POST /api/payments/:id/refund
+POST /api/payments/:id/refund/reconcile
+POST /api/payments/:id/void
 ```
 
 `GET /api/payments/:id` exige sesión del customer y solo devuelve pagos pertenecientes al customer autenticado.
 
-`POST /api/payments/:id/refund` exige sesión administrativa con permiso `refunds:create` y `Idempotency-Key`. El endpoint actual permite **refund completo**; no acepta un importe parcial desde el cliente.
+`POST /api/payments/:id/refund` exige `refunds:create` + `Idempotency-Key` y actualmente expone refund completo.
 
-## 6.5 Refund / void: capacidades reales verificadas
+`POST /api/payments/:id/refund/reconcile` permite resolver refunds persistidos como `PENDING` mediante consulta server-side al provider cuando el adapter lo soporta.
 
-La matriz actual se basa en documentación oficial de los proveedores revisada el 2026-09-11:
+`POST /api/payments/:id/void` exige `payments:void` + `Idempotency-Key` y solo opera sobre providers con capacidad `voidPayment`; actualmente Wompi es el adapter con esta capacidad.
 
-| Proveedor | Refund | Void/cancel | Estado de implementación |
+## 6.5 Refund / void: capacidades reales
+
+| Proveedor | Refund | Void/cancel | Estado de código |
 |---|---|---|---|
-| Stripe | Sí, por PaymentIntent/Charge | Cancelación de PaymentIntent en estados aplicables | Refund implementado |
-| Mercado Pago | Sí, total/parcial mediante `/v1/payments/{id}/refunds` | No se expone como void genérico | Refund implementado |
-| PayPal | Sí, sobre capture mediante `/v2/payments/captures/{capture_id}/refund` | Cancelación de order no capturada es distinta a refund | Refund implementado |
-| Wompi | No se expone refund genérico en esta integración; sí `VOID` para transacciones de tarjeta en estados permitidos | Sí, `/v1/transactions/{id}/void` | Void implementado |
-| Binance Pay | No se ha verificado un endpoint oficial de refund merchant equivalente en la documentación actual consultada | No se expone void/refund genérico | **No soportado por el endpoint de refund** |
+| Stripe | Sí | Cancelación de PaymentIntent en estados aplicables | Refund + reconciliación implementados |
+| Mercado Pago | Sí, total/parcial | No void genérico expuesto | Refund + reconciliación implementados |
+| PayPal | Sí sobre capture | Cancelación de order no capturada es distinta a refund | Refund + reconciliación implementados |
+| Wompi | No refund genérico en esta integración | Sí, `POST /v1/transactions/{id}/void` | Void implementado y expuesto |
+| Binance Pay | No se ha confirmado endpoint merchant oficial equivalente de refund | No void genérico implementado | Refund/void no soportados |
 
-Fuentes oficiales consultadas:
+Las capacidades de Stripe, Mercado Pago, PayPal, Wompi y Binance fueron contrastadas con documentación oficial durante el hardening. Binance no se declara como refund-capable sin endpoint oficial verificable.
 
-- Stripe Refund API: `https://docs.stripe.com/api/refunds/create`
-- Mercado Pago Refund API: `https://www.mercadopago.com.co/developers/en/reference/online-payments/checkout-api-payments/create-refund/post`
-- PayPal Capture Refund API: `https://developer.paypal.com/api/payments/v2/captures-refund`
-- Wompi Transactions/Void: `https://docs.wompi.co/docs/colombia/transacciones/`
-- Binance Pay Order Query: `https://developers.binance.com/en/docs/products/binance-pay-merchant/api-order-query`
+## 6.6 Persistencia de refunds y locks
 
-No se debe marcar Binance Pay como “refund soportado” hasta disponer de una capacidad oficial verificable.
-
-## 6.6 Persistencia de refunds
-
-Se añadió:
-
-```text
-0017_payment_refunds.sql
-```
-
-Con:
+`0017_payment_refunds.sql` contiene:
 
 - `payment_id`;
 - `idempotency_key`;
@@ -363,26 +328,32 @@ Con:
 - estado `PENDING/SUCCEEDED/FAILED`;
 - amount/currency;
 - timestamps;
-- unicidad de refund por payment + idempotency key;
-- índices de consulta.
+- unicidad `(payment_id,idempotency_key)`;
+- unicidad `(payment_id,provider_refund_id)`;
+- índices.
 
-La migración todavía necesita ejecución en producción para completar la evidencia operativa.
+`0018_payment_refund_locks.sql` contiene un lock único por `payment_id` para impedir que dos requests con **claves de idempotencia diferentes** ejecuten dos refunds contra el mismo proveedor de forma concurrente.
+
+Si una llamada al proveedor queda en estado incierto, el lock no se libera artificialmente: queda disponible para reconciliación segura mediante `refund/reconcile`. Esto evita convertir un timeout de red en riesgo de doble devolución.
 
 ## 6.7 Idempotencia, duplicados, out-of-order y concurrencia
 
-Implementado y cubierto a nivel de application/domain tests:
+Corregido en código y cubierto mediante tests de application/domain:
 
 - payment intent concurrente → unicidad + relectura;
 - duplicate approval → una sola transición `PAID`;
-- duplicate approval → `consumeForOrder()` se mantiene idempotente;
-- evento `DECLINED` posterior a `PAID` no retrocede el pago;
-- amount tampering del proveedor → rechazo;
-- refund repetido con el mismo `Idempotency-Key` → no crea un segundo registro local;
-- refund solo permitido desde `PAID`;
-- ownership del payment en consulta server-side;
-- refund protegido por RBAC administrativo.
-
-Además, `markPaid()` consume la reserva también cuando detecta que el pago ya estaba `PAID`, evitando una ventana en la que una confirmación concurrente pudiera dejar la reserva sin consumir.
+- duplicate approval → consumo de reserva seguro/idempotente;
+- `DECLINED` posterior a `PAID` no retrocede el pago;
+- amount tampering → rechazo;
+- webhook duplicado con mismo event id → ignorado antes de mutar estado;
+- out-of-order con event ids distintos → máquina de estados evita retrocesos;
+- refund repetido con misma idempotency key → una sola operación;
+- refunds concurrentes con diferentes idempotency keys → lock atómico por payment;
+- refund solo desde `PAID`;
+- resultado de refund validado contra amount/currency originales;
+- refund `PENDING` puede reconciliarse consultando al provider;
+- ownership de consulta server-side;
+- refund/void protegidos por RBAC.
 
 ## 6.8 Tests actuales de Payments
 
@@ -394,35 +365,37 @@ Implementados:
 - out-of-order decline después de approval;
 - provider amount tampering;
 - refund idempotency;
-- Wompi webhook rejection tests.
+- concurrencia de refunds con diferentes claves;
+- validación de firmas Stripe;
+- validación de firmas Mercado Pago;
+- validación de firma/timestamp/nonce Binance Pay;
+- validación de checksum Wompi;
+- rechazo de datos incompletos de PayPal.
 
-Pendiente para declarar batería completa:
+Pendiente de evidencia operativa, no de implementación:
 
-- tests equivalentes específicos de firma para Stripe/Mercado Pago/PayPal/Binance;
-- tests de repository D1 contra D1 real/local;
-- prueba de migración `0017`;
-- prueba E2E real por proveedor;
-- prueba real de refund/void con credenciales productivas;
-- prueba de webhooks duplicados y fuera de orden contra endpoints HTTP reales;
-- regresión completa Commerce Core después del último hardening.
+- ejecución de tests sobre el build actual;
+- migraciones `0017` y `0018` aplicadas en producción;
+- E2E real por proveedor;
+- refund/void real con credenciales productivas;
+- webhooks reales duplicados/out-of-order;
+- regresión completa Commerce Core después del deploy.
 
 ## 6.9 Regla de cierre de Fase 04
 
-La implementación de código de Fase 04 está avanzada y funcionalmente integrada, pero **Fase 04 todavía no se declara 100% certificada**.
-
-Para cerrarla:
+El **hardening técnico de código** de los hallazgos de esta auditoría está implementado. Fase 04 todavía no puede declararse 100% certificada hasta obtener evidencia del nuevo build/deploy y pruebas reales.
 
 ```text
-Tests críticos
-+ migración 0017 aplicada
-+ build reproducible
-+ credenciales productivas configuradas
-+ webhooks productivos configurados
+Código hardening PASS
++ tests ejecutados PASS
++ migraciones 0017/0018 aplicadas
++ build/deploy producción PASS
++ credenciales/webhooks productivos
 + pago real aprobado
 + pago real rechazado/cancelado
 + duplicate/out-of-order real
 + refund/void real según proveedor
-+ verify:production
++ verify:production PASS
 = Fase 04 certificada
 ```
 
@@ -457,7 +430,8 @@ Implementado:
 - permisos server-side;
 - dashboard;
 - users/resources/service types;
-- permiso `refunds:create` para operaciones financieras.
+- `refunds:create`;
+- `payments:void` para operación administrativa de void.
 
 Pendiente completar backoffice de pagos, reviews, promociones, CMS/SEO, settings e inventario administrativo.
 
@@ -475,9 +449,7 @@ Implementado:
 - Queue;
 - cron;
 - IDs deterministas para eventos de pedido;
-- claim atómico de deliveries/outbox antes de encolar;
-- contrato `NotificationOutboxRepository.claimDelivery()` alineado con la implementación D1;
-- último build de producción confirmado después de este hardening.
+- claim atómico de deliveries/outbox antes de encolar.
 
 Pendiente:
 
@@ -547,13 +519,13 @@ La aceptación es sobre el producto real y producción.
 # 12. Orden inmediato
 
 ```text
-1. Fase 04 → completar batería específica de firmas/webhooks y persistence tests.
-2. Aplicar 0017_payment_refunds.sql en producción.
+1. Ejecutar batería de tests del build actual.
+2. Aplicar 0017_payment_refunds.sql + 0018_payment_refund_locks.sql en producción.
 3. architecture:check + lint + typecheck + tests.
 4. build:cloudflare.
 5. deploy únicamente a producción.
 6. verify:production.
-7. configurar credenciales/webhooks productivos de los proveedores que se vayan a certificar.
+7. configurar credenciales/webhooks productivos de los proveedores a certificar.
 8. ejecutar pago real aprobado/rechazado y refund/void real según capacidad.
 9. validar duplicate/out-of-order/concurrency contra endpoints reales.
 10. actualizar esta auditoría con commit, migraciones y evidencia.
@@ -563,12 +535,13 @@ La aceptación es sobre el producto real y producción.
 ## Estado real al cierre de este documento
 
 - Fases 1–3: **implementadas**.
-- Fase 4: **implementada en gran parte; cierre/hardening/certificación en curso**.
+- Fase 4: **hardening técnico implementado; certificación operativa pendiente**.
 - Payments dispone de cinco adapters reales: Wompi, Stripe, Mercado Pago, PayPal y Binance Pay.
 - Existe consulta autenticada de payment.
-- Existe refund administrativo protegido por RBAC e idempotencia para proveedores con capacidad soportada.
-- Wompi dispone de operación `void`.
-- `0017_payment_refunds.sql` está versionada pero requiere aplicación en producción.
+- Existe refund administrativo protegido por RBAC e idempotencia.
+- Existe reconciliación de refunds `PENDING` para providers con `getRefund`.
+- Existe void administrativo protegido por RBAC para providers con `voidPayment`.
+- `0017_payment_refunds.sql` y `0018_payment_refund_locks.sql` están versionadas y requieren aplicación en producción.
 - El último build/deploy productivo confirmado fue exitoso antes del último bloque de hardening de Payments.
 - El entorno operativo remoto continúa siendo exclusivamente producción.
 - No se afirma que Fase 04 esté 100% certificada hasta disponer de evidencia E2E real y pruebas finales.
