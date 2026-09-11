@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD auditado:** `2b169dde5a50ca0ad1079e4e77ed0c6f449e4556`  
+**HEAD auditado:** `374e501e9b6f571cba9ff3cde5066486f3c8eaef`  
 **Última actualización:** 2026-09-11  
 **Entorno operativo:** **producción únicamente**.
 
@@ -335,7 +335,7 @@ Las capacidades de Stripe, Mercado Pago, PayPal, Wompi y Binance fueron contrast
 
 `0018_payment_refund_locks.sql` contiene un lock único por `payment_id` para impedir que dos requests con **claves de idempotencia diferentes** ejecuten dos refunds contra el mismo proveedor de forma concurrente.
 
-Si una llamada al proveedor queda en estado incierto, el lock no se libera artificialmente: queda disponible para reconciliación segura mediante `refund/reconcile`. Esto evita convertir un timeout de red en riesgo de doble devolución.
+El lock conserva su `idempotency_key`: un retry con la **misma** clave puede reintentar de forma segura contra el proveedor; una clave diferente queda bloqueada mientras exista una operación incierta. Esto evita que un timeout de red convierta una devolución incierta en riesgo de doble devolución.
 
 ## 6.7 Idempotencia, duplicados, out-of-order y concurrencia
 
@@ -350,6 +350,7 @@ Corregido en código y cubierto mediante tests de application/domain:
 - out-of-order con event ids distintos → máquina de estados evita retrocesos;
 - refund repetido con misma idempotency key → una sola operación;
 - refunds concurrentes con diferentes idempotency keys → lock atómico por payment;
+- retry de refund incierto con la misma idempotency key → permitido de forma segura;
 - refund solo desde `PAID`;
 - resultado de refund validado contra amount/currency originales;
 - refund `PENDING` puede reconciliarse consultando al provider;
