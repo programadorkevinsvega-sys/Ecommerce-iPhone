@@ -1,78 +1,79 @@
 # Cloudflare deployment
 
-The repository is prepared for a **single production environment** on Cloudflare Workers using OpenNext.
+The repository uses a **single remote production environment** on Cloudflare Workers with OpenNext.
 
 ## Production resources
 
 | Resource | Name |
 | --- | --- |
-| Worker | `ecommerce-iphone-production` |
+| Worker | `ecommerce-iphone` |
 | D1 | `ecommerce-iphone` |
 | R2 | `ecommerce-iphone-media` |
 | Queue | `ecommerce-iphone-events` |
 
-There is no staging environment.
+There is no remote staging environment.
 
-## GitHub Actions
+## Deployment contract
 
-`.github/workflows/ci.yml` performs architecture checks, linting, typechecking, unit tests, builds and E2E validation.
+Production deployment is:
 
-`.github/workflows/deploy.yml` deploys production after architecture checks, typechecking, unit tests and the OpenNext Cloudflare build. It applies remote D1 migrations and then deploys the Worker. Deployments are serialized.
+```bash
+pnpm db:migrate:production
+pnpm build:cloudflare
+wrangler deploy --env=""
+pnpm verify:production
+```
 
-The Wrangler configuration is root-level production-only; there are no staging deployment flags.
-
-## Required GitHub environment secrets
-
-Create one GitHub Environment named `production` and add:
-
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_API_TOKEN`
-
-The API token should be scoped to the target Cloudflare account and only the permissions required for this deployment.
+The actual acceptance criterion is the Cloudflare build/deploy plus direct production verification. GitHub Actions is auxiliary automation and is not the acceptance criterion.
 
 ## Cloudflare bindings
 
-The repository expects:
+The Worker expects:
 
 - D1 binding `DB` -> `ecommerce-iphone`
 - R2 binding `MEDIA_BUCKET` -> `ecommerce-iphone-media`
-- Queue producer/consumer binding `EVENTS_QUEUE` -> `ecommerce-iphone-events`
+- Queue producer/consumer `EVENTS_QUEUE` -> `ecommerce-iphone-events`
+- `API_RATE_LIMITER` -> 120 requests / 60s
+- `SENSITIVE_RATE_LIMITER` -> 20 requests / 60s
 
-Replace `REPLACE_WITH_PRODUCTION_DATABASE_ID` in `wrangler.jsonc` with the real D1 UUID from the Cloudflare account before the first remote deployment.
+The production D1 UUID is already present in `wrangler.jsonc`.
 
-## Notifications
+## Runtime secrets
 
-The Worker also requires:
+Secrets remain outside Git and are configured directly in Cloudflare, including when applicable:
 
-- `RESEND_API_KEY` as a Cloudflare secret
-- `EMAIL_FROM` as a Worker variable
+- `RESEND_API_KEY`
+- `ADMIN_BOOTSTRAP_TOKEN`
+- payment-provider credentials once Payments is implemented.
 
-The notification outbox is stored in D1. A Cron Trigger dispatches pending records to the Queue and the same Worker consumes the Queue and calls Resend. Cloudflare supports configuring Queue consumers directly in Wrangler and scheduled handlers through Cron Triggers.
+Use:
 
-## Admin bootstrap secret
+```bash
+wrangler secret put <SECRET_NAME>
+```
 
-Set the first-admin bootstrap secret directly in Cloudflare, never in Git:
+Never commit credentials to the repository.
 
-`wrangler secret put ADMIN_BOOTSTRAP_TOKEN`
+## Health verification
 
-Then call `POST /api/admin/auth/bootstrap` with `X-Admin-Bootstrap-Token`, email, name, role and a password of at least 12 characters. After the first administrator is created, rotate/remove `ADMIN_BOOTSTRAP_TOKEN`.
+After deployment:
 
-## Provider secrets
+```bash
+pnpm verify:production
+```
 
-Payment and email provider secrets are runtime secrets and must remain outside Git.
+The production verifier checks the public Worker, including liveness/readiness and configured runtime invariants.
 
-## First production deployment
+## D1 migrations
 
-1. Verify D1/R2/Queue names.
-2. Put the real D1 database ID in `wrangler.jsonc`.
-3. Create the GitHub `production` Environment.
-4. Add the Cloudflare GitHub secrets.
-5. Configure `RESEND_API_KEY` and `EMAIL_FROM`.
-6. Configure other provider secrets.
-7. Configure `ADMIN_BOOTSTRAP_TOKEN` temporarily.
-8. Run the production workflow manually.
-9. Bootstrap the first administrator.
-10. Rotate/remove the bootstrap secret.
-11. Configure the production custom domain.
+Migrations are versioned in `migrations/` and applied remotely only to production:
 
-A successful Git commit alone does not prove that the production Worker is live; the external GitHub Actions and Cloudflare execution must complete successfully.
+```bash
+pnpm db:migrate:production
+```
+
+Never edit a migration that has already been applied to production. Add the next numbered migration instead.
+
+## Rollback
+
+Rollback must target a known Cloudflare Worker version ID. After rollback, execute the production verification again and confirm both health endpoints before considering the rollback complete.
