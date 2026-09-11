@@ -2,11 +2,21 @@
 
 ## Estado
 
-La integración real de pagos está implementada sobre **Wompi Colombia**. El runtime no contiene fake providers, mocks de pago, respuestas simuladas ni datos de transacción de ejemplo.
+La arquitectura de pagos es multi-provider y mantiene implementaciones reales server-side para **Wompi, Stripe, Mercado Pago, PayPal y Binance Pay**. No existen fake providers, mocks de pago, respuestas simuladas ni datos transaccionales de ejemplo en el runtime.
 
-La activación productiva requiere configurar las credenciales reales fuera de Git y registrar el webhook real en Wompi.
+El provider activo se selecciona exclusivamente mediante `PAYMENT_PROVIDER` en configuración del Worker. Las credenciales permanecen fuera de Git.
 
-## Flujo real
+## Proveedores
+
+- Wompi Colombia: Web Checkout real, firma de integridad, eventos `transaction.updated`, checksum y reconciliación privada.
+- Stripe: PaymentIntents reales, idempotencia de API, client secret y reconciliación.
+- Mercado Pago: Checkout Preferences reales, idempotencia y consulta de pagos.
+- PayPal: Orders v2 reales con intent `CAPTURE`, OAuth server-side y consulta/reconciliación.
+- Binance Pay: Merchant API real, firma HMAC-SHA512, creación y consulta de órdenes.
+
+Las capacidades específicas de captura, void, refund y webhook se mantienen en cada adapter; el dominio no conoce APIs externas.
+
+## Flujo común
 
 ```text
 Checkout
@@ -19,17 +29,13 @@ Server valida customer + order + amount + currency
   ↓
 Payment persistido con idempotency key
   ↓
-Servidor genera referencia + SHA-256 integrity signature
+Adapter real del provider
   ↓
-Wompi Web Checkout real
+Checkout/provider client flow
   ↓
-Cliente paga en Wompi
+Webhook firmado o reconciliación server-side
   ↓
-Wompi POST /api/payments/webhooks/wompi
-  ↓
-Verificación X-Event-Checksum / signature.checksum
-  ↓
-Validación amount + currency + reference
+Normalización de estado
   ↓
 PAID / FAILED / CANCELLED
   ↓
@@ -39,28 +45,17 @@ FAILED/CANCELLED → releaseForOrder()
 
 El redirect del navegador solo sirve para UX. Nunca se utiliza como prueba de pago confirmado.
 
-## Endpoints
+## Wompi — integración real
 
-### Crear payment intent
+### Crear checkout
 
 ```text
 POST /api/payments/intent
 Idempotency-Key: <unique-key>
-
 {"orderId":"<order-id>"}
 ```
 
-El servidor obtiene el importe desde la orden y no acepta un importe enviado por el navegador. La sesión del customer debe corresponder a la orden.
-
-La respuesta contiene la configuración real de Wompi:
-
-- provider;
-- reference;
-- public key;
-- currency;
-- amount in cents;
-- integrity signature;
-- checkout URL.
+El servidor obtiene importe y moneda desde la orden. Wompi recibe una referencia determinista, firma SHA-256 de integridad y configuración de Web Checkout.
 
 ### Webhook
 
@@ -68,22 +63,38 @@ La respuesta contiene la configuración real de Wompi:
 POST /api/payments/webhooks/wompi
 ```
 
-Se exige:
+Se valida:
 
 - `environment = prod`;
 - evento `transaction.updated`;
-- firma criptográfica válida;
-- properties dinámicas proporcionadas por Wompi;
-- timestamp incluido en la firma;
-- secreto de eventos únicamente server-side.
+- `signature.properties` dinámicas;
+- valores firmados exactamente en el orden recibido;
+- `timestamp`;
+- checksum criptográfico;
+- `amount`, `currency` y `reference` contra D1;
+- estado externo permitido.
 
-El webhook no confía en un conjunto fijo de propiedades: utiliza exactamente las propiedades firmadas entregadas por Wompi.
+Wompi documenta que los webhooks son el mecanismo para finalizar la integración y que el redirect no debe utilizarse como validación de la transacción. citeturn0search5turn0search11
+
+### Reconciliación
+
+El adapter consulta server-side:
+
+```text
+GET https://production.wompi.co/v1/transactions/{transaction_id}
+```
+
+con la llave privada de producción. Wompi documenta que esta consulta requiere la llave privada y que los estados incluyen `PENDING`, `APPROVED`, `DECLINED`, `VOIDED` y `ERROR`. citeturn0search1
+
+### Void
+
+Wompi expone una operación server-side de `void` para transacciones de tarjeta en estados compatibles. La aplicación no inventa una operación de refund universal: la capacidad se expone únicamente cuando el método y estado reales del proveedor la permiten. citeturn0search1
 
 ## Idempotencia y concurrencia
 
-La tabla `payments` tiene unicidad por `(customer_id, idempotency_key)` y por `provider_reference`.
+La tabla `payments` mantiene unicidad por `(customer_id, idempotency_key)` y `provider_reference`. La URL de checkout se persiste para que una repetición de la misma solicitud no vuelva a crear una operación externa.
 
-Los cambios de estado utilizan:
+Los cambios de estado utilizan actualización condicional:
 
 ```sql
 UPDATE payments
@@ -91,63 +102,17 @@ SET status=?
 WHERE id=? AND status=?
 ```
 
-Esto evita que dos requests concurrentes apliquen la misma transición de pago.
-
-Los cambios de estado de órdenes también son condicionales al estado anterior.
-
-Los eventos de webhook se almacenan con unicidad `(provider, event_id)` para auditoría y protección contra duplicados. El procesamiento además es idempotente por estado: un `PAID` repetido no vuelve a consumir stock.
-
-## Integración con inventario
-
-Al confirmar un pago:
-
-```text
-payment → PAID
-order   → PAID
-reservation → consumeForOrder()
-```
-
-Al recibir `DECLINED`, `ERROR` o `VOIDED`:
-
-```text
-payment → FAILED/CANCELLED
-order   → CANCELLED
-reservation → releaseForOrder()
-```
-
-Las reservas se extienden al iniciar el pago para evitar que una sesión de checkout normal pierda stock durante el proceso de pago.
+Los eventos externos se almacenan con unicidad `(provider, event_id)`. El procesamiento es idempotente: una confirmación repetida no vuelve a consumir stock.
 
 ## Auditoría financiera
 
-D1 registra:
+D1 registra intents, confirmaciones, fallos, cancelaciones, mismatches de seguridad, aprobaciones tardías, referencias externas, transaction IDs y payloads de webhook.
 
-- payment intent creado;
-- payment confirmado;
-- payment fallido;
-- payment cancelado;
-- security mismatch;
-- aprobación tardía después de una orden cerrada;
-- referencia del proveedor;
-- transaction ID del proveedor;
-- payload de webhook recibido.
+No se almacenan secretos de proveedores en D1.
 
-No se almacenan secretos de Wompi en D1.
+## Credenciales
 
-## Reconciliación
-
-El adapter Wompi implementa consulta server-side de:
-
-```text
-GET https://production.wompi.co/v1/transactions/{transaction_id}
-```
-
-utilizando exclusivamente la llave privada de producción.
-
-Esto permite reconciliar el estado del proveedor con el estado interno cuando existe el transaction ID real de Wompi.
-
-## Credenciales de producción
-
-Configurar como secretos del Worker:
+### Wompi
 
 ```text
 WOMPI_PUBLIC_KEY
@@ -156,42 +121,56 @@ WOMPI_INTEGRITY_SECRET
 WOMPI_EVENTS_SECRET
 ```
 
-Para dinero real deben ser llaves de producción de Wompi, no `*_test_*`.
-
-La URL de eventos de producción debe apuntar a:
+### Stripe
 
 ```text
-https://<production-host>/api/payments/webhooks/wompi
+STRIPE_SECRET_KEY
+STRIPE_PUBLISHABLE_KEY
+STRIPE_WEBHOOK_SECRET
 ```
 
-No registrar URLs sandbox para el entorno operativo de producción.
+### Mercado Pago
+
+```text
+MERCADOPAGO_ACCESS_TOKEN
+MERCADOPAGO_WEBHOOK_SECRET
+```
+
+### PayPal
+
+```text
+PAYPAL_CLIENT_ID
+PAYPAL_CLIENT_SECRET
+PAYPAL_WEBHOOK_ID
+```
+
+### Binance Pay
+
+```text
+BINANCE_PAY_API_KEY
+BINANCE_PAY_SECRET_KEY
+BINANCE_PAY_CERTIFICATE_SN
+```
+
+Para el entorno operativo se utilizan exclusivamente credenciales reales de producción. No se incorporan credenciales sandbox al runtime productivo.
 
 ## Migrations
 
-`migrations/0015_payments.sql` crea:
-
-- `payments`;
-- `payment_webhook_events`;
-- `payment_ledger`;
-- índices de búsqueda y estado;
-- restricciones de unicidad necesarias para concurrencia e idempotencia.
-
-## Refund / void
-
-El modelo de dominio ya contempla `REFUNDED`, pero no se debe inventar una operación de refund que el adapter del proveedor no soporte. Wompi documenta la anulación (`void`) para transacciones de tarjeta en determinados estados. Por eso la certificación final de refunds debe cerrarse únicamente después de validar la capacidad real disponible para la cuenta/producto Wompi configurado, sin fake adapter ni endpoint ficticio.
+- `0015_payments.sql`: modelo inicial de pagos.
+- `0016_multi_provider_payments.sql`: amplía providers soportados y persiste `checkout_url`.
 
 ## Criterio de cierre de Fase 04
 
-La fase solo se declara 100% cuando además de este código exista evidencia real de producción de:
+La implementación de código no se declara 100% certificada hasta disponer de evidencia real por cada provider habilitado:
 
-1. credenciales Wompi production configuradas fuera de Git;
-2. webhook de producción registrado en Wompi;
-3. pago real aprobado recibido por webhook;
+1. credenciales production configuradas fuera de Git;
+2. webhook production registrado;
+3. pago real aprobado recibido y verificado;
 4. orden movida a `PAID`;
 5. reserva consumida exactamente una vez;
 6. pago real rechazado/cancelado con liberación idempotente;
 7. duplicación de webhook sin doble efecto;
 8. amount/currency/reference manipulados rechazados;
-9. reconciliación contra API privada de Wompi;
-10. capacidad real de void/refund validada para el método de pago usado;
+9. reconciliación server-side exitosa;
+10. capacidades de void/refund verificadas según método real;
 11. build Cloudflare, tests, architecture check y deploy de producción exitosos.
