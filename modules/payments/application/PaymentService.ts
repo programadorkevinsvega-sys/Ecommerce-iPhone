@@ -1,23 +1,25 @@
 import type { Payment } from "../domain/Payment";
 import { assertPaymentTransition } from "../domain/Payment";
 import type { CreatePaymentInput, OrderPaymentPort, PaymentProviderPort, PaymentRepository, ProviderTransaction, ReservationPaymentPort } from "./PaymentPorts";
+import { PaymentProviderRegistry } from "./PaymentProviderRegistry";
 
 export class PaymentService {
   constructor(
     private readonly payments: PaymentRepository,
-    private readonly provider: PaymentProviderPort,
+    private readonly providers: PaymentProviderRegistry,
     private readonly orders: OrderPaymentPort,
     private readonly reservations: ReservationPaymentPort,
   ) {}
 
-  async createIntent(input: CreatePaymentInput): Promise<Readonly<{ payment: Payment; checkout: Awaited<ReturnType<PaymentProviderPort["createPaymentIntent"]>> }>> {
+  async createIntent(providerName: ProviderTransaction["provider"], input: CreatePaymentInput): Promise<Readonly<{ payment: Payment; checkout: Awaited<ReturnType<PaymentProviderPort["createPaymentIntent"]>> }>> {
+    const provider = this.providers.resolve(providerName);
     const existing = await this.payments.findByIdempotencyKey(input.customerId, input.idempotencyKey);
     if (existing) {
       this.assertOrderMatches(existing, input);
-      if (existing.provider !== this.provider.provider) throw new Error("Payment provider does not match the existing idempotent payment");
+      if (existing.provider !== provider.provider) throw new Error("Idempotency key is already bound to another payment provider");
       const checkout = existing.checkoutUrl
         ? { providerReference: existing.providerReference, provider: existing.provider, publicKey: "", currency: existing.currency, amountInCents: existing.amountInCents, integritySignature: "", checkoutUrl: existing.checkoutUrl }
-        : await this.provider.recoverPaymentIntent(existing, input);
+        : await provider.recoverPaymentIntent(existing, input);
       await this.reservations.extendForOrder(input.orderId, 30);
       return { payment: existing, checkout };
     }
@@ -28,8 +30,8 @@ export class PaymentService {
     if (order.status !== "PENDING_PAYMENT") throw new Error("Order is not awaiting payment");
     if (order.totalInCents !== input.amountInCents || order.currency !== input.currency) throw new Error("Payment amount or currency does not match order");
 
-    const checkout = await this.provider.createPaymentIntent(input);
-    if (checkout.provider !== this.provider.provider || checkout.amountInCents !== input.amountInCents || checkout.currency !== input.currency) throw new Error("Payment provider returned an inconsistent payment intent");
+    const checkout = await provider.createPaymentIntent(input);
+    if (checkout.provider !== provider.provider || checkout.amountInCents !== input.amountInCents || checkout.currency !== input.currency) throw new Error("Payment provider returned an inconsistent payment intent");
 
     const now = new Date().toISOString();
     const payment: Payment = {
@@ -45,10 +47,10 @@ export class PaymentService {
       const raced = await this.payments.findByIdempotencyKey(input.customerId, input.idempotencyKey);
       if (raced) {
         this.assertOrderMatches(raced, input);
-        if (raced.provider !== this.provider.provider) throw new Error("Concurrent payment selected a different provider");
+        if (raced.provider !== provider.provider) throw new Error("Concurrent payment selected a different provider");
         const recovered = raced.checkoutUrl
           ? { providerReference: raced.providerReference, provider: raced.provider, publicKey: "", currency: raced.currency, amountInCents: raced.amountInCents, integritySignature: "", checkoutUrl: raced.checkoutUrl }
-          : await this.provider.recoverPaymentIntent(raced, input);
+          : await provider.recoverPaymentIntent(raced, input);
         await this.reservations.extendForOrder(input.orderId, 30);
         return { payment: raced, checkout: recovered };
       }
@@ -63,9 +65,9 @@ export class PaymentService {
   async processProviderTransaction(transaction: ProviderTransaction, rawEvent: string): Promise<void> {
     const payment = await this.payments.findByProviderReference(transaction.reference);
     if (!payment) return;
-    if (payment.provider !== this.provider.provider) throw new Error("Provider mismatch");
+    if (payment.provider !== transaction.provider) throw new Error("Provider mismatch");
     if (payment.amountInCents !== transaction.amountInCents || payment.currency !== transaction.currency) {
-      await this.payments.recordLedger(payment.id, "SECURITY_MISMATCH", transaction.amountInCents, transaction.currency, JSON.stringify({ transactionId: transaction.transactionId }));
+      await this.payments.recordLedger(payment.id, "SECURITY_MISMATCH", transaction.amountInCents, transaction.currency, JSON.stringify({ transactionId: transaction.transactionId, provider: transaction.provider }));
       throw new Error("Provider transaction does not match payment intent");
     }
     await this.payments.recordWebhook(payment.provider, this.eventId(transaction, rawEvent), rawEvent);
@@ -76,8 +78,8 @@ export class PaymentService {
     if (payment.status === "PENDING") await this.payments.transition(payment.id, "PENDING", "PROCESSING");
   }
 
-  async reconcile(transactionId: string): Promise<ProviderTransaction> {
-    const transaction = await this.provider.getTransaction(transactionId);
+  async reconcile(providerName: ProviderTransaction["provider"], transactionId: string): Promise<ProviderTransaction> {
+    const transaction = await this.providers.resolve(providerName).getTransaction(transactionId);
     await this.processProviderTransaction(transaction, JSON.stringify({ source: "reconciliation", transaction }));
     return transaction;
   }
@@ -135,7 +137,7 @@ export class PaymentService {
   }
 
   private eventId(transaction: ProviderTransaction, rawEvent: string): string {
-    return `${transaction.transactionId}:${transaction.status}:${this.simpleHash(rawEvent)}`;
+    return `${transaction.provider}:${transaction.transactionId}:${transaction.status}:${this.simpleHash(rawEvent)}`;
   }
 
   private simpleHash(value: string): string {
