@@ -84,6 +84,13 @@ export class D1OrderRepository implements OrderCheckoutRepository {
     return this.hydrateOrder(row);
   }
 
+  async listByCustomer(customerId: string, limit: number, offset: number): Promise<readonly Order[]> {
+    const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 50);
+    const safeOffset = Math.max(Math.trunc(offset), 0);
+    const rows = await this.db.prepare("SELECT * FROM orders WHERE customer_id=? ORDER BY created_at DESC LIMIT ? OFFSET ?").bind(customerId, safeLimit, safeOffset).all<any>();
+    return Promise.all(rows.results.map((row) => this.hydrateOrder(row)));
+  }
+
   private async refreshServerPricing(cart: CheckoutCart): Promise<CheckoutCart> {
     const items = [];
     for (const item of cart.items) {
