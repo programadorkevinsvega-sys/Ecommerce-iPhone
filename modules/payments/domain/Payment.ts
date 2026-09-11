@@ -9,6 +9,7 @@ export type Payment = Readonly<{
   provider: PaymentProvider;
   providerReference: string;
   providerTransactionId?: string;
+  checkoutUrl?: string;
   status: PaymentStatus;
   amountInCents: number;
   currency: string;
