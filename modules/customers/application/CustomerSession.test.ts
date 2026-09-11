@@ -33,4 +33,11 @@ describe("CustomerSessionService", () => {
     const created = await service.create("customer-1");
     expect(await service.resolve(created.token)).toBeNull();
   });
+
+  it("revokes an active session and makes its token unusable", async () => {
+    const service = new CustomerSessionService(new InMemorySessions(), new Tokens());
+    const created = await service.create("customer-1");
+    await service.revoke(created.token);
+    expect(await service.resolve(created.token)).toBeNull();
+  });
 });
