@@ -18,11 +18,14 @@ export async function POST(request: Request) {
     await verifyPayPalWebhook({ body: raw, webhookId: env.PAYPAL_WEBHOOK_ID ?? "", authAlgo: request.headers.get("PAYPAL-AUTH-ALGO"), certUrl: request.headers.get("PAYPAL-CERT-URL"), transmissionId: request.headers.get("PAYPAL-TRANSMISSION-ID"), transmissionSig: request.headers.get("PAYPAL-TRANSMISSION-SIG"), transmissionTime: request.headers.get("PAYPAL-TRANSMISSION-TIME") }, token);
     const event: unknown = JSON.parse(raw);
     if (!event || typeof event !== "object") throw new Error("Invalid PayPal webhook payload");
-    const resource = (event as Record<string, unknown>).resource;
+    const eventRecord = event as Record<string, unknown>;
+    const resource = eventRecord.resource;
     const resourceRecord = resource && typeof resource === "object" ? resource as Record<string, unknown> : null;
     const id = typeof resourceRecord?.id === "string" ? resourceRecord.id : null;
     if (!id) throw new Error("PayPal order id is missing");
-    const transaction = await providers.resolve("PAYPAL").getTransaction(id);
+    const provider = providers.resolve("PAYPAL") as import("../../../../../../../modules/payments/infrastructure/PayPalPaymentProvider").PayPalPaymentProvider;
+    let transaction = await provider.getTransaction(id);
+    if (eventRecord.event_type === "CHECKOUT.ORDER.APPROVED" && transaction.status === "PENDING") transaction = await provider.capturePayment(id);
     await service.processProviderTransaction(transaction, raw);
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (error) {
