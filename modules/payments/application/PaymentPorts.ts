@@ -53,6 +53,7 @@ export interface PaymentProviderPort {
   getTransaction(transactionId: string): Promise<ProviderTransaction>;
   capturePayment?(transactionId: string): Promise<ProviderTransaction>;
   refundPayment?(transactionId: string, amountInCents: number, idempotencyKey: string): Promise<ProviderRefund>;
+  getRefund?(providerRefundId: string): Promise<ProviderRefund>;
   voidPayment?(transactionId: string, idempotencyKey: string): Promise<ProviderTransaction>;
 }
 
@@ -66,7 +67,10 @@ export interface PaymentRepository {
   transition(id: string, from: PaymentStatus, to: PaymentStatus): Promise<boolean>;
   recordWebhook(provider: PaymentProvider, eventId: string, payload: string): Promise<boolean>;
   recordLedger(paymentId: string, entryType: string, amountInCents: number, currency: string, metadata: string): Promise<void>;
+  acquireRefundLock(paymentId: string, idempotencyKey: string): Promise<boolean>;
+  releaseRefundLock(paymentId: string): Promise<void>;
   recordRefund(paymentId: string, idempotencyKey: string, amountInCents: number, currency: string, providerRefundId: string, status: "SUCCEEDED" | "PENDING" | "FAILED"): Promise<boolean>;
+  updateRefundStatus(paymentId: string, idempotencyKey: string, status: "SUCCEEDED" | "PENDING" | "FAILED"): Promise<boolean>;
   findRefund(paymentId: string, idempotencyKey: string): Promise<Readonly<{ providerRefundId: string; amountInCents: number; currency: string; status: "SUCCEEDED" | "PENDING" | "FAILED" }> | null>;
 }
 
