@@ -42,10 +42,21 @@ export class D1PaymentRepository implements PaymentRepository {
   async recordLedger(paymentId: string, entryType: string, amountInCents: number, currency: string, metadata: string): Promise<void> {
     await this.db.prepare("INSERT OR IGNORE INTO payment_ledger(id,payment_id,entry_type,amount_in_cents,currency,metadata_json,created_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP)").bind(crypto.randomUUID(), paymentId, entryType, amountInCents, currency, metadata).run();
   }
+  async acquireRefundLock(paymentId: string, idempotencyKey: string): Promise<boolean> {
+    const result = await this.db.prepare("INSERT OR IGNORE INTO payment_refund_locks(payment_id,idempotency_key,created_at,updated_at) VALUES(?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)").bind(paymentId, idempotencyKey).run();
+    return result.meta.changes === 1;
+  }
+  async releaseRefundLock(paymentId: string): Promise<void> {
+    await this.db.prepare("DELETE FROM payment_refund_locks WHERE payment_id=?").bind(paymentId).run();
+  }
   async recordRefund(paymentId: string, idempotencyKey: string, amountInCents: number, currency: string, providerRefundId: string, status: "SUCCEEDED" | "PENDING" | "FAILED"): Promise<boolean> {
     const result = await this.db.prepare("INSERT OR IGNORE INTO payment_refunds(id,payment_id,idempotency_key,provider_refund_id,status,amount_in_cents,currency,created_at,updated_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)").bind(
       crypto.randomUUID(), paymentId, idempotencyKey, providerRefundId, status, amountInCents, currency,
     ).run();
+    return result.meta.changes === 1;
+  }
+  async updateRefundStatus(paymentId: string, idempotencyKey: string, status: "SUCCEEDED" | "PENDING" | "FAILED"): Promise<boolean> {
+    const result = await this.db.prepare("UPDATE payment_refunds SET status=?,updated_at=CURRENT_TIMESTAMP WHERE payment_id=? AND idempotency_key=?").bind(status, paymentId, idempotencyKey).run();
     return result.meta.changes === 1;
   }
   async findRefund(paymentId: string, idempotencyKey: string): Promise<RefundRow | null> {
