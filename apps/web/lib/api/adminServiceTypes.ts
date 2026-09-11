@@ -1,5 +1,5 @@
-import { D1ServiceTypeRepository } from "../../../modules/services/infrastructure/D1ServiceTypeRepository";
-import { ServiceTypeDefinition, type ServiceCategory } from "../../../modules/services/domain/ServiceTypeDefinition";
+import { D1ServiceTypeRepository } from "../../../../modules/services/infrastructure/D1ServiceTypeRepository";
+import { ServiceTypeDefinition, type ServiceCategory } from "../../../../modules/services/domain/ServiceTypeDefinition";
 import { adminRepository, PERMISSIONS, requireAdmin } from "../adminAuth";
 
 export async function listAdminServiceTypes() {
@@ -24,15 +24,22 @@ export async function createAdminServiceType(body: Record<string, unknown>) {
       technicianApprovalRequired: Boolean(workflow?.technicianApprovalRequired),
       adminApprovalRequired: Boolean(workflow?.adminApprovalRequired),
       customerOwnershipProofRequired: Boolean(workflow?.customerOwnershipProofRequired),
-      allowedStatuses: Array.isArray(workflow?.allowedStatuses) ? workflow.allowedStatuses.map(String) : ["PENDING", "COMPLETED", "REJECTED"],
+      allowedStatuses: Array.isArray(workflow?.allowedStatuses)
+        ? workflow.allowedStatuses.map(String)
+        : ["PENDING", "COMPLETED", "REJECTED"],
     },
     enabled: body.enabled !== false,
-    metadata: body.metadata && typeof body.metadata === "object" ? (body.metadata as Record<string, string>) : {},
+    metadata:
+      body.metadata && typeof body.metadata === "object"
+        ? (body.metadata as Record<string, string>)
+        : {},
   });
   const repository = new D1ServiceTypeRepository(env.DB);
   await repository.save(definition);
   const primitives = definition.toPrimitives();
   const { repo } = await adminRepository();
-  await repo.audit(admin.id, "ADMIN_SERVICE_TYPE_CREATED", "service_type", primitives.code, { slug: primitives.slug });
+  await repo.audit(admin.id, "ADMIN_SERVICE_TYPE_CREATED", "service_type", primitives.code, {
+    slug: primitives.slug,
+  });
   return primitives;
 }
