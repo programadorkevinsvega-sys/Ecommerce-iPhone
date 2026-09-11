@@ -33,6 +33,19 @@ export async function requireAdmin(permission?: string): Promise<{ admin: AdminP
   return { admin, repo, env };
 }
 
+export async function logoutAdmin() {
+  const value = (await cookies()).get(ADMIN_COOKIE)?.value;
+  const admin = await currentAdmin();
+  if (value && admin) {
+    const { repo } = await adminRepository();
+    const fingerprint = await requestFingerprint();
+    const found = await repo.findSession(await sha256(value));
+    if (found) await repo.revokeSession(found.sessionId);
+    await repo.audit(admin.id, "ADMIN_LOGOUT", "admin_user", admin.id, {}, fingerprint.ipHash);
+  }
+  await clearAdminSession();
+}
+
 export async function requestFingerprint() {
   const h = await headers();
   const ip = h.get("CF-Connecting-IP") ?? h.get("X-Forwarded-For") ?? "unknown";
@@ -45,6 +58,5 @@ export async function setAdminSession(token: string, expires: Date) {
 }
 
 export async function clearAdminSession() { (await cookies()).set(ADMIN_COOKIE, "", { httpOnly: true, secure: true, sameSite: "strict", path: "/", expires: new Date(0) }); }
-
 export function sessionExpiry() { return new Date(Date.now() + SESSION_DAYS * 86_400_000); }
 export function newSessionToken() { return crypto.randomUUID().replaceAll("-", "") + crypto.randomUUID().replaceAll("-", ""); }
