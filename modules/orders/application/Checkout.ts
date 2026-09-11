@@ -1,8 +1,12 @@
 import type { Cart } from "../../cart/domain/Cart";
 import type { CheckoutInput, OrderCheckoutRepository } from "./CheckoutInput";
+import type { ReservationRepository } from "./ReservationRepository";
 
 export class Checkout {
-  constructor(private readonly orderRepository: OrderCheckoutRepository) {}
+  constructor(
+    private readonly reservations: ReservationRepository,
+    private readonly orderRepository: OrderCheckoutRepository,
+  ) {}
 
   async execute(cart: Cart, input: CheckoutInput) {
     if (!cart.items.length) throw new Error("Cart is empty");
@@ -11,6 +15,7 @@ export class Checkout {
     if (!/^[A-Za-z0-9._:-]{16,128}$/.test(input.idempotencyKey)) throw new Error("Invalid checkout idempotency key");
     if (input.shippingMethod !== "PICKUP" && input.shippingMethod !== "DELIVERY") throw new Error("Invalid shipping method");
     if (input.shippingAddress.countryCode !== "CO") throw new Error("Shipping is currently limited to Colombia");
+    await this.reservations.releaseExpired();
     return this.orderRepository.checkout(cart, input);
   }
 }
