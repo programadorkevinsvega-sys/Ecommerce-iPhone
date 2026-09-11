@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
-import { listAdminServices } from "../../../../lib/api/adminServices";
+import { listAdminServices, parseServiceRequestStatus } from "../../../../lib/api/adminServices";
 import { requireAdmin, PERMISSIONS } from "../../../../lib/adminAuth";
-import { parseServiceRequestStatus } from "../../../../../modules/services/application/ServiceWorkflowService";
-import type { ServiceRequestStatus } from "../../../../../modules/services/domain/ServiceRequest";
 
 export async function GET(request: Request) {
   try {
     await requireAdmin(PERMISSIONS.servicesRead);
     const raw = new URL(request.url).searchParams.get("status");
     const status = raw ? parseServiceRequestStatus(raw) : undefined;
-    return NextResponse.json({ items: await listAdminServices(status as ServiceRequestStatus | undefined) });
+    return NextResponse.json({ items: await listAdminServices(status) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load services";
     const status = message === "FORBIDDEN" ? 403 : message === "UNAUTHORIZED" ? 401 : 400;
