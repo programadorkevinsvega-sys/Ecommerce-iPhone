@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD auditado:** `bdb9469d5d787eb3ef8508acd4c39bb5e139325f`  
+**HEAD auditado:** `2b169dde5a50ca0ad1079e4e77ed0c6f449e4556`  
 **Última actualización:** 2026-09-11  
 **Entorno operativo:** **producción únicamente**.
 
@@ -279,6 +279,7 @@ Hardening aplicado:
 - Binance conserva `bizIdStr` cuando existe.
 - Wompi utiliza el checksum validado como correlación determinista cuando el proveedor no entrega un event id equivalente.
 - `PaymentService` acepta el event id real del proveedor y solo usa hash derivado como fallback.
+- El estado financiero se aplica **antes** de registrar el webhook como procesado; si la mutación falla, el proveedor puede reintentar el mismo evento sin quedar bloqueado por una deduplicación prematura.
 - Binance Pay limita timestamp del webhook a la ventana documentada de aproximadamente 1 segundo y valida nonce de 32 caracteres alfanuméricos.
 
 La tabla D1 mantiene `UNIQUE(provider,event_id)`.
@@ -304,7 +305,7 @@ POST /api/payments/:id/void
 
 `POST /api/payments/:id/refund/reconcile` permite resolver refunds persistidos como `PENDING` mediante consulta server-side al provider cuando el adapter lo soporta.
 
-`POST /api/payments/:id/void` exige `payments:void` + `Idempotency-Key` y solo opera sobre providers con capacidad `voidPayment`; actualmente Wompi es el adapter con esta capacidad.
+`POST /api/payments/:id/void` exige `payments:void` + `Idempotency-Key`, requiere transaction id persistido y solo opera sobre providers con capacidad `voidPayment`; actualmente Wompi es el adapter con esta capacidad.
 
 ## 6.5 Refund / void: capacidades reales
 
@@ -345,7 +346,7 @@ Corregido en código y cubierto mediante tests de application/domain:
 - duplicate approval → consumo de reserva seguro/idempotente;
 - `DECLINED` posterior a `PAID` no retrocede el pago;
 - amount tampering → rechazo;
-- webhook duplicado con mismo event id → ignorado antes de mutar estado;
+- webhook duplicado → estado protegido por transiciones idempotentes y deduplicación persistida;
 - out-of-order con event ids distintos → máquina de estados evita retrocesos;
 - refund repetido con misma idempotency key → una sola operación;
 - refunds concurrentes con diferentes idempotency keys → lock atómico por payment;
@@ -366,6 +367,7 @@ Implementados:
 - provider amount tampering;
 - refund idempotency;
 - concurrencia de refunds con diferentes claves;
+- reconciliación de refund `PENDING`;
 - validación de firmas Stripe;
 - validación de firmas Mercado Pago;
 - validación de firma/timestamp/nonce Binance Pay;
