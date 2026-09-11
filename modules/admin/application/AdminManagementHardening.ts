@@ -16,9 +16,7 @@ export class AdminManagementHardening {
     this.assertCanManage(actor);
     const target = await this.requireTarget(targetId);
     if (target.id === actor.id) throw new Error("ADMIN_SELF_DEACTIVATION_FORBIDDEN");
-    if (target.role === "SUPER_ADMIN" && target.active && (await this.repository.countActiveSuperAdmins()) <= 1) {
-      throw new Error("LAST_SUPER_ADMIN_PROTECTED");
-    }
+    if (target.role === "SUPER_ADMIN" && target.active && (await this.repository.countActiveSuperAdmins()) <= 1) throw new Error("LAST_SUPER_ADMIN_PROTECTED");
     target.deactivate();
     await this.repository.saveUser(target);
     await this.repository.revokeAllSessions(target.id);
@@ -36,16 +34,14 @@ export class AdminManagementHardening {
   async changeRole(actor: AdminUser, targetId: string, role: AdminRole, ipHash?: string): Promise<void> {
     this.assertCanManage(actor);
     const target = await this.requireTarget(targetId);
-    if (target.id === actor.id && role !== "SUPER_ADMIN") throw new Error("SELF_PRIVILEGE_REDUCTION_FORBIDDEN");
-    if (target.role === "SUPER_ADMIN" && role !== "SUPER_ADMIN" && (await this.repository.countActiveSuperAdmins()) <= 1) {
-      throw new Error("LAST_SUPER_ADMIN_PROTECTED");
-    }
-    if (target.role !== role) {
-      target.changeRole(role);
-      await this.repository.saveUser(target);
-      await this.repository.revokeAllSessions(target.id);
-      await this.repository.audit(actor.id, "ADMIN_ROLE_CHANGED", "admin_user", target.id, { role }, ipHash);
-    }
+    if (actor.id === target.id) throw new Error("ADMIN_SELF_ROLE_CHANGE_FORBIDDEN");
+    const previousRole = target.role;
+    if (previousRole === "SUPER_ADMIN" && role !== "SUPER_ADMIN" && (await this.repository.countActiveSuperAdmins()) <= 1) throw new Error("LAST_SUPER_ADMIN_PROTECTED");
+    if (previousRole === role) return;
+    target.changeRole(role);
+    await this.repository.saveUser(target);
+    await this.repository.revokeAllSessions(target.id);
+    await this.repository.audit(actor.id, "ADMIN_ROLE_CHANGED", "admin_user", target.id, { previousRole, role }, ipHash);
   }
 
   private async requireTarget(id: string): Promise<AdminUser> {
