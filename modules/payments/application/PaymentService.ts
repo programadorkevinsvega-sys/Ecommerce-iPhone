@@ -14,7 +14,8 @@ export class PaymentService {
     const existing = await this.payments.findByIdempotencyKey(input.customerId, input.idempotencyKey);
     if (existing) {
       this.assertOrderMatches(existing, input);
-      const checkout = await this.provider.createPaymentIntent(input);
+      if (existing.provider !== this.provider.provider) throw new Error("Payment provider does not match the existing idempotent payment");
+      const checkout = await this.provider.recoverPaymentIntent(existing, input);
       await this.reservations.extendForOrder(input.orderId, 30);
       return { payment: existing, checkout };
     }
@@ -26,6 +27,10 @@ export class PaymentService {
     if (order.totalInCents !== input.amountInCents || order.currency !== input.currency) throw new Error("Payment amount or currency does not match order");
 
     const checkout = await this.provider.createPaymentIntent(input);
+    if (checkout.provider !== this.provider.provider || checkout.amountInCents !== input.amountInCents || checkout.currency !== input.currency) {
+      throw new Error("Payment provider returned an inconsistent payment intent");
+    }
+
     const now = new Date().toISOString();
     const payment: Payment = {
       id: crypto.randomUUID(),
@@ -47,8 +52,10 @@ export class PaymentService {
       const raced = await this.payments.findByIdempotencyKey(input.customerId, input.idempotencyKey);
       if (raced) {
         this.assertOrderMatches(raced, input);
+        if (raced.provider !== this.provider.provider) throw new Error("Concurrent payment selected a different provider");
+        const recovered = await this.provider.recoverPaymentIntent(raced, input);
         await this.reservations.extendForOrder(input.orderId, 30);
-        return { payment: raced, checkout };
+        return { payment: raced, checkout: recovered };
       }
       throw error;
     }
@@ -61,6 +68,7 @@ export class PaymentService {
   async processProviderTransaction(transaction: ProviderTransaction, rawEvent: string): Promise<void> {
     const payment = await this.payments.findByProviderReference(transaction.reference);
     if (!payment) return;
+    if (payment.provider !== this.provider.provider) throw new Error("Provider mismatch");
     if (payment.amountInCents !== transaction.amountInCents || payment.currency !== transaction.currency) {
       await this.payments.recordLedger(payment.id, "SECURITY_MISMATCH", transaction.amountInCents, transaction.currency, JSON.stringify({ transactionId: transaction.transactionId }));
       throw new Error("Provider transaction does not match payment intent");
