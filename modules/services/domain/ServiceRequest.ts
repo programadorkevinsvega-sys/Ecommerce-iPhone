@@ -50,7 +50,11 @@ export class ServiceRequest extends AggregateRoot<string> {
   quote(amountInCents: number): void { if (amountInCents < 0) throw new DomainError("Quote cannot be negative"); if (this.props.status !== "PENDING") throw new DomainError("Only pending requests can be quoted"); this.props = { ...this.props, quoteInCents: amountInCents, status: "QUOTED", updatedAt: new Date().toISOString() }; }
   assign(technicianId: string): void { if (!technicianId.trim()) throw new DomainError("Technician is required"); this.props = { ...this.props, assignedTechnicianId: technicianId, updatedAt: new Date().toISOString() }; }
   attachPayment(paymentId: string): void { if (!paymentId.trim()) throw new DomainError("Payment is required"); this.props = { ...this.props, paymentId, updatedAt: new Date().toISOString() }; }
-  resolve(notes: string): void { if (!notes.trim()) throw new DomainError("Resolution notes are required"); this.props = { ...this.props, resolutionNotes: notes.trim(), status: "COMPLETED", updatedAt: new Date().toISOString() }; }
+  resolve(notes: string): void {
+    if (!notes.trim()) throw new DomainError("Resolution notes are required");
+    this.transitionTo("COMPLETED");
+    this.props = { ...this.props, resolutionNotes: notes.trim(), updatedAt: new Date().toISOString() };
+  }
   toPrimitives(): ServiceRequestProps & { id: string } { return { id: this.getId(), ...this.props }; }
 }
 
