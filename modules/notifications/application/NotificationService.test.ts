@@ -17,11 +17,13 @@ class MemoryOutbox implements NotificationOutboxRepository {
 class MemoryEmail implements EmailProvider { sent:unknown[]=[]; async send(input:Parameters<EmailProvider["send"]>[0]){this.sent.push(input);return {id:"resend-1"}} }
 
 describe("NotificationService",()=>{
-  it("sends an order-created email and marks the event processed",async()=>{
+  it("sends an order-created email with a deterministic idempotency key",async()=>{
     const outbox=new MemoryOutbox(); const email=new MemoryEmail(); const service=new NotificationService(outbox,email);
     const event:NotificationEvent={id:"evt-1",eventType:"OrderCreated",aggregateId:"ord-1",createdAt:new Date().toISOString(),payload:{email:"buyer@example.com",orderNumber:"VEGA-1001",status:"PENDING_PAYMENT"}};
     await service.process(event);
-    expect(email.sent).toHaveLength(1); expect(outbox.records.has("evt-1")).toBe(false); expect(outbox.deliveries.size).toBe(1);
+    expect(email.sent).toHaveLength(1);
+    expect((email.sent[0] as {idempotencyKey:string}).idempotencyKey).toBe("ecommerce-iphone/email/OrderCreated/ord-1/evt-1");
+    expect(outbox.records.has("evt-1")).toBe(false); expect(outbox.deliveries.size).toBe(1);
   });
   it("is idempotent when the delivery already exists",async()=>{
     const outbox=new MemoryOutbox(); const email=new MemoryEmail(); outbox.deliveries.add("buyer@example.com:ORDER_PAID");
