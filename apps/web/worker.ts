@@ -6,6 +6,7 @@ import { D1NotificationOutboxRepository } from "../../modules/notifications/infr
 import { NotificationService } from "../../modules/notifications/application/NotificationService";
 import { ResendEmailProvider } from "../../modules/notifications/infrastructure/ResendEmailProvider";
 import type { NotificationEvent } from "../../modules/notifications/domain/NotificationEvent";
+import { D1ReservationRepository } from "../../modules/orders/infrastructure/D1ReservationRepository";
 
 type RateLimitBinding = {
   limit(input: { key: string }): Promise<{ success: boolean }>;
@@ -103,6 +104,11 @@ export default {
     return withHeaders(response, {"X-Request-Id": id});
   },
   async scheduled(_event: ScheduledEvent, env: Env) {
+    // Release expired checkout reservations independently of new checkout traffic.
+    // The reservation repository is idempotent and only restores stock for orders
+    // that are still in a payment-hold state.
+    await new D1ReservationRepository(env.DB).releaseExpired();
+
     const repo = new D1NotificationOutboxRepository(env.DB);
     const pending = await repo.pending(50);
     for (const event of pending) {
