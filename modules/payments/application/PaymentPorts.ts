@@ -31,6 +31,7 @@ export type ProviderPaymentIntent = Readonly<{
 }>;
 
 export type ProviderTransaction = Readonly<{
+  provider: PaymentProvider;
   transactionId: string;
   reference: string;
   status: "PENDING" | "APPROVED" | "DECLINED" | "VOIDED" | "ERROR";
