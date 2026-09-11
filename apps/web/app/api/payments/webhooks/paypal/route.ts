@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { paymentContext } from "../../../../../../lib/payments";
 import { verifyPayPalWebhook } from "../../../../../../../modules/payments/infrastructure/PayPalWebhookVerifier";
+import type { PaymentProviderPort } from "../../../../../../../modules/payments/application/PaymentPorts";
 
 async function accessToken(clientId: string, clientSecret: string): Promise<string> {
   if (!clientId || !clientSecret) throw new Error("PayPal production credentials are not configured");
@@ -23,9 +24,12 @@ export async function POST(request: Request) {
     const resourceRecord = resource && typeof resource === "object" ? resource as Record<string, unknown> : null;
     const id = typeof resourceRecord?.id === "string" ? resourceRecord.id : null;
     if (!id) throw new Error("PayPal order id is missing");
-    const provider = providers.resolve("PAYPAL") as import("../../../../../../../modules/payments/infrastructure/PayPalPaymentProvider").PayPalPaymentProvider;
+    const provider = providers.resolve("PAYPAL") as PaymentProviderPort;
     let transaction = await provider.getTransaction(id);
-    if (eventRecord.event_type === "CHECKOUT.ORDER.APPROVED" && transaction.status === "PENDING") transaction = await provider.capturePayment(id);
+    if (eventRecord.event_type === "CHECKOUT.ORDER.APPROVED" && transaction.status === "PENDING") {
+      if (!provider.capturePayment) throw new Error("PayPal capture capability is not configured");
+      transaction = await provider.capturePayment(id);
+    }
     await service.processProviderTransaction(transaction, raw);
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (error) {
