@@ -15,6 +15,7 @@ export class PaymentService {
     if (existing) {
       this.assertOrderMatches(existing, input);
       const checkout = await this.provider.createPaymentIntent(input);
+      await this.reservations.extendForOrder(input.orderId, 30);
       return { payment: existing, checkout };
     }
 
@@ -46,11 +47,13 @@ export class PaymentService {
       const raced = await this.payments.findByIdempotencyKey(input.customerId, input.idempotencyKey);
       if (raced) {
         this.assertOrderMatches(raced, input);
+        await this.reservations.extendForOrder(input.orderId, 30);
         return { payment: raced, checkout };
       }
       throw error;
     }
 
+    await this.reservations.extendForOrder(input.orderId, 30);
     await this.payments.recordLedger(payment.id, "PAYMENT_INTENT_CREATED", payment.amountInCents, payment.currency, JSON.stringify({ provider: payment.provider, reference: payment.providerReference }));
     return { payment, checkout };
   }
@@ -90,20 +93,27 @@ export class PaymentService {
   private async markPaid(payment: Payment): Promise<void> {
     if (payment.status === "PAID") return;
     if (!["PENDING", "PROCESSING"].includes(payment.status)) return;
+    const order = await this.orders.findById(payment.orderId);
+    if (!order) throw new Error("Order not found while confirming payment");
+    if (order.status === "CANCELLED" || order.status === "REFUNDED") {
+      await this.payments.recordLedger(payment.id, "LATE_APPROVAL_AFTER_ORDER_CLOSED", payment.amountInCents, payment.currency, JSON.stringify({ transactionId: payment.providerTransactionId }));
+      return;
+    }
+    if (order.status !== "PAID") {
+      const orderChanged = await this.orders.transitionStatus(payment.orderId, "PENDING_PAYMENT", "PAID")
+        || await this.orders.transitionStatus(payment.orderId, "PAYMENT_PROCESSING", "PAID");
+      if (!orderChanged) {
+        const current = await this.orders.findById(payment.orderId);
+        if (current?.status !== "PAID") throw new Error("Payment confirmed but order transition failed");
+      }
+    }
+
     assertPaymentTransition(payment.status, "PAID");
     const changed = await this.payments.transition(payment.id, payment.status, "PAID");
     if (!changed) {
       const current = await this.payments.findById(payment.id);
       if (current?.status === "PAID") return;
       throw new Error("Concurrent payment transition prevented confirmation");
-    }
-    const orderChanged = await this.orders.transitionStatus(payment.orderId, "PENDING_PAYMENT", "PAID");
-    if (!orderChanged) {
-      const orderProcessingChanged = await this.orders.transitionStatus(payment.orderId, "PAYMENT_PROCESSING", "PAID");
-      if (!orderProcessingChanged) {
-        const order = await this.orders.findById(payment.orderId);
-        if (order?.status !== "PAID") throw new Error("Payment confirmed but order transition failed");
-      }
     }
     await this.reservations.consumeForOrder(payment.orderId);
     await this.payments.recordLedger(payment.id, "PAYMENT_CONFIRMED", payment.amountInCents, payment.currency, "{}");
