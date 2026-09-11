@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { paymentContext } from "../../../../../../lib/payments";
+import { paymentContext } from "../../../../../lib/payments";
 import { verifyBinancePayWebhook } from "../../../../../../../modules/payments/infrastructure/BinancePayWebhookVerifier";
 
 function record(value: unknown): Record<string, unknown> {
