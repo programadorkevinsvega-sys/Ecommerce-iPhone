@@ -1,5 +1,5 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { currentCustomerId } from "../../../lib/customerSession";
 import { serviceCustomerPortal } from "../../../lib/services";
 
 const last4 = (value: unknown) => {
@@ -9,8 +9,7 @@ const last4 = (value: unknown) => {
 
 export async function GET() {
   try {
-    const customerId = (await cookies()).get("customer_id")?.value;
-    return NextResponse.json(await serviceCustomerPortal().list(customerId));
+    return NextResponse.json(await serviceCustomerPortal().list(await currentCustomerId()));
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to load services" }, { status: 500 });
   }
@@ -19,7 +18,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const customerId = (await cookies()).get("customer_id")?.value;
+    const customerId = await currentCustomerId();
     const type = String(body.type ?? "").trim().toUpperCase();
     const email = String(body.email ?? "").trim().toLowerCase();
     const carrier = body.carrier ? String(body.carrier).trim() : undefined;
