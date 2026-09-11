@@ -14,17 +14,23 @@ export async function GET(request: Request) {
     const offsetValue = Number(searchParams.get("offset") ?? "0");
     const limit = Number.isInteger(limitValue) ? limitValue : 50;
     const offset = Number.isInteger(offsetValue) ? offsetValue : 0;
+    const adminUserId = optional(searchParams.get("adminUserId"));
+    const action = optional(searchParams.get("action"));
+    const resourceType = optional(searchParams.get("resourceType"));
+    const resourceId = optional(searchParams.get("resourceId"));
+    const from = optional(searchParams.get("from"));
+    const to = optional(searchParams.get("to"));
     const filter = {
-      adminUserId: optional(searchParams.get("adminUserId")),
-      action: optional(searchParams.get("action")),
-      resourceType: optional(searchParams.get("resourceType")),
-      resourceId: optional(searchParams.get("resourceId")),
-      from: optional(searchParams.get("from")),
-      to: optional(searchParams.get("to")),
+      ...(adminUserId === undefined ? {} : { adminUserId }),
+      ...(action === undefined ? {} : { action }),
+      ...(resourceType === undefined ? {} : { resourceType }),
+      ...(resourceId === undefined ? {} : { resourceId }),
+      ...(from === undefined ? {} : { from }),
+      ...(to === undefined ? {} : { to }),
       limit,
       offset,
     };
-    if (offset < 0 || limit < 1 || limit > 100 || !validDate(filter.from) || !validDate(filter.to)) {
+    if (offset < 0 || limit < 1 || limit > 100 || !validDate(from) || !validDate(to)) {
       return NextResponse.json({ error: "Invalid audit filters" }, { status: 400 });
     }
     const result = await new AdminAuditViewer(new D1AdminAuditRepository(env.DB)).execute(filter);
