@@ -8,7 +8,6 @@ import { D1CustomerSessionRepository } from "../../../modules/customers/infrastr
 import { WebCryptoCustomerSessionTokenGenerator } from "../../../modules/customers/infrastructure/WebCryptoCustomerSessionTokenGenerator";
 import { Checkout } from "../../../modules/orders/application/Checkout";
 import { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
-import { D1ReservationRepository } from "../../../modules/orders/infrastructure/D1ReservationRepository";
 
 export async function commerceContext() {
   const { env } = getCloudflareContext();
@@ -31,6 +30,6 @@ export async function commerceContext() {
 
 export async function checkoutUseCase() {
   const context = await commerceContext();
-  const checkout = new Checkout(new D1ReservationRepository(context.db), context.orderRepository);
+  const checkout = new Checkout(context.orderRepository);
   return { context, checkout };
 }
