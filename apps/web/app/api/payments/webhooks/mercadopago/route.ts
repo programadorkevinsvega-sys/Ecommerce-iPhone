@@ -2,22 +2,4 @@ import { NextResponse } from "next/server";
 import { paymentContext } from "../../../../../lib/payments";
 import { verifyMercadoPagoWebhook } from "../../../../../../../modules/payments/infrastructure/MercadoPagoWebhookVerifier";
 
-export async function POST(request: Request) {
-  try {
-    const raw = await request.text();
-    const url = new URL(request.url);
-    const dataId = url.searchParams.get("data.id") ?? url.searchParams.get("data_id");
-    const { env, service, providers } = await paymentContext();
-    await verifyMercadoPagoWebhook(env.MERCADOPAGO_WEBHOOK_SECRET ?? "", request.headers.get("x-signature"), request.headers.get("x-request-id"), dataId);
-    if (url.searchParams.get("type") && url.searchParams.get("type") !== "payment") return NextResponse.json({ received: true });
-    const event: unknown = JSON.parse(raw);
-    if (!event || typeof event !== "object") throw new Error("Invalid Mercado Pago webhook payload");
-    const data = (event as Record<string, unknown>).data;
-    if (!data || typeof data !== "object" || typeof (data as Record<string, unknown>).id !== "string") throw new Error("Mercado Pago payment id is missing");
-    const transaction = await providers.resolve("MERCADOPAGO").getTransaction(String((data as Record<string, unknown>).id));
-    await service.processProviderTransaction(transaction, raw);
-    return NextResponse.json({ received: true }, { status: 200 });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid webhook" }, { status: 400 });
-  }
-}
+export async function POST(request:Request){try{const raw=await request.text();const url=new URL(request.url);const dataId=url.searchParams.get("data.id")??url.searchParams.get("data_id");const requestId=request.headers.get("x-request-id");const{env,service,providers}=await paymentContext();await verifyMercadoPagoWebhook(env.MERCADOPAGO_WEBHOOK_SECRET??"",request.headers.get("x-signature"),requestId,dataId);if(url.searchParams.get("type")&&url.searchParams.get("type")!=="payment")return NextResponse.json({received:true});const event:unknown=JSON.parse(raw);if(!event||typeof event!=="object")throw new Error("Invalid Mercado Pago webhook payload");const data=(event as Record<string,unknown>).data;if(!data||typeof data!=="object"||typeof(data as Record<string,unknown>).id!=="string")throw new Error("Mercado Pago payment id is missing");const paymentId=String((data as Record<string,unknown>).id);const transaction=await providers.resolve("MERCADOPAGO").getTransaction(paymentId);const eventId=requestId?`mercadopago:${requestId}`:`mercadopago:${paymentId}:${dataId??"unknown"}`;await service.processProviderTransaction(transaction,raw,eventId);return NextResponse.json({received:true},{status:200});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Invalid webhook"},{status:400});}}
