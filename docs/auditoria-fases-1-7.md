@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD de código auditado:** `28385e7d3109c199ae5ca93f89ae30b93229ff59`  
+**HEAD de código auditado:** `0542424d8d19d6b2940144439044e832ba11c02f`  
 **Última actualización:** 2026-09-11  
 **Entorno operativo:** **producción únicamente**.
 
@@ -64,20 +64,7 @@ Existe **un único entorno Cloudflare remoto: producción**. El desarrollo local
 
 # 3. Foundation
 
-Implementado:
-
-- monorepo modular;
-- DDD + Clean Architecture;
-- bounded contexts;
-- D1/R2/Queues;
-- OpenNext + Workers;
-- cron;
-- observabilidad;
-- rate limiting;
-- health live/ready;
-- request-id;
-- headers de seguridad;
-- enforcement arquitectónico.
+Implementado: monorepo modular, DDD + Clean Architecture, bounded contexts, D1/R2/Queues, OpenNext + Workers, cron, observabilidad, rate limiting, health live/ready, request-id, headers de seguridad y enforcement arquitectónico.
 
 Reproducibilidad todavía no está cerrada: `package.json` fija `pnpm@10.15.0`, pero falta versionar `pnpm-lock.yaml` y exigir `pnpm install --frozen-lockfile`.
 
@@ -87,17 +74,7 @@ Reproducibilidad todavía no está cerrada: `package.json` fija `pnpm@10.15.0`, 
 
 # 4. Storefront Premium
 
-Implementado:
-
-- catálogo D1;
-- búsqueda, filtros, ordenamiento y paginación;
-- detalle por slug y variantes;
-- reviews, FAQ y relacionados;
-- galería responsive;
-- inventario;
-- SEO metadata, canonical/Open Graph, JSON-LD;
-- sitemap/robots;
-- separación Domain/Application/Infrastructure.
+Implementado: catálogo D1; búsqueda, filtros, ordenamiento y paginación; detalle por slug y variantes; reviews, FAQ y relacionados; galería responsive; inventario; SEO metadata, canonical/Open Graph, JSON-LD; sitemap/robots; separación Domain/Application/Infrastructure.
 
 Pendiente de certificación completa: E2E, accesibilidad, LCP/CLS reales, SEO en URLs reales, regresiones responsive y cobertura exhaustiva de filtros/variantes/agotados.
 
@@ -131,80 +108,31 @@ La certificación funcional exhaustiva contra producción permanece separada de 
 
 ## 6.1 Código
 
-Implementado:
-
-- aggregate Payment y state machine;
-- invariantes amount/currency;
-- PaymentRepository y PaymentProviderPort;
-- Wompi, Stripe, Mercado Pago, PayPal y Binance Pay;
-- recovery y correlación de transacciones;
-- verificadores específicos de webhook;
-- deduplicación y manejo out-of-order;
-- ledger y reconciliation;
-- idempotencia de intent/webhook/refund;
-- ownership server-side;
-- refund persistido y reconciliación cuando el provider lo soporta;
-- lock atómico contra refunds concurrentes con distintas idempotency keys;
-- void administrativo para providers que lo soportan;
-- RBAC para refund/void.
+Implementado: aggregate Payment y state machine; invariantes amount/currency; PaymentRepository y PaymentProviderPort; Wompi, Stripe, Mercado Pago, PayPal y Binance Pay; recovery/correlación; verificadores específicos de webhook; deduplicación/out-of-order; ledger/reconciliation; idempotencia de intent/webhook/refund; ownership server-side; refund persistido y reconciliación cuando el provider lo soporta; lock atómico contra refunds concurrentes; void administrativo donde corresponde; RBAC para refund/void.
 
 ## 6.2 Persistencia
 
-`0017_payment_refunds.sql` y `0018_payment_refund_locks.sql` están versionadas. El último deploy confirmado informó `No migrations to apply!`, por lo que las migraciones pendientes de Payments ya no constituyen un bloqueo de despliegue.
+`0017_payment_refunds.sql` y `0018_payment_refund_locks.sql` están versionadas. El último deploy confirmado informó `No migrations to apply!`.
 
-## 6.3 Estado de certificación
+## 6.3 Certificación
 
-El último build/deploy productivo de Payments fue exitoso: Worker desplegado, health live/ready PASS y `verify:production` PASS. La certificación funcional real queda deliberadamente pendiente de la verificación manual del usuario con credenciales/webhooks productivos:
-
-- pago aprobado real;
-- pago rechazado/cancelado;
-- reserva consumida/liberada una sola vez;
-- webhook duplicado/out-of-order;
-- amount/currency/reference manipulado;
-- refund/void real según capacidad del provider.
-
-**No se declara Fase 04 100% hasta cerrar esa evidencia manual.**
+Deploy productivo exitoso, health live/ready PASS y `verify:production` PASS. Continúa pendiente evidencia manual con proveedores productivos: aprobado/rechazado, webhook duplicado/out-of-order, manipulación amount/currency/reference, refund/void real y reservas consumidas/liberadas una sola vez.
 
 ---
 
 # 7. Services — FASE 05
 
-## 7.1 Alcance exacto de la auditoría
+## 7.1 Implementación
 
-La Fase 05 define como base existente `ServiceRequest`, `ServiceManagement`, Customer Portal, Service Workflow, Service Type repositories, persistencia D1, minimización de IMEI/serial y operaciones administrativas.
+Customer Portal usa sesión server-side y ownership por `customer_id`; el detalle de un request de otro customer responde `404`. Workflow y operaciones administrativas validan estados, quote, técnico, completion y notas. Mutaciones usan RBAC y auditan `actorId`. IMEI/serial se minimizan.
 
-## 7.2 Implementación completada
-
-### Identidad y ownership
-
-- Customer Portal usa `customer_session` server-side.
-- `GET /api/services` obtiene el customer desde la sesión real.
-- `POST /api/services` vincula el request al customer autenticado cuando existe sesión.
-- `GET /api/services/:id` exige sesión y valida ownership; un customer distinto recibe `404`.
-
-### Workflow y operaciones administrativas
-
-- estados limitados a `ServiceRequestStatus`;
-- quote positivo y entero seguro;
-- asignación con `technicianId` normalizado;
-- completion con notas obligatorias y límite de 4000 caracteres;
-- transición mediante la máquina de estados del Domain;
-- auditoría de actor en cada operación administrativa;
-- endpoints protegidos por `services:read`/`services:write`.
-
-### Persistencia y auditoría
-
-- `D1ServiceRequestRepository` filtra Customer Portal por `customer_id`;
-- operaciones del workflow registran `service_audit_events`;
-- IMEI/serial se mantienen minimizados a últimos cuatro dígitos.
-
-### Tests
+## 7.2 Tests
 
 Se cubren ownership, rechazo de customer diferente, acceso del propietario, políticas de estado, quote, completion, notas, técnico y estados arbitrarios.
 
-## 7.3 Estado actual de Fase 05
+## 7.3 Certificación
 
-Código funcional + hardening implementado para el alcance definido. La certificación 100% permanece pendiente de gates y evidencia funcional de producción: checks técnicos, tests, Customer Portal con sesión real, aislamiento entre customers, operaciones administrativas contra D1 real, evidencia de auditoría y regresión de Payments/Commerce Core.
+Código funcional + hardening implementado para el alcance definido. Certificación 100% pendiente de gates técnicos y evidencia funcional de producción: sesión real, aislamiento, operaciones D1, auditoría y regresión de Payments/Commerce Core.
 
 ---
 
@@ -218,205 +146,141 @@ Existe una base administrativa considerable. El trabajo actual prioriza cierre d
 
 ## 8.2 Identidad administrativa
 
-**🟢 Implementado**
-
-`AdminUser` contempla identidad, email, password hash, rol, estado activo, intentos fallidos, bloqueo temporal, último login y timestamps. `D1AdminRepository` proporciona persistencia de usuario/sesión/auditoría.
+**🟢 Implementado** — `AdminUser`, `D1AdminRepository`, sesiones, lockout y lifecycle administrativo.
 
 ## 8.3 Roles y RBAC
 
 **🟢 Base implementada / 🟡 certificación pendiente**
 
-Roles:
+Roles: `SUPER_ADMIN`, `ADMIN`, `MANAGER`, `SALES`, `SUPPORT`, `INVENTORY`, `FINANCE`, `CONTENT_EDITOR`, `TECHNICIAN`.
 
-```text
-SUPER_ADMIN
-ADMIN
-MANAGER
-SALES
-SUPPORT
-INVENTORY
-FINANCE
-CONTENT_EDITOR
-TECHNICIAN
-```
-
-Existe autorización server-side mediante `requireAdmin()` y permisos explícitos.
-
-Pendiente: matriz completa rol/permisión, pruebas sistemáticas de privilege escalation vertical/horizontal y revisión de todas las rutas administrativas.
+Existe autorización server-side mediante `requireAdmin()` y permisos explícitos. Pendiente matriz completa rol/permisión y pruebas sistemáticas de privilege escalation vertical/horizontal.
 
 ## 8.4 Password security
 
-**🟢 Implementado / 🟡 pruebas pendientes**
-
-PBKDF2-SHA256 con salt aleatorio, derivación de clave, comparación segura y política de longitud administrativa.
-
-Pendiente: pruebas exhaustivas, rotación/migración y verificación de que ningún flujo pueda persistir passwords sin hashing.
+**🟢 Implementado / 🟡 pruebas pendientes** — PBKDF2-SHA256, salt aleatorio, derivación de clave, comparación segura y política de longitud administrativa.
 
 ## 8.5 Sesiones administrativas
 
-**🟢 Implementado / 🟡 certificación pendiente**
-
-`admin_sessions` almacena token hash, expiración, revocación, admin user, fingerprints hash. Cookie `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`. Existe revocación individual y global.
-
-Pendiente: expiración, revocación, reutilización, session fixation/hijacking y abuso/rate limiting.
+**🟢 Implementado / 🟡 certificación pendiente** — token hash, expiración, revocación, fingerprints hash y cookie `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`. Pendientes pruebas adversariales y abuso/rate limiting.
 
 ## 8.6 Login/logout/lockout
 
-**🟢 Implementado / 🟡 certificación pendiente**
-
-Login real valida credenciales, aplica lockout, verifica password, registra intentos, revoca sesiones anteriores, crea nueva sesión y audita.
+**🟢 Implementado / 🟡 certificación pendiente** — credenciales, lockout, intentos, revocación de sesiones previas, creación de sesión y auditoría.
 
 ## 8.7 Auditoría administrativa
 
-**🟢 Infraestructura + viewer implementados / 🟡 cobertura pendiente**
+**🟢 Infraestructura + viewer implementados / 🟡 cobertura pendiente** — `admin_audit_log`, API de consulta, filtros/paginación y permiso `audit:read`. Pendiente comprobar cobertura total y ausencia de secretos en payloads.
 
-`admin_audit_log` persiste actor, acción, recurso, resource id, payload JSON e IP hash. Existe API administrativa de consulta con filtros/paginación y permiso `audit:read`.
-
-Pendiente: verificar cobertura de todas las operaciones sensibles y ausencia de secretos en payloads/auditoría.
-
-## 8.8 Backoffice implementado
+## 8.8 Backoffice
 
 - Dashboard: **🟢**
-- Services: **🟢**
-- Service Types: **🟢**
-- Promotions: **🟢 implementado administrativamente + integración server-side con checkout desplegada; certificación funcional pendiente**
-- CMS/SEO: **🟢 administración implementada; consumo público/integración y certificación pendientes**
-- Inventory: **🟡 parcial, con ajustes idempotentes y actualización atómica de stock**
-- Products: **🟡 parcial**
-- Customers: **🟡 parcial**
-- Orders: **🟡 parcial**
-- Payments: **🟡 base + endpoints administrativos; certificación pendiente**
-- Refunds: **🟡 base + endpoint; certificación de estado/idempotencia/concurrencia pendiente**
-- Void: **🟡 base + endpoint; certificación pendiente**
-- Reviews: **🟢 administración implementada; certificación pendiente**
-- Settings: **🟢 administración implementada; certificación pendiente**
+- Services / Service Types: **🟢**
+- Promotions: **🟢 administración + integración server-side con checkout desplegada; certificación funcional pendiente**
+- CMS/SEO: **🟢 administración implementada; consumo/integración pendiente**
+- Inventory: **🟡 parcial, con ajustes idempotentes y stock atómico**
+- Products / Customers / Orders: **🟡 parcial**
+- Payments / Refunds / Void: **🟡 base + endpoints; certificación de estado/idempotencia/concurrencia pendiente**
+- Reviews / Settings: **🟢 administración implementada; certificación pendiente**
 - Admin management: **🟢 lifecycle hardening implementado; certificación pendiente**
 
-## 8.9 Hardening realizado en esta iteración — Checkout / Orders
+## 8.9 Hardening realizado — Orders / Checkout
 
 ### State machine de pedidos
 
-Se corrigió un bypass de integridad: `D1OrderRepository.transitionStatus()` actualizaba el estado sin invocar la máquina de estados de Domain.
+Se corrigió un bypass de integridad en `D1OrderRepository.transitionStatus()`.
 
 Ahora:
 
 - `assertOrderTransition()` se ejecuta antes de cualquier mutación;
-- estados desconocidos o saltos arbitrarios son rechazados;
-- estados terminales (`CANCELLED`, `REFUNDED`) no pueden resucitar;
-- la actualización de estado y `OrderStatusChanged` se ejecutan en un único `D1.batch`, evitando un estado persistido sin su evento de auditoría de dominio;
-- la condición `WHERE status=?` mantiene la transición compare-and-set contra carreras concurrentes.
+- estados desconocidos y saltos arbitrarios son rechazados;
+- `CANCELLED` y `REFUNDED` no pueden resucitar;
+- actualización y `OrderStatusChanged` se ejecutan en un único `D1.batch`;
+- `WHERE status=?` mantiene compare-and-set contra carreras concurrentes.
 
-### Tests
+### Checkout
 
-El test de `Order` cubre:
+Se mantiene:
 
-- progresión válida de pago;
-- rechazo de resurrección de estados terminales;
-- rechazo de saltos arbitrarios.
+- idempotencia obligatoria;
+- precios server-side;
+- producto/variante activa;
+- stock decrementado atómicamente;
+- reservas de 15 minutos dentro del batch;
+- promociones server-side y uso condicionado atómicamente;
+- recuperación de carreras de idempotencia para el mismo customer;
+- aislamiento del `Idempotency-Key` entre customers.
 
-### Checkout ya endurecido previamente
+### Ownership / IDOR
 
-El checkout actual mantiene:
-
-- `Idempotency-Key` obligatoria;
-- lookup de idempotencia antes del trabajo;
-- resolución server-side de precios;
-- validación de producto/variante activa;
-- decremento atómico de stock dentro del batch;
-- reservas de 15 minutos dentro de la misma transacción;
-- promociones server-side con incremento de uso condicionado y atómico;
-- recuperación de una carrera de idempotencia devolviendo el pedido ya creado al mismo customer;
-- aislamiento del `Idempotency-Key` frente a otro customer.
-
-### Ownership
-
-Carritos autenticados se reclaman con una condición de escritura que solo permite `customer_id IS NULL` o el mismo customer. Un carrito perteneciente a otro customer no puede ser reclamado. Los pedidos se consultan filtrados por `customer_id` y el endpoint de detalle resuelve el customer desde `customer_session`, devolviendo `404` si no existe ownership.
+El claim de carrito solo permite `customer_id IS NULL` o el mismo customer. Un carrito de otro customer no puede ser reclamado. Los pedidos se consultan por `customer_id` y el detalle resuelve el customer desde `customer_session`, devolviendo `404` sin ownership.
 
 ### Guest vs autenticado
 
-El carrito puede existir como guest, pero el checkout exige `customerId` autenticado. Por tanto, el comportamiento actual es explícito: **guest cart → login/customer session → claim ownership → checkout**. No se permite crear pedidos anónimos mediante el endpoint de checkout.
+El carrito puede ser guest. En checkout, si el email ya corresponde a un customer, se exige una sesión cuyo customer coincida; si el email es nuevo, el checkout puede crear el customer y establecer la sesión. Una sesión existente de otro customer nunca puede apropiarse de ese email/carrito.
 
-## 8.10 Pendientes inmediatos de F6
+## 8.10 Hardening realizado — Payments
+
+`D1PaymentRepository.transition()` ahora aplica `assertPaymentTransition()` antes de modificar persistencia. Esto elimina el bypass de infraestructura que permitía solicitar desde un adapter una transición no permitida por el Domain.
+
+La defensa queda en dos niveles:
+
+1. `PaymentService` ya valida transiciones críticas mediante `assertPaymentTransition()`.
+2. `D1PaymentRepository` vuelve a imponer la misma invariante en el límite de persistencia.
+
+Las carreras siguen protegidas por el `WHERE status=?` compare-and-set y el servicio maneja el resultado cuando otro proceso ganó la transición.
+
+## 8.11 Estado de pruebas de esta iteración
+
+El test de `Order` cubre progresión válida de pago, rechazo de resurrección de estados terminales y rechazo de saltos arbitrarios. Payment ya dispone de cobertura de state machine en `PaymentService.test.ts`; la nueva defensa de repository queda pendiente de ejecución del suite en esta iteración.
+
+## 8.12 Pendientes inmediatos de F6
 
 1. concurrencia de stock durante checkout y reservas/rollback;
-2. idempotencia completa del checkout, incluyendo escenarios de carrera y expiración;
-3. ownership/IDOR/BOLA de carrito y pedidos mediante tests de dos customers;
+2. idempotencia completa del checkout, incluyendo carreras y expiración;
+3. tests IDOR/BOLA de carrito y pedidos con dos customers;
 4. certificación guest vs autenticado;
-5. state machines de Order + Payment y coherencia entre ambas;
+5. coherencia completa Order/Payment state machines;
 6. refund/void: idempotencia, concurrencia, state machine y auditoría;
-7. tests de privilege escalation vertical/horizontal para toda la matriz RBAC;
-8. tests de sesión administrativa, abuso y rate limiting;
-9. tests críticos de auditoría y no exposición de secretos;
-10. integración/regresión real de Payments, Commerce Core, Services e Inventory;
-11. gates técnicos y certificación exclusiva en producción;
-12. actualizar este documento con cada cambio relevante y con SHA/evidencia de cada certificación.
+7. tests de privilege escalation vertical/horizontal;
+8. tests de sesiones administrativas, abuso y rate limiting;
+9. tests de auditoría y no exposición de secretos;
+10. regresión real de Payments, Commerce Core, Services e Inventory;
+11. gates técnicos y certificación exclusivamente en producción.
 
-## 8.11 Requisitos transversales de F6
+## 8.13 Requisitos transversales
 
 ### RBAC
 
 - [ ] matriz completa rol/permisión;
 - [ ] denegación por defecto;
-- [ ] todas las rutas sensibles protegidas server-side;
-- [ ] ningún admin_id/rol/permiso confiado desde el cliente;
-- [ ] tests de privilege escalation vertical;
-- [ ] tests de privilege escalation horizontal;
-- [ ] tests por recurso.
-
-### Sesiones
-
-- [ ] login real;
-- [ ] logout real;
-- [ ] expiración real;
-- [ ] revocación real;
-- [ ] revocación global;
-- [ ] session fixation/hijacking;
-- [ ] fingerprint behavior;
-- [ ] rate limiting/abuse protection.
-
-### APIs
-
-- [ ] IDOR/BOLA;
-- [ ] input validation;
-- [ ] error mapping seguro;
-- [ ] operaciones destructivas protegidas;
-- [ ] CSRF/cookie security validado;
-- [ ] no exposición de secretos;
-- [ ] no bypass mediante rutas genéricas.
+- [ ] rutas sensibles protegidas server-side;
+- [ ] ningún admin_id/rol/permiso confiado desde cliente;
+- [ ] privilege escalation vertical/horizontal;
+- [ ] pruebas por recurso.
 
 ### Integridad
 
-- [x] state machine de Order aplicada server-side;
-- [x] transición y evento de Order atómicos;
-- [ ] idempotencia completa del checkout certificada;
+- [x] state machine Order aplicada server-side;
+- [x] transición Order + evento atómicos;
+- [x] state machine Payment aplicada también en repository;
+- [ ] idempotencia checkout certificada;
 - [ ] concurrencia stock/payments/orders certificada;
 - [ ] auditoría atómica de todas las operaciones sensibles.
 
-### Arquitectura
-
-- [ ] DDD + Clean Architecture auditado transversalmente;
-- [ ] Presentation sin lógica de negocio;
-- [ ] Application/use cases para operaciones administrativas;
-- [ ] invariantes en Domain;
-- [ ] Infrastructure aislada mediante ports/repositories;
-- [ ] evitar `AdminResources` como God Service;
-- [ ] separar capacidades administrativas por bounded context cuando corresponda;
-- [ ] conservar módulos separables a futuro.
-
 ### Tests
 
-- [x] tests de state machine de Order;
-- [ ] integration tests D1;
-- [ ] RBAC matrix tests;
-- [ ] authentication tests;
-- [ ] session tests;
-- [ ] audit tests;
-- [ ] IDOR/BOLA tests;
-- [ ] negative authorization tests;
+- [x] Order state machine;
+- [x] Payment state machine existente;
+- [ ] integración D1;
+- [ ] RBAC matrix;
+- [ ] authentication/session;
+- [ ] audit;
+- [ ] IDOR/BOLA;
+- [ ] negative authorization;
 - [ ] orders regression;
 - [ ] payments/refunds/void regression;
-- [ ] services regression;
-- [ ] inventory concurrency tests.
+- [ ] inventory concurrency.
 
 ### Gates técnicos
 
@@ -426,37 +290,16 @@ El carrito puede existir como guest, pero el checkout exige `customerId` autenti
 - [ ] lint;
 - [ ] typecheck;
 - [ ] unit tests;
-- [ ] integration tests relevantes;
+- [ ] integration tests;
 - [ ] Cloudflare build reproducible;
 - [ ] migrations production;
 - [ ] deploy production;
-- [ ] `/api/health/live`;
-- [ ] `/api/health/ready`;
+- [ ] health live/ready;
 - [ ] `verify:production`.
 
-### Certificación funcional final
+## 8.14 Criterio de cierre F6
 
-- [ ] login administrativo real;
-- [ ] RBAC real con varios roles;
-- [ ] operaciones permitidas/denegadas;
-- [ ] gestión de admins;
-- [ ] orders;
-- [ ] payments;
-- [ ] refunds;
-- [ ] void;
-- [ ] inventory;
-- [ ] services;
-- [ ] service types;
-- [ ] reviews;
-- [ ] promotions;
-- [ ] CMS/SEO;
-- [ ] settings;
-- [ ] audit viewer;
-- [ ] regression Commerce/Payments.
-
-## 8.12 Criterio de cierre F6
-
-F6 solo podrá cambiar a **🟢 100% COMPLETA** cuando todos los módulos pendientes estén implementados, los existentes estén endurecidos, la matriz RBAC esté probada, autenticación/sesiones estén certificadas, no existan bypasses de autorización, las operaciones críticas tengan auditoría, pasen tests unitarios/integración/seguridad, pasen `foundation:check` y `architecture:check`, pase el build reproducible de Cloudflare, se despliegue en producción, pasen health checks y `verify:production`, se certifiquen funcionalmente todos los módulos administrativos y no existan regresiones en Commerce/Payments/Fases anteriores.
+F6 solo podrá cambiar a **🟢 100% COMPLETA** cuando todos los módulos estén implementados, endurecidos y certificados; la matriz RBAC esté probada; autenticación/sesiones estén certificadas; no existan bypasses de autorización o state machine; las operaciones críticas tengan auditoría; pasen tests unitarios/integración/seguridad; pasen `foundation:check` y `architecture:check`; exista build reproducible; se despliegue a producción; pasen health checks y `verify:production`; y no existan regresiones en Commerce/Payments/Fases anteriores.
 
 **Estado de cierre actual: 🟡 NO CERTIFICADA.**
 
@@ -464,23 +307,9 @@ F6 solo podrá cambiar a **🟢 100% COMPLETA** cuando todos los módulos pendie
 
 # 9. Notifications + Queues — FASE 07
 
-Implementado:
+Implementado: notification ports, NotificationService, templates, D1 outbox/deliveries, Resend provider, Queue, cron, IDs deterministas para eventos de pedido y claim atómico de deliveries/outbox.
 
-- notification ports;
-- NotificationService;
-- templates;
-- D1 outbox/deliveries;
-- Resend provider;
-- Queue;
-- cron;
-- IDs deterministas para eventos de pedido;
-- claim atómico de deliveries/outbox.
-
-Pendiente:
-
-- DLQ explícita;
-- política definitiva de retry;
-- replay/auditoría de fallos terminales.
+Pendiente: DLQ explícita, política definitiva de retry y replay/auditoría de fallos terminales.
 
 ---
 
@@ -495,11 +324,11 @@ Pendiente:
 
 ## Seguridad
 
-- [ ] auditoría exhaustiva de todas las APIs;
-- [ ] validación de input completa;
+- [ ] auditoría exhaustiva de APIs;
+- [ ] validación completa de input;
 - [ ] autorización server-side completa;
-- [ ] revisión CORS/Origin;
-- [ ] revisión CSRF donde corresponda;
+- [ ] CORS/Origin;
+- [ ] CSRF donde corresponda;
 - [ ] headers;
 - [ ] secrets/dependencias;
 - [ ] abuso/rate-limit;
@@ -511,22 +340,8 @@ Estos gates no se convierten en PASS por documentación.
 
 # 11. Criterio de cierre
 
-Para cada fase:
-
 ```text
-Código
-  +
-Pruebas
-  +
-Seguridad
-  +
-Reproducibilidad
-  +
-Deploy cuando aplique
-  +
-Verificación de producción
-  =
-100%
+Código + Pruebas + Seguridad + Reproducibilidad + Deploy + Verificación de producción = 100%
 ```
 
 No se usa `compila = 100%`, `CI verde = 100%` ni `documentado = 100%`.
