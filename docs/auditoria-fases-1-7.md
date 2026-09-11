@@ -18,7 +18,7 @@
 |---|---|---:|
 | 01 Foundation | 🟢 Arquitectura y plataforma implementadas; reproducibilidad y seguridad final pendientes | ~92% |
 | 02 Storefront Premium | 🟢 Implementación amplia; validación funcional, accesibilidad, rendimiento y E2E completos pendientes | ~90% |
-| 03 Commerce Core | 🟡 Funcional; inventario atómico e identidad de cliente pendientes de endurecimiento | ~65% |
+| 03 Commerce Core | 🟢 Núcleo endurecido; validación CI/producción de los escenarios críticos aún pendiente | ~85% |
 | 04 Payments | 🔴 Preparación arquitectónica, sin integración real | ~5–10% |
 | 05 Services | 🟢 Implementación real; depende de Payments y cierre administrativo | ~75% |
 | 06 Admin + RBAC | 🟡 RBAC y seguridad implementados; backoffice incompleto | ~60% |
@@ -112,7 +112,7 @@ El build/deploy de producción más reciente confirmó:
 - páginas estáticas generadas
 - Worker generado mediante OpenNext
 - despliegue Cloudflare exitoso
-- migraciones D1 sin cambios pendientes
+- migraciones D1 sin cambios pendientes en esa ejecución
 - `/api/health/live` → HTTP 200
 - `/api/health/ready` → HTTP 200
 - verificación de producción completada
@@ -240,21 +240,124 @@ Está muy avanzada y funcional, pero **permanece abierta** hasta demostrar los p
 
 # 5. FASE 03 — Commerce Core
 
-Implementado:
+## 5.1 Capacidades implementadas y endurecidas
 
-- customers/customer_addresses
-- carts/cart_items
-- inventory_reservations
-- orders/order_items/order_events
-- Cart, Checkout, repositories y tests
+El núcleo commerce ahora tiene evidencia de implementación para:
 
-Pendientes críticos:
+- customers/customer_addresses;
+- carts/cart_items;
+- sesiones reales de cliente con token hash, expiración y revocación;
+- autorización server-side de identidad de cliente;
+- ownership explícito de carrito en la capa Application/Repository;
+- ownership de pedidos por `customerId` en la consulta de pedido;
+- checkout protegido contra usar el carrito de otro cliente;
+- inventario con decremento atómico condicionado por `active=1 AND stock>=quantity`;
+- guard de fallo dentro del batch para forzar rollback de checkout cuando un producto no tiene stock suficiente;
+- idempotencia mediante `checkout_idempotency`, incluyendo detección de carreras;
+- precios server-side recalculados desde `products`/`product_variants` justo antes del checkout;
+- nombres/slugs/precios de líneas derivados del catálogo server-side;
+- reservas de inventario enlazadas al pedido;
+- expiración de reservas consciente del estado del pedido;
+- rollback explícito de reservas mediante `releaseForOrder()`;
+- consumo/cierre de reservas mediante `consumeForOrder()` sin devolver stock;
+- limpieza de reservas legacy para impedir que una fila antigua vuelva a incrementar stock incorrectamente;
+- notificación `OrderCreated` con ID determinista para que reintentos idempotentes no generen eventos duplicados;
+- pruebas unitarias adicionales para sesión, ownership de carrito, autenticación, stock, shipping y ciclo de checkout.
 
-1. Reserva de inventario atómica y comprobación de `rows_affected`.
-2. Consistencia transaccional/equivalente entre reserva, pedido, líneas y eventos.
-3. Sustituir confianza exclusiva en `customer_id` cookie por sesión de cliente real con expiración, rotación, revocación y autorización server-side.
+## 5.2 Modelo de inventario actual
 
-**Resultado: ~65%.**
+El checkout crea el pedido en `PENDING_PAYMENT`, decrementa stock atómicamente y crea una reserva enlazada al `order_id` con expiración de 15 minutos.
+
+Reglas:
+
+```text
+PENDING_PAYMENT / PAYMENT_PROCESSING + reserva expirada
+        ↓
+liberar reserva + devolver stock una sola vez
+
+PAID / PROCESSING / SHIPPED / etc. + reserva expirada
+        ↓
+cerrar reserva SIN devolver stock
+
+fallo/cancelación de pago
+        ↓
+releaseForOrder(orderId)
+        ↓
+restaurar stock una sola vez
+
+pago confirmado
+        ↓
+consumeForOrder(orderId)
+        ↓
+cerrar reserva SIN restaurar stock
+```
+
+La capa de Payments todavía no está integrada, por lo que los hooks `releaseForOrder()` y `consumeForOrder()` quedan preparados para ser llamados por la transición real de pago. No se considera implementado un flujo de pago real hasta Fase 04.
+
+## 5.3 Seguridad de carrito y cliente
+
+Para un cliente autenticado:
+
+```text
+customer_session
+      ↓
+resolve session
+      ↓
+customerId
+      ↓
+claim(cartId, customerId)
+      ↓
+getOwnedByCustomer(cartId, customerId)
+      ↓
+checkout
+```
+
+Esto elimina el problema anterior donde checkout podía recibir un `cart_id` válido perteneciente a otro cliente y convertir sus contenidos en un pedido del cliente autenticado.
+
+Para guest checkout, el carrito anónimo se reclama al cliente creado durante el checkout. Si el email ya pertenece a un cliente, se exige una sesión válida; no se permite convertir el checkout anónimo en una operación sobre una cuenta existente sin autenticación.
+
+## 5.4 Precios server-side
+
+El precio almacenado en `cart_items` se conserva para la experiencia del carrito, pero **no es autoridad final para cobrar**.
+
+Antes de crear el pedido, Infrastructure vuelve a consultar el producto y, si existe, la variante activa. El subtotal y total se calculan con esos precios server-side. Un cliente no puede modificar el precio del pedido enviando valores arbitrarios en el request.
+
+## 5.5 Idempotencia y notificaciones
+
+`Idempotency-Key` continúa siendo obligatoria.
+
+El repositorio:
+
+- valida la key;
+- registra la relación key → customer → order;
+- devuelve el pedido existente para reintentos del mismo cliente;
+- rechaza el uso de una key existente por otro cliente;
+- protege la carrera de dos requests concurrentes mediante la unicidad de la tabla y relectura después del fallo del batch.
+
+Además, el evento de notificación utiliza un ID determinista `order-created:{orderId}`, evitando duplicados en el outbox cuando el mismo checkout es reintentado.
+
+## 5.6 Evidencia y pendientes de cierre
+
+Las pruebas críticas nuevas están en el repositorio, pero la fase **todavía NO se marca al 100%** hasta obtener evidencia de ejecución exitosa del pipeline completo y de escenarios reales de producción.
+
+Pendientes de certificación:
+
+- [ ] CI completo ejecutando unit tests, typecheck, architecture check y build después de estos cambios;
+- [ ] prueba real de dos checkouts concurrentes sobre stock limitado;
+- [ ] prueba real de dos requests con la misma `Idempotency-Key`;
+- [ ] prueba real de reintento de notificación sin duplicación en outbox;
+- [ ] prueba real de carrito A contra sesión B;
+- [ ] prueba real de checkout guest con email existente;
+- [ ] prueba real de expiración de reserva PENDING_PAYMENT y devolución única de stock;
+- [ ] prueba real de reserva asociada a PAID sin devolución de stock;
+- [ ] integración futura de `releaseForOrder()`/`consumeForOrder()` con Payments;
+- [ ] validación de producción después de aplicar migraciones `0012` y `0013`.
+
+### Resultado
+
+**FASE 03 → ~85%.**
+
+El conjunto de problemas críticos detectados en la revisión anterior fue corregido a nivel de código y pruebas. La fase permanece abierta únicamente porque todavía falta la evidencia operacional/CI final y Payments aún no existe como integración real.
 
 ---
 
@@ -272,6 +375,8 @@ Pendiente:
 - reconciliation
 - idempotency
 - ledger
+- integración con `consumeForOrder()` en pago confirmado;
+- integración con `releaseForOrder()` en pago fallido/cancelado.
 
 **Resultado: ~5–10%.**
 
@@ -338,6 +443,7 @@ Implementado:
 - Resend provider
 - Cloudflare Queue
 - cron
+- eventos de checkout con IDs deterministas para evitar duplicados por reintento.
 
 Pendiente:
 
@@ -403,12 +509,17 @@ FASE 02
         ↓
 
 FASE 03
-  ├─ inventario atómico
-  ├─ consistencia transaccional
-  └─ sesión/autorización de cliente
+  ├─ CI completo después del hardening
+  ├─ concurrencia de stock
+  ├─ idempotencia concurrente
+  ├─ ownership guest/autenticado
+  ├─ ciclo completo de reservas
+  └─ validación de producción de migraciones 0012/0013
 
         ↓
 
 FASE 04
-  └─ Payments real
+  ├─ Payments real
+  ├─ consumeForOrder() en pago confirmado
+  └─ releaseForOrder() en pago fallido/cancelado
 ```
