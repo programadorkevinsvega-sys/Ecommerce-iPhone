@@ -1,4 +1,52 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-export default function CheckoutPage(){const [loading,setLoading]=useState(false);const [error,setError]=useState("");const [orderId,setOrderId]=useState("");async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();setLoading(true);setError("");const f=new FormData(e.currentTarget);const body={email:String(f.get("email")),firstName:String(f.get("firstName")),lastName:String(f.get("lastName")),phone:String(f.get("phone")),shippingMethod:String(f.get("shippingMethod")),shippingAddress:{recipientName:String(f.get("recipientName")),phone:String(f.get("phone")),addressLine1:String(f.get("addressLine1")),addressLine2:String(f.get("addressLine2")||""),city:String(f.get("city")),state:String(f.get("state")),postalCode:String(f.get("postalCode")||""),countryCode:"CO"}};try{const r=await fetch("/api/checkout",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw new Error(data.error??"No se pudo crear el pedido");setOrderId(data.order.id);}catch(err){setError(err instanceof Error?err.message:"No se pudo completar el checkout");}finally{setLoading(false);}}if(orderId)return <main className="store-shell"><section className="empty-state"><p className="eyebrow">Pedido creado</p><h1>Tu pedido está listo para pagar.</h1><p>Referencia: {orderId}</p><p>El siguiente paso será seleccionar y confirmar el medio de pago.</p><Link className="button primary" href={`/orders/${orderId}`}>Ver pedido</Link></section></main>;return <main className="store-shell"><header className="store-header"><Link href="/" className="brand-mark">Ecommerce iPhone</Link><nav><Link href="/cart">Carrito</Link><Link href="/catalog">Catálogo</Link></nav></header><section className="catalog-hero"><p className="eyebrow">Checkout</p><h1>Datos de entrega.</h1><p>Por ahora el pedido se crea como pendiente de pago. La integración de proveedores de pago pertenece a la siguiente fase.</p></section><form className="checkout-form" onSubmit={submit}><fieldset><legend>Contacto</legend><label>Nombre<input name="firstName" required /></label><label>Apellido<input name="lastName" required /></label><label>Email<input name="email" type="email" required /></label><label>Teléfono<input name="phone" required /></label></fieldset><fieldset><legend>Entrega</legend><label>Método<select name="shippingMethod" defaultValue="DELIVERY"><option value="DELIVERY">Envío a domicilio — $15.000</option><option value="PICKUP">Recogida — gratis</option></select></label><label>Nombre del destinatario<input name="recipientName" required /></label><label>Dirección<input name="addressLine1" required /></label><label>Apartamento / complemento<input name="addressLine2" /></label><label>Ciudad<input name="city" required /></label><label>Departamento<input name="state" required /></label><label>Código postal<input name="postalCode" /></label></fieldset>{error&&<p role="alert" className="form-error">{error}</p>}<button className="button primary" disabled={loading}>{loading?"Creando pedido…":"Crear pedido"}</button></form></main>}
+
+export default function CheckoutPage() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [orderId, setOrderId] = useState("");
+  const [idempotencyKey] = useState(() => crypto.randomUUID());
+
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    const f = new FormData(e.currentTarget);
+    const body = {
+      email: String(f.get("email")),
+      firstName: String(f.get("firstName")),
+      lastName: String(f.get("lastName")),
+      phone: String(f.get("phone")),
+      shippingMethod: String(f.get("shippingMethod")),
+      shippingAddress: {
+        recipientName: String(f.get("recipientName")),
+        phone: String(f.get("phone")),
+        addressLine1: String(f.get("addressLine1")),
+        addressLine2: String(f.get("addressLine2") || ""),
+        city: String(f.get("city")),
+        state: String(f.get("state")),
+        postalCode: String(f.get("postalCode") || ""),
+        countryCode: "CO",
+      },
+    };
+    try {
+      const r = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "content-type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify(body),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error ?? "No se pudo crear el pedido");
+      setOrderId(data.order.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo completar el checkout");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (orderId) return <main className="store-shell"><section className="empty-state"><p className="eyebrow">Pedido creado</p><h1>Tu pedido está listo para pagar.</h1><p>Referencia: {orderId}</p><p>El siguiente paso será seleccionar y confirmar el medio de pago.</p><Link className="button primary" href={`/orders/${orderId}`}>Ver pedido</Link></section></main>;
+
+  return <main className="store-shell"><header className="store-header"><Link href="/" className="brand-mark">Ecommerce iPhone</Link><nav><Link href="/cart">Carrito</Link><Link href="/catalog">Catálogo</Link></nav></header><section className="catalog-hero"><p className="eyebrow">Checkout</p><h1>Datos de entrega.</h1><p>Por ahora el pedido se crea como pendiente de pago. La integración de proveedores de pago pertenece a la siguiente fase.</p></section><form className="checkout-form" onSubmit={submit}><fieldset><legend>Contacto</legend><label>Nombre<input name="firstName" required /></label><label>Apellido<input name="lastName" required /></label><label>Email<input name="email" type="email" required /></label><label>Teléfono<input name="phone" required /></label></fieldset><fieldset><legend>Entrega</legend><label>Método<select name="shippingMethod" defaultValue="DELIVERY"><option value="DELIVERY">Envío a domicilio — $15.000</option><option value="PICKUP">Recogida — gratis</option></select></label><label>Nombre del destinatario<input name="recipientName" required /></label><label>Dirección<input name="addressLine1" required /></label><label>Apartamento / complemento<input name="addressLine2" /></label><label>Ciudad<input name="city" required /></label><label>Departamento<input name="state" required /></label><label>Código postal<input name="postalCode" /></label></fieldset>{error&&<p role="alert" className="form-error">{error}</p>}<button className="button primary" disabled={loading}>{loading?"Creando pedido…":"Crear pedido"}</button></form></main>;
+}
