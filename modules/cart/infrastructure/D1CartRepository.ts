@@ -8,26 +8,13 @@ export class D1CartRepository {
     await this.db.prepare("INSERT OR IGNORE INTO carts(id,customer_id) VALUES(?,?)").bind(cartId, customerId ?? null).run();
     const row = await this.db.prepare("SELECT currency,customer_id FROM carts WHERE id=?").bind(cartId).first<any>();
     if (!row) throw new Error("Cart not found");
-    const result = await this.db
-      .prepare("SELECT ci.product_id,p.name,p.slug,ci.quantity,ci.unit_price_in_cents,p.currency,p.stock,ci.variant_id,pv.name variant_name FROM cart_items ci JOIN products p ON p.id=ci.product_id LEFT JOIN product_variants pv ON pv.id=ci.variant_id WHERE ci.cart_id=? ORDER BY ci.created_at")
-      .bind(cartId)
-      .all<any>();
-    return {
-      id: cartId,
-      customerId: row.customer_id ?? undefined,
-      currency: row.currency,
-      items: result.results.map((x) => ({
-        productId: x.product_id,
-        productName: x.name,
-        slug: x.slug,
-        quantity: x.quantity,
-        unitPriceInCents: x.unit_price_in_cents,
-        currency: x.currency,
-        stock: x.stock,
-        variantId: x.variant_id ?? undefined,
-        variantName: x.variant_name ?? undefined,
-      })),
-    };
+    return this.hydrate(cartId, row);
+  }
+
+  async getOwnedByCustomer(cartId: string, customerId: string): Promise<Cart> {
+    const row = await this.db.prepare("SELECT currency,customer_id FROM carts WHERE id=? AND customer_id=?").bind(cartId, customerId).first<any>();
+    if (!row) throw new Error("Cart belongs to another customer");
+    return this.hydrate(cartId, row);
   }
 
   async claimForCustomer(cartId: string, customerId: string): Promise<void> {
@@ -71,6 +58,29 @@ export class D1CartRepository {
   async clear(cartId: string): Promise<void> {
     await this.db.prepare("DELETE FROM cart_items WHERE cart_id=?").bind(cartId).run();
     await this.touch(cartId);
+  }
+
+  private async hydrate(cartId: string, row: any): Promise<Cart> {
+    const result = await this.db
+      .prepare("SELECT ci.product_id,p.name,p.slug,ci.quantity,ci.unit_price_in_cents,p.currency,p.stock,ci.variant_id,pv.name variant_name FROM cart_items ci JOIN products p ON p.id=ci.product_id LEFT JOIN product_variants pv ON pv.id=ci.variant_id WHERE ci.cart_id=? ORDER BY ci.created_at")
+      .bind(cartId)
+      .all<any>();
+    return {
+      id: cartId,
+      customerId: row.customer_id ?? undefined,
+      currency: row.currency,
+      items: result.results.map((x) => ({
+        productId: x.product_id,
+        productName: x.name,
+        slug: x.slug,
+        quantity: x.quantity,
+        unitPriceInCents: x.unit_price_in_cents,
+        currency: x.currency,
+        stock: x.stock,
+        variantId: x.variant_id ?? undefined,
+        variantName: x.variant_name ?? undefined,
+      })),
+    };
   }
 
   private async hasVariantIdentityIndex(): Promise<boolean> {
