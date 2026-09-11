@@ -21,8 +21,7 @@ export async function verifyMercadoPagoWebhook(secret: string, signatureHeader: 
   if (!timestamp || !received) throw new Error("Invalid Mercado Pago webhook signature");
   const timestampNumber = Number(timestamp);
   if (!Number.isSafeInteger(timestampNumber) || Math.abs(Date.now() / 1000 - timestampNumber) > 300) throw new Error("Mercado Pago webhook timestamp expired");
-  const normalizedId = dataId.toLowerCase();
-  const manifest = `id:${normalizedId};request-id:${requestId};ts:${timestamp};`;
+  const manifest = `id:${dataId};request-id:${requestId};ts:${timestamp};`;
   const expected = await hmacSha256(secret, manifest);
   if (!constantTimeEqual(received, expected)) throw new Error("Invalid Mercado Pago webhook signature");
 }
