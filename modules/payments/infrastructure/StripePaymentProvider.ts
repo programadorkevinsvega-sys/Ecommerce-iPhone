@@ -30,8 +30,11 @@ export class StripePaymentProvider implements PaymentProviderPort {
     const mapped: ProviderTransaction["status"] = status === "succeeded" ? "APPROVED" : status === "canceled" ? "VOIDED" : status === "requires_payment_method" ? "DECLINED" : ["requires_action", "requires_confirmation", "requires_capture", "processing"].includes(status) ? "PENDING" : "ERROR";
     const metadata = record(body.metadata);
     const amount = body.amount;
-    if (typeof body.id !== "string" || !Number.isSafeInteger(amount) || typeof body.currency !== "string" || typeof metadata.order_id !== "string") throw new Error("Stripe returned an invalid PaymentIntent");
-    return { provider: this.provider, transactionId: body.id, reference: metadata.order_id, status: mapped, amountInCents: amount, currency: body.currency.toUpperCase() };
+    const id = body.id;
+    const currency = body.currency;
+    const orderId = metadata.order_id;
+    if (typeof id !== "string" || typeof amount !== "number" || !Number.isSafeInteger(amount) || typeof currency !== "string" || typeof orderId !== "string") throw new Error("Stripe returned an invalid PaymentIntent");
+    return { provider: this.provider, transactionId: id, reference: orderId, status: mapped, amountInCents: amount, currency: currency.toUpperCase() };
   }
   private intent(body: StripeRecord, input: CreatePaymentInput): ProviderPaymentIntent {
     if (typeof body.id !== "string" || typeof body.client_secret !== "string" || body.amount !== input.amountInCents) throw new Error("Stripe returned an invalid PaymentIntent");
