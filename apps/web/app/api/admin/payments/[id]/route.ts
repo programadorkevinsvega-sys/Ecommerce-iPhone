@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAdminPayment } from "../../../../../../lib/api/adminPayments";
+import { getAdminPayment } from "../../../../../lib/api/adminPayments";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try { const { id } = await context.params; if (!id.trim()) return NextResponse.json({ error: "Payment id required" }, { status: 400 }); return NextResponse.json(await getAdminPayment(id), { headers: { "cache-control": "no-store" } }); }
