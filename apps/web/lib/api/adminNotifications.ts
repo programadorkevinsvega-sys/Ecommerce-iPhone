@@ -1,4 +1,4 @@
-import { D1AdminNotificationsQuery } from "../../../modules/admin/infrastructure/D1AdminNotificationsQuery";
+import { D1AdminNotificationsQuery } from "../../../../modules/admin/infrastructure/D1AdminNotificationsQuery";
 import { PERMISSIONS, requireAdmin } from "../adminAuth";
 
 export async function getAdminNotifications(limit: number) {
