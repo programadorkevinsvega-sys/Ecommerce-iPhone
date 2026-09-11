@@ -1,38 +1,58 @@
-# Auditoría profunda y plan maestro de implementación — Fases 1 a 7
+# Auditoría viva y plan maestro — Fases 1 a 7
 
 ## Ecommerce-iPhone
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`
+**Rama auditada:** `main`
+
+> Este documento es una auditoría viva. Debe reflejar el estado real del código en `main` y no el estado histórico del roadmap. Cada cambio funcional importante debe actualizar código, pruebas y esta auditoría en el mismo ciclo.
 
 ---
 
-# 1. Resultado real de las Fases 1–7
+# 1. Estado real actualizado
 
-| Fase | Estado real | Estimación |
+| Fase | Estado real actual | Estimación |
 |---|---|---:|
-| **01 Foundation** | 🟢 Implementada, con pendientes menores | **85%** |
-| **02 Storefront Premium** | 🟡 Parcial | **65%** |
-| **03 Commerce Core** | 🟡 Parcial y con problemas de seguridad/concurrencia | **65%** |
-| **04 Payments** | 🔴 No implementada realmente | **5–10%** |
-| **05 Services** | 🟢 Bastante implementada, pero incompleta operacionalmente | **75%** |
-| **06 Admin + RBAC** | 🟡 Parcial | **60%** |
-| **07 Email + Notifications + Queues** | 🟡 Implementada, pero con problemas importantes | **70%** |
+| **01 Foundation** | 🟢 Muy avanzada; pendientes de cierre arquitectónico, reproducibilidad y seguridad final | **~95%** |
+| **02 Storefront Premium** | 🟢 Prácticamente implementada; requiere validación final | **~90–95%** |
+| **03 Commerce Core** | 🟡 Implementada parcialmente; inventario e identidad de cliente requieren endurecimiento | **~65%** |
+| **04 Payments** | 🔴 Pendiente de implementación real | **~5–10%** |
+| **05 Services** | 🟢 Bastante implementada; depende de Payments y de completar boundaries administrativos | **~75%** |
+| **06 Admin + RBAC** | 🟡 RBAC sólido, backoffice todavía incompleto | **~60%** |
+| **07 Email + Notifications + Queues** | 🟡 Implementada, pero requiere cerrar retries/DLQ | **~70%** |
 
-### Promedio aproximado de implementación real: ~60–65%
-
-> ❌ **NO están realmente completas las fases 1–7.**
-
-El README actual es demasiado optimista si afirma que las fases 1–7 están terminadas. El código muestra una situación más cercana a una plataforma parcialmente implementada con una base arquitectónica sólida, pero con funcionalidades críticas todavía pendientes.
+**Conclusión:** las fases 1 y 2 están cerca del cierre, pero **las fases 1–7 no están completas**. El porcentaje es una estimación de implementación funcional, no una certificación de producción.
 
 ---
 
-# 2. FASE 01 — Foundation
+# 2. Política de entornos
 
-## 2.1 Lo que sí está implementado
+El proyecto tendrá **un único entorno operativo permanente: producción**.
 
-La arquitectura está bastante bien encaminada.
+No se crearán ni mantendrán permanentemente entornos Cloudflare separados de `development` o `staging`.
 
-Existe:
+Esto no significa que no existan pruebas aisladas. Para probar sin crear infraestructura permanente se podrán utilizar:
+
+- mocks
+- InMemory repositories
+- fixtures
+- unit tests
+- integration tests aislados
+- D1 local/emulado cuando sea necesario
+- infraestructura efímera para pruebas técnicas
+- E2E dirigidos contra producción cuando corresponda y de forma segura
+
+Cualquier configuración histórica de `development`/`staging` que permanezca en el repositorio se considera deuda de configuración y deberá limpiarse si ya no tiene utilidad.
+
+**Regla:** producción es la única fuente de verdad operativa.
+
+---
+
+# 3. FASE 01 — Foundation
+
+## 3.1 Implementado
+
+Existe una base modular con:
 
 - `apps/web`
 - `modules/*`
@@ -42,14 +62,18 @@ Existe:
 - Infrastructure
 - D1
 - R2
-- Queues
+- Cloudflare Queues
 - OpenNext
-- Workers
-- CI
-- E2E
+- Worker
+- cron
+- observability
+- rate limiting
+- pruebas unitarias
+- Playwright/E2E
 - documentación de arquitectura
+- `architecture:check`
 
-La documentación establece explícitamente la dirección:
+La dirección arquitectónica definida es:
 
 ```text
 Presentation
@@ -61,74 +85,120 @@ Domain
 Infrastructure
 ```
 
-Y define que el dominio no debe depender de Cloudflare ni de SDKs externos.
+El dominio no debe depender de Cloudflare, D1, R2 ni SDKs externos.
 
-También existe un `architecture:check` dentro del pipeline.
+`wrangler.jsonc` configura Worker, D1, R2, Queue producer/consumer, cron y observabilidad.
 
-## 2.2 Cloudflare
+## 3.2 Build Cloudflare
 
-`wrangler.jsonc` incluye:
+El build actual utiliza Next.js + OpenNext para Cloudflare Workers.
 
-- Worker
-- D1
-- R2
-- Queue producer
-- Queue consumer
-- cron cada minuto
-- observability
+Validación reciente:
 
-Esto no es solamente documentación: la configuración existe realmente.
+- Next.js `15.5.25`
+- `@opennextjs/cloudflare 1.20.6`
+- pnpm `10.15.0`
+- Node `22+` requerido por el proyecto
+- compilación Next exitosa
+- typecheck exitoso
+- generación estática exitosa
+- OpenNext inicia correctamente
 
-## 2.3 CI
+Se corrigió la mutación automática de `tsconfig.json` de Next mediante la declaración explícita de:
 
-El workflow está configurado para ejecutar:
-
-```text
-architecture:check
-lint
-typecheck
-unit tests
-Next build
-Cloudflare build
-D1 local migrations
-Playwright
-E2E
+```json
+"esModuleInterop": true
 ```
 
-Esto demuestra una base de CI/CD real.
+en `tsconfig.base.json`.
 
-## 2.4 Pendientes
+Resultado: el build ya no necesita modificar la configuración del proyecto para satisfacer ese requisito de Next/SWC.
 
-La Fase 1 exige además:
+También se corrigieron los warnings de Autoprefixer sustituyendo valores `end` por `flex-end`.
 
-- development
-- staging
-- production
-- rate limiting preparado
-- seguridad inicial completa
-- reproducibilidad completa desde cero
+## 3.3 CI/CD
 
-El repositorio tiene configuración de producción bastante clara, pero no se observa una estrategia equivalente de `development/staging/production` completamente implementada para todo el Worker.
+El workflow histórico contiene validaciones de arquitectura, lint, typecheck, tests, build Cloudflare y E2E. Sin embargo, el proyecto **no utilizará GitHub Actions como gate obligatorio de producción**.
 
-Además, algunas APIs contienen lógica SQL y de negocio directamente, lo que debilita el cumplimiento estricto de Clean Architecture.
+La producción se despliega desde la configuración de Cloudflare y la validación debe ejecutarse de forma explícita sobre el artefacto/proceso de producción.
 
-### Resultado
+El workflow CI redundante fue eliminado previamente.
 
-**FASE 1 → ~85%**
+## 3.4 Reproducibilidad — pendiente de cierre
+
+La reproducibilidad total todavía **no está cerrada**.
+
+El requisito final es:
+
+```text
+package.json
++ pnpm-workspace.yaml
++ pnpm-lock.yaml versionado
++ versión fija de pnpm
++ Node soportado/fijado
++ pnpm install --frozen-lockfile
+        ↓
+build determinista
+```
+
+Actualmente el repositorio no tiene `pnpm-lock.yaml` versionado, por lo que todavía no puede declararse reproducibilidad total.
+
+El objetivo es que un build limpio no dependa de cambios dinámicos de configuración ni de resolución flotante de dependencias.
+
+## 3.5 Clean Architecture estricta — pendiente de cierre
+
+Aunque la arquitectura base existe, todavía debe auditarse **cada API**.
+
+Reglas obligatorias para considerar Foundation cerrada:
+
+- las rutas HTTP pertenecen a Presentation
+- las rutas no contienen reglas de negocio
+- las rutas no acceden directamente a D1 cuando existe un caso de uso/puerto apropiado
+- Application orquesta casos de uso
+- Domain contiene reglas de negocio puras
+- Infrastructure implementa puertos
+- las dependencias apuntan hacia dentro
+- Cloudflare/D1/R2/SDKs nunca deben filtrarse al dominio
+- errores de infraestructura se traducen en errores de aplicación/presentación
+- cada API debe tener un boundary explícito
+- `architecture:check` debe verificar estas reglas de forma automática
+
+La presencia de código funcional no es suficiente: **el objetivo es cumplimiento estricto en todas las APIs**.
+
+## 3.6 Seguridad final pendiente
+
+Antes de cerrar Foundation deben validarse:
+
+- secretos fuera del repositorio
+- validación de entrada en todas las APIs
+- autorización server-side
+- cookies seguras
+- sesiones y expiración
+- CSRF donde corresponda
+- rate limiting
+- headers de seguridad
+- CORS/orígenes
+- no filtración de secretos en errores/logs
+- protección de endpoints administrativos
+- control de acceso por recurso/tenant cuando aplique
+- idempotencia en operaciones críticas
+- pruebas de abuso y límites
+- auditoría de dependencias
+- pruebas de regresión de seguridad
+
+### Resultado actual
+
+**FASE 1 → ~95%**
+
+No se marca 100% hasta cerrar Clean Architecture, reproducibilidad y seguridad final con evidencia.
 
 ---
 
-# 3. FASE 02 — Storefront Premium
+# 4. FASE 02 — Storefront Premium
 
-Aquí existe una diferencia importante: el catálogo sí es real.
+El storefront y catálogo tienen implementación real.
 
-Existe el bounded context:
-
-```text
-modules/catalog/
-```
-
-con:
+Existe `modules/catalog` con:
 
 - `Product`
 - `ProductId`
@@ -139,20 +209,9 @@ con:
 - tests
 - InMemory repository
 
-Además, D1 tiene productos reales y campos para:
+El modelo de producto contempla precio, moneda, stock, condición, batería, almacenamiento, color, specs, SEO e imágenes.
 
-- precio
-- moneda
-- stock
-- condición
-- batería
-- almacenamiento
-- color
-- specs
-- SEO
-- imágenes
-
-También existen rutas como:
+Existen rutas de catálogo/producto como:
 
 ```text
 /catalog
@@ -161,56 +220,45 @@ También existen rutas como:
 /iphone
 ```
 
-y sitemap/robots.
+Además existe sitemap/robots y la infraestructura necesaria para SEO.
 
-## 3.1 Lo que NO está demostrado como terminado
+La implementación actual también contempla funcionalidades de storefront que anteriormente aparecían como pendientes, incluyendo elementos de variantes, reviews, FAQ y productos relacionados.
 
-El alcance exige:
+## 4.1 Validación final pendiente
 
+La fase no debe marcarse 100% hasta validar realmente:
+
+- taxonomía/categorías completa
+- búsqueda
+- filtros
+- paginación
 - variantes
+- detalle de producto
 - reviews
 - FAQ
 - productos relacionados
-- categorías completas
 - contacto
-- estados loading/empty/error completos
+- loading states
+- empty states
+- error/recovery states
 - optimización de imágenes
-- performance verificada
-- accessibility verificada
+- SEO técnico
+- JSON-LD donde corresponda
+- accesibilidad
+- LCP/CLS y rendimiento real
+- E2E de los flujos principales
 
-### Reviews
+### Resultado actual
 
-El módulo:
+**FASE 2 → ~90–95%**
 
-```text
-modules/reviews/
-```
-
-contiene prácticamente únicamente:
-
-```text
-README.md
-```
-
-Por tanto:
-
-> **Reviews no están implementadas.**
-
-Lo mismo sucede con otros bounded contexts creados como scaffolding.
-
-### Resultado
-
-**FASE 2 → ~65%**
+Está prácticamente implementada, pero la validación final debe basarse en evidencia real y no únicamente en la existencia de componentes.
 
 ---
 
-# 4. FASE 03 — Commerce Core
+# 5. FASE 03 — Commerce Core
 
-Aquí hay bastante código real.
-
-## 4.1 D1
-
-Existen:
+Existe código real para:
 
 - customers
 - customer_addresses
@@ -220,84 +268,20 @@ Existen:
 - orders
 - order_items
 - order_events
+- Cart
+- D1CartRepository
+- Order
+- Checkout
+- D1OrderRepository
+- tests
 
-## 4.2 Cart
+Checkout realiza validación server-side y recalcula el subtotal a partir de cantidad y precio persistido.
 
-Existe:
+## 5.1 Inventario — pendiente crítico
 
-```text
-Cart
-D1CartRepository
-Cart.test
-```
+La reserva de stock debe ser atómica y verificable.
 
-## 4.3 Orders
-
-Existe:
-
-```text
-Order
-Checkout
-D1OrderRepository
-tests
-```
-
-## 4.4 Checkout
-
-Existe validación server-side.
-
-Por ejemplo:
-
-```text
-cart.items.some(item => item.quantity > item.stock)
-```
-
-También se valida método de envío y país.
-
-El subtotal se recalcula en servidor mediante:
-
-```text
-quantity * unitPriceInCents
-```
-
-Esto es correcto y evita confiar directamente en precios enviados por el cliente.
-
----
-
-# 5. Problema crítico de inventario
-
-La lógica actual utiliza una operación equivalente a:
-
-```sql
-UPDATE products
-SET stock =
-  CASE
-    WHEN stock >= quantity
-    THEN stock - quantity
-    ELSE -1
-  END
-```
-
-Pero posteriormente continúa creando:
-
-- reservation
-- order
-- order_items
-- event
-
-sin comprobar correctamente el resultado de la actualización.
-
-## Consecuencia
-
-El diseño intenta prevenir overselling, pero la implementación actual **no garantiza realmente la prevención de overselling**.
-
-Esto debe corregirse antes de considerar Commerce Core terminado.
-
-### Requisito obligatorio
-
-La reserva/decremento debe ser atómica y verificable.
-
-Una estrategia robusta sería:
+El patrón objetivo es:
 
 ```sql
 UPDATE products
@@ -306,68 +290,33 @@ WHERE id = ?
   AND stock >= ?
 ```
 
-Y comprobar:
+seguido de una comprobación equivalente a:
 
 ```text
 rows_affected == 1
 ```
 
-Si no:
+Si falla:
 
 ```text
 ROLLBACK
-```
-
-y devolver:
-
-```text
 OUT_OF_STOCK
 ```
 
-La reserva debe formar parte de una transacción o de un mecanismo equivalente que garantice consistencia.
+La creación de reserva, pedido, líneas y eventos debe mantener consistencia transaccional o equivalente.
 
----
+## 5.2 Identidad del cliente — pendiente crítico
 
-# 6. Problema crítico de identidad del cliente
+El antiguo modelo basado únicamente en `customer_id` cookie no es suficiente como identidad autenticada.
 
-El pedido se protege actualmente mediante:
+Debe existir una sesión de cliente real, con:
 
-```text
-customer_id cookie
-       ↓
-order.customerId === customerId
-```
-
-Durante checkout se establece directamente:
-
-```text
-customer_id = customer.getId()
-```
-
-No existe una autenticación de cliente real alrededor de ese identificador.
-
-Esto produce un modelo equivalente a:
-
-```text
-cookie customer_id
-       ↓
-identidad del cliente
-```
-
-Esto **no es una sesión autenticada robusta**.
-
-Aunque esto no significa automáticamente que cualquier usuario pueda leer cualquier pedido, el mecanismo de identidad es débil y manipulable.
-
-Debe implementarse una estrategia real de:
-
-- customer session
-- signed/encrypted session token
-- sesión server-side o token verificable
+- token firmado/cifrado o sesión server-side
 - expiración
 - rotación
 - revocación
-- protección CSRF cuando corresponda
 - autorización server-side
+- protección CSRF cuando corresponda
 
 ### Resultado
 
@@ -375,96 +324,51 @@ Debe implementarse una estrategia real de:
 
 ---
 
-# 7. FASE 04 — Payments
+# 6. FASE 04 — Payments
 
-Esta es la mayor brecha del proyecto.
+Esta continúa siendo la mayor brecha funcional.
 
-## 7.1 Estado actual
+`modules/payments` contiene principalmente la preparación arquitectónica/documental.
 
-`modules/payments` contiene únicamente:
+Variables de entorno para Wompi, Stripe, Mercado Pago, PayPal y Binance Pay no equivalen a integraciones reales.
 
-```text
-README.md
-```
+Pendiente:
 
-El README describe lo que debería manejar:
-
-- payment intents
-- provider routing
-- webhooks
-- refunds
-- payment state
-
-Pero no existen las implementaciones correspondientes.
-
-## 7.2 Variables de entorno
-
-`.env.example` sí contiene placeholders para:
-
-```text
-WOMPI_*
-STRIPE_*
-MERCADOPAGO_*
-PAYPAL_*
-BINANCE_PAY_*
-```
-
-Pero:
-
-> **Configuración no equivale a integración.**
-
-Tampoco aparecen implementaciones funcionales de los proveedores.
-
-## 7.3 Estado por proveedor
-
-| Provider | Implementación |
+| Capability | Estado |
 |---|---|
+| Payment intents | ❌ |
+| Provider routing | ❌ |
 | Wompi | ❌ |
 | Stripe | ❌ |
 | Mercado Pago | ❌ |
 | PayPal | ❌ |
 | Binance Pay | ❌ |
-| Payment intents | ❌ |
-| Provider routing | ❌ |
 | Webhooks | ❌ |
 | Signature verification | ❌ |
 | Refunds | ❌ |
 | Reconciliation | ❌ |
-| Idempotency de pagos | ❌ |
+| Idempotency | ❌ |
 | Ledger | ❌ |
 
 ### Resultado
 
-# 🔴 FASE 04 = prácticamente pendiente
-
-**~5–10%**
-
-El porcentaje restante corresponde principalmente a configuración, boundaries y preparación arquitectónica.
+**FASE 4 → ~5–10%**
 
 ---
 
-# 8. FASE 05 — Services
+# 7. FASE 05 — Services
 
-Esta fase tiene bastante implementación real.
+Existe implementación real de:
 
-Existe:
+- `CreateServiceRequest`
+- `ServiceManagement`
+- `ServiceRequestRepository`
+- `ServiceTypeRepository`
+- `ServiceWorkflowService`
+- `D1ServiceRequestRepository`
+- `D1ServiceTypeRepository`
 
-```text
-CreateServiceRequest
-ServiceManagement
-ServiceRequestRepository
-ServiceTypeRepository
-ServiceWorkflowService
-```
-
-Y la infraestructura D1:
-
-```text
-D1ServiceRequestRepository
-D1ServiceTypeRepository
-```
-
-Además existen migrations:
+Migrations relevantes:
 
 ```text
 0004_services.sql
@@ -472,52 +376,33 @@ Además existen migrations:
 0006_configurable_service_requests.sql
 ```
 
-## 8.1 Workflow
-
-El workflow contempla:
+Workflow:
 
 ```text
 PENDING
-   ↓
+ ↓
 QUOTED
-   ↓
+ ↓
 PAYMENT_PENDING
-   ↓
+ ↓
 PAID
-   ↓
+ ↓
 PROCESSING
-   ↓
+ ↓
 WAITING_CUSTOMER
-   ↓
+ ↓
 COMPLETED
 ```
 
 También contempla rechazo/refund.
 
-## 8.2 Protección de identificadores
+Para minimización de datos se contemplan identificadores parciales como IMEI/serial last 4.
 
-Se almacenan únicamente:
+Pendientes:
 
-```text
-IMEI last 4
-Serial last 4
-```
-
-en lugar de guardar necesariamente el identificador completo.
-
-Esto está bien planteado desde el punto de vista de minimización de datos.
-
-## 8.3 Pendientes
-
-La fase depende del sistema de Payments para completar el ciclo de pago real.
-
-Además, algunas operaciones administrativas de servicio se ejecutan directamente desde:
-
-```text
-/api/admin/resources
-```
-
-en lugar de estar completamente encapsuladas dentro del bounded context y sus casos de uso.
+- integración real con Payments
+- completar boundaries de operaciones administrativas
+- eliminar lógica de negocio/SQL directa de Presentation cuando corresponda
 
 ### Resultado
 
@@ -525,30 +410,24 @@ en lugar de estar completamente encapsuladas dentro del bounded context y sus ca
 
 ---
 
-# 9. FASE 06 — Admin + RBAC
+# 8. FASE 06 — Admin + RBAC
 
-Aquí sí existe una implementación real.
+Existe implementación real de:
 
-Tenemos:
+- `AdminRole`
+- `AdminUser`
+- `Rbac`
+- `AdminSecurity`
+- `D1AdminRepository`
+- pruebas de seguridad
 
-```text
-AdminRole
-AdminUser
-Rbac
-AdminSecurity
-D1AdminRepository
-AdminSecurity.test
-```
+`0007_admin.sql` incluye:
 
-La migration `0007_admin.sql` tiene:
+- `admin_users`
+- `admin_sessions`
+- `admin_audit_log`
 
-```text
-admin_users
-admin_sessions
-admin_audit_log
-```
-
-Y roles como:
+Roles existentes:
 
 ```text
 SUPER_ADMIN
@@ -562,38 +441,11 @@ CONTENT_EDITOR
 TECHNICIAN
 ```
 
-## 9.1 Seguridad
+La base de seguridad incluye PBKDF2-SHA256, salt, sesiones, expiración, cookies seguras, fingerprinting, auditoría y permisos server-side.
 
-El sistema utiliza:
+## 8.1 Pendientes
 
-- PBKDF2-SHA256
-- salt
-- 150.000 iteraciones
-- sesiones
-- expiración
-- cookie `httpOnly`
-- cookie `secure`
-- `sameSite=strict`
-- fingerprinting
-- auditoría
-- permisos server-side
-
-Esto es una base sólida.
-
----
-
-# 10. El backoffice todavía no está completo
-
-Actualmente el frontend administrativo cubre principalmente:
-
-```text
-Pedidos
-Productos
-Clientes
-Servicios
-```
-
-Pero la fase completa exige además:
+El backoffice todavía necesita completar funcionalidades como:
 
 - pagos
 - reviews
@@ -605,115 +457,47 @@ Pero la fase completa exige además:
 - settings
 - inventario completo
 
-Y los módulos:
-
-```text
-reviews
-coupons
-cms
-```
-
-están prácticamente vacíos.
-
-Por ejemplo:
-
-```text
-coupons/
-    README.md
-```
-
-y:
-
-```text
-cms/
-    README.md
-```
-
 ### Resultado
 
 **FASE 6 → ~60%**
 
-El RBAC está bastante avanzado, pero el **backoffice completo todavía no está terminado**.
-
 ---
 
-# 11. FASE 07 — Notifications / Resend / Queues
+# 9. FASE 07 — Notifications / Resend / Queues
 
-Esta fase sí tiene implementación real.
+Existe implementación real de:
 
-Existe:
+- NotificationPorts
+- NotificationService
+- NotificationTemplates
+- NotificationService.test
+- D1NotificationOutboxRepository
+- ResendEmailProvider
 
-```text
-NotificationPorts
-NotificationService
-NotificationTemplates
-NotificationService.test
-D1NotificationOutboxRepository
-ResendEmailProvider
-```
+La migración crea `notification_outbox` y `notification_deliveries` con estados persistentes.
 
-La migration crea:
-
-```text
-notification_outbox
-notification_deliveries
-```
-
-con estados:
-
-```text
-PENDING
-QUEUED
-PROCESSED
-FAILED
-```
-
-Y el Worker conecta:
+Flujo actual:
 
 ```text
 Cron
-  ↓
+ ↓
 D1 Outbox
-  ↓
+ ↓
 Cloudflare Queue
-  ↓
+ ↓
 NotificationService
-  ↓
+ ↓
 Resend
 ```
 
-Esto sí es una implementación real.
+## 9.1 Pendientes críticos
 
----
+### DLQ
 
-# 12. Problema 1 — Dead Letter Queue
-
-La configuración tiene:
-
-```text
-max_retries: 5
-```
-
-pero no se observa una estrategia DLQ completa.
-
-El roadmap exige explícitamente:
-
-> Dead-letter strategy.
-
-Por tanto:
-
-**❌ Pendiente.**
-
-Debe existir una política clara para mensajes que superen el número máximo de intentos, por ejemplo:
+Debe existir una estrategia clara para mensajes que superen el máximo de retries:
 
 ```text
 Queue
- ↓
-retry 1
- ↓
-retry 2
- ↓
-retry 3
  ↓
 retry N
  ↓
@@ -722,59 +506,21 @@ DLQ
 alert/audit/manual replay
 ```
 
----
+### Contador de intentos
 
-# 13. Problema 2 — Contador de intentos
+El contador debe persistirse y acumularse correctamente. No debe resetearse artificialmente en cada intento.
 
-En `NotificationService` existe una lógica equivalente a:
+### Un único dueño del retry
 
-```text
-const attempts = 1;
-```
-
-Esto significa que el contador no representa realmente la cantidad acumulada de intentos.
-
-Debe utilizarse el valor persistido:
-
-```text
-attempts = previousAttempts + 1
-```
-
-y actualizarse de forma atómica.
-
----
-
-# 14. Problema 3 — Dos sistemas de retry
-
-Actualmente pueden coexistir:
-
-```text
-Cloudflare Queue retry
-```
-
-y:
-
-```text
-D1 FAILED
-    ↓
-cron
-    ↓
-Queue
-```
-
-Esto puede generar una política de retry difícil de razonar y potencialmente producir intentos duplicados.
-
-Debe existir un único dueño claro de la política de reintentos.
-
-Una estrategia recomendable:
+Debe definirse claramente:
 
 ```text
 Queue = transporte + retry técnico
 Outbox = estado durable + auditoría
-DLQ = fallos definitivos
+DLQ = fallo definitivo
 ```
 
-El scheduler no debería volver a introducir automáticamente elementos que todavía pueden estar siendo reintentados por la Queue sin una política explícita.
+Evitar que el cron reprograme indiscriminadamente elementos que todavía están bajo retry de Queue.
 
 ### Resultado
 
@@ -782,1125 +528,186 @@ El scheduler no debería volver a introducir automáticamente elementos que toda
 
 ---
 
-# 15. Patrón general encontrado en el repositorio
+# 10. Auditoría estricta de Clean Architecture
 
-Existe una diferencia importante entre bounded contexts.
+Esta es una tarea transversal obligatoria para cerrar Foundation.
 
-## Contextos realmente implementados
-
-Por ejemplo:
-
-```text
-catalog
-cart
-orders
-services
-admin
-notifications
-```
-
-tienen código real.
-
-## Contextos que todavía son scaffolding
-
-Por ejemplo:
-
-```text
-auth
-payments
-reviews
-coupons
-cms
-```
-
-tienen poca o ninguna implementación funcional.
-
-Esto significa que el proyecto tiene una **arquitectura preparada**, pero no todos los bounded contexts están terminados.
-
----
-
-# 16. Problema arquitectónico adicional
-
-La documentación declara una arquitectura equivalente a:
+Se debe revisar cada endpoint/API y clasificarlo:
 
 ```text
 Presentation
-      ↓
-Application
-      ↓
-Domain
-      ↑
-Infrastructure
-```
-
-y que los bounded contexts deben poseer sus responsabilidades.
-
-Sin embargo, algunas APIs de Next.js están accediendo directamente a repositories y D1 y contienen lógica SQL/negocio.
-
-El ejemplo más evidente es:
-
-```text
-/api/admin/resources
-```
-
-que contiene una cantidad importante de:
-
-- SQL
-- validación
-- decisiones de negocio
-- persistencia
-- eventos
-- autorización
-
-Esto funciona, pero no representa una Clean Architecture estricta.
-
-## Objetivo
-
-Las rutas deberían quedar como adaptadores finos:
-
-```text
-HTTP Request
-    ↓
-Controller / Route Adapter
-    ↓
-Application Use Case
-    ↓
-Domain
-    ↓
-Port
-    ↓
-Infrastructure
-    ↓
-D1
-```
-
----
-
-# 17. Diagnóstico definitivo
-
-Si hoy hubiera que responder:
-
-> "¿Las fases 1–7 están terminadas?"
-
-La respuesta es:
-
-# ❌ NO
-
-La situación aproximada es:
-
-```text
-FASE 01  █████████░  85%
-FASE 02  ██████░░░░  65%
-FASE 03  ██████░░░░  65%
-FASE 04  █░░░░░░░░░  10%
-FASE 05  ███████░░░  75%
-FASE 06  ██████░░░░  60%
-FASE 07  ███████░░░  70%
-```
-
----
-
-# 18. Prioridad real de trabajo
-
-## P0 — Crítico
-
-### 1. Payments
-
-Construir completamente:
-
-- payment domain
-- payment application
-- provider ports
-- provider adapters
-- payment intents
-- checkout sessions
-- authorization
-- capture
-- cancellation
-- refunds
-- webhook ingestion
-- signature verification
-- idempotency
-- reconciliation
-- payment events
-- payment state machine
-- audit trail
-- provider failover/routing
-- secure secret management
-
-Proveedores previstos:
-
-- Wompi
-- Stripe
-- Mercado Pago
-- PayPal
-- Binance Pay
-
----
-
-## P0 — Commerce
-
-Corregir:
-
-- inventario atómico
-- reservas
-- transacciones
-- rollback
-- concurrencia
-- customer identity
-- customer sessions
-- autorización de pedidos
-- idempotencia de checkout
-- protección contra replay
-- race conditions
-
----
-
-## P1 — Admin
-
-Completar:
-
-- Payments
-- Reviews
-- Coupons
-- Promotions
-- CMS
-- SEO
-- Notifications
-- Settings
-- Inventory
-- Audit
-- dashboards
-- reporting
-
----
-
-## P1 — Storefront
-
-Completar:
-
-- reviews
-- ratings
-- variantes
-- FAQ
-- related products
-- categorías
-- filtros
-- búsqueda
-- estados loading
-- estados empty
-- estados error
-- accessibility
-- performance
-- image optimization
-- SEO avanzado
-
----
-
-## P1 — Notifications
-
-Completar:
-
-- retry policy
-- attempts counter
-- DLQ
-- replay
-- alerting
-- idempotency
-- deduplication
-- delivery ledger
-- observability
-- metrics
-
----
-
-## P1 — Clean Architecture
-
-Mover lógica de:
-
-```text
-/api/*
-```
-
-hacia:
-
-```text
-Application
-Domain
-Infrastructure
-```
-
-dejando las routes como adaptadores.
-
----
-
-# 19. Plan para llevar Fases 1–7 a estado profesional
-
-## Fase 1 — Foundation 100%
-
-### Objetivo
-
-Convertir la base actual en una plataforma reproducible y estrictamente gobernada.
-
-### Trabajo
-
-- definir environments development/staging/production
-- separar bindings D1/R2/Queues por environment
-- documentar secrets
-- validar configuración automáticamente
-- fortalecer architecture-check
-- prohibir imports de Infrastructure desde Domain
-- prohibir SQL en Presentation
-- validar boundaries entre bounded contexts
-- rate limiting
-- security headers
-- CORS explícito
-- logging estructurado
-- correlation IDs
-- audit baseline
-- error taxonomy
-- health/readiness checks
-- CI/CD reproducible
-- migrations verificables
-- smoke tests de deploy
-
-### Definition of Done
-
-No se podrá marcar Fase 1 completa si una ruta HTTP contiene lógica de negocio o SQL que debería pertenecer a Application/Infrastructure.
-
----
-
-# 20. Fase 2 — Storefront 100%
-
-## Catálogo
-
-Completar:
-
-- Product
-- ProductVariant
-- Category
-- Brand
-- ProductImage
-- Specifications
-- RelatedProduct
-- FAQ
-
-## Reviews
-
-Implementar:
-
-- Review
-- ReviewRepository
-- create review
-- edit review
-- moderation
-- rating aggregation
-- verified purchase
-- anti-spam
-- pagination
-- admin moderation
-
-## UX
-
-Implementar:
-
-- loading
-- empty
-- error
-- retry
-- skeletons
-- responsive design
-- accessibility
-- keyboard navigation
-
-## SEO
-
-Implementar:
-
-- canonical URLs
-- metadata
-- OpenGraph
-- JSON-LD
-- Product schema
-- Breadcrumb schema
-- sitemap dinámico
-
-## Performance
-
-Medir y corregir:
-
-- Core Web Vitals
-- LCP
-- CLS
-- INP
-- image optimization
-- caching
-- lazy loading
-- bundle size
-
----
-
-# 21. Fase 3 — Commerce 100%
-
-## Cart
-
-Completar:
-
-- guest cart
-- authenticated cart
-- merge
-- expiration
-- item validation
-- price snapshot
-- inventory validation
-
-## Inventory
-
-Implementar:
-
-```text
-Available
    ↓
-Reserved
+Application / Use Case
    ↓
-Committed
-```
-
-y:
-
-```text
-Reserved
-   ↓
-Released
-```
-
-Debe ser seguro ante concurrencia.
-
-## Checkout
-
-Implementar:
-
-- idempotency key
-- order creation transaction
-- inventory reservation
-- customer session
-- address validation
-- shipping calculation
-- tax calculation
-- price snapshot
-- fraud checks
-- payment intent creation
-
-## Orders
-
-Implementar:
-
-```text
-PENDING
-PAYMENT_PENDING
-PAID
-PROCESSING
-SHIPPED
-DELIVERED
-CANCELLED
-REFUNDED
-```
-
-con eventos auditables.
-
----
-
-# 22. Fase 4 — Payments 100%
-
-Esta debe ser la prioridad máxima.
-
-## Arquitectura
-
-```text
-Payment Domain
-      ↓
-Payment Application
-      ↓
-PaymentProvider Port
-      ↓
-┌────────────┬──────────────┬───────────────┬──────────┬─────────────┐
-│   Wompi    │    Stripe    │ Mercado Pago  │ PayPal   │ Binance Pay │
-└────────────┴──────────────┴───────────────┴──────────┴─────────────┘
-```
-
-Cada proveedor debe ser un adapter independiente.
-
-## Modelo de estado
-
-```text
-CREATED
-  ↓
-PENDING
-  ↓
-AUTHORIZED
-  ↓
-CAPTURED
-  ↓
-SETTLED
-```
-
-Estados alternativos:
-
-```text
-FAILED
-CANCELLED
-EXPIRED
-REFUNDED
-PARTIALLY_REFUNDED
-```
-
-## Webhooks
-
-Todo webhook debe tener:
-
-- autenticidad
-- firma
-- timestamp validation
-- replay protection
-- idempotency
-- event persistence
-- provider event ID
-- processing state
-- retry
-- audit
-
-Nunca se debe confiar en un webhook sin verificar su autenticidad.
-
-## Idempotencia
-
-Ejemplo:
-
-```text
-Idempotency-Key
-      ↓
-PaymentIntent
-      ↓
-Provider Request
-```
-
-Una misma solicitud no debe generar dos cargos.
-
----
-
-# 23. Fase 5 — Services 100%
-
-Completar:
-
-- service types
-- quotes
-- customer approval
-- payment integration
-- service workflow
-- technician assignment
-- diagnosis
-- repair stages
-- parts
-- inventory
-- evidence/photos
-- notifications
-- audit
-- refunds
-- customer status tracking
-
-Workflow objetivo:
-
-```text
-PENDING
- ↓
-DIAGNOSING
- ↓
-QUOTED
- ↓
-CUSTOMER_APPROVAL
- ↓
-PAYMENT_PENDING
- ↓
-PAID
- ↓
-PROCESSING
- ↓
-WAITING_CUSTOMER
- ↓
-COMPLETED
-```
-
-Todos los cambios deben pasar por un caso de uso y quedar auditados.
-
----
-
-# 24. Fase 6 — Admin + RBAC 100%
-
-## RBAC
-
-Mantener:
-
-- roles
-- permissions
-- sessions
-- audit
-- lockout
-- fingerprint
-
-Pero llevarlo a un modelo de permisos explícitos:
-
-```text
-resource.action
-```
-
-Ejemplo:
-
-```text
-orders.read
-orders.update
-orders.refund
-payments.read
-payments.refund
-products.create
-products.update
-inventory.adjust
-reviews.moderate
-cms.publish
-```
-
-## Backoffice
-
-Completar módulos:
-
-```text
-Dashboard
-Orders
-Payments
-Products
-Inventory
-Customers
-Services
-Reviews
-Coupons
-Promotions
-CMS
-SEO
-Notifications
-Settings
-Audit
-Reports
-```
-
----
-
-# 25. Fase 7 — Notifications 100%
-
-Arquitectura objetivo:
-
-```text
-Domain Event
-    ↓
-Outbox
-    ↓
-Queue
-    ↓
-Worker
-    ↓
-Notification Provider
-    ↓
-Delivery Ledger
-```
-
-## Retry
-
-Definir una única política.
-
-Ejemplo:
-
-```text
-Attempt 1
-Attempt 2
-Attempt 3
-Attempt 4
-Attempt 5
-     ↓
-DLQ
-```
-
-## DLQ
-
-Debe permitir:
-
-- visualizar
-- inspeccionar error
-- reintentar
-- descartar
-- marcar manualmente como resuelto
-- auditoría
-
-## Delivery ledger
-
-Debe registrar:
-
-- event ID
-- notification ID
-- provider
-- recipient
-- template
-- attempt number
-- status
-- error
-- timestamps
-- provider message ID
-
----
-
-# 26. Testing obligatorio para marcar una fase como completa
-
-No basta con que exista código.
-
-Cada fase debe tener:
-
-## Unit tests
-
-Para:
-
-- Domain
-- Value Objects
-- Entities
-- Services
-- Use Cases
-
-## Integration tests
-
-Para:
-
-- D1 repositories
-- Queue
-- Outbox
-- provider adapters
-- authentication
-- authorization
-
-## API tests
-
-Para:
-
-- happy path
-- invalid input
-- unauthorized
-- forbidden
-- not found
-- conflicts
-- idempotency
-- concurrency
-
-## E2E
-
-Casos mínimos:
-
-```text
-Register/Login
-Browse catalog
-Product detail
-Add to cart
-Checkout
-Payment
-Order tracking
-Service request
-Admin login
-Admin order management
-Admin product management
-Admin service management
-Notification delivery
-```
-
----
-
-# 27. Security testing obligatorio
-
-Cada fase debe incluir pruebas contra:
-
-- IDOR
-- broken access control
-- privilege escalation
-- tenant isolation
-- CSRF
-- XSS
-- SQL injection
-- SSRF donde aplique
-- replay attacks
-- webhook forgery
-- payment duplication
-- race conditions
-- inventory overselling
-- session fixation
-- session hijacking
-- brute force
-- rate-limit bypass
-- insecure direct object references
-- mass assignment
-- secret leakage
-
----
-
-# 28. Requisito de observabilidad
-
-Implementar:
-
-```text
-request_id
-correlation_id
-event_id
-payment_id
-order_id
-customer_id
-```
-
-con logs estructurados.
-
-Métricas mínimas:
-
-```text
-checkout_success_rate
-checkout_failure_rate
-payment_success_rate
-payment_failure_rate
-webhook_failure_rate
-queue_depth
-queue_retry_count
-dlq_count
-notification_success_rate
-notification_failure_rate
-inventory_conflicts
-order_creation_latency
-api_latency
-error_rate
-```
-
----
-
-# 29. Requisito de idempotencia
-
-La idempotencia debe existir en todos los puntos críticos:
-
-```text
-checkout
-order creation
-payment creation
-payment webhook
-refund
-inventory reservation
-notification delivery
-service state transition
-```
-
-Nunca se debe asumir que una petición será recibida una sola vez.
-
----
-
-# 30. Requisito de concurrencia
-
-Especialmente:
-
-```text
-inventory
-checkout
-payment
-refund
-order transitions
-service transitions
-```
-
-Deben existir pruebas de concurrencia.
-
-Ejemplo:
-
-```text
-100 requests
-    ↓
-1 product
-    ↓
-stock = 1
-```
-
-Resultado esperado:
-
-```text
-1 successful reservation
-99 rejected
-```
-
-Nunca:
-
-```text
-2+ successful orders
-```
-
----
-
-# 31. Requisito de Clean Architecture
-
-Objetivo definitivo:
-
-```text
-apps/web
-    ↓
-Presentation
-    ↓
-Application
-    ↓
 Domain
-    ↓
-Ports
-    ↑
+   ↑
 Infrastructure
 ```
 
-Las reglas deben ser:
+## Reglas de aceptación
 
-### Domain
+1. Presentation no contiene reglas de negocio.
+2. Presentation no ejecuta SQL directamente cuando corresponde un repository/use case.
+3. Application coordina casos de uso y dependencias mediante puertos.
+4. Domain es independiente de Cloudflare, D1, R2, HTTP y SDKs.
+5. Infrastructure implementa interfaces definidas hacia dentro.
+6. Los DTOs HTTP no contaminan el dominio.
+7. Los errores se traducen en cada boundary.
+8. Tests de dominio no requieren Cloudflare.
+9. Tests de Application pueden usar InMemory/mocks.
+10. Las reglas arquitectónicas se automatizan con `architecture:check`.
 
-No puede importar:
-
-- Next.js
-- React
-- Cloudflare
-- D1
-- R2
-- Resend
-- payment SDKs
-
-### Application
-
-Puede depender de:
-
-- Domain
-- Ports
-
-No de implementaciones concretas.
-
-### Infrastructure
-
-Implementa:
-
-- repositories
-- providers
-- queues
-- email
-- payment adapters
-- Cloudflare integrations
-
-### Presentation
-
-Debe limitarse a:
-
-- HTTP
-- parsing
-- validation
-- authentication context
-- invoking use cases
-- mapping responses
+No se considerará suficiente mover archivos de una carpeta a otra: debe cumplirse la dirección real de dependencias.
 
 ---
 
-# 32. Definition of Done global
+# 11. Reproducibilidad total del build
 
-Una fase solamente podrá marcarse como:
+Checklist de cierre:
 
-# 🟢 COMPLETE
+- [ ] `pnpm-lock.yaml` versionado
+- [ ] `pnpm install --frozen-lockfile` exitoso
+- [ ] versión de pnpm fija
+- [ ] versión mínima de Node declarada y entorno de build controlado
+- [ ] dependencias transitivas resueltas de forma determinista
+- [ ] build Cloudflare repetible desde un checkout limpio
+- [ ] producción no modifica `tsconfig.json` ni otros archivos de configuración
+- [ ] no se depende de artefactos generados previamente
+- [ ] no se requieren cambios manuales después de instalar dependencias
+- [ ] artefacto final reproducible a partir del commit
 
-cuando cumpla simultáneamente:
-
-- código funcional
-- arquitectura correcta
-- migrations
-- repositories
-- use cases
-- APIs
-- UI cuando aplique
-- unit tests
-- integration tests
-- API tests
-- E2E cuando aplique
-- security tests
-- idempotency
-- error handling
-- observability
-- documentation
-- CI
-- deployment
-- rollback strategy
-- secrets management
-- performance verification
-
-No debe considerarse terminado simplemente porque:
-
-```text
-README existe
-```
-
-o:
-
-```text
-.env.example existe
-```
-
-o:
-
-```text
-módulo directory existe
-```
+Estado actual: **pendiente**, principalmente por ausencia del lockfile versionado.
 
 ---
 
-# 33. Orden recomendado de implementación
+# 12. Validación final de seguridad
 
-El orden recomendado es:
+Antes de marcar Foundation como 100%:
 
-```text
-1. Foundation hardening
-        ↓
-2. Commerce security/concurrency
-        ↓
-3. Payments
-        ↓
-4. Services payment integration
-        ↓
-5. Notifications hardening
-        ↓
-6. Storefront completion
-        ↓
-7. Admin/backoffice completion
-        ↓
-8. Full testing
-        ↓
-9. Security testing
-        ↓
-10. Production readiness
-```
-
-No tiene sentido terminar completamente el frontend de pagos antes de construir correctamente el dominio de Payments.
+- [ ] autenticación y autorización revisadas endpoint por endpoint
+- [ ] aislamiento de recursos/clientes validado
+- [ ] cookies y sesiones endurecidas
+- [ ] CSRF evaluado
+- [ ] CORS/origin policy revisada
+- [ ] rate limiting validado
+- [ ] input validation completa
+- [ ] SQL parametrizado
+- [ ] secretos no expuestos
+- [ ] errores sin información sensible
+- [ ] logs sin secretos/PII innecesaria
+- [ ] admin RBAC probado contra escalada de privilegios
+- [ ] endpoints internos protegidos
+- [ ] idempotencia de operaciones críticas
+- [ ] dependencias auditadas
+- [ ] E2E de seguridad críticos
+- [ ] pruebas de regresión después de cada corrección
 
 ---
 
-# 34. Objetivo final
+# 13. Validación de producción
 
-El objetivo no debe ser simplemente que las fases 1–7 "parezcan terminadas".
+Como el proyecto tendrá **un único entorno operativo**, la validación final se centra en producción.
 
-El objetivo debe ser llegar a:
+Checklist:
 
-```text
-Foundation
-   +
-Storefront
-   +
-Commerce
-   +
-Payments
-   +
-Services
-   +
-Admin/RBAC
-   +
-Notifications
-```
+- [ ] build limpio
+- [ ] deploy exitoso
+- [ ] D1 migrations verificadas
+- [ ] `/api/health/live` = 200
+- [ ] `/api/health/ready` = 200
+- [ ] bindings Worker correctos
+- [ ] Queue producer/consumer funcional
+- [ ] R2 funcional
+- [ ] rate limiting verificado
+- [ ] autenticación/autorización verificada
+- [ ] storefront E2E principal
+- [ ] checkout E2E cuando Payments esté implementado
+- [ ] admin E2E crítico
+- [ ] notifications E2E
+- [ ] observabilidad y logs revisados
+- [ ] no hay configuración mutada por el build
 
-como una plataforma:
-
-- profesional
-- robusta
-- segura
-- escalable
-- observable
-- testeable
-- mantenible
-- preparada para crecimiento
-- preparada para separación futura en microservicios
-
-La arquitectura modular debe permitir que un bounded context pueda convertirse posteriormente en un servicio independiente sin reescribir todo el sistema.
+No se requiere mantener tres despliegues Cloudflare para cumplir esta validación.
 
 ---
 
-# 35. Limitación de la auditoría actual
+# 14. Política de sincronización del documento
 
-La auditoría realizada hasta este punto fue una **auditoría estática profunda del código y configuración disponibles en GitHub**.
-
-Se revisaron:
-
-- source
-- estructura de módulos
-- migrations
-- API routes
-- repositories
-- seguridad
-- tests presentes
-- CI
-- deploy
-- Cloudflare
-- Queue
-- README
-- documentación
-- roadmap
-
-Pero **no se ejecutaron físicamente** desde este conector:
+Para evitar que el `.md` vuelva a quedar desactualizado:
 
 ```text
-pnpm test
-pnpm build
-Playwright / E2E
+1. Implementar código
+        ↓
+2. Agregar/actualizar tests
+        ↓
+3. Ejecutar validaciones
+        ↓
+4. Verificar producción cuando aplique
+        ↓
+5. Actualizar esta auditoría
+        ↓
+6. Registrar evidencia real
 ```
 
-en un runner local.
+Reglas:
 
-Por lo tanto, los porcentajes anteriores representan el grado de implementación observado en el código, no una garantía de que todos los comandos de ejecución pasen actualmente.
+- Si una funcionalidad no existe en código, no se marca como implementada.
+- Si existe código pero no está validado, se marca como implementado pero pendiente de validación.
+- Si una corrección cambia una fase, el porcentaje y checklist se actualizan en el mismo ciclo.
+- No se conservan afirmaciones históricas que contradigan el estado actual de `main`.
 
 ---
 
-# 36. Conclusión
+# 15. Orden de trabajo actual
 
-El proyecto **no está vacío ni es solamente scaffolding**.
+## Prioridad 1 — Cerrar Foundation
 
-Existe una base considerable y varias áreas están bien encaminadas, especialmente:
+1. Auditoría estricta de Clean Architecture de todas las APIs.
+2. Eliminar SQL/reglas de negocio indebidas de Presentation.
+3. Fortalecer `architecture:check`.
+4. Resolver reproducibilidad total con lockfile versionado.
+5. Confirmar build limpio y determinista.
+6. Ejecutar auditoría final de seguridad.
 
-- Foundation
-- Catalog
-- Cart
-- Orders
-- Services
-- Admin/RBAC
-- Notifications
+## Prioridad 2 — Cerrar Storefront
 
-Pero tampoco es correcto considerarlo terminado.
+1. Validar todas las capacidades del storefront.
+2. E2E de navegación, catálogo, búsqueda, detalle y conversión.
+3. Accesibilidad.
+4. Performance.
+5. SEO.
+6. Estados loading/empty/error/recovery.
 
-Los principales bloqueadores son:
+## Prioridad 3 — Commerce Core
 
-1. **Payments prácticamente inexistente**
-2. **Inventory/checkout necesita corrección de concurrencia**
-3. **Customer authentication necesita endurecimiento**
-4. **Admin/backoffice incompleto**
-5. **Reviews/CMS/Coupons todavía no implementados**
-6. **Notifications necesita DLQ/retry robusto**
-7. **Algunas APIs rompen la separación estricta de Clean Architecture**
-8. **Falta validación runtime completa mediante test/build/E2E**
+1. Reserva de inventario atómica.
+2. Consistencia transaccional.
+3. Sesión real de cliente.
+4. Autorización por recurso.
+5. Idempotencia.
 
-La meta debe ser transformar la situación actual de:
+## Prioridad 4 — Payments
+
+Implementar el bounded context completo antes de considerar cerradas las fases que dependen de pagos.
+
+## Prioridad 5 — Services / Admin / Notifications
+
+Completar los gaps restantes después de Payments y mantener este documento sincronizado en cada ciclo.
+
+---
+
+# 16. Estado maestro
 
 ```text
-~60–65% real
+FASE 01  Foundation              ~95%  🟢 Casi cerrada
+FASE 02  Storefront Premium      ~90–95% 🟢 Casi cerrada
+FASE 03  Commerce Core           ~65%  🟡
+FASE 04  Payments                ~5–10% 🔴
+FASE 05  Services                ~75%  🟢
+FASE 06  Admin + RBAC            ~60%  🟡
+FASE 07  Notifications/Queues    ~70%  🟡
 ```
 
-a:
+**Siguiente objetivo técnico:** cerrar Fase 01 con Clean Architecture estricta + reproducibilidad total + seguridad final, y después cerrar la validación de Fase 02.
 
-```text
-100% funcional
-+
-100% testeado
-+
-100% integrado
-+
-100% auditado
-+
-production-ready
-```
-
-antes de declarar oficialmente completas las Fases 1–7.
+> Este archivo debe mantenerse actualizado en `main` junto con cada cambio relevante de implementación. No se debe volver a considerar un requisito como implementado únicamente porque exista documentación o scaffolding.
