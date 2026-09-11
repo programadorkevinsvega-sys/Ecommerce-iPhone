@@ -5,17 +5,17 @@ import type { CreateServiceRequestInput, ServiceRequestFactory as ServiceRequest
 export class ServiceRequestFactory implements ServiceRequestFactoryPort {
   create(input: CreateServiceRequestInput, _definition: ServiceTypeDefinition): ServiceRequest {
     const props: Omit<ServiceRequestProps, "status" | "createdAt" | "updatedAt"> = {
-      customerId: input.customerId,
       email: input.email,
       type: input.type,
       deviceBrand: input.deviceBrand,
       deviceModel: input.deviceModel,
-      deviceSerialLast4: input.deviceSerialLast4,
-      imeiLast4: input.imeiLast4,
-      carrier: input.carrier,
       problemDescription: input.problemDescription,
-      customerNotes: input.customerNotes,
       currency: input.currency,
+      ...(input.customerId !== undefined ? { customerId: input.customerId } : {}),
+      ...(input.deviceSerialLast4 !== undefined ? { deviceSerialLast4: input.deviceSerialLast4 } : {}),
+      ...(input.imeiLast4 !== undefined ? { imeiLast4: input.imeiLast4 } : {}),
+      ...(input.carrier !== undefined ? { carrier: input.carrier } : {}),
+      ...(input.customerNotes !== undefined ? { customerNotes: input.customerNotes } : {}),
     };
     return ServiceRequest.create(input.id, props);
   }
