@@ -1,0 +1,20 @@
+import { NextResponse } from "next/server";
+import { paymentContext } from "../../../../../../lib/payments";
+import { verifyStripeWebhook } from "../../../../../../../modules/payments/infrastructure/StripeWebhookVerifier";
+
+export async function POST(request: Request) {
+  try {
+    const raw = await request.text();
+    const { env, service, providers } = await paymentContext();
+    const event = await verifyStripeWebhook(raw, request.headers.get("Stripe-Signature"), env.STRIPE_WEBHOOK_SECRET ?? "");
+    if (event.type !== "payment_intent.succeeded" && event.type !== "payment_intent.payment_failed" && event.type !== "payment_intent.canceled" && event.type !== "payment_intent.processing") return NextResponse.json({ received: true });
+    const data = typeof event.data === "object" && event.data !== null ? event.data as Record<string, unknown> : null;
+    const object = data?.object && typeof data.object === "object" ? data.object as Record<string, unknown> : null;
+    if (typeof object?.id !== "string") throw new Error("Stripe webhook PaymentIntent id is missing");
+    const transaction = await providers.resolve("STRIPE").getTransaction(object.id);
+    await service.processProviderTransaction(transaction, raw);
+    return NextResponse.json({ received: true }, { status: 200 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid webhook" }, { status: 400 });
+  }
+}
