@@ -13,6 +13,10 @@ export class D1AdminRepository {
     const row = await this.db.prepare("SELECT * FROM admin_users WHERE id = ? LIMIT 1").bind(id).first<Record<string, unknown>>();
     return row ? this.mapUser(row) : null;
   }
+  async countActiveSuperAdmins(): Promise<number> {
+    const row = await this.db.prepare("SELECT COUNT(*) AS count FROM admin_users WHERE role = ? AND active = 1").bind("SUPER_ADMIN").first<{ count: number }>();
+    return Number(row?.count ?? 0);
+  }
   async saveUser(user: AdminUser): Promise<void> {
     const p = user.toPrimitives();
     await this.db.prepare(`INSERT INTO admin_users (id,email,password_hash,role,first_name,last_name,active,failed_login_count,locked_until,last_login_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email,password_hash=excluded.password_hash,role=excluded.role,first_name=excluded.first_name,last_name=excluded.last_name,active=excluded.active,failed_login_count=excluded.failed_login_count,locked_until=excluded.locked_until,last_login_at=excluded.last_login_at,updated_at=excluded.updated_at`).bind(p.id,p.email,p.passwordHash,p.role,p.firstName,p.lastName,p.active?1:0,p.failedLoginCount,p.lockedUntil??null,p.lastLoginAt??null,p.createdAt,p.updatedAt).run();
