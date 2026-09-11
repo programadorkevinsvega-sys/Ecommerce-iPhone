@@ -1,4 +1,4 @@
-import type { CreatePaymentInput, PaymentProviderPort, ProviderPaymentIntent, ProviderTransaction } from "../application/PaymentPorts";
+import type { CreatePaymentInput, PaymentProviderPort, ProviderPaymentIntent, ProviderRefund, ProviderTransaction } from "../application/PaymentPorts";
 import type { Payment } from "../domain/Payment";
 
 const STRIPE_API = "https://api.stripe.com/v1";
@@ -35,6 +35,14 @@ export class StripePaymentProvider implements PaymentProviderPort {
     const orderId = metadata.order_id;
     if (typeof id !== "string" || typeof amount !== "number" || !Number.isSafeInteger(amount) || typeof currency !== "string" || typeof orderId !== "string") throw new Error("Stripe returned an invalid PaymentIntent");
     return { provider: this.provider, transactionId: id, reference: orderId, status: mapped, amountInCents: amount, currency: currency.toUpperCase() };
+  }
+  async refundPayment(transactionId: string, amountInCents: number, idempotencyKey: string): Promise<ProviderRefund> {
+    this.requireConfigured();
+    const response = await fetch(`${STRIPE_API}/refunds`, { method: "POST", headers: this.headers(idempotencyKey), body: form({ payment_intent: transactionId, amount: String(amountInCents) }) });
+    const body = await this.jsonOrError(response, "Stripe refund failed");
+    if (typeof body.id !== "string" || typeof body.amount !== "number" || typeof body.currency !== "string") throw new Error("Stripe returned an invalid refund");
+    const status = body.status === "succeeded" ? "SUCCEEDED" : "PENDING";
+    return { providerRefundId: body.id, status, amountInCents: body.amount, currency: body.currency.toUpperCase() };
   }
   private intent(body: StripeRecord, input: CreatePaymentInput): ProviderPaymentIntent {
     if (typeof body.id !== "string" || typeof body.client_secret !== "string" || body.amount !== input.amountInCents) throw new Error("Stripe returned an invalid PaymentIntent");
