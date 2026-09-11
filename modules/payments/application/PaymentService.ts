@@ -1,0 +1,153 @@
+import type { Payment } from "../domain/Payment";
+import { assertPaymentTransition } from "../domain/Payment";
+import type { CreatePaymentInput, OrderPaymentPort, PaymentProviderPort, PaymentRepository, ProviderTransaction, ReservationPaymentPort } from "./PaymentPorts";
+
+export class PaymentService {
+  constructor(
+    private readonly payments: PaymentRepository,
+    private readonly provider: PaymentProviderPort,
+    private readonly orders: OrderPaymentPort,
+    private readonly reservations: ReservationPaymentPort,
+  ) {}
+
+  async createIntent(input: CreatePaymentInput): Promise<Readonly<{ payment: Payment; checkout: Awaited<ReturnType<PaymentProviderPort["createPaymentIntent"]>> }>> {
+    const existing = await this.payments.findByIdempotencyKey(input.customerId, input.idempotencyKey);
+    if (existing) {
+      this.assertOrderMatches(existing, input);
+      const checkout = await this.provider.createPaymentIntent(input);
+      return { payment: existing, checkout };
+    }
+
+    const order = await this.orders.findById(input.orderId);
+    if (!order) throw new Error("Order not found");
+    if (order.customerId !== input.customerId) throw new Error("Order does not belong to customer");
+    if (order.status !== "PENDING_PAYMENT") throw new Error("Order is not awaiting payment");
+    if (order.totalInCents !== input.amountInCents || order.currency !== input.currency) throw new Error("Payment amount or currency does not match order");
+
+    const checkout = await this.provider.createPaymentIntent(input);
+    const now = new Date().toISOString();
+    const payment: Payment = {
+      id: crypto.randomUUID(),
+      orderId: input.orderId,
+      customerId: input.customerId,
+      provider: checkout.provider,
+      providerReference: checkout.providerReference,
+      status: "PENDING",
+      amountInCents: checkout.amountInCents,
+      currency: checkout.currency,
+      idempotencyKey: input.idempotencyKey,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    try {
+      await this.payments.create(payment);
+    } catch (error) {
+      const raced = await this.payments.findByIdempotencyKey(input.customerId, input.idempotencyKey);
+      if (raced) {
+        this.assertOrderMatches(raced, input);
+        return { payment: raced, checkout };
+      }
+      throw error;
+    }
+
+    await this.payments.recordLedger(payment.id, "PAYMENT_INTENT_CREATED", payment.amountInCents, payment.currency, JSON.stringify({ provider: payment.provider, reference: payment.providerReference }));
+    return { payment, checkout };
+  }
+
+  async processProviderTransaction(transaction: ProviderTransaction, rawEvent: string): Promise<void> {
+    const payment = await this.payments.findByProviderReference(transaction.reference);
+    if (!payment) return;
+    if (payment.amountInCents !== transaction.amountInCents || payment.currency !== transaction.currency) {
+      await this.payments.recordLedger(payment.id, "SECURITY_MISMATCH", transaction.amountInCents, transaction.currency, JSON.stringify({ transactionId: transaction.transactionId }));
+      throw new Error("Provider transaction does not match payment intent");
+    }
+
+    await this.payments.recordWebhook(payment.provider, this.eventId(transaction, rawEvent), rawEvent);
+    await this.payments.attachProviderTransaction(payment.id, transaction.transactionId);
+
+    if (transaction.status === "APPROVED") {
+      await this.markPaid(payment);
+      return;
+    }
+    if (transaction.status === "DECLINED" || transaction.status === "ERROR") {
+      await this.markFailed(payment);
+      return;
+    }
+    if (transaction.status === "VOIDED") {
+      await this.markCancelled(payment);
+      return;
+    }
+    if (payment.status === "PENDING") await this.payments.transition(payment.id, "PENDING", "PROCESSING");
+  }
+
+  async reconcile(transactionId: string): Promise<ProviderTransaction> {
+    const transaction = await this.provider.getTransaction(transactionId);
+    await this.processProviderTransaction(transaction, JSON.stringify({ source: "reconciliation", transaction }));
+    return transaction;
+  }
+
+  private async markPaid(payment: Payment): Promise<void> {
+    if (payment.status === "PAID") return;
+    if (!["PENDING", "PROCESSING"].includes(payment.status)) return;
+    assertPaymentTransition(payment.status, "PAID");
+    const changed = await this.payments.transition(payment.id, payment.status, "PAID");
+    if (!changed) {
+      const current = await this.payments.findById(payment.id);
+      if (current?.status === "PAID") return;
+      throw new Error("Concurrent payment transition prevented confirmation");
+    }
+    const orderChanged = await this.orders.transitionStatus(payment.orderId, "PENDING_PAYMENT", "PAID");
+    if (!orderChanged) {
+      const orderProcessingChanged = await this.orders.transitionStatus(payment.orderId, "PAYMENT_PROCESSING", "PAID");
+      if (!orderProcessingChanged) {
+        const order = await this.orders.findById(payment.orderId);
+        if (order?.status !== "PAID") throw new Error("Payment confirmed but order transition failed");
+      }
+    }
+    await this.reservations.consumeForOrder(payment.orderId);
+    await this.payments.recordLedger(payment.id, "PAYMENT_CONFIRMED", payment.amountInCents, payment.currency, "{}");
+  }
+
+  private async markFailed(payment: Payment): Promise<void> {
+    if (["FAILED", "CANCELLED"].includes(payment.status)) return;
+    if (!["PENDING", "PROCESSING"].includes(payment.status)) return;
+    const changed = await this.payments.transition(payment.id, payment.status, "FAILED");
+    if (!changed) return;
+    const orderChanged = await this.orders.transitionStatus(payment.orderId, "PENDING_PAYMENT", "CANCELLED")
+      || await this.orders.transitionStatus(payment.orderId, "PAYMENT_PROCESSING", "CANCELLED");
+    if (!orderChanged) {
+      const order = await this.orders.findById(payment.orderId);
+      if (order && order.status !== "CANCELLED") throw new Error("Payment failed but order cancellation failed");
+    }
+    await this.reservations.releaseForOrder(payment.orderId);
+    await this.payments.recordLedger(payment.id, "PAYMENT_FAILED", 0, payment.currency, "{}");
+  }
+
+  private async markCancelled(payment: Payment): Promise<void> {
+    if (["FAILED", "CANCELLED"].includes(payment.status)) return;
+    if (!["PENDING", "PROCESSING"].includes(payment.status)) return;
+    const changed = await this.payments.transition(payment.id, payment.status, "CANCELLED");
+    if (!changed) return;
+    await this.orders.transitionStatus(payment.orderId, "PENDING_PAYMENT", "CANCELLED");
+    await this.orders.transitionStatus(payment.orderId, "PAYMENT_PROCESSING", "CANCELLED");
+    await this.reservations.releaseForOrder(payment.orderId);
+    await this.payments.recordLedger(payment.id, "PAYMENT_CANCELLED", 0, payment.currency, "{}");
+  }
+
+  private assertOrderMatches(payment: Payment, input: CreatePaymentInput): void {
+    if (payment.orderId !== input.orderId || payment.amountInCents !== input.amountInCents || payment.currency !== input.currency) {
+      throw new Error("Idempotency key is bound to a different payment");
+    }
+  }
+
+  private eventId(transaction: ProviderTransaction, rawEvent: string): string {
+    return `${transaction.transactionId}:${transaction.status}:${this.simpleHash(rawEvent)}`;
+  }
+
+  private simpleHash(value: string): string {
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index += 1) hash = Math.imul(hash ^ value.charCodeAt(index), 16777619);
+    return (hash >>> 0).toString(16).padStart(8, "0");
+  }
+}
