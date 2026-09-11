@@ -2,6 +2,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { PaymentService } from "../../../modules/payments/application/PaymentService";
 import { D1PaymentRepository } from "../../../modules/payments/infrastructure/D1PaymentRepository";
 import { WompiPaymentProvider } from "../../../modules/payments/infrastructure/WompiPaymentProvider";
+import { verifyWompiWebhook } from "../../../modules/payments/infrastructure/WompiWebhookVerifier";
 import { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
 import { D1ReservationRepository } from "../../../modules/orders/infrastructure/D1ReservationRepository";
 
@@ -17,5 +18,5 @@ export async function paymentContext() {
   const orders = new D1OrderRepository(env.DB);
   const reservations = new D1ReservationRepository(env.DB);
   const payments = new D1PaymentRepository(env.DB);
-  return { env, orders, reservations, payments, provider, service: new PaymentService(payments, provider, orders, reservations) };
+  return { env, orders, reservations, payments, provider, service: new PaymentService(payments, provider, orders, reservations), verifyWompiWebhook };
 }
