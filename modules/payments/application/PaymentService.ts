@@ -15,7 +15,9 @@ export class PaymentService {
     if (existing) {
       this.assertOrderMatches(existing, input);
       if (existing.provider !== this.provider.provider) throw new Error("Payment provider does not match the existing idempotent payment");
-      const checkout = await this.provider.recoverPaymentIntent(existing, input);
+      const checkout = existing.checkoutUrl
+        ? { providerReference: existing.providerReference, provider: existing.provider, publicKey: "", currency: existing.currency, amountInCents: existing.amountInCents, integritySignature: "", checkoutUrl: existing.checkoutUrl }
+        : await this.provider.recoverPaymentIntent(existing, input);
       await this.reservations.extendForOrder(input.orderId, 30);
       return { payment: existing, checkout };
     }
@@ -27,23 +29,14 @@ export class PaymentService {
     if (order.totalInCents !== input.amountInCents || order.currency !== input.currency) throw new Error("Payment amount or currency does not match order");
 
     const checkout = await this.provider.createPaymentIntent(input);
-    if (checkout.provider !== this.provider.provider || checkout.amountInCents !== input.amountInCents || checkout.currency !== input.currency) {
-      throw new Error("Payment provider returned an inconsistent payment intent");
-    }
+    if (checkout.provider !== this.provider.provider || checkout.amountInCents !== input.amountInCents || checkout.currency !== input.currency) throw new Error("Payment provider returned an inconsistent payment intent");
 
     const now = new Date().toISOString();
     const payment: Payment = {
-      id: crypto.randomUUID(),
-      orderId: input.orderId,
-      customerId: input.customerId,
-      provider: checkout.provider,
-      providerReference: checkout.providerReference,
-      status: "PENDING",
-      amountInCents: checkout.amountInCents,
-      currency: checkout.currency,
-      idempotencyKey: input.idempotencyKey,
-      createdAt: now,
-      updatedAt: now,
+      id: crypto.randomUUID(), orderId: input.orderId, customerId: input.customerId, provider: checkout.provider,
+      providerReference: checkout.providerReference, ...(checkout.checkoutUrl ? { checkoutUrl: checkout.checkoutUrl } : {}),
+      status: "PENDING", amountInCents: checkout.amountInCents, currency: checkout.currency,
+      idempotencyKey: input.idempotencyKey, createdAt: now, updatedAt: now,
     };
 
     try {
@@ -53,7 +46,9 @@ export class PaymentService {
       if (raced) {
         this.assertOrderMatches(raced, input);
         if (raced.provider !== this.provider.provider) throw new Error("Concurrent payment selected a different provider");
-        const recovered = await this.provider.recoverPaymentIntent(raced, input);
+        const recovered = raced.checkoutUrl
+          ? { providerReference: raced.providerReference, provider: raced.provider, publicKey: "", currency: raced.currency, amountInCents: raced.amountInCents, integritySignature: "", checkoutUrl: raced.checkoutUrl }
+          : await this.provider.recoverPaymentIntent(raced, input);
         await this.reservations.extendForOrder(input.orderId, 30);
         return { payment: raced, checkout: recovered };
       }
@@ -73,22 +68,11 @@ export class PaymentService {
       await this.payments.recordLedger(payment.id, "SECURITY_MISMATCH", transaction.amountInCents, transaction.currency, JSON.stringify({ transactionId: transaction.transactionId }));
       throw new Error("Provider transaction does not match payment intent");
     }
-
     await this.payments.recordWebhook(payment.provider, this.eventId(transaction, rawEvent), rawEvent);
     await this.payments.attachProviderTransaction(payment.id, transaction.transactionId);
-
-    if (transaction.status === "APPROVED") {
-      await this.markPaid(payment);
-      return;
-    }
-    if (transaction.status === "DECLINED" || transaction.status === "ERROR") {
-      await this.markFailed(payment);
-      return;
-    }
-    if (transaction.status === "VOIDED") {
-      await this.markCancelled(payment);
-      return;
-    }
+    if (transaction.status === "APPROVED") return this.markPaid(payment);
+    if (transaction.status === "DECLINED" || transaction.status === "ERROR") return this.markFailed(payment);
+    if (transaction.status === "VOIDED") return this.markCancelled(payment);
     if (payment.status === "PENDING") await this.payments.transition(payment.id, "PENDING", "PROCESSING");
   }
 
@@ -108,14 +92,12 @@ export class PaymentService {
       return;
     }
     if (order.status !== "PAID") {
-      const orderChanged = await this.orders.transitionStatus(payment.orderId, "PENDING_PAYMENT", "PAID")
-        || await this.orders.transitionStatus(payment.orderId, "PAYMENT_PROCESSING", "PAID");
+      const orderChanged = await this.orders.transitionStatus(payment.orderId, "PENDING_PAYMENT", "PAID") || await this.orders.transitionStatus(payment.orderId, "PAYMENT_PROCESSING", "PAID");
       if (!orderChanged) {
         const current = await this.orders.findById(payment.orderId);
         if (current?.status !== "PAID") throw new Error("Payment confirmed but order transition failed");
       }
     }
-
     assertPaymentTransition(payment.status, "PAID");
     const changed = await this.payments.transition(payment.id, payment.status, "PAID");
     if (!changed) {
@@ -128,12 +110,9 @@ export class PaymentService {
   }
 
   private async markFailed(payment: Payment): Promise<void> {
-    if (["FAILED", "CANCELLED"].includes(payment.status)) return;
-    if (!["PENDING", "PROCESSING"].includes(payment.status)) return;
-    const changed = await this.payments.transition(payment.id, payment.status, "FAILED");
-    if (!changed) return;
-    const orderChanged = await this.orders.transitionStatus(payment.orderId, "PENDING_PAYMENT", "CANCELLED")
-      || await this.orders.transitionStatus(payment.orderId, "PAYMENT_PROCESSING", "CANCELLED");
+    if (["FAILED", "CANCELLED"].includes(payment.status) || !["PENDING", "PROCESSING"].includes(payment.status)) return;
+    if (!(await this.payments.transition(payment.id, payment.status, "FAILED"))) return;
+    const orderChanged = await this.orders.transitionStatus(payment.orderId, "PENDING_PAYMENT", "CANCELLED") || await this.orders.transitionStatus(payment.orderId, "PAYMENT_PROCESSING", "CANCELLED");
     if (!orderChanged) {
       const order = await this.orders.findById(payment.orderId);
       if (order && order.status !== "CANCELLED") throw new Error("Payment failed but order cancellation failed");
@@ -143,10 +122,8 @@ export class PaymentService {
   }
 
   private async markCancelled(payment: Payment): Promise<void> {
-    if (["FAILED", "CANCELLED"].includes(payment.status)) return;
-    if (!["PENDING", "PROCESSING"].includes(payment.status)) return;
-    const changed = await this.payments.transition(payment.id, payment.status, "CANCELLED");
-    if (!changed) return;
+    if (["FAILED", "CANCELLED"].includes(payment.status) || !["PENDING", "PROCESSING"].includes(payment.status)) return;
+    if (!(await this.payments.transition(payment.id, payment.status, "CANCELLED"))) return;
     await this.orders.transitionStatus(payment.orderId, "PENDING_PAYMENT", "CANCELLED");
     await this.orders.transitionStatus(payment.orderId, "PAYMENT_PROCESSING", "CANCELLED");
     await this.reservations.releaseForOrder(payment.orderId);
@@ -154,9 +131,7 @@ export class PaymentService {
   }
 
   private assertOrderMatches(payment: Payment, input: CreatePaymentInput): void {
-    if (payment.orderId !== input.orderId || payment.amountInCents !== input.amountInCents || payment.currency !== input.currency) {
-      throw new Error("Idempotency key is bound to a different payment");
-    }
+    if (payment.orderId !== input.orderId || payment.amountInCents !== input.amountInCents || payment.currency !== input.currency) throw new Error("Idempotency key is bound to a different payment");
   }
 
   private eventId(transaction: ProviderTransaction, rawEvent: string): string {
