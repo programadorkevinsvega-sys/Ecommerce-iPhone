@@ -2,9 +2,9 @@
 
 ## Estado
 
-La arquitectura de pagos es multi-provider y mantiene implementaciones reales server-side para **Wompi, Stripe, Mercado Pago, PayPal y Binance Pay**. No existen fake providers, mocks de pago, respuestas simuladas ni datos transaccionales de ejemplo en el runtime.
+La arquitectura de pagos es multi-provider y permite utilizar **Wompi, Stripe, Mercado Pago, PayPal y Binance Pay simultáneamente**. No existe un provider global único ni un `PAYMENT_PROVIDER` que fuerce a toda la plataforma a utilizar un solo gateway.
 
-El provider activo se selecciona exclusivamente mediante `PAYMENT_PROVIDER` en configuración del Worker. Las credenciales permanecen fuera de Git.
+Todos los adapters se registran server-side en un `PaymentProviderRegistry`. Cada payment selecciona su proveedor de forma explícita y persiste esa elección junto con su referencia externa. Las credenciales permanecen fuera de Git.
 
 ## Proveedores
 
@@ -16,6 +16,60 @@ El provider activo se selecciona exclusivamente mediante `PAYMENT_PROVIDER` en c
 
 Las capacidades específicas de captura, void, refund y webhook se mantienen en cada adapter; el dominio no conoce APIs externas.
 
+## Selección simultánea
+
+El checkout envía el proveedor elegido:
+
+```text
+POST /api/payments/intent
+Idempotency-Key: <unique-key>
+{"orderId":"<order-id>","paymentProvider":"STRIPE"}
+```
+
+El servidor valida que el provider pertenece al conjunto soportado y resuelve el adapter mediante `PaymentProviderRegistry`.
+
+Producción puede tener simultáneamente:
+
+```text
+WOMPI        → habilitado
+STRIPE       → habilitado
+MERCADOPAGO  → habilitado
+PAYPAL       → habilitado
+BINANCE_PAY  → habilitado
+```
+
+Una orden puede usar Wompi mientras otra usa Stripe, Mercado Pago, PayPal o Binance Pay. No se necesita redeploy para cambiar el proveedor de una nueva orden.
+
+El cliente únicamente selecciona el identificador del método. Nunca recibe ni controla secretos, tokens privados, firmas o lógica interna del adapter.
+
+## Modelo de runtime
+
+```text
+Checkout
+   ↓
+PaymentService
+   ↓
+PaymentProviderRegistry
+   ├── WOMPI
+   ├── STRIPE
+   ├── MERCADOPAGO
+   ├── PAYPAL
+   └── BINANCE_PAY
+          ↓
+      Provider API
+```
+
+El `Payment` persistido conserva:
+
+```text
+provider
+provider_reference
+provider_transaction_id
+checkout_url
+```
+
+La misma `Idempotency-Key` queda vinculada al provider original. Repetirla con otro provider es rechazado para evitar ambigüedad financiera.
+
 ## Flujo común
 
 ```text
@@ -23,13 +77,15 @@ Checkout
   ↓
 Order PENDING_PAYMENT
   ↓
-POST /api/payments/intent
+POST /api/payments/intent + provider
   ↓
 Server valida customer + order + amount + currency
   ↓
+Registry resuelve adapter
+  ↓
 Payment persistido con idempotency key
   ↓
-Adapter real del provider
+Provider real
   ↓
 Checkout/provider client flow
   ↓
@@ -46,16 +102,6 @@ FAILED/CANCELLED → releaseForOrder()
 El redirect del navegador solo sirve para UX. Nunca se utiliza como prueba de pago confirmado.
 
 ## Wompi — integración real
-
-### Crear checkout
-
-```text
-POST /api/payments/intent
-Idempotency-Key: <unique-key>
-{"orderId":"<order-id>"}
-```
-
-El servidor obtiene importe y moneda desde la orden. Wompi recibe una referencia determinista, firma SHA-256 de integridad y configuración de Web Checkout.
 
 ### Webhook
 
@@ -76,17 +122,11 @@ Se valida:
 
 ### Reconciliación
 
-El adapter consulta server-side:
-
 ```text
 GET https://production.wompi.co/v1/transactions/{transaction_id}
 ```
 
-con la llave privada de producción.
-
-### Void
-
-Wompi expone una operación server-side de `void` para transacciones de tarjeta en estados compatibles. La aplicación no inventa una operación de refund universal: la capacidad se expone únicamente cuando el método y estado reales del proveedor la permiten.
+utilizando la llave privada de producción.
 
 ## Idempotencia y concurrencia
 
@@ -150,12 +190,12 @@ BINANCE_PAY_SECRET_KEY
 BINANCE_PAY_CERTIFICATE_SN
 ```
 
-Para el entorno operativo se utilizan exclusivamente credenciales reales de producción. No se incorporan credenciales sandbox al runtime productivo.
+Las credenciales de cada provider son independientes. Se pueden configurar las cinco simultáneamente. La ausencia de credenciales de un provider no elimina los demás; intentar utilizar un provider sin sus credenciales falla de forma explícita y server-side.
 
 ## Migrations
 
 - `0015_payments.sql`: modelo inicial de pagos.
-- `0016_multi_provider_payments.sql`: amplía providers soportados y persiste `checkout_url`.
+- `0016_multi_provider_payments.sql`: providers soportados y `checkout_url`.
 
 ## Criterio de cierre de Fase 04
 
