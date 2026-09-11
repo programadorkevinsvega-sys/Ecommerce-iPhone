@@ -2,7 +2,6 @@ import type { D1Database } from "@cloudflare/workers-types";
 import type { ReservationRepository } from "../application/ReservationRepository";
 
 const HOLD_STATUSES = ["PENDING_PAYMENT", "PAYMENT_PROCESSING"] as const;
-const CONSUMED_STATUSES = ["PAID", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "REFUND_PENDING", "REFUNDED"] as const;
 
 export class D1ReservationRepository implements ReservationRepository {
   constructor(private readonly db: D1Database) {}
