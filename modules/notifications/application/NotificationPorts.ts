@@ -6,6 +6,14 @@ export type OutboxRecord = NotificationEvent & Readonly<{
   availableAt: string;
 }>;
 
+export type NotificationDeliveryClaim = Readonly<{
+  outboxId: string;
+  channel: "EMAIL";
+  recipient: string;
+  template: string;
+  leaseSeconds: number;
+}>;
+
 export interface NotificationOutboxRepository {
   enqueue(event: NotificationEvent): Promise<boolean>;
   pending(limit: number): Promise<OutboxRecord[]>;
@@ -13,6 +21,7 @@ export interface NotificationOutboxRepository {
   markProcessed(id: string): Promise<void>;
   markFailed(id: string, error: string, retryAt: string): Promise<void>;
   hasDelivery(outboxId: string, channel: "EMAIL", recipient: string, template: string): Promise<boolean>;
+  claimDelivery(input: NotificationDeliveryClaim): Promise<boolean>;
   recordDelivery(input: { outboxId: string; channel: "EMAIL"; recipient: string; template: string; provider: string; providerMessageId?: string; status: "SENT" | "FAILED"; attempts: number; errorMessage?: string }): Promise<void>;
 }
 
