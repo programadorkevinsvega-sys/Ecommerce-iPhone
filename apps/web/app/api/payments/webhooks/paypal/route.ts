@@ -22,13 +22,20 @@ export async function POST(request: Request) {
     const eventRecord = event as Record<string, unknown>;
     const resource = eventRecord.resource;
     const resourceRecord = resource && typeof resource === "object" ? resource as Record<string, unknown> : null;
-    const id = typeof resourceRecord?.id === "string" ? resourceRecord.id : null;
-    if (!id) throw new Error("PayPal order id is missing");
+    const resourceId = typeof resourceRecord?.id === "string" ? resourceRecord.id : null;
+    const supplementary = resourceRecord?.supplementary_data;
+    const supplementaryRecord = supplementary && typeof supplementary === "object" ? supplementary as Record<string, unknown> : null;
+    const relatedIds = supplementaryRecord?.related_ids;
+    const relatedIdsRecord = relatedIds && typeof relatedIds === "object" ? relatedIds as Record<string, unknown> : null;
+    const relatedOrderId = typeof relatedIdsRecord?.order_id === "string" ? relatedIdsRecord.order_id : null;
+    const eventType = typeof eventRecord.event_type === "string" ? eventRecord.event_type : "";
+    const orderId = eventType.startsWith("PAYMENT.CAPTURE.") ? relatedOrderId : resourceId;
+    if (!orderId) throw new Error("PayPal order id is missing");
     const provider = providers.resolve("PAYPAL") as PaymentProviderPort;
-    let transaction = await provider.getTransaction(id);
-    if (eventRecord.event_type === "CHECKOUT.ORDER.APPROVED" && transaction.status === "PENDING") {
+    let transaction = await provider.getTransaction(orderId);
+    if (eventType === "CHECKOUT.ORDER.APPROVED" && transaction.status === "PENDING") {
       if (!provider.capturePayment) throw new Error("PayPal capture capability is not configured");
-      transaction = await provider.capturePayment(id);
+      transaction = await provider.capturePayment(orderId);
     }
     await service.processProviderTransaction(transaction, raw);
     return NextResponse.json({ received: true }, { status: 200 });
