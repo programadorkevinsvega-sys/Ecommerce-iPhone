@@ -43,4 +43,10 @@ export class D1ReservationRepository implements ReservationRepository {
     const result = await this.db.prepare("UPDATE inventory_reservations SET released_at=CURRENT_TIMESTAMP WHERE order_id=? AND released_at IS NULL AND EXISTS (SELECT 1 FROM orders WHERE id=? AND status IN ('PAID','PROCESSING','READY_TO_SHIP','SHIPPED','DELIVERED','REFUND_PENDING','REFUNDED'))").bind(orderId, orderId).run();
     return result.meta.changes;
   }
+
+  async extendForOrder(orderId: string, minutes: number): Promise<number> {
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 120) throw new Error("Invalid reservation extension");
+    const result = await this.db.prepare("UPDATE inventory_reservations SET expires_at=datetime('now', ? || ' minutes') WHERE order_id=? AND released_at IS NULL AND EXISTS (SELECT 1 FROM orders WHERE id=? AND status IN ('PENDING_PAYMENT','PAYMENT_PROCESSING'))").bind(minutes, orderId, orderId).run();
+    return result.meta.changes;
+  }
 }
