@@ -60,7 +60,7 @@ export interface PaymentRepository {
 }
 
 export interface OrderPaymentPort {
-  findById(id: string): Promise<Readonly<{ id: string; customerId?: string; status: string; totalInCents: number; currency: string }> | null>;
+  findById(id: string): Promise<Readonly<{ id: string; customerId?: string | undefined; status: string; totalInCents: number; currency: string }> | null>;
   transitionStatus(id: string, from: string, to: string): Promise<boolean>;
 }
 
