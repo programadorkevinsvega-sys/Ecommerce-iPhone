@@ -16,9 +16,11 @@ CREATE TABLE IF NOT EXISTS checkout_idempotency (
   idempotency_key TEXT PRIMARY KEY,
   customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
   order_id TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_checkout_idempotency_customer ON checkout_idempotency(customer_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_checkout_idempotency_expiry ON checkout_idempotency(expires_at);
 
 CREATE TABLE IF NOT EXISTS checkout_guards (
   id INTEGER PRIMARY KEY CHECK (id = 1)
