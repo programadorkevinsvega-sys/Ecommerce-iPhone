@@ -1,6 +1,6 @@
-import { AdminUser } from "../../../modules/admin/domain/AdminUser";
-import type { AdminRole } from "../../../modules/admin/application/Rbac";
-import { hashPassword } from "../../../modules/admin/infrastructure/AdminSecurity";
+import { AdminUser } from "../../../../modules/admin/domain/AdminUser";
+import type { AdminRole } from "../../../../modules/admin/application/Rbac";
+import { hashPassword } from "../../../../modules/admin/infrastructure/AdminSecurity";
 import { PERMISSIONS, requireAdmin } from "../adminAuth";
 
 const ROLES: readonly AdminRole[] = ["SUPER_ADMIN", "ADMIN", "MANAGER", "SALES", "SUPPORT", "INVENTORY", "FINANCE", "CONTENT_EDITOR", "TECHNICIAN"];
