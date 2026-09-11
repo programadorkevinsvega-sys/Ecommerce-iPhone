@@ -13,9 +13,9 @@ export class D1ReservationRepository implements ReservationRepository {
     ).all<{ id: string; product_id: string; quantity: number; status: string | null }>();
     let released = 0;
     for (const row of rows.results) {
-      if (row.status && HOLD_STATUSES.includes(row.status as (typeof HOLD_STATUSES)[number])) {
+      if (!row.status || HOLD_STATUSES.includes(row.status as (typeof HOLD_STATUSES)[number])) {
         const result = await this.db.batch([
-          this.db.prepare("UPDATE inventory_reservations SET released_at=CURRENT_TIMESTAMP WHERE id=? AND released_at IS NULL AND expires_at<=CURRENT_TIMESTAMP AND EXISTS (SELECT 1 FROM orders WHERE id=inventory_reservations.order_id AND status IN ('PENDING_PAYMENT','PAYMENT_PROCESSING'))").bind(row.id),
+          this.db.prepare("UPDATE inventory_reservations SET released_at=CURRENT_TIMESTAMP WHERE id=? AND released_at IS NULL AND expires_at<=CURRENT_TIMESTAMP AND (order_id IS NULL OR EXISTS (SELECT 1 FROM orders WHERE id=inventory_reservations.order_id AND status IN ('PENDING_PAYMENT','PAYMENT_PROCESSING')))").bind(row.id),
           this.db.prepare("UPDATE products SET stock=stock+? WHERE id=? AND changes()=1").bind(row.quantity, row.product_id),
         ]);
         if (result[0]?.meta.changes === 1) released += 1;
