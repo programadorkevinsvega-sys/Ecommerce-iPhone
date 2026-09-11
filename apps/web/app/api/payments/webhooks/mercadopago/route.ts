@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { paymentContext } from "../../../../../../lib/payments";
+import { paymentContext } from "../../../../../lib/payments";
 import { verifyMercadoPagoWebhook } from "../../../../../../../modules/payments/infrastructure/MercadoPagoWebhookVerifier";
 
 export async function POST(request: Request) {
