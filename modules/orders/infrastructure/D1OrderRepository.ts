@@ -40,8 +40,8 @@ export class D1OrderRepository implements OrderCheckoutRepository {
       statements.push(this.db.prepare("INSERT INTO inventory_reservations(id,cart_id,product_id,quantity,expires_at,order_id) VALUES(?,?,?,?,datetime('now','+15 minutes'),?)").bind(
         crypto.randomUUID(), effectiveCart.id, item.productId, item.quantity, orderId,
       ));
-      statements.push(this.db.prepare("INSERT INTO order_items(id,order_id,product_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents) VALUES(?,?,?,?,?,?,?,?)").bind(
-        crypto.randomUUID(), orderId, item.productId, item.productName, item.slug, item.quantity, item.unitPriceInCents, item.quantity * item.unitPriceInCents,
+      statements.push(this.db.prepare("INSERT INTO order_items(id,order_id,product_id,variant_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents) VALUES(?,?,?,?,?,?,?,?,?)").bind(
+        crypto.randomUUID(), orderId, item.productId, item.variantId ?? null, item.productName, item.slug, item.quantity, item.unitPriceInCents, item.quantity * item.unitPriceInCents,
       ));
     }
 
@@ -74,7 +74,7 @@ export class D1OrderRepository implements OrderCheckoutRepository {
       totalInCents,
       shippingMethod: input.shippingMethod,
       shippingAddress: input.shippingAddress,
-      items: effectiveCart.items.map((item) => ({ id: crypto.randomUUID(), productId: item.productId, productName: item.productName, productSlug: item.slug, quantity: item.quantity, unitPriceInCents: item.unitPriceInCents, lineTotalInCents: item.quantity * item.unitPriceInCents })),
+      items: effectiveCart.items.map((item) => ({ id: crypto.randomUUID(), productId: item.productId, ...(item.variantId ? { variantId: item.variantId } : {}), productName: item.productName, productSlug: item.slug, quantity: item.quantity, unitPriceInCents: item.unitPriceInCents, lineTotalInCents: item.quantity * item.unitPriceInCents })),
     };
   }
 
@@ -112,7 +112,7 @@ export class D1OrderRepository implements OrderCheckoutRepository {
   }
 
   private async hydrateOrder(row: any): Promise<Order> {
-    const items = await this.db.prepare("SELECT id,product_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents FROM order_items WHERE order_id=?").bind(row.id).all<any>();
+    const items = await this.db.prepare("SELECT id,product_id,variant_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents FROM order_items WHERE order_id=?").bind(row.id).all<any>();
     return {
       id: row.id,
       orderNumber: row.order_number,
@@ -138,6 +138,7 @@ export class D1OrderRepository implements OrderCheckoutRepository {
       items: items.results.map((item) => ({
         id: item.id,
         productId: item.product_id,
+        ...(item.variant_id ? { variantId: item.variant_id } : {}),
         productName: item.product_name,
         productSlug: item.product_slug,
         quantity: item.quantity,
