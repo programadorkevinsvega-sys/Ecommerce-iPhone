@@ -45,7 +45,12 @@ export async function POST(request: Request) {
       { email: requestedEmail, firstName: String(body.firstName).trim(), lastName: String(body.lastName).trim(), phone: String(body.phone).trim() },
       { label: "Principal", ...shippingAddress, isDefault: true },
     );
-    const cart = await context.cart.get(cartId);
+
+    // Every checkout cart is claimed by the authenticated customer before it can be read.
+    // This prevents a customer from submitting another customer's cart id.
+    await context.cart.claim(cartId, customerResult.customer.getId());
+    const cart = await context.cart.getOwnedByCustomer(cartId, customerResult.customer.getId());
+
     const { checkout } = await checkoutUseCase();
     const order = await checkout.execute(cart, {
       email: customerResult.customer.toPrimitives().email,
@@ -55,7 +60,9 @@ export async function POST(request: Request) {
       idempotencyKey,
     });
 
+    // Stable event id makes retries of the same idempotent checkout notification-safe.
     await publishNotificationEvent({
+      id: `order-created:${order.id}`,
       eventType: "OrderCreated",
       aggregateId: order.id,
       payload: { email: customerResult.customer.toPrimitives().email, orderId: order.id, orderNumber: order.orderNumber, status: order.status, totalInCents: order.totalInCents, currency: order.currency },
