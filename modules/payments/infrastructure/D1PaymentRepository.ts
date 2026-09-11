@@ -48,8 +48,8 @@ export class D1PaymentRepository implements PaymentRepository {
     ).run();
     return result.meta.changes === 1;
   }
-  async findRefund(paymentId: string, idempotencyKey: string) {
-    return this.db.prepare("SELECT provider_refund_id,amount_in_cents,currency,status FROM payment_refunds WHERE payment_id=? AND idempotency_key=? LIMIT 1").bind(paymentId, idempotencyKey).first<RefundRow>();
+  async findRefund(paymentId: string, idempotencyKey: string): Promise<RefundRow | null> {
+    return this.db.prepare("SELECT provider_refund_id AS providerRefundId, amount_in_cents AS amountInCents, currency, status FROM payment_refunds WHERE payment_id=? AND idempotency_key=? LIMIT 1").bind(paymentId, idempotencyKey).first<RefundRow>();
   }
   private map(row: PaymentRow): Payment {
     return { id: row.id, orderId: row.order_id, customerId: row.customer_id, provider: row.provider, providerReference: row.provider_reference,
@@ -59,4 +59,4 @@ export class D1PaymentRepository implements PaymentRepository {
 }
 
 type PaymentRow = { id: string; order_id: string; customer_id: string; provider: Payment["provider"]; provider_reference: string; provider_transaction_id: string | null; checkout_url: string | null; status: PaymentStatus; amount_in_cents: number; currency: string; idempotency_key: string; created_at: string; updated_at: string };
-type RefundRow = { provider_refund_id: string; amount_in_cents: number; currency: string; status: "SUCCEEDED" | "PENDING" | "FAILED" };
+type RefundRow = { providerRefundId: string; amountInCents: number; currency: string; status: "SUCCEEDED" | "PENDING" | "FAILED" };
