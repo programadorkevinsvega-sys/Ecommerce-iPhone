@@ -12,15 +12,18 @@ import { verifyWompiWebhook } from "../../../modules/payments/infrastructure/Wom
 import { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
 import { D1ReservationRepository } from "../../../modules/orders/infrastructure/D1ReservationRepository";
 
+type PaymentEnv = CloudflareEnv & Record<string, string | undefined>;
+
 export async function paymentContext() {
   const { env } = getCloudflareContext();
+  const paymentEnv = env as PaymentEnv;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://ecommerce-iphone.programadorkevinsvega.workers.dev";
-  const providers = createProviders(env, appUrl);
-  const orders = new D1OrderRepository(env.DB);
-  const reservations = new D1ReservationRepository(env.DB);
-  const payments = new D1PaymentRepository(env.DB);
+  const providers = createProviders(paymentEnv, appUrl);
+  const orders = new D1OrderRepository(paymentEnv.DB);
+  const reservations = new D1ReservationRepository(paymentEnv.DB);
+  const payments = new D1PaymentRepository(paymentEnv.DB);
   return {
-    env,
+    env: paymentEnv,
     orders,
     reservations,
     payments,
@@ -30,7 +33,7 @@ export async function paymentContext() {
   };
 }
 
-function createProviders(env: CloudflareEnv & Record<string, string | undefined>, appUrl: string): PaymentProviderRegistry {
+function createProviders(env: PaymentEnv, appUrl: string): PaymentProviderRegistry {
   const providers = [
     new WompiPaymentProvider(env.WOMPI_PUBLIC_KEY ?? "", env.WOMPI_PRIVATE_KEY ?? "", env.WOMPI_INTEGRITY_SECRET ?? "", appUrl),
     new StripePaymentProvider(env.STRIPE_SECRET_KEY ?? "", env.STRIPE_PUBLISHABLE_KEY ?? "", appUrl),
