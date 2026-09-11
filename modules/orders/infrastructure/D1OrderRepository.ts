@@ -132,7 +132,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
   }
 
   private async hydrateOrder(row: any): Promise<Order> {
-    const items = await this.db.prepare("SELECT id,product_id,variant_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents FROM order_items WHERE order_id=? ORDER BY created_at ASC,id ASC").bind(row.id).all<any>();
+    const items = await this.db.prepare("SELECT id,product_id,variant_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents FROM order_items WHERE order_id=? ORDER BY id ASC").bind(row.id).all<any>();
     return {
       id: row.id,
       orderNumber: row.order_number,
