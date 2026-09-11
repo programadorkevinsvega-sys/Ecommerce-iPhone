@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD de código auditado:** `b33d941008b93607454d61071ddeeb569a1ff0e9`  
+**HEAD de código auditado:** `28385e7d3109c199ae5ca93f89ae30b93229ff59`  
 **Última actualización:** 2026-09-11  
 **Entorno operativo:** **producción únicamente**.
 
@@ -21,10 +21,10 @@
 | 03 Commerce Core | 🟢 Implementada | 100% | Pendiente certificación funcional exhaustiva contra producción |
 | 04 Payments | 🟡 Implementada — hardening técnico + deploy aplicado | Alta | Pendiente certificación funcional manual de proveedores |
 | 05 Services | 🟡 Implementación funcional + hardening cerrados | Alta | Pendiente gates automatizados + certificación funcional producción |
-| 06 Admin + RBAC | 🟡 Implementación avanzada + hardening pendiente | Alta | Backoffice restante + seguridad + certificación |
+| 06 Admin + RBAC | 🟡 Implementación avanzada + hardening en curso | Alta | Seguridad + módulos restantes + certificación |
 | 07 Notifications + Queues | 🟡 Implementada parcialmente | — | DLQ/retry definitivo |
 
-El trabajo actual corresponde **exclusivamente a Fase 05 Services**, según esta auditoría. No se usa el roadmap externo como fuente de alcance.
+El trabajo actual corresponde a **Fase 06 Admin + RBAC**. La auditoría se mantiene sincronizada con los cambios de código relevantes y no usa el roadmap externo como fuente de alcance.
 
 ---
 
@@ -120,7 +120,8 @@ Implementado y endurecido:
 - reservas de inventario con expiración de 15 minutos;
 - release/consume idempotentes;
 - scheduler de expiraciones;
-- pedidos autenticados filtrados por `customer_id`.
+- pedidos autenticados filtrados por `customer_id`;
+- promociones calculadas server-side y consumidas atómicamente dentro del checkout.
 
 La certificación funcional exhaustiva contra producción permanece separada de la implementación.
 
@@ -170,131 +171,62 @@ El último build/deploy productivo de Payments fue exitoso: Worker desplegado, h
 
 ## 7.1 Alcance exacto de la auditoría
 
-La Fase 05 de este documento define como base existente:
-
-- `ServiceRequest`;
-- `ServiceManagement`;
-- Customer Portal;
-- Service Workflow;
-- Service Type repositories;
-- persistencia D1;
-- minimización de IMEI/serial;
-- cierre de integraciones y operaciones administrativas.
-
-El bounded context ya tenía Domain/Application/Infrastructure y migraciones `0004_services.sql`, `0005_service_types.sql` y `0006_configurable_service_requests.sql`.
+La Fase 05 define como base existente `ServiceRequest`, `ServiceManagement`, Customer Portal, Service Workflow, Service Type repositories, persistencia D1, minimización de IMEI/serial y operaciones administrativas.
 
 ## 7.2 Implementación completada
 
-### Identidad y ownership del Customer Portal
+### Identidad y ownership
 
-- Se eliminó el uso del cookie `customer_id` como fuente de autoridad para operaciones de Services.
-- `customer_session` se resuelve server-side mediante `CustomerSessionService` + `D1CustomerSessionRepository` + `WebCryptoCustomerSessionTokenGenerator`.
+- Customer Portal usa `customer_session` server-side.
 - `GET /api/services` obtiene el customer desde la sesión real.
 - `POST /api/services` vincula el request al customer autenticado cuando existe sesión.
-- `GET /api/services/:id` exige sesión y valida que el `customerId` persistido coincida con el customer autenticado.
-- Un customer distinto recibe `404` y no obtiene información del request.
+- `GET /api/services/:id` exige sesión y valida ownership; un customer distinto recibe `404`.
 
-### Workflow y reglas de servicio
+### Workflow y operaciones administrativas
 
-El workflow conserva las reglas en Application + Domain y ahora valida explícitamente la entrada administrativa:
-
-- estados limitados al conjunto `ServiceRequestStatus`;
-- estado solicitado validado antes de consultar/aplicar la política configurable;
-- quote obligatorio y estrictamente positivo, entero seguro;
-- asignación con `technicianId` no vacío y normalizado;
-- finalización con notas obligatorias y límite de 4000 caracteres;
-- transición efectiva siempre pasa por la máquina de estados del Domain;
-- completion sigue condicionada por `allowedStatuses`;
-- auditoría de actor en cada operación administrativa.
-
-### Operaciones administrativas
-
-Se añadieron endpoints protegidos por RBAC:
-
-```text
-GET  /api/admin/services
-GET  /api/admin/services?status=PENDING
-GET  /api/admin/services/:id
-POST /api/admin/services/:id
-```
-
-El POST administrativo usa `action` y soporta:
-
-```text
-transition  { status }
-quote       { amountInCents }
-assign      { technicianId }
-complete    { notes }
-```
-
-La lectura requiere `services:read`. Las mutaciones requieren `services:write`.
-
-Todas las mutaciones pasan por `ServiceWorkflowService`; la ruta HTTP no modifica D1 directamente.
+- estados limitados a `ServiceRequestStatus`;
+- quote positivo y entero seguro;
+- asignación con `technicianId` normalizado;
+- completion con notas obligatorias y límite de 4000 caracteres;
+- transición mediante la máquina de estados del Domain;
+- auditoría de actor en cada operación administrativa;
+- endpoints protegidos por `services:read`/`services:write`.
 
 ### Persistencia y auditoría
 
-- `D1ServiceRequestRepository` filtra Customer Portal por `customer_id`.
-- La consulta administrativa usa cola por estado y excluye estados terminales cuando no se proporciona filtro.
-- Las operaciones del workflow registran `service_audit_events` con tipo de operación y `actorId`.
-- Los datos de IMEI/serial se mantienen minimizados a últimos cuatro dígitos en el request.
+- `D1ServiceRequestRepository` filtra Customer Portal por `customer_id`;
+- operaciones del workflow registran `service_audit_events`;
+- IMEI/serial se mantienen minimizados a últimos cuatro dígitos.
 
-### Tests agregados/endurecidos
+### Tests
 
-Se cubren:
-
-- ownership de Service Request;
-- rechazo de acceso por customer diferente;
-- acceso correcto del customer propietario;
-- política de estados configurables;
-- rechazo de quote cuando el tipo no requiere cotización;
-- rechazo de quote cero/fraccionario;
-- rechazo de completion cuando la política no permite `COMPLETED`;
-- validación de notas vacías/excesivas;
-- normalización de técnico;
-- rechazo de estados arbitrarios.
+Se cubren ownership, rechazo de customer diferente, acceso del propietario, políticas de estado, quote, completion, notas, técnico y estados arbitrarios.
 
 ## 7.3 Estado actual de Fase 05
 
-**Código funcional + hardening de la Fase 05: implementado para el alcance definido en esta auditoría.**
-
-Todavía **NO** se declara 100%, porque las evidencias operativas deben ejecutarse sobre este HEAD:
-
-- `foundation:check`;
-- `architecture:check`;
-- format/lint/typecheck;
-- tests unitarios;
-- build Cloudflare limpio;
-- deploy exclusivamente a producción;
-- Customer Portal con sesión real;
-- aislamiento entre dos customers;
-- cola administrativa con roles autorizados/no autorizados;
-- transition/quote/assign/complete contra D1 real;
-- evidencia de `service_audit_events`;
-- regresión de Payments/Commerce Core.
-
-El workflow de producción asociado a un commit de esta iteración falló antes de ejecutar pasos del job y fue puesto nuevamente en ejecución; por ello no se interpreta ese fallo de infraestructura/runner como PASS ni como FAIL del código de Services. La certificación queda pendiente hasta obtener ejecución completa.
+Código funcional + hardening implementado para el alcance definido. La certificación 100% permanece pendiente de gates y evidencia funcional de producción: checks técnicos, tests, Customer Portal con sesión real, aislamiento entre customers, operaciones administrativas contra D1 real, evidencia de auditoría y regresión de Payments/Commerce Core.
 
 ---
 
 # 8. Admin + RBAC — FASE 06
 
-## 8.1 Estado real después de auditoría de código
+## 8.1 Estado real
 
-**🟡 Implementación avanzada + hardening pendiente + certificación pendiente.**
+**🟡 Implementación avanzada + hardening en curso + certificación pendiente.**
 
-La revisión del `main` actual demuestra que la documentación anterior de F6 estaba incompleta. Existe una base administrativa considerable y no corresponde reconstruirla desde cero. El trabajo pendiente se divide entre hardening de lo existente y construcción de los módulos administrativos todavía ausentes.
+Existe una base administrativa considerable. El trabajo actual prioriza cierre de integridad de dominio, autorización, ownership/IDOR, idempotencia, concurrencia, auditoría y pruebas antes de declarar F6 completa.
 
 ## 8.2 Identidad administrativa
 
 **🟢 Implementado**
 
-`AdminUser` ya contempla identidad, email, password hash, rol, nombre/apellido, estado activo, contador de intentos fallidos, bloqueo temporal, último login y timestamps. `D1AdminRepository` proporciona persistencia D1 y operaciones de usuario/sesión/auditoría.
+`AdminUser` contempla identidad, email, password hash, rol, estado activo, intentos fallidos, bloqueo temporal, último login y timestamps. `D1AdminRepository` proporciona persistencia de usuario/sesión/auditoría.
 
 ## 8.3 Roles y RBAC
 
-**🟢 Base implementada**
+**🟢 Base implementada / 🟡 certificación pendiente**
 
-Roles actuales:
+Roles:
 
 ```text
 SUPER_ADMIN
@@ -308,167 +240,118 @@ CONTENT_EDITOR
 TECHNICIAN
 ```
 
-Permisos actualmente identificados:
-
-```text
-dashboard:read
-products:read
-products:write
-orders:read
-orders:write
-customers:read
-services:read
-services:write
-refunds:create
-payments:void
-service_types:write
-admins:manage
-audit:read
-inventory:write
-```
-
 Existe autorización server-side mediante `requireAdmin()` y permisos explícitos.
 
-**Pendiente:** completar cobertura de recursos, revisar la matriz completa rol/permisión y ejecutar pruebas sistemáticas de privilege escalation vertical/horizontal.
+Pendiente: matriz completa rol/permisión, pruebas sistemáticas de privilege escalation vertical/horizontal y revisión de todas las rutas administrativas.
 
 ## 8.4 Password security
 
-**🟢 Implementado**
+**🟢 Implementado / 🟡 pruebas pendientes**
 
-La implementación actual utiliza PBKDF2-SHA256 con salt aleatorio, derivación de clave, comparación segura y validación del formato del hash. Existe política de longitud de password administrativa.
+PBKDF2-SHA256 con salt aleatorio, derivación de clave, comparación segura y política de longitud administrativa.
 
-**Pendiente:** pruebas exhaustivas, política de rotación/migración y verificación de que ningún flujo pueda persistir passwords sin pasar por el mecanismo de hashing.
+Pendiente: pruebas exhaustivas, rotación/migración y verificación de que ningún flujo pueda persistir passwords sin hashing.
 
 ## 8.5 Sesiones administrativas
 
-**🟢 Implementado**
+**🟢 Implementado / 🟡 certificación pendiente**
 
-`admin_sessions` persiste token hash, expiración, revocación, admin user, IP fingerprint hash y user-agent fingerprint hash. La consulta exige sesión no revocada, no expirada y usuario activo. La cookie utiliza `HttpOnly`, `Secure`, `SameSite=Strict` y `Path=/`. Existen revocación individual y global.
+`admin_sessions` almacena token hash, expiración, revocación, admin user, fingerprints hash. Cookie `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`. Existe revocación individual y global.
 
-**Pendiente:** pruebas reales de expiración, revocación, reutilización, session fixation/hijacking y comportamiento ante escenarios adversariales.
+Pendiente: expiración, revocación, reutilización, session fixation/hijacking y abuso/rate limiting.
 
 ## 8.6 Login/logout/lockout
 
-**🟢 Implementado**
+**🟢 Implementado / 🟡 certificación pendiente**
 
-El login administrativo real valida credenciales, aplica lockout, verifica password, registra intentos fallidos/exitosos, revoca sesiones anteriores, crea nueva sesión y audita el resultado.
-
-**Pendiente:** certificación funcional en producción y pruebas de abuso/rate limiting.
+Login real valida credenciales, aplica lockout, verifica password, registra intentos, revoca sesiones anteriores, crea nueva sesión y audita.
 
 ## 8.7 Auditoría administrativa
 
-**🟢 Infraestructura implementada / 🟡 consulta administrativa pendiente**
+**🟢 Infraestructura + viewer implementados / 🟡 cobertura pendiente**
 
-`admin_audit_log` persiste actor, acción, tipo de recurso, resource id, payload JSON e IP hash. Login/logout y operaciones administrativas ya generan eventos.
+`admin_audit_log` persiste actor, acción, recurso, resource id, payload JSON e IP hash. Existe API administrativa de consulta con filtros/paginación y permiso `audit:read`.
 
-**Pendiente:** API/UI de consulta, filtros, paginación y verificación de cobertura completa de operaciones sensibles.
+Pendiente: verificar cobertura de todas las operaciones sensibles y ausencia de secretos en payloads/auditoría.
 
-## 8.8 Backoffice existente
+## 8.8 Backoffice implementado
 
-### Dashboard
-**🟢 Implementado**
+- Dashboard: **🟢**
+- Services: **🟢**
+- Service Types: **🟢**
+- Promotions: **🟢 implementado administrativamente + integración server-side con checkout desplegada; certificación funcional pendiente**
+- CMS/SEO: **🟢 administración implementada; consumo público/integración y certificación pendientes**
+- Inventory: **🟡 parcial, con ajustes idempotentes y actualización atómica de stock**
+- Products: **🟡 parcial**
+- Customers: **🟡 parcial**
+- Orders: **🟡 parcial**
+- Payments: **🟡 base + endpoints administrativos; certificación pendiente**
+- Refunds: **🟡 base + endpoint; certificación de estado/idempotencia/concurrencia pendiente**
+- Void: **🟡 base + endpoint; certificación pendiente**
+- Reviews: **🟢 administración implementada; certificación pendiente**
+- Settings: **🟢 administración implementada; certificación pendiente**
+- Admin management: **🟢 lifecycle hardening implementado; certificación pendiente**
 
-Existe endpoint administrativo de dashboard protegido por RBAC.
+## 8.9 Hardening realizado en esta iteración — Checkout / Orders
 
-### Resources API
-**🟡 Parcial**
+### State machine de pedidos
 
-Existe:
+Se corrigió un bypass de integridad: `D1OrderRepository.transitionStatus()` actualizaba el estado sin invocar la máquina de estados de Domain.
 
-```text
-GET   /api/admin/resources
-POST  /api/admin/resources
-PATCH /api/admin/resources
-```
+Ahora:
 
-La capa genérica reconoce `products`, `customers`, `services` y `orders`. Actualmente existen operaciones para products/orders/services, pero esto no equivale a un backoffice completo de todos los recursos.
+- `assertOrderTransition()` se ejecuta antes de cualquier mutación;
+- estados desconocidos o saltos arbitrarios son rechazados;
+- estados terminales (`CANCELLED`, `REFUNDED`) no pueden resucitar;
+- la actualización de estado y `OrderStatusChanged` se ejecutan en un único `D1.batch`, evitando un estado persistido sin su evento de auditoría de dominio;
+- la condición `WHERE status=?` mantiene la transición compare-and-set contra carreras concurrentes.
 
-### Products
-**🟡 Parcial**
+### Tests
 
-Existe creación y edición administrativa con precio, stock, activo, SEO y atributos, además de auditoría.
+El test de `Order` cubre:
 
-Pendiente hardening de validación de todos los atributos, reglas de inventario/concurrencia y pruebas completas.
+- progresión válida de pago;
+- rechazo de resurrección de estados terminales;
+- rechazo de saltos arbitrarios.
 
-### Customers
-**🟡 Parcial**
+### Checkout ya endurecido previamente
 
-Existe `customers:read` y acceso administrativo de lectura.
+El checkout actual mantiene:
 
-Pendiente módulo completo de detalle, relaciones relevantes y acciones administrativas autorizadas.
+- `Idempotency-Key` obligatoria;
+- lookup de idempotencia antes del trabajo;
+- resolución server-side de precios;
+- validación de producto/variante activa;
+- decremento atómico de stock dentro del batch;
+- reservas de 15 minutos dentro de la misma transacción;
+- promociones server-side con incremento de uso condicionado y atómico;
+- recuperación de una carrera de idempotencia devolviendo el pedido ya creado al mismo customer;
+- aislamiento del `Idempotency-Key` frente a otro customer.
 
-### Orders
-**🟡 Parcial**
+### Ownership
 
-Existe actualización administrativa de estados y auditoría/notificaciones.
+Carritos autenticados se reclaman con una condición de escritura que solo permite `customer_id IS NULL` o el mismo customer. Un carrito perteneciente a otro customer no puede ser reclamado. Los pedidos se consultan filtrados por `customer_id` y el endpoint de detalle resuelve el customer desde `customer_session`, devolviendo `404` si no existe ownership.
 
-Pendiente backoffice completo, state machine estricta, cancelación/refund coherentes con Payments, concurrencia, idempotencia y pruebas de escalamiento.
+### Guest vs autenticado
 
-### Services
-**🟢 Implementado**
+El carrito puede existir como guest, pero el checkout exige `customerId` autenticado. Por tanto, el comportamiento actual es explícito: **guest cart → login/customer session → claim ownership → checkout**. No se permite crear pedidos anónimos mediante el endpoint de checkout.
 
-F5 ya dejó implementado y endurecido el backoffice de Services: lectura, filtros, detalle, transition, quote, assign, complete, RBAC, auditoría y validación de transiciones de dominio.
+## 8.10 Pendientes inmediatos de F6
 
-### Service Types
-**🟢 Implementado**
+1. concurrencia de stock durante checkout y reservas/rollback;
+2. idempotencia completa del checkout, incluyendo escenarios de carrera y expiración;
+3. ownership/IDOR/BOLA de carrito y pedidos mediante tests de dos customers;
+4. certificación guest vs autenticado;
+5. state machines de Order + Payment y coherencia entre ambas;
+6. refund/void: idempotencia, concurrencia, state machine y auditoría;
+7. tests de privilege escalation vertical/horizontal para toda la matriz RBAC;
+8. tests de sesión administrativa, abuso y rate limiting;
+9. tests críticos de auditoría y no exposición de secretos;
+10. integración/regresión real de Payments, Commerce Core, Services e Inventory;
+11. gates técnicos y certificación exclusiva en producción;
+12. actualizar este documento con cada cambio relevante y con SHA/evidencia de cada certificación.
 
-Existe gestión administrativa y permiso `service_types:write`.
-
-Pendiente incluirlo en la matriz completa de pruebas RBAC de F6.
-
-## 8.9 Módulos pendientes de F6
-
-### Gestión de administradores
-**🔴 Pendiente**
-
-Debe cerrarse el backoffice para listar/detallar admins, crear, activar/desactivar, cambiar rol, reset/cambio de password, revocar sesiones, revocar todas las sesiones y auditar cada operación. Debe proteger especialmente `SUPER_ADMIN`.
-
-### Payments
-**🟡 Base existente, backoffice incompleto**
-
-Debe cerrarse listado/búsqueda, detalle, estado, provider/reference, operaciones administrativas permitidas, conciliación cuando corresponda, auditoría, RBAC, idempotencia y concurrencia.
-
-### Refunds
-**🟡 Base existente, backoffice incompleto**
-
-Existe `refunds:create` y funcionalidad previa. Falta cerrar endpoint administrativo, autorización, validación de estado, idempotencia, concurrencia, auditoría, integración orden/payment y pruebas negativas.
-
-### Void
-**🟡 Base de autorización existente, flujo incompleto**
-
-Existe `payments:void`. Falta cerrar endpoint, state machine, validación del payment, idempotencia, auditoría, RBAC y regresión.
-
-### Inventory
-**🟡 Parcial**
-
-Existe `inventory:write`, pero falta backoffice completo para stock, ajustes, movimientos, motivo, actor, auditoría, prevención de stock negativo y concurrencia/atomicidad.
-
-### Reviews
-**🔴 Pendiente**
-
-Falta módulo de lectura, moderación, ocultación/eliminación, restauración cuando corresponda, auditoría y RBAC.
-
-### Promotions
-**🔴 Pendiente**
-
-Falta módulo de promociones/cupones: CRUD, reglas de descuento, vigencia, límites de uso, activación/desactivación, validación server-side, auditoría y RBAC.
-
-### CMS / SEO
-**🔴 Pendiente**
-
-Los campos SEO existentes en productos no constituyen CMS/SEO completo. Falta configuración SEO global, contenido administrativo, metadata, canonical/redirect rules cuando correspondan, contenido editable, auditoría y RBAC.
-
-### Settings
-**🔴 Pendiente**
-
-Falta módulo de settings con lectura, escritura, validación por tipo, permisos explícitos, auditoría, protección de valores sensibles e historial cuando sea necesario.
-
-### Audit Viewer
-**🟡 Pendiente**
-
-La infraestructura de auditoría existe, pero falta API/UI para filtrar por actor, acción, recurso, resource id y rango temporal, con paginación y protección `audit:read`.
-
-## 8.10 Requisitos transversales de F6
+## 8.11 Requisitos transversales de F6
 
 ### RBAC
 
@@ -503,15 +386,15 @@ La infraestructura de auditoría existe, pero falta API/UI para filtrar por acto
 
 ### Integridad
 
-- [ ] state machines respetadas;
-- [ ] no bypass de métodos de dominio;
-- [ ] idempotencia en operaciones sensibles;
-- [ ] concurrencia en stock/payments/orders;
-- [ ] auditoría atómica donde corresponda.
+- [x] state machine de Order aplicada server-side;
+- [x] transición y evento de Order atómicos;
+- [ ] idempotencia completa del checkout certificada;
+- [ ] concurrencia stock/payments/orders certificada;
+- [ ] auditoría atómica de todas las operaciones sensibles.
 
 ### Arquitectura
 
-- [ ] DDD + Clean Architecture;
+- [ ] DDD + Clean Architecture auditado transversalmente;
 - [ ] Presentation sin lógica de negocio;
 - [ ] Application/use cases para operaciones administrativas;
 - [ ] invariantes en Domain;
@@ -522,7 +405,7 @@ La infraestructura de auditoría existe, pero falta API/UI para filtrar por acto
 
 ### Tests
 
-- [ ] unit tests;
+- [x] tests de state machine de Order;
 - [ ] integration tests D1;
 - [ ] RBAC matrix tests;
 - [ ] authentication tests;
@@ -571,7 +454,7 @@ La infraestructura de auditoría existe, pero falta API/UI para filtrar por acto
 - [ ] audit viewer;
 - [ ] regression Commerce/Payments.
 
-## 8.11 Criterio de cierre F6
+## 8.12 Criterio de cierre F6
 
 F6 solo podrá cambiar a **🟢 100% COMPLETA** cuando todos los módulos pendientes estén implementados, los existentes estén endurecidos, la matriz RBAC esté probada, autenticación/sesiones estén certificadas, no existan bypasses de autorización, las operaciones críticas tengan auditoría, pasen tests unitarios/integración/seguridad, pasen `foundation:check` y `architecture:check`, pase el build reproducible de Cloudflare, se despliegue en producción, pasen health checks y `verify:production`, se certifiquen funcionalmente todos los módulos administrativos y no existan regresiones en Commerce/Payments/Fases anteriores.
 
@@ -650,18 +533,18 @@ No se usa `compila = 100%`, `CI verde = 100%` ni `documentado = 100%`.
 
 ---
 
-# 12. Orden inmediato después de Fase 05
+# 12. Orden inmediato de Fase 06
 
-1. Ejecutar batería de tests del HEAD actual.
-2. `architecture:check` + lint + typecheck.
-3. `build:cloudflare`.
-4. Deploy únicamente a producción.
-5. `verify:production`.
-6. Certificar Customer Portal y ownership real.
-7. Certificar operaciones administrativas y RBAC por rol.
-8. Verificar auditoría de Services en D1.
-9. Ejecutar regresión de Commerce/Payments.
-10. Actualizar esta auditoría con commit y evidencia.
-11. Solo entonces declarar Fase 05 certificada.
+1. concurrencia de stock + reservas/rollback;
+2. idempotencia completa del checkout;
+3. ownership/IDOR/BOLA de carritos y pedidos;
+4. guest vs autenticado;
+5. state machines Order/Payment;
+6. refund/void idempotencia + concurrencia;
+7. tests críticos RBAC/sesiones/auditoría;
+8. gates técnicos;
+9. deploy exclusivamente a producción;
+10. certificación funcional;
+11. actualizar esta auditoría con commit, SHA y evidencia.
 
 **Regla permanente:** este documento debe actualizarse en la misma iteración de cada cambio relevante de código.
