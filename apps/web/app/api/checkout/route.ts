@@ -10,10 +10,14 @@ export async function POST(request: Request) {
     const idempotencyKey = request.headers.get("Idempotency-Key")?.trim();
     if (!cartId) return NextResponse.json({ error: "Cart not found" }, { status: 400 });
     if (!idempotencyKey) return NextResponse.json({ error: "Idempotency-Key header is required" }, { status: 400 });
+    if (idempotencyKey.length > 255) return NextResponse.json({ error: "Idempotency-Key is too long" }, { status: 400 });
 
     const body = (await request.json()) as Record<string, any>;
     for (const key of ["email", "firstName", "lastName", "phone", "shippingAddress", "shippingMethod"]) {
       if (!body[key]) return NextResponse.json({ error: `${key} is required` }, { status: 400 });
+    }
+    if (body.shippingMethod !== "PICKUP" && body.shippingMethod !== "DELIVERY") {
+      return NextResponse.json({ error: "Invalid shipping method" }, { status: 400 });
     }
 
     const address = body.shippingAddress;
@@ -55,7 +59,7 @@ export async function POST(request: Request) {
     const order = await checkout.execute(cart, {
       email: customerResult.customer.toPrimitives().email,
       shippingAddress,
-      shippingMethod: String(body.shippingMethod) as "PICKUP" | "DELIVERY",
+      shippingMethod: body.shippingMethod,
       customerId: customerResult.customer.getId(),
       idempotencyKey,
     });
