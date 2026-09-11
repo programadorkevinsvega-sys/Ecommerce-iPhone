@@ -62,4 +62,5 @@ export interface OrderPaymentPort {
 export interface ReservationPaymentPort {
   releaseForOrder(orderId: string): Promise<number>;
   consumeForOrder(orderId: string): Promise<number>;
+  extendForOrder(orderId: string, minutes: number): Promise<number>;
 }
