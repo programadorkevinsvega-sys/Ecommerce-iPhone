@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listAdminPayments } from "../../../../../lib/api/adminPayments";
+import { listAdminPayments } from "../../../../lib/api/adminPayments";
 
 export async function GET(request: Request) {
   try { return NextResponse.json(await listAdminPayments(new URL(request.url).searchParams), { headers: { "cache-control": "no-store" } }); }
