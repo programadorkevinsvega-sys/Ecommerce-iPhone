@@ -1,4 +1,4 @@
-import type { CreatePaymentInput, PaymentProviderPort, ProviderPaymentIntent, ProviderTransaction } from "../application/PaymentPorts";
+import type { CreatePaymentInput, PaymentProviderPort, ProviderPaymentIntent, ProviderRefund, ProviderTransaction } from "../application/PaymentPorts";
 import type { Payment } from "../domain/Payment";
 
 const MP_API = "https://api.mercadopago.com";
@@ -29,6 +29,17 @@ export class MercadoPagoPaymentProvider implements PaymentProviderPort {
     if (!response.ok || typeof body.id !== "number" || typeof body.status !== "string" || typeof body.external_reference !== "string" || typeof body.transaction_amount !== "number" || typeof body.currency_id !== "string") throw new Error(`Mercado Pago payment lookup failed: HTTP ${response.status}`);
     const status = body.status === "approved" ? "APPROVED" : ["rejected", "cancelled", "refunded", "charged_back"].includes(body.status) ? "DECLINED" : ["pending", "in_process", "authorized"].includes(body.status) ? "PENDING" : "ERROR";
     return { provider: this.provider, transactionId: String(body.id), reference: body.external_reference, status, amountInCents: Math.round(body.transaction_amount * (new Set(["COP", "CLP", "PYG", "ISK", "UGX", "VND"]).has(body.currency_id) ? 1 : 100)), currency: body.currency_id };
+  }
+  async refundPayment(transactionId: string, amountInCents: number, idempotencyKey: string): Promise<ProviderRefund> {
+    this.requireConfigured();
+    const transaction = await this.getTransaction(transactionId);
+    if (transaction.status !== "APPROVED") throw new Error("Mercado Pago payment is not refundable in its current state");
+    const amount = Number(majorAmount(amountInCents, transaction.currency));
+    const response = await fetch(`${MP_API}/v1/payments/${encodeURIComponent(transactionId)}/refunds`, { method: "POST", headers: { Authorization: `Bearer ${this.accessToken}`, "Content-Type": "application/json", "X-Idempotency-Key": idempotencyKey }, body: JSON.stringify({ amount }) });
+    const body = record(await response.json().catch(() => null));
+    if (!response.ok || (typeof body.id !== "number" && typeof body.id !== "string")) throw new Error(`Mercado Pago refund failed: HTTP ${response.status}`);
+    const status = body.status === "approved" ? "SUCCEEDED" : "PENDING";
+    return { providerRefundId: String(body.id), status, amountInCents, currency: transaction.currency };
   }
   private requireConfigured(): void { if (!this.accessToken) throw new Error("Mercado Pago production access token is not configured"); }
 }
