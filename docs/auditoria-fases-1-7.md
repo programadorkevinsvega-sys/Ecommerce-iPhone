@@ -4,6 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
+**HEAD auditado:** `fa78d084ce8b9624302ead3135dd7e5c5c161a9a`  
 **Última actualización:** 2026-09-11  
 **Entorno operativo:** **producción únicamente**.
 
@@ -413,6 +414,6 @@ La aceptación es sobre el producto real y producción.
 
 ## Estado real al cierre de este documento
 
-El código pendiente de Commerce Core identificado en la auditoría anterior ya fue corregido: el listado autenticado de pedidos está implementado, la política remota de entornos quedó reducida a producción y los documentos de Foundation/Development fueron sincronizados.
+El código pendiente de Commerce Core identificado en la auditoría anterior ya fue corregido: el listado autenticado de pedidos está implementado, la política remota de entornos quedó reducida a producción y los documentos de Foundation/Development/Cloudflare fueron sincronizados.
 
 **No se afirma falsamente que todo el roadmap 1–7 está al 100%: las fases 04–07 todavía tienen alcance funcional pendiente.**
