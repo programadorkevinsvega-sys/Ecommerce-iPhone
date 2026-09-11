@@ -1,0 +1,3 @@
+export type AdminSettingInput = Readonly<{ key:string; value:unknown; sensitive?:boolean }>;
+export type SettingsRepository = { list():Promise<unknown[]>; save(input:AdminSettingInput,adminUserId:string):Promise<boolean> };
+export class AdminSettings { constructor(private readonly repository:SettingsRepository){} list(){return this.repository.list();} save(input:AdminSettingInput,adminUserId:string){const key=input.key.trim();if(!/^[a-z][a-z0-9_.-]{1,127}$/.test(key)||input.value===undefined)throw new Error("INVALID_SETTING");const serialized=JSON.stringify(input.value);if(serialized===undefined||serialized.length>50_000)throw new Error("INVALID_SETTING");return this.repository.save({...input,key},adminUserId);} }
