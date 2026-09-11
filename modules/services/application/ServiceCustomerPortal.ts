@@ -2,6 +2,7 @@ import type { ServiceRequestRepository } from "./ServiceRequestRepository";
 import type { ServiceTypeRepository } from "./ServiceTypeRepository";
 import { CreateServiceRequest, type CreateServiceRequestInput } from "./CreateServiceRequest";
 import type { ServiceRequestFactory } from "./CreateServiceRequest";
+import { DomainError } from "../../shared-kernel";
 
 export class ServiceCustomerPortal {
   constructor(
@@ -14,6 +15,12 @@ export class ServiceCustomerPortal {
     const services = (await this.types.listEnabled()).map((type) => type.toPrimitives());
     const requests = customerId ? (await this.requests.listForCustomer(customerId)).map((request) => request.toPrimitives()) : [];
     return { services, requests };
+  }
+
+  async getOwned(requestId: string, customerId: string) {
+    const request = await this.requests.findById(requestId);
+    if (!request || request.toPrimitives().customerId !== customerId) throw new DomainError("Service request not found");
+    return request.toPrimitives();
   }
 
   async create(input: CreateServiceRequestInput) {
