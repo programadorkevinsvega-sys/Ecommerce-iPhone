@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { refundAdminPayment } from "../../../../../../../lib/api/adminPayments";
+import { refundAdminPayment } from "../../../../../../lib/api/adminPayments";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
