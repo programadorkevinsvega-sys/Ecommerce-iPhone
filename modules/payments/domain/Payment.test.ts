@@ -2,18 +2,22 @@ import { describe, expect, it } from "vitest";
 import { assertPaymentTransition, canTransitionPayment } from "./Payment";
 
 describe("Payment state machine", () => {
-  it("allows pending to paid", () => {
-    expect(canTransitionPayment("PENDING", "PAID")).toBe(true);
-    expect(() => assertPaymentTransition("PENDING", "PAID")).not.toThrow();
-  });
-
-  it("rejects paid back to pending", () => {
-    expect(canTransitionPayment("PAID", "PENDING")).toBe(false);
-    expect(() => assertPaymentTransition("PAID", "PENDING")).toThrow();
-  });
-
-  it("allows refund only from paid", () => {
+  it("allows the valid payment lifecycle", () => {
+    expect(canTransitionPayment("CREATED", "PENDING")).toBe(true);
+    expect(canTransitionPayment("PENDING", "PROCESSING")).toBe(true);
+    expect(canTransitionPayment("PROCESSING", "PAID")).toBe(true);
     expect(canTransitionPayment("PAID", "REFUNDED")).toBe(true);
-    expect(canTransitionPayment("FAILED", "REFUNDED")).toBe(false);
+  });
+
+  it("rejects backward and cross-terminal transitions", () => {
+    expect(canTransitionPayment("PAID", "PENDING")).toBe(false);
+    expect(canTransitionPayment("PAID", "FAILED")).toBe(false);
+    expect(canTransitionPayment("FAILED", "PAID")).toBe(false);
+    expect(canTransitionPayment("REFUNDED", "PAID")).toBe(false);
+  });
+
+  it("throws on invalid transitions", () => {
+    expect(() => assertPaymentTransition("PAID", "CANCELLED")).toThrow("Invalid payment transition");
+    expect(() => assertPaymentTransition("FAILED", "REFUNDED")).toThrow("Invalid payment transition");
   });
 });
