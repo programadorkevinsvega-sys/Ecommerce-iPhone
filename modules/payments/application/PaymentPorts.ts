@@ -27,6 +27,7 @@ export type ProviderPaymentIntent = Readonly<{
   amountInCents: number;
   integritySignature: string;
   checkoutUrl: string;
+  clientSecret?: string;
 }>;
 
 export type ProviderTransaction = Readonly<{
@@ -38,6 +39,7 @@ export type ProviderTransaction = Readonly<{
 }>;
 
 export interface PaymentProviderPort {
+  readonly provider: PaymentProvider;
   createPaymentIntent(input: CreatePaymentInput): Promise<ProviderPaymentIntent>;
   getTransaction(transactionId: string): Promise<ProviderTransaction>;
 }
