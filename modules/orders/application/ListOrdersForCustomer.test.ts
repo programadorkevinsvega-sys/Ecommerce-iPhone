@@ -48,4 +48,16 @@ describe("ListOrdersForCustomer", () => {
     const page = await new ListOrdersForCustomer(new Orders()).execute("customer-1", 500, 3);
     expect(page).toEqual({ items: [order], limit: 50, offset: 3 });
   });
+
+  it("normalizes negative and fractional pagination", async () => {
+    const repository: OrderRepository = {
+      findById: async () => order,
+      listByCustomer: async (_customerId, limit, offset) => {
+        expect(limit).toBe(1);
+        expect(offset).toBe(0);
+        return [];
+      },
+    };
+    await new ListOrdersForCustomer(repository).execute("customer-1", 0.9, -3.8);
+  });
 });
