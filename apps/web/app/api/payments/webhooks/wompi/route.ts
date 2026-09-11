@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { paymentContext } from "../../../../../lib/payments";
-import { verifyWompiWebhook } from "../../../../../../../modules/payments/infrastructure/WompiWebhookVerifier";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -23,7 +22,7 @@ function transactionFromEvent(event: unknown): { id: string; reference: string; 
 export async function POST(request: Request) {
   try {
     const raw = await request.text();
-    const { env, service } = await paymentContext();
+    const { env, service, verifyWompiWebhook } = await paymentContext();
     const event = await verifyWompiWebhook(raw, env.WOMPI_EVENTS_SECRET ?? "", request.headers.get("X-Event-Checksum"));
     const transaction = transactionFromEvent(event);
     await service.processProviderTransaction({
