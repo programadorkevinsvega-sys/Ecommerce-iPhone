@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD auditado:** `374e501e9b6f571cba9ff3cde5066486f3c8eaef`  
+**HEAD auditado:** `685b6dd5ea9806aa82c013bde07cd5c9fcfc1889`  
 **Última actualización:** 2026-09-11  
 **Entorno operativo:** **producción únicamente**.
 
@@ -265,6 +265,7 @@ Correcciones aplicadas:
 - Mercado Pago y PayPal validan amount/currency durante recovery.
 - Binance Pay recovery valida `merchantTradeNo`, amount y currency y reutiliza el checkout previamente persistido cuando está disponible.
 - Binance `merchantTradeNo` se deriva de un hash de `orderId + idempotencyKey` para evitar colisiones por truncamiento.
+- Wompi `providerReference` se deriva de SHA-256 de `orderId + idempotencyKey`, evitando colisiones por truncamiento de identificadores.
 - Binance webhook acepta el formato de notificación con `data` como JSON string y conserva `bizIdStr` como event id cuando está disponible.
 
 ## 6.3 Webhooks
