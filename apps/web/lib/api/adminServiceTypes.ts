@@ -1,5 +1,5 @@
 import { D1ServiceTypeRepository } from "../../../modules/services/infrastructure/D1ServiceTypeRepository";
-import { ServiceTypeDefinition, type ServiceTypeCategory } from "../../../modules/services/domain/ServiceTypeDefinition";
+import { ServiceTypeDefinition, type ServiceCategory } from "../../../modules/services/domain/ServiceTypeDefinition";
 import { adminRepository, PERMISSIONS, requireAdmin } from "../adminAuth";
 
 export async function listAdminServiceTypes() {
@@ -16,7 +16,7 @@ export async function createAdminServiceType(body: Record<string, unknown>) {
     slug: String(body.slug ?? "").trim().toLowerCase(),
     name: String(body.name ?? ""),
     description: String(body.description ?? ""),
-    category: String(body.category ?? "OTHER") as ServiceTypeCategory,
+    category: String(body.category ?? "OTHER") as ServiceCategory,
     workflow: {
       initialStatus: "PENDING",
       quoteRequired: Boolean(workflow?.quoteRequired),
