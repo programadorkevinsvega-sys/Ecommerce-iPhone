@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { AdminReviews } from "../../../../../modules/reviews/application/AdminReviews";
-import { D1AdminReviewRepository } from "../../../../../modules/reviews/infrastructure/D1AdminReviewRepository";
+import { AdminReviews } from "../../../../../../modules/reviews/application/AdminReviews";
+import { D1AdminReviewRepository } from "../../../../../../modules/reviews/infrastructure/D1AdminReviewRepository";
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
 
 export async function GET(request: Request) {
