@@ -1,4 +1,4 @@
-import type { CreatePaymentInput, PaymentProviderPort, ProviderPaymentIntent, ProviderTransaction } from "../application/PaymentPorts";
+import type { CreatePaymentInput, PaymentProviderPort, ProviderPaymentIntent, ProviderRefund, ProviderTransaction } from "../application/PaymentPorts";
 import type { Payment } from "../domain/Payment";
 
 const PAYPAL_API = "https://api-m.paypal.com";
@@ -39,6 +39,24 @@ export class PayPalPaymentProvider implements PaymentProviderPort {
     if (typeof purchase?.reference_id !== "string" || typeof amount?.currency_code !== "string" || typeof amount.value !== "string") throw new Error("PayPal returned an incomplete order");
     const status = body.status === "COMPLETED" ? "APPROVED" : body.status === "CANCELED" ? "VOIDED" : ["APPROVED", "PAYER_ACTION_REQUIRED", "CREATED"].includes(body.status) ? "PENDING" : "ERROR";
     return { provider: this.provider, transactionId: body.id, reference: purchase.reference_id, status, amountInCents: this.minor(amount.value, amount.currency_code), currency: amount.currency_code };
+  }
+  async refundPayment(transactionId: string, amountInCents: number, idempotencyKey: string): Promise<ProviderRefund> {
+    const token = await this.accessToken();
+    const orderResponse = await fetch(`${PAYPAL_API}/v2/checkout/orders/${encodeURIComponent(transactionId)}`, { headers: { Authorization: `Bearer ${token}` } });
+    const order = record(await orderResponse.json().catch(() => null));
+    if (!orderResponse.ok) throw new Error(`PayPal order lookup failed: HTTP ${orderResponse.status}`);
+    const purchase = Array.isArray(order.purchase_units) ? order.purchase_units[0] as Record<string, unknown> : null;
+    const payments = purchase?.payments && typeof purchase.payments === "object" ? purchase.payments as Record<string, unknown> : null;
+    const captures = Array.isArray(payments?.captures) ? payments.captures : [];
+    const capture = captures.find((item): item is Record<string, unknown> => !!item && typeof item === "object" && typeof (item as Record<string, unknown>).id === "string");
+    if (!capture || typeof capture.id !== "string") throw new Error("PayPal refund requires a captured payment");
+    const currency = purchase?.amount && typeof purchase.amount === "object" ? (purchase.amount as Record<string, unknown>).currency_code : null;
+    if (typeof currency !== "string") throw new Error("PayPal returned an invalid capture currency");
+    const response = await fetch(`${PAYPAL_API}/v2/payments/captures/${encodeURIComponent(capture.id)}/refund`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "PayPal-Request-Id": idempotencyKey, Prefer: "return=representation" }, body: JSON.stringify({ amount: { value: this.major(amountInCents, currency), currency_code: currency } }) });
+    const body = record(await response.json().catch(() => null));
+    if (!response.ok || typeof body.id !== "string") throw new Error(`PayPal refund failed: HTTP ${response.status}`);
+    const status = body.status === "COMPLETED" ? "SUCCEEDED" : "PENDING";
+    return { providerRefundId: body.id, status, amountInCents, currency };
   }
   private intent(body: Record<string, unknown>, input: CreatePaymentInput): ProviderPaymentIntent {
     const id = body.id;
