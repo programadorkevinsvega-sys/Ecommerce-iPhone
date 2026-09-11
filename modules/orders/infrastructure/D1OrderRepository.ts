@@ -8,6 +8,7 @@ export class D1OrderRepository implements OrderCheckoutRepository {
 
   async checkout(cart: CheckoutCart, input: CheckoutInput): Promise<Order> {
     if (!cart.items.length) throw new Error("Cart is empty");
+    await this.pruneExpiredIdempotency();
     const existing = await this.findByIdempotencyKey(input.idempotencyKey);
     if (existing) {
       if (existing.customerId !== input.customerId) throw new Error("Idempotency key belongs to another customer");
@@ -20,7 +21,7 @@ export class D1OrderRepository implements OrderCheckoutRepository {
     const orderId = crypto.randomUUID();
     const orderNumber = `EIP-${new Date().getUTCFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
     const statements: ReturnType<D1Database["prepare"]>[] = [
-      this.db.prepare("INSERT INTO checkout_idempotency(idempotency_key,customer_id,order_id) VALUES(?,?,?)").bind(input.idempotencyKey, input.customerId, orderId),
+      this.db.prepare("INSERT INTO checkout_idempotency(idempotency_key,customer_id,order_id,expires_at) VALUES(?,?,?,datetime('now','+24 hours'))").bind(input.idempotencyKey, input.customerId, orderId),
     ];
 
     for (const item of cart.items) {
@@ -29,13 +30,11 @@ export class D1OrderRepository implements OrderCheckoutRepository {
       statements.push(this.db.prepare("INSERT INTO inventory_reservations(id,cart_id,product_id,quantity,expires_at) VALUES(?,?,?,?,datetime('now','+15 minutes'))").bind(crypto.randomUUID(), cart.id, item.productId, item.quantity));
     }
 
-    statements.push(
-      this.db.prepare("INSERT INTO orders(id,order_number,customer_id,email,status,currency,subtotal_in_cents,shipping_in_cents,discount_in_cents,total_in_cents,shipping_method,shipping_recipient_name,shipping_phone,shipping_address_line1,shipping_address_line2,shipping_city,shipping_state,shipping_postal_code,shipping_country_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(
-        orderId, orderNumber, input.customerId, input.email, "PENDING_PAYMENT", cart.currency, subtotalInCents, shippingInCents, 0, totalInCents,
-        input.shippingMethod, input.shippingAddress.recipientName, input.shippingAddress.phone, input.shippingAddress.addressLine1,
-        input.shippingAddress.addressLine2 ?? null, input.shippingAddress.city, input.shippingAddress.state, input.shippingAddress.postalCode ?? null, input.shippingAddress.countryCode,
-      ),
-    );
+    statements.push(this.db.prepare("INSERT INTO orders(id,order_number,customer_id,email,status,currency,subtotal_in_cents,shipping_in_cents,discount_in_cents,total_in_cents,shipping_method,shipping_recipient_name,shipping_phone,shipping_address_line1,shipping_address_line2,shipping_city,shipping_state,shipping_postal_code,shipping_country_code) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(
+      orderId, orderNumber, input.customerId, input.email, "PENDING_PAYMENT", cart.currency, subtotalInCents, shippingInCents, 0, totalInCents,
+      input.shippingMethod, input.shippingAddress.recipientName, input.shippingAddress.phone, input.shippingAddress.addressLine1,
+      input.shippingAddress.addressLine2 ?? null, input.shippingAddress.city, input.shippingAddress.state, input.shippingAddress.postalCode ?? null, input.shippingAddress.countryCode,
+    ));
 
     for (const item of cart.items) {
       statements.push(this.db.prepare("INSERT INTO order_items(id,order_id,product_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents) VALUES(?,?,?,?,?,?,?,?)").bind(
@@ -82,8 +81,12 @@ export class D1OrderRepository implements OrderCheckoutRepository {
     return this.hydrateOrder(row);
   }
 
+  private async pruneExpiredIdempotency(): Promise<void> {
+    await this.db.prepare("DELETE FROM checkout_idempotency WHERE expires_at<=CURRENT_TIMESTAMP").run();
+  }
+
   private async findByIdempotencyKey(key: string): Promise<Order | null> {
-    const row = await this.db.prepare("SELECT order_id FROM checkout_idempotency WHERE idempotency_key=? LIMIT 1").bind(key).first<{ order_id: string }>();
+    const row = await this.db.prepare("SELECT order_id FROM checkout_idempotency WHERE idempotency_key=? AND expires_at>CURRENT_TIMESTAMP LIMIT 1").bind(key).first<{ order_id: string }>();
     return row ? this.findById(row.order_id) : null;
   }
 
