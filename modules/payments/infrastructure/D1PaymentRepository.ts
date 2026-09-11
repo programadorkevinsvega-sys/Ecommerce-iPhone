@@ -42,6 +42,15 @@ export class D1PaymentRepository implements PaymentRepository {
   async recordLedger(paymentId: string, entryType: string, amountInCents: number, currency: string, metadata: string): Promise<void> {
     await this.db.prepare("INSERT OR IGNORE INTO payment_ledger(id,payment_id,entry_type,amount_in_cents,currency,metadata_json,created_at) VALUES(?,?,?,?,?,?,CURRENT_TIMESTAMP)").bind(crypto.randomUUID(), paymentId, entryType, amountInCents, currency, metadata).run();
   }
+  async recordRefund(paymentId: string, idempotencyKey: string, amountInCents: number, currency: string, providerRefundId: string, status: "SUCCEEDED" | "PENDING" | "FAILED"): Promise<boolean> {
+    const result = await this.db.prepare("INSERT OR IGNORE INTO payment_refunds(id,payment_id,idempotency_key,provider_refund_id,status,amount_in_cents,currency,created_at,updated_at) VALUES(?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)").bind(
+      crypto.randomUUID(), paymentId, idempotencyKey, providerRefundId, status, amountInCents, currency,
+    ).run();
+    return result.meta.changes === 1;
+  }
+  async findRefund(paymentId: string, idempotencyKey: string) {
+    return this.db.prepare("SELECT provider_refund_id,amount_in_cents,currency,status FROM payment_refunds WHERE payment_id=? AND idempotency_key=? LIMIT 1").bind(paymentId, idempotencyKey).first<RefundRow>();
+  }
   private map(row: PaymentRow): Payment {
     return { id: row.id, orderId: row.order_id, customerId: row.customer_id, provider: row.provider, providerReference: row.provider_reference,
       ...(row.provider_transaction_id ? { providerTransactionId: row.provider_transaction_id } : {}), ...(row.checkout_url ? { checkoutUrl: row.checkout_url } : {}),
@@ -50,3 +59,4 @@ export class D1PaymentRepository implements PaymentRepository {
 }
 
 type PaymentRow = { id: string; order_id: string; customer_id: string; provider: Payment["provider"]; provider_reference: string; provider_transaction_id: string | null; checkout_url: string | null; status: PaymentStatus; amount_in_cents: number; currency: string; idempotency_key: string; created_at: string; updated_at: string };
+type RefundRow = { provider_refund_id: string; amount_in_cents: number; currency: string; status: "SUCCEEDED" | "PENDING" | "FAILED" };
