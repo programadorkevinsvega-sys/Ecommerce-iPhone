@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { paymentContext } from "../../../../../../lib/payments";
+import { paymentContext } from "../../../../../lib/payments";
 import { verifyWompiWebhook } from "../../../../../../../modules/payments/infrastructure/WompiWebhookVerifier";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
