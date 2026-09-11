@@ -19,7 +19,7 @@ export class StripePaymentProvider implements PaymentProviderPort {
     const response = await fetch(`${STRIPE_API}/payment_intents/${encodeURIComponent(payment.providerReference)}`, { headers: this.headers() });
     const body = await this.jsonOrError(response, "Stripe PaymentIntent recovery failed");
     const metadata = record(body.metadata);
-    if (metadata.order_id !== input.orderId || body.amount !== input.amountInCents || String(body.currency).toLowerCase() !== input.currency.toLowerCase()) throw new Error("Recovered Stripe PaymentIntent does not match order");
+    if (metadata.order_id !== input.orderId || metadata.customer_id !== input.customerId || body.amount !== input.amountInCents || String(body.currency).toLowerCase() !== input.currency.toLowerCase()) throw new Error("Recovered Stripe PaymentIntent does not match order");
     return this.intent(body, input);
   }
   async getTransaction(transactionId: string): Promise<ProviderTransaction> {
@@ -32,9 +32,8 @@ export class StripePaymentProvider implements PaymentProviderPort {
     const amount = body.amount;
     const id = body.id;
     const currency = body.currency;
-    const orderId = metadata.order_id;
-    if (typeof id !== "string" || typeof amount !== "number" || !Number.isSafeInteger(amount) || typeof currency !== "string" || typeof orderId !== "string") throw new Error("Stripe returned an invalid PaymentIntent");
-    return { provider: this.provider, transactionId: id, reference: orderId, status: mapped, amountInCents: amount, currency: currency.toUpperCase() };
+    if (typeof id !== "string" || typeof amount !== "number" || !Number.isSafeInteger(amount) || typeof currency !== "string" || typeof metadata.order_id !== "string") throw new Error("Stripe returned an invalid PaymentIntent");
+    return { provider: this.provider, transactionId: id, reference: id, status: mapped, amountInCents: amount, currency: currency.toUpperCase() };
   }
   async refundPayment(transactionId: string, amountInCents: number, idempotencyKey: string): Promise<ProviderRefund> {
     this.requireConfigured();
@@ -44,8 +43,15 @@ export class StripePaymentProvider implements PaymentProviderPort {
     const status = body.status === "succeeded" ? "SUCCEEDED" : "PENDING";
     return { providerRefundId: body.id, status, amountInCents: body.amount, currency: body.currency.toUpperCase() };
   }
+  async getRefund(providerRefundId: string): Promise<ProviderRefund> {
+    this.requireConfigured();
+    const response = await fetch(`${STRIPE_API}/refunds/${encodeURIComponent(providerRefundId)}`, { headers: this.headers() });
+    const body = await this.jsonOrError(response, "Stripe refund lookup failed");
+    if (typeof body.id !== "string" || typeof body.amount !== "number" || typeof body.currency !== "string") throw new Error("Stripe returned an invalid refund");
+    return { providerRefundId: body.id, status: body.status === "succeeded" ? "SUCCEEDED" : "PENDING", amountInCents: body.amount, currency: body.currency.toUpperCase() };
+  }
   private intent(body: StripeRecord, input: CreatePaymentInput): ProviderPaymentIntent {
-    if (typeof body.id !== "string" || typeof body.client_secret !== "string" || body.amount !== input.amountInCents) throw new Error("Stripe returned an invalid PaymentIntent");
+    if (typeof body.id !== "string" || typeof body.client_secret !== "string" || body.amount !== input.amountInCents || String(body.currency).toLowerCase() !== input.currency.toLowerCase()) throw new Error("Stripe returned an invalid PaymentIntent");
     return { providerReference: body.id, provider: this.provider, publicKey: this.publishableKey, currency: input.currency, amountInCents: input.amountInCents, integritySignature: "", checkoutUrl: `${this.appUrl.replace(/\/$/, "")}/payments/stripe`, clientSecret: body.client_secret };
   }
   private headers(idempotencyKey?: string): HeadersInit { const headers: Record<string, string> = { Authorization: `Bearer ${this.secretKey}`, "Content-Type": "application/x-www-form-urlencoded" }; if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey; return headers; }
