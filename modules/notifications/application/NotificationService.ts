@@ -1,6 +1,6 @@
 import type { NotificationEvent, EmailTemplate } from "../domain/NotificationEvent";
 import { renderEmail } from "./NotificationTemplates";
-import type { EmailProvider, NotificationOutboxRepository } from "./NotificationPorts";
+import type { NotificationOutboxRepository, EmailProvider } from "./NotificationPorts";
 
 const templateFor = (eventType:string): EmailTemplate | null => ({
   OrderCreated:"ORDER_CREATED", OrderPaid:"ORDER_PAID", OrderStatusChanged:"ORDER_STATUS_CHANGED",
@@ -19,6 +19,8 @@ export class NotificationService {
     const template = templateFor(event.eventType);
     if (!template) { await this.outbox.markProcessed(event.id); return; }
     if (await this.outbox.hasDelivery(event.id,"EMAIL",recipient,template)) { await this.outbox.markProcessed(event.id); return; }
+    const claimed = await this.outbox.claimDelivery({outboxId:event.id,channel:"EMAIL",recipient,template,leaseSeconds:900});
+    if (!claimed) throw new Error("Notification delivery is already being processed");
     const rendered = renderEmail(template,payload);
     const idempotencyKey = `ecommerce-iphone/email/${event.eventType}/${event.aggregateId}/${event.id}`.slice(0, 256);
     try {
