@@ -4,6 +4,13 @@
   "version": "0.1.0",
   "packageManager": "pnpm@10.15.0",
   "engines": { "node": ">=22.0.0" },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "unrs-resolver",
+      "workerd"
+    ]
+  },
   "scripts": {
     "dev": "pnpm --filter @ecommerce/web dev",
     "build": "pnpm --filter @ecommerce/web build",
