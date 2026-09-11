@@ -7,6 +7,7 @@ export type CheckoutInput = Readonly<{
   shippingMethod: "PICKUP" | "DELIVERY";
   customerId: string;
   idempotencyKey: string;
+  promotionCode?: string;
 }>;
 
 export interface OrderCheckoutRepository {
