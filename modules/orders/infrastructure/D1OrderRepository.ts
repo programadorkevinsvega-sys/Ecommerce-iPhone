@@ -37,6 +37,9 @@ export class D1OrderRepository implements OrderCheckoutRepository {
     ));
 
     for (const item of effectiveCart.items) {
+      statements.push(this.db.prepare("INSERT INTO inventory_reservations(id,cart_id,product_id,quantity,expires_at,order_id) VALUES(?,?,?,?,datetime('now','+15 minutes'),?)").bind(
+        crypto.randomUUID(), effectiveCart.id, item.productId, item.quantity, orderId,
+      ));
       statements.push(this.db.prepare("INSERT INTO order_items(id,order_id,product_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents) VALUES(?,?,?,?,?,?,?,?)").bind(
         crypto.randomUUID(), orderId, item.productId, item.productName, item.slug, item.quantity, item.unitPriceInCents, item.quantity * item.unitPriceInCents,
       ));
@@ -84,7 +87,7 @@ export class D1OrderRepository implements OrderCheckoutRepository {
   private async refreshServerPricing(cart: CheckoutCart): Promise<CheckoutCart> {
     const items = [];
     for (const item of cart.items) {
-      const product = await this.db.prepare("SELECT id,name,slug,active,price_in_cents,currency,stock FROM products WHERE id=?").bind(item.productId).first<any>();
+      const product = await this.db.prepare("SELECT id,name,slug,active,price_in_cents,currency FROM products WHERE id=?").bind(item.productId).first<any>();
       if (!product || !product.active) throw new Error("Product is unavailable");
       if (product.currency !== cart.currency) throw new Error("Cart currency does not match product currency");
 
