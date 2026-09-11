@@ -21,7 +21,7 @@
 | 03 Commerce Core | 🟢 Implementada | 100% | Pendiente certificación funcional exhaustiva contra producción |
 | 04 Payments | 🟡 Implementada — hardening técnico + deploy aplicado | Alta | Pendiente certificación funcional manual de proveedores |
 | 05 Services | 🟡 Implementación funcional + hardening cerrados | Alta | Pendiente gates automatizados + certificación funcional producción |
-| 06 Admin + RBAC | 🟡 Implementada parcialmente | — | Backoffice restante |
+| 06 Admin + RBAC | 🟡 Implementación avanzada + hardening pendiente | Alta | Backoffice restante + seguridad + certificación |
 | 07 Notifications + Queues | 🟡 Implementada parcialmente | — | DLQ/retry definitivo |
 
 El trabajo actual corresponde **exclusivamente a Fase 05 Services**, según esta auditoría. No se usa el roadmap externo como fuente de alcance.
@@ -278,24 +278,304 @@ El workflow de producción asociado a un commit de esta iteración falló antes 
 
 # 8. Admin + RBAC — FASE 06
 
-Implementado parcialmente:
+## 8.1 Estado real después de auditoría de código
 
-- AdminUser/AdminRole;
-- RBAC;
-- sesiones administrativas;
-- PBKDF2-SHA256;
-- fingerprinting;
-- auditoría;
-- permisos server-side;
-- dashboard;
-- users/resources/service types;
-- `refunds:create`;
-- `payments:void`;
-- `services:read`;
-- `services:write`;
-- `service_types:write`.
+**🟡 Implementación avanzada + hardening pendiente + certificación pendiente.**
 
-Pendiente: backoffice completo de pagos, reviews, promociones, CMS/SEO, settings e inventario administrativo.
+La revisión del `main` actual demuestra que la documentación anterior de F6 estaba incompleta. Existe una base administrativa considerable y no corresponde reconstruirla desde cero. El trabajo pendiente se divide entre hardening de lo existente y construcción de los módulos administrativos todavía ausentes.
+
+## 8.2 Identidad administrativa
+
+**🟢 Implementado**
+
+`AdminUser` ya contempla identidad, email, password hash, rol, nombre/apellido, estado activo, contador de intentos fallidos, bloqueo temporal, último login y timestamps. `D1AdminRepository` proporciona persistencia D1 y operaciones de usuario/sesión/auditoría.
+
+## 8.3 Roles y RBAC
+
+**🟢 Base implementada**
+
+Roles actuales:
+
+```text
+SUPER_ADMIN
+ADMIN
+MANAGER
+SALES
+SUPPORT
+INVENTORY
+FINANCE
+CONTENT_EDITOR
+TECHNICIAN
+```
+
+Permisos actualmente identificados:
+
+```text
+dashboard:read
+products:read
+products:write
+orders:read
+orders:write
+customers:read
+services:read
+services:write
+refunds:create
+payments:void
+service_types:write
+admins:manage
+audit:read
+inventory:write
+```
+
+Existe autorización server-side mediante `requireAdmin()` y permisos explícitos.
+
+**Pendiente:** completar cobertura de recursos, revisar la matriz completa rol/permisión y ejecutar pruebas sistemáticas de privilege escalation vertical/horizontal.
+
+## 8.4 Password security
+
+**🟢 Implementado**
+
+La implementación actual utiliza PBKDF2-SHA256 con salt aleatorio, derivación de clave, comparación segura y validación del formato del hash. Existe política de longitud de password administrativa.
+
+**Pendiente:** pruebas exhaustivas, política de rotación/migración y verificación de que ningún flujo pueda persistir passwords sin pasar por el mecanismo de hashing.
+
+## 8.5 Sesiones administrativas
+
+**🟢 Implementado**
+
+`admin_sessions` persiste token hash, expiración, revocación, admin user, IP fingerprint hash y user-agent fingerprint hash. La consulta exige sesión no revocada, no expirada y usuario activo. La cookie utiliza `HttpOnly`, `Secure`, `SameSite=Strict` y `Path=/`. Existen revocación individual y global.
+
+**Pendiente:** pruebas reales de expiración, revocación, reutilización, session fixation/hijacking y comportamiento ante escenarios adversariales.
+
+## 8.6 Login/logout/lockout
+
+**🟢 Implementado**
+
+El login administrativo real valida credenciales, aplica lockout, verifica password, registra intentos fallidos/exitosos, revoca sesiones anteriores, crea nueva sesión y audita el resultado.
+
+**Pendiente:** certificación funcional en producción y pruebas de abuso/rate limiting.
+
+## 8.7 Auditoría administrativa
+
+**🟢 Infraestructura implementada / 🟡 consulta administrativa pendiente**
+
+`admin_audit_log` persiste actor, acción, tipo de recurso, resource id, payload JSON e IP hash. Login/logout y operaciones administrativas ya generan eventos.
+
+**Pendiente:** API/UI de consulta, filtros, paginación y verificación de cobertura completa de operaciones sensibles.
+
+## 8.8 Backoffice existente
+
+### Dashboard
+**🟢 Implementado**
+
+Existe endpoint administrativo de dashboard protegido por RBAC.
+
+### Resources API
+**🟡 Parcial**
+
+Existe:
+
+```text
+GET   /api/admin/resources
+POST  /api/admin/resources
+PATCH /api/admin/resources
+```
+
+La capa genérica reconoce `products`, `customers`, `services` y `orders`. Actualmente existen operaciones para products/orders/services, pero esto no equivale a un backoffice completo de todos los recursos.
+
+### Products
+**🟡 Parcial**
+
+Existe creación y edición administrativa con precio, stock, activo, SEO y atributos, además de auditoría.
+
+Pendiente hardening de validación de todos los atributos, reglas de inventario/concurrencia y pruebas completas.
+
+### Customers
+**🟡 Parcial**
+
+Existe `customers:read` y acceso administrativo de lectura.
+
+Pendiente módulo completo de detalle, relaciones relevantes y acciones administrativas autorizadas.
+
+### Orders
+**🟡 Parcial**
+
+Existe actualización administrativa de estados y auditoría/notificaciones.
+
+Pendiente backoffice completo, state machine estricta, cancelación/refund coherentes con Payments, concurrencia, idempotencia y pruebas de escalamiento.
+
+### Services
+**🟢 Implementado**
+
+F5 ya dejó implementado y endurecido el backoffice de Services: lectura, filtros, detalle, transition, quote, assign, complete, RBAC, auditoría y validación de transiciones de dominio.
+
+### Service Types
+**🟢 Implementado**
+
+Existe gestión administrativa y permiso `service_types:write`.
+
+Pendiente incluirlo en la matriz completa de pruebas RBAC de F6.
+
+## 8.9 Módulos pendientes de F6
+
+### Gestión de administradores
+**🔴 Pendiente**
+
+Debe cerrarse el backoffice para listar/detallar admins, crear, activar/desactivar, cambiar rol, reset/cambio de password, revocar sesiones, revocar todas las sesiones y auditar cada operación. Debe proteger especialmente `SUPER_ADMIN`.
+
+### Payments
+**🟡 Base existente, backoffice incompleto**
+
+Debe cerrarse listado/búsqueda, detalle, estado, provider/reference, operaciones administrativas permitidas, conciliación cuando corresponda, auditoría, RBAC, idempotencia y concurrencia.
+
+### Refunds
+**🟡 Base existente, backoffice incompleto**
+
+Existe `refunds:create` y funcionalidad previa. Falta cerrar endpoint administrativo, autorización, validación de estado, idempotencia, concurrencia, auditoría, integración orden/payment y pruebas negativas.
+
+### Void
+**🟡 Base de autorización existente, flujo incompleto**
+
+Existe `payments:void`. Falta cerrar endpoint, state machine, validación del payment, idempotencia, auditoría, RBAC y regresión.
+
+### Inventory
+**🟡 Parcial**
+
+Existe `inventory:write`, pero falta backoffice completo para stock, ajustes, movimientos, motivo, actor, auditoría, prevención de stock negativo y concurrencia/atomicidad.
+
+### Reviews
+**🔴 Pendiente**
+
+Falta módulo de lectura, moderación, ocultación/eliminación, restauración cuando corresponda, auditoría y RBAC.
+
+### Promotions
+**🔴 Pendiente**
+
+Falta módulo de promociones/cupones: CRUD, reglas de descuento, vigencia, límites de uso, activación/desactivación, validación server-side, auditoría y RBAC.
+
+### CMS / SEO
+**🔴 Pendiente**
+
+Los campos SEO existentes en productos no constituyen CMS/SEO completo. Falta configuración SEO global, contenido administrativo, metadata, canonical/redirect rules cuando correspondan, contenido editable, auditoría y RBAC.
+
+### Settings
+**🔴 Pendiente**
+
+Falta módulo de settings con lectura, escritura, validación por tipo, permisos explícitos, auditoría, protección de valores sensibles e historial cuando sea necesario.
+
+### Audit Viewer
+**🟡 Pendiente**
+
+La infraestructura de auditoría existe, pero falta API/UI para filtrar por actor, acción, recurso, resource id y rango temporal, con paginación y protección `audit:read`.
+
+## 8.10 Requisitos transversales de F6
+
+### RBAC
+
+- [ ] matriz completa rol/permisión;
+- [ ] denegación por defecto;
+- [ ] todas las rutas sensibles protegidas server-side;
+- [ ] ningún admin_id/rol/permiso confiado desde el cliente;
+- [ ] tests de privilege escalation vertical;
+- [ ] tests de privilege escalation horizontal;
+- [ ] tests por recurso.
+
+### Sesiones
+
+- [ ] login real;
+- [ ] logout real;
+- [ ] expiración real;
+- [ ] revocación real;
+- [ ] revocación global;
+- [ ] session fixation/hijacking;
+- [ ] fingerprint behavior;
+- [ ] rate limiting/abuse protection.
+
+### APIs
+
+- [ ] IDOR/BOLA;
+- [ ] input validation;
+- [ ] error mapping seguro;
+- [ ] operaciones destructivas protegidas;
+- [ ] CSRF/cookie security validado;
+- [ ] no exposición de secretos;
+- [ ] no bypass mediante rutas genéricas.
+
+### Integridad
+
+- [ ] state machines respetadas;
+- [ ] no bypass de métodos de dominio;
+- [ ] idempotencia en operaciones sensibles;
+- [ ] concurrencia en stock/payments/orders;
+- [ ] auditoría atómica donde corresponda.
+
+### Arquitectura
+
+- [ ] DDD + Clean Architecture;
+- [ ] Presentation sin lógica de negocio;
+- [ ] Application/use cases para operaciones administrativas;
+- [ ] invariantes en Domain;
+- [ ] Infrastructure aislada mediante ports/repositories;
+- [ ] evitar `AdminResources` como God Service;
+- [ ] separar capacidades administrativas por bounded context cuando corresponda;
+- [ ] conservar módulos separables a futuro.
+
+### Tests
+
+- [ ] unit tests;
+- [ ] integration tests D1;
+- [ ] RBAC matrix tests;
+- [ ] authentication tests;
+- [ ] session tests;
+- [ ] audit tests;
+- [ ] IDOR/BOLA tests;
+- [ ] negative authorization tests;
+- [ ] orders regression;
+- [ ] payments/refunds/void regression;
+- [ ] services regression;
+- [ ] inventory concurrency tests.
+
+### Gates técnicos
+
+- [ ] `foundation:check`;
+- [ ] `architecture:check`;
+- [ ] format;
+- [ ] lint;
+- [ ] typecheck;
+- [ ] unit tests;
+- [ ] integration tests relevantes;
+- [ ] Cloudflare build reproducible;
+- [ ] migrations production;
+- [ ] deploy production;
+- [ ] `/api/health/live`;
+- [ ] `/api/health/ready`;
+- [ ] `verify:production`.
+
+### Certificación funcional final
+
+- [ ] login administrativo real;
+- [ ] RBAC real con varios roles;
+- [ ] operaciones permitidas/denegadas;
+- [ ] gestión de admins;
+- [ ] orders;
+- [ ] payments;
+- [ ] refunds;
+- [ ] void;
+- [ ] inventory;
+- [ ] services;
+- [ ] service types;
+- [ ] reviews;
+- [ ] promotions;
+- [ ] CMS/SEO;
+- [ ] settings;
+- [ ] audit viewer;
+- [ ] regression Commerce/Payments.
+
+## 8.11 Criterio de cierre F6
+
+F6 solo podrá cambiar a **🟢 100% COMPLETA** cuando todos los módulos pendientes estén implementados, los existentes estén endurecidos, la matriz RBAC esté probada, autenticación/sesiones estén certificadas, no existan bypasses de autorización, las operaciones críticas tengan auditoría, pasen tests unitarios/integración/seguridad, pasen `foundation:check` y `architecture:check`, pase el build reproducible de Cloudflare, se despliegue en producción, pasen health checks y `verify:production`, se certifiquen funcionalmente todos los módulos administrativos y no existan regresiones en Commerce/Payments/Fases anteriores.
+
+**Estado de cierre actual: 🟡 NO CERTIFICADA.**
 
 ---
 
