@@ -27,9 +27,7 @@ export async function POST(request: Request) {
       ...(address.postalCode ? { postalCode: String(address.postalCode).trim() } : {}),
       countryCode: String(address.countryCode ?? "CO").toUpperCase(),
     };
-    if (!shippingAddress.addressLine1 || !shippingAddress.city || !shippingAddress.state) {
-      return NextResponse.json({ error: "Complete shipping address is required" }, { status: 400 });
-    }
+    if (!shippingAddress.addressLine1 || !shippingAddress.city || !shippingAddress.state) return NextResponse.json({ error: "Complete shipping address is required" }, { status: 400 });
 
     const context = await commerceContext();
     const requestedEmail = String(body.email).trim().toLowerCase();
@@ -37,21 +35,16 @@ export async function POST(request: Request) {
     const currentToken = requestCookies.get("customer_session")?.value;
     const currentSession = currentToken ? await context.customerSession.resolve(currentToken) : null;
 
-    if (existingCustomer && (!currentSession || currentSession.customerId !== existingCustomer.getId())) {
-      return NextResponse.json({ error: "Customer session required" }, { status: 401 });
-    }
+    if (existingCustomer && (!currentSession || currentSession.customerId !== existingCustomer.getId())) return NextResponse.json({ error: "Customer session required" }, { status: 401 });
     if (currentSession) {
       const sessionCustomer = await context.customerRepository.findById(currentSession.customerId);
-      if (!sessionCustomer || sessionCustomer.getId() !== existingCustomer?.getId()) {
-        return NextResponse.json({ error: "Customer session does not match checkout identity" }, { status: 401 });
-      }
+      if (!sessionCustomer || sessionCustomer.getId() !== existingCustomer?.getId()) return NextResponse.json({ error: "Customer session does not match checkout identity" }, { status: 401 });
     }
 
     const customerResult = await context.customer.save(
       { email: requestedEmail, firstName: String(body.firstName).trim(), lastName: String(body.lastName).trim(), phone: String(body.phone).trim() },
       { label: "Principal", ...shippingAddress, isDefault: true },
     );
-
     const cart = await context.cart.get(cartId);
     const { checkout } = await checkoutUseCase();
     const order = await checkout.execute(cart, {
@@ -65,27 +58,14 @@ export async function POST(request: Request) {
     await publishNotificationEvent({
       eventType: "OrderCreated",
       aggregateId: order.id,
-      payload: {
-        email: customerResult.customer.toPrimitives().email,
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        status: order.status,
-        totalInCents: order.totalInCents,
-        currency: order.currency,
-      },
+      payload: { email: customerResult.customer.toPrimitives().email, orderId: order.id, orderNumber: order.orderNumber, status: order.status, totalInCents: order.totalInCents, currency: order.currency },
     });
-
-    const newSession = await context.customerSession.create(customerResult.customer.getId());
-    if (currentToken) await context.customerSession.revoke(currentToken);
 
     const response = NextResponse.json({ order }, { status: 201 });
-    response.cookies.set("customer_session", newSession.token, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
+    if (!currentSession) {
+      const newSession = await context.customerSession.create(customerResult.customer.getId());
+      response.cookies.set("customer_session", newSession.token, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30 });
+    }
     response.cookies.set("customer_id", "", { httpOnly: true, maxAge: 0, path: "/" });
     return response;
   } catch (error) {
