@@ -7,10 +7,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   try {
     const { id } = await params;
     if (!id) return NextResponse.json({ error: "Order id is required" }, { status: 400 });
-    const customerId = (await cookies()).get("customer_id")?.value;
-    if (!customerId) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    const { orderRepository } = await commerceContext();
-    const order = await new GetOrderForCustomer(orderRepository).execute(id, customerId);
+
+    const token = (await cookies()).get("customer_session")?.value;
+    if (!token) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+    const context = await commerceContext();
+    const session = await context.customerSession.resolve(token);
+    if (!session) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+    const order = await new GetOrderForCustomer(context.orderRepository).execute(id, session.customerId);
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
     return NextResponse.json({ order });
   } catch (error) {
