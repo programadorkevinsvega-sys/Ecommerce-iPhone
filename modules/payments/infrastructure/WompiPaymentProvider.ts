@@ -1,4 +1,4 @@
-import type { CreatePaymentInput, PaymentProviderPort, ProviderPaymentIntent, ProviderRefund, ProviderTransaction } from "../application/PaymentPorts";
+import type { CreatePaymentInput, PaymentProviderPort, ProviderPaymentIntent, ProviderTransaction } from "../application/PaymentPorts";
 import type { Payment } from "../domain/Payment";
 
 const WOMPI_API = "https://production.wompi.co/v1";
