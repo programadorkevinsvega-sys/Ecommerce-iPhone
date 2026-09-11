@@ -1,5 +1,6 @@
 import { AdminUser } from "../../../../modules/admin/domain/AdminUser";
 import type { AdminRole } from "../../../../modules/admin/application/Rbac";
+import { AdminManagementHardening } from "../../../../modules/admin/application/AdminManagementHardening";
 import { hashPassword } from "../../../../modules/admin/infrastructure/AdminSecurity";
 import { PERMISSIONS, requireAdmin } from "../adminAuth";
 
@@ -30,16 +31,29 @@ export async function updateAdminUser(body: Record<string, unknown>) {
   const { admin, repo } = await requireAdmin(PERMISSIONS.adminsManage);
   const id = String(body.id ?? "");
   if (!id) throw new Error("ID_REQUIRED");
-  if (id === admin.id && body.active === false) throw new Error("SELF_DEACTIVATION_FORBIDDEN");
   const user = await repo.findById(id);
   if (!user) throw new Error("ADMIN_NOT_FOUND");
-  const p = user.toPrimitives();
-  const role = body.role === undefined ? p.role : String(body.role) as AdminRole;
+  const current = user.toPrimitives();
+  const role = body.role === undefined ? current.role : String(body.role) as AdminRole;
   if (!ROLES.includes(role)) throw new Error("INVALID_ROLE");
-  const active = body.active === undefined ? p.active : Boolean(body.active);
-  const password = typeof body.password === "string" && body.password.length > 0 ? await hashPassword(body.password) : p.passwordHash;
-  const next = AdminUser.create(p.id, { ...p, role, active, passwordHash: password });
+  const active = body.active === undefined ? current.active : body.active === true;
+  if (id === admin.id && !active) throw new Error("SELF_DEACTIVATION_FORBIDDEN");
+  if (id === admin.id && role !== admin.role) throw new Error("ADMIN_SELF_ROLE_CHANGE_FORBIDDEN");
+  if (current.role === "SUPER_ADMIN" && role !== "SUPER_ADMIN" && (await repo.countActiveSuperAdmins()) <= 1) throw new Error("LAST_SUPER_ADMIN_PROTECTED");
+  const password = typeof body.password === "string" && body.password.length > 0 ? await hashPassword(body.password) : current.passwordHash;
+  const next = AdminUser.create(current.id, { ...current, role, active, passwordHash: password });
   await repo.saveUser(next);
-  if (password !== p.passwordHash) await repo.revokeAllSessions(id);
+  if (password !== current.passwordHash || role !== current.role || active !== current.active) await repo.revokeAllSessions(id);
   await repo.audit(admin.id, "ADMIN_USER_UPDATED", "admin_user", id, { fields: Object.keys(body).filter((field) => field !== "password") });
+}
+
+export async function hardenAdminLifecycle(body: Record<string, unknown>) {
+  const { admin, repo } = await requireAdmin(PERMISSIONS.adminsManage);
+  const targetId = String(body.id ?? "");
+  if (!targetId) throw new Error("ID_REQUIRED");
+  const hardening = new AdminManagementHardening(repo);
+  if (body.action === "activate") return hardening.activate(await repo.findById(admin.id).then((value) => value!), targetId);
+  if (body.action === "deactivate") return hardening.deactivate(await repo.findById(admin.id).then((value) => value!), targetId);
+  if (body.action === "change_role") return hardening.changeRole(await repo.findById(admin.id).then((value) => value!), targetId, String(body.role) as AdminRole);
+  throw new Error("INVALID_ADMIN_ACTION");
 }
