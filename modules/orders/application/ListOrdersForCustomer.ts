@@ -1,7 +1,8 @@
+import type { Order } from "../domain/Order";
 import type { OrderRepository } from "./OrderRepository";
 
 export type CustomerOrderPage = Readonly<{
-  items: readonly Awaited<ReturnType<OrderRepository["findById"]>>[];
+  items: readonly Order[];
   limit: number;
   offset: number;
 }>;
