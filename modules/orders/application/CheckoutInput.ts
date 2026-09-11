@@ -5,7 +5,8 @@ export type CheckoutInput = Readonly<{
   email: string;
   shippingAddress: ShippingAddress;
   shippingMethod: "PICKUP" | "DELIVERY";
-  customerId?: string | undefined;
+  customerId: string;
+  idempotencyKey: string;
 }>;
 
 export interface OrderCheckoutRepository {
