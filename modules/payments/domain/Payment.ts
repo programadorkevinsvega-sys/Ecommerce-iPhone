@@ -1,6 +1,6 @@
 export type PaymentStatus = "CREATED" | "PENDING" | "PROCESSING" | "PAID" | "FAILED" | "CANCELLED" | "REFUNDED";
 
-export type PaymentProvider = "WOMPI";
+export type PaymentProvider = "WOMPI" | "STRIPE" | "MERCADOPAGO" | "PAYPAL" | "BINANCE_PAY";
 
 export type Payment = Readonly<{
   id: string;
