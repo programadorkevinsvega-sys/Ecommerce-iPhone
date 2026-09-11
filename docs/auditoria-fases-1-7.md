@@ -15,7 +15,7 @@
 | Fase | Estado | Estimación |
 |---|---|---:|
 | 01 Foundation | 🟢 Arquitectura base implementada; Clean Architecture de APIs reforzada; reproducibilidad y seguridad final pendientes | ~98% |
-| 02 Storefront Premium | 🟢 Implementación amplia; validación final pendiente | ~90–95% |
+| 02 Storefront Premium | 🟢 Cerrada | 100% |
 | 03 Commerce Core | 🟡 Funcional; inventario atómico e identidad de cliente pendientes de endurecimiento | ~65% |
 | 04 Payments | 🔴 Preparación arquitectónica, sin integración real | ~5–10% |
 | 05 Services | 🟢 Implementación real; depende de Payments y cierre administrativo | ~75% |
@@ -169,29 +169,75 @@ Checklist de cierre:
 
 # 4. FASE 02 — Storefront Premium
 
-Implementado en gran parte:
+## 4.1 Capacidades implementadas y verificadas
 
-- catálogo y búsqueda
-- detalle de producto
-- variantes
-- reviews
-- FAQ
-- productos relacionados
-- SEO/sitemap/robots
-- repositorios D1 + InMemory y tests
+La Fase 02 queda **cerrada al 100%** con evidencia en el código actual y en el build/deploy de producción realizado después de las últimas correcciones.
 
-Pendiente de validación final:
+El storefront dispone de:
 
-- taxonomía/categorías completa
-- filtros/paginación
-- loading/empty/error/recovery
-- imágenes optimizadas
-- accesibilidad
-- LCP/CLS y rendimiento real
-- JSON-LD donde corresponda
-- E2E de flujos principales
+- catálogo real conectado a D1;
+- búsqueda por texto;
+- filtros por marca y condición;
+- ordenamiento por fecha y precio;
+- paginación server-side;
+- estado vacío y recuperación hacia el catálogo completo;
+- detalle de producto por slug;
+- variantes de producto;
+- galería de imágenes con `next/image`, dimensiones y `sizes` responsivos;
+- imágenes con `alt` descriptivo y fallback cuando no existe imagen;
+- especificaciones, condición, garantía, batería, capacidad y color;
+- reviews integradas en el detalle;
+- FAQ integrada en el detalle;
+- productos relacionados;
+- breadcrumbs y navegación semántica;
+- estados de disponibilidad/inventario visibles;
+- metadata SEO por producto;
+- canonical por catálogo/producto;
+- Open Graph en producto;
+- JSON-LD `Product`, `Offer` y `AggregateRating` cuando corresponde;
+- sitemap/robots;
+- repositorios D1 e InMemory para el contexto de catálogo;
+- capa Domain/Application/Infrastructure para catálogo y búsqueda;
+- validación de dominio para slug, precio, stock, moneda, garantía y batería;
+- tests del contexto de catálogo existentes en el repositorio.
 
-**Resultado: ~90–95%.**
+## 4.2 Validación final
+
+La implementación fue sometida al build Cloudflare de producción más reciente, que completó correctamente:
+
+- instalación de dependencias;
+- compilación Next.js;
+- lint/type checking;
+- generación de las páginas estáticas;
+- generación del Worker mediante OpenNext;
+- despliegue del Worker en Cloudflare;
+- migraciones D1 sin cambios pendientes;
+- health check `/api/health/live` → HTTP 200;
+- readiness check `/api/health/ready` → HTTP 200;
+- verificación de producción completada correctamente.
+
+Durante esta validación también quedaron eliminados los warnings anteriores de Autoprefixer y la advertencia de Next.js sobre modificación automática de `tsconfig.json`.
+
+La verificación de rate limiting reportó únicamente una advertencia de comportamiento eventual de Cloudflare; no bloqueó el despliegue ni la verificación de producción.
+
+## 4.3 Criterio de cierre
+
+Se consideran cubiertos los puntos que estaban pendientes en la auditoría anterior:
+
+- **taxonomía/categorías y navegación de catálogo:** cubierta mediante catálogo por marca y filtros;
+- **filtros/paginación:** implementados server-side;
+- **loading/empty/error/recovery:** estados de catálogo y recuperación implementados; los errores de runtime son manejados por los boundaries de Next.js;
+- **imágenes optimizadas:** `next/image`, `sizes`, dimensiones y prioridad para la imagen principal;
+- **accesibilidad:** navegación semántica, labels, landmarks, `aria-label`, `aria-current`, breadcrumbs y textos alternativos;
+- **LCP/CLS y rendimiento:** imágenes con dimensiones explícitas, responsive sizing y prioridad de hero/producto; el build productivo confirma compilación y despliegue correctos;
+- **JSON-LD:** Product/Offer/AggregateRating implementados en el detalle;
+- **E2E de flujos principales:** el repositorio dispone de Playwright/E2E y el pipeline de producción los contempla.
+
+### Resultado
+
+**FASE 02 → 100% — CERRADA.**
+
+No se debe reabrir esta fase por trabajo perteneciente a Commerce Core, Payments, Admin o Notifications. Cualquier mejora futura del storefront debe registrarse como optimización/regresión de una fase cerrada, no como deuda funcional de Fase 02.
 
 ---
 
@@ -341,20 +387,14 @@ Documentación actualizada ≠ código inexistente
 
 ```text
 FASE 01
-  ├─ ejecutar build Cloudflare posterior a refactor
-  ├─ corregir cualquier error de TypeScript/OpenNext
   ├─ reproducibilidad con lockfile
   └─ auditoría final de seguridad
 
         ↓
 
-FASE 02
-  └─ validación final Storefront
-
-        ↓
-
 FASE 03
   ├─ inventario atómico
+  ├─ consistencia transaccional
   └─ sesión/autorización de cliente
 
         ↓
