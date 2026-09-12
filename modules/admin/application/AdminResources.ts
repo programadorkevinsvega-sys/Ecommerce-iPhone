@@ -53,34 +53,28 @@ export class AdminResources {
   private authorize(actor: AdminActor, permission: Permission): void { if (!this.authorizationPolicy.can(actor.role, permission)) throw new Error("FORBIDDEN"); }
 
   private async createProduct(actor: AdminActor, body: Record<string, unknown>): Promise<{ id: string }> {
-    const name = clean(body.name, 180), slug = clean(body.slug, 180), brand = clean(body.brand, 80), model = clean(body.model, 120), description = clean(body.description, 5000), condition = clean(body.condition, 20);
-    const priceInCents = Number(body.price_in_cents), stock = Number(body.stock ?? 0);
-    const warrantyMonths = Number(body.warranty_months ?? 12);
-    const batteryHealth = body.battery_health == null ? undefined : Number(body.battery_health);
-    const storageGb = body.storage_gb == null ? undefined : Number(body.storage_gb);
-    const color = body.color == null ? undefined : clean(body.color, 80);
-    const seoTitle = body.seo_title == null ? undefined : clean(body.seo_title, 180);
-    const seoDescription = body.seo_description == null ? undefined : clean(body.seo_description, 320);
-    const specs = parseSpecs(body.specs_json);
-    if (body.active !== undefined && typeof body.active !== "boolean" && body.active !== 0 && body.active !== 1) throw new Error("INVALID_PRODUCT");
     try {
-      const validated = validateProductProps({
-        name, slug, brand, model, description, condition: condition as ProductCondition,
-        priceInCents, currency: "COP", stock, images: [], active: body.active === undefined ? true : bool(body.active),
-        warrantyMonths, batteryHealth, storageGb, color, specs, seoTitle, seoDescription,
+      const props = validateProductProps({
+        name: clean(body.name, 180), slug: clean(body.slug, 180), brand: clean(body.brand, 80), model: clean(body.model, 120),
+        description: clean(body.description, 5000), condition: clean(body.condition, 20) as ProductCondition,
+        priceInCents: Number(body.price_in_cents), currency: "COP", stock: Number(body.stock ?? 0), images: [],
+        active: body.active === undefined ? true : bool(body.active), warrantyMonths: Number(body.warranty_months ?? 12),
+        batteryHealth: body.battery_health == null ? undefined : Number(body.battery_health),
+        storageGb: body.storage_gb == null ? undefined : Number(body.storage_gb),
+        color: body.color == null ? undefined : clean(body.color, 80),
+        specs: parseSpecs(body.specs_json), seoTitle: body.seo_title == null ? undefined : clean(body.seo_title, 180),
+        seoDescription: body.seo_description == null ? undefined : clean(body.seo_description, 320),
       });
+      if (body.active !== undefined && typeof body.active !== "boolean" && body.active !== 0 && body.active !== 1) throw new Error("INVALID_PRODUCT");
       const id = await this.deps.repository.createProduct({
-        id: crypto.randomUUID(), name: validated.name, slug: validated.slug, brand: validated.brand, model: validated.model,
-        description: validated.description, condition: validated.condition, priceInCents: validated.priceInCents, stock: validated.stock,
-        warrantyMonths: validated.warrantyMonths, batteryHealth: validated.batteryHealth ?? null, storageGb: validated.storageGb ?? null,
-        color: validated.color ?? null, specsJson: JSON.stringify(validated.specs),
+        id: crypto.randomUUID(), name: props.name, slug: props.slug, brand: props.brand, model: props.model,
+        description: props.description, condition: props.condition, priceInCents: props.priceInCents, stock: props.stock,
+        warrantyMonths: props.warrantyMonths, batteryHealth: props.batteryHealth ?? null, storageGb: props.storageGb ?? null,
+        color: props.color ?? null, specsJson: JSON.stringify(props.specs),
       });
-      await this.deps.repository.audit(actor.id, "ADMIN_PRODUCT_CREATED", "product", id, { name: validated.name, slug: validated.slug });
+      await this.deps.repository.audit(actor.id, "ADMIN_PRODUCT_CREATED", "product", id, { name: props.name, slug: props.slug });
       return { id };
-    } catch (error) {
-      if (error instanceof Error && error.message.startsWith("Product ")) throw new Error("INVALID_PRODUCT");
-      throw error;
-    }
+    } catch { throw new Error("INVALID_PRODUCT"); }
   }
 
   private async quoteService(actor: AdminActor, body: Record<string, unknown>): Promise<{}> {
