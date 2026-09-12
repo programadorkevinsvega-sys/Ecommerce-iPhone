@@ -4,8 +4,8 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD de código auditado:** `0542424d8d19d6b2940144439044e832ba11c02f`  
-**Última actualización:** 2026-09-11  
+**HEAD de código auditado:** `e86d4d1e93298b632925a1cf9d751ad60b6638d8`  
+**Última actualización:** 2026-09-12  
 **Entorno operativo:** **producción únicamente**.
 
 > Esta auditoría es la fuente de verdad del roadmap de implementación. Una fase solo puede declararse 100% cuando código, pruebas, seguridad, reproducibilidad y evidencia operativa de su alcance estén cerrados. Compilar o tener CI verde no equivale a certificación.
@@ -198,6 +198,36 @@ Ahora:
 - actualización y `OrderStatusChanged` se ejecutan en un único `D1.batch`;
 - `WHERE status=?` mantiene compare-and-set contra carreras concurrentes.
 
+### Integración atómica Order ↔ reservas — hardening cerrado en código
+
+La transición de estado ya no depende de que otro servicio/repository invoque posteriormente `D1ReservationRepository` para liquidar reservas. `D1OrderRepository.transitionStatus()` integra la liquidación en el mismo `D1.batch` de la transición.
+
+Para `PAID`:
+
+- la transición exige al menos una reserva activa del pedido;
+- se rechaza si existe cualquier reserva activa ya expirada;
+- el evento `OrderStatusChanged` se inserta inmediatamente después del CAS del pedido;
+- el settlement de reservas está vinculado al `eventId` de esa transición, por lo que una carrera cuyo CAS pierda no puede liberar/consumir stock;
+- las reservas activas se marcan consumidas/liberadas sin devolver stock;
+- si cualquier sentencia del batch falla, toda la transición se revierte.
+
+Para `CANCELLED`:
+
+- el CAS del pedido ocurre primero;
+- `OrderStatusChanged` queda inmediatamente después del CAS;
+- el incremento de stock y la liberación de reservas solo pueden ejecutarse si existe el `eventId` creado por ese CAS exitoso;
+- las reservas activas y no expiradas devuelven su cantidad al stock dentro del mismo batch;
+- esas reservas se marcan liberadas dentro del mismo batch;
+- las reservas ya expiradas no vuelven a incrementar stock, evitando doble restitución con el scheduler de expiración.
+
+Esto elimina el hueco donde el pedido podía cambiar de estado pero su reserva quedar sin consumir/liberar, y elimina el uso incorrecto de `changes()` después de una sentencia de inventario intermedia. También cierra la carrera en la que dos cancelaciones concurrentes podían pasar a la fase de settlement después de que solo una ganara el CAS.
+
+**Commits de implementación:**
+- `90ec699d6c714e64a659e41df5aa478c87972166` — integración Order ↔ reservas.
+- `e86d4d1e93298b632925a1cf9d751ad60b6638d8` — vinculación del settlement al evento de transición ganadora.
+
+La certificación mediante tests D1/concurrencia y producción todavía está pendiente; este cambio se considera **cierre de implementación**, no certificación 100%.
+
 ### Checkout
 
 Se mantiene:
@@ -232,11 +262,13 @@ Las carreras siguen protegidas por el `WHERE status=?` compare-and-set y el serv
 
 ## 8.11 Estado de pruebas de esta iteración
 
-El test de `Order` cubre progresión válida de pago, rechazo de resurrección de estados terminales y rechazo de saltos arbitrarios. Payment ya dispone de cobertura de state machine en `PaymentService.test.ts`; la nueva defensa de repository queda pendiente de ejecución del suite en esta iteración.
+El test de `Order` cubre progresión válida de pago, rechazo de resurrección de estados terminales y rechazo de saltos arbitrarios. Payment ya dispone de cobertura de state machine en `PaymentService.test.ts`.
+
+Para la nueva liquidación Order ↔ reservas queda pendiente ejecutar/añadir cobertura D1 real para: `PAID` consume reservas, `PAID` rechaza reservas expiradas o ausentes, `CANCELLED` devuelve stock una sola vez, reservas expiradas no restituyen stock y carreras concurrentes de transición no duplican stock.
 
 ## 8.12 Pendientes inmediatos de F6
 
-1. concurrencia de stock durante checkout y reservas/rollback;
+1. certificación D1/concurrencia de stock y reservas/rollback;
 2. idempotencia completa del checkout, incluyendo carreras y expiración;
 3. tests IDOR/BOLA de carrito y pedidos con dos customers;
 4. certificación guest vs autenticado;
@@ -263,6 +295,8 @@ El test de `Order` cubre progresión válida de pago, rechazo de resurrección d
 
 - [x] state machine Order aplicada server-side;
 - [x] transición Order + evento atómicos;
+- [x] liquidación Order ↔ reservas integrada en la transición y en el mismo batch;
+- [x] settlement vinculado al evento de la transición ganadora;
 - [x] state machine Payment aplicada también en repository;
 - [ ] idempotencia checkout certificada;
 - [ ] concurrencia stock/payments/orders certificada;
@@ -280,7 +314,8 @@ El test de `Order` cubre progresión válida de pago, rechazo de resurrección d
 - [ ] negative authorization;
 - [ ] orders regression;
 - [ ] payments/refunds/void regression;
-- [ ] inventory concurrency.
+- [ ] inventory concurrency;
+- [ ] Order ↔ reservation settlement.
 
 ### Gates técnicos
 
@@ -350,7 +385,7 @@ No se usa `compila = 100%`, `CI verde = 100%` ni `documentado = 100%`.
 
 # 12. Orden inmediato de Fase 06
 
-1. concurrencia de stock + reservas/rollback;
+1. certificación D1/concurrencia de stock + reservas/rollback;
 2. idempotencia completa del checkout;
 3. ownership/IDOR/BOLA de carritos y pedidos;
 4. guest vs autenticado;
