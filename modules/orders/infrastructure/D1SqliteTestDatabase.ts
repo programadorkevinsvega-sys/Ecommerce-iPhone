@@ -1,10 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import type { D1Database } from "@cloudflare/workers-types";
 
-type BoundStatement = {
-  sql: string;
-  params: unknown[];
-};
+type BoundStatement = { sql: string; params: unknown[] };
 
 class TestStatement {
   constructor(
@@ -28,12 +25,7 @@ class TestStatement {
 
   run(): { meta: { changes: number; last_row_id: number } } {
     const result = this.db.prepare(this.sql).run(...this.params);
-    return {
-      meta: {
-        changes: Number(result.changes),
-        last_row_id: Number(result.lastInsertRowid),
-      },
-    };
+    return { meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) } };
   }
 
   descriptor(): BoundStatement {
@@ -48,117 +40,47 @@ export class D1SqliteTestDatabase {
     this.db.exec(`
       PRAGMA foreign_keys = ON;
       CREATE TABLE products (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        slug TEXT NOT NULL,
-        active INTEGER NOT NULL,
-        price_in_cents INTEGER NOT NULL,
-        currency TEXT NOT NULL,
-        stock INTEGER NOT NULL,
-        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE product_variants (
-        id TEXT PRIMARY KEY,
-        product_id TEXT NOT NULL,
-        price_in_cents INTEGER NOT NULL,
-        active INTEGER NOT NULL,
-        FOREIGN KEY (product_id) REFERENCES products(id)
-      );
-      CREATE TABLE promotions (
-        id TEXT PRIMARY KEY,
-        code TEXT NOT NULL UNIQUE,
-        discount_type TEXT NOT NULL,
-        discount_value INTEGER NOT NULL,
-        active INTEGER NOT NULL,
-        starts_at TEXT NOT NULL,
-        ends_at TEXT NOT NULL,
-        min_subtotal_in_cents INTEGER NOT NULL,
-        max_uses INTEGER,
-        used_count INTEGER NOT NULL DEFAULT 0,
+        id TEXT PRIMARY KEY, name TEXT NOT NULL, slug TEXT NOT NULL, active INTEGER NOT NULL,
+        price_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, stock INTEGER NOT NULL,
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
       CREATE TABLE carts (
-        id TEXT PRIMARY KEY,
-        customer_id TEXT,
-        currency TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        id TEXT PRIMARY KEY, customer_id TEXT, currency TEXT NOT NULL
       );
       CREATE TABLE cart_items (
-        cart_id TEXT NOT NULL,
-        product_id TEXT NOT NULL,
-        quantity INTEGER NOT NULL,
-        unit_price_in_cents INTEGER NOT NULL,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (cart_id, product_id),
+        cart_id TEXT NOT NULL, product_id TEXT NOT NULL, quantity INTEGER NOT NULL,
+        unit_price_in_cents INTEGER NOT NULL, PRIMARY KEY (cart_id, product_id),
         FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id)
       );
       CREATE TABLE checkout_idempotency (
-        idempotency_key TEXT PRIMARY KEY,
-        customer_id TEXT NOT NULL,
-        order_id TEXT NOT NULL UNIQUE,
-        expires_at TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        idempotency_key TEXT PRIMARY KEY, customer_id TEXT NOT NULL,
+        order_id TEXT NOT NULL UNIQUE, expires_at TEXT NOT NULL
       );
-      CREATE TABLE checkout_guards (
-        id INTEGER PRIMARY KEY CHECK (id = 1)
-      );
+      CREATE TABLE checkout_guards (id INTEGER PRIMARY KEY CHECK (id = 1));
       INSERT INTO checkout_guards(id) VALUES (1);
       CREATE TABLE orders (
-        id TEXT PRIMARY KEY,
-        order_number TEXT NOT NULL UNIQUE,
-        customer_id TEXT,
-        email TEXT NOT NULL,
-        status TEXT NOT NULL,
-        currency TEXT NOT NULL,
-        subtotal_in_cents INTEGER NOT NULL,
-        shipping_in_cents INTEGER NOT NULL,
-        discount_in_cents INTEGER NOT NULL,
-        total_in_cents INTEGER NOT NULL,
-        shipping_method TEXT NOT NULL,
-        shipping_recipient_name TEXT NOT NULL,
-        shipping_phone TEXT NOT NULL,
-        shipping_address_line1 TEXT NOT NULL,
-        shipping_address_line2 TEXT,
-        shipping_city TEXT NOT NULL,
-        shipping_state TEXT NOT NULL,
-        shipping_postal_code TEXT,
-        shipping_country_code TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        id TEXT PRIMARY KEY, order_number TEXT NOT NULL UNIQUE, customer_id TEXT, email TEXT NOT NULL,
+        status TEXT NOT NULL, currency TEXT NOT NULL, subtotal_in_cents INTEGER NOT NULL,
+        shipping_in_cents INTEGER NOT NULL, discount_in_cents INTEGER NOT NULL, total_in_cents INTEGER NOT NULL,
+        shipping_method TEXT NOT NULL, shipping_recipient_name TEXT NOT NULL, shipping_phone TEXT NOT NULL,
+        shipping_address_line1 TEXT NOT NULL, shipping_address_line2 TEXT, shipping_city TEXT NOT NULL,
+        shipping_state TEXT NOT NULL, shipping_postal_code TEXT, shipping_country_code TEXT NOT NULL
       );
       CREATE TABLE order_items (
-        id TEXT PRIMARY KEY,
-        order_id TEXT NOT NULL,
-        product_id TEXT NOT NULL,
-        variant_id TEXT,
-        product_name TEXT NOT NULL,
-        product_slug TEXT NOT NULL,
-        quantity INTEGER NOT NULL,
-        unit_price_in_cents INTEGER NOT NULL,
-        line_total_in_cents INTEGER NOT NULL,
+        id TEXT PRIMARY KEY, order_id TEXT NOT NULL, product_id TEXT NOT NULL, variant_id TEXT,
+        product_name TEXT NOT NULL, product_slug TEXT NOT NULL, quantity INTEGER NOT NULL,
+        unit_price_in_cents INTEGER NOT NULL, line_total_in_cents INTEGER NOT NULL,
         FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id)
       );
       CREATE TABLE order_events (
-        id TEXT PRIMARY KEY,
-        order_id TEXT NOT NULL,
-        event_type TEXT NOT NULL,
-        payload_json TEXT NOT NULL,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        id TEXT PRIMARY KEY, order_id TEXT NOT NULL, event_type TEXT NOT NULL, payload_json TEXT NOT NULL,
         FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
       );
       CREATE TABLE inventory_reservations (
-        id TEXT PRIMARY KEY,
-        cart_id TEXT NOT NULL,
-        product_id TEXT NOT NULL,
-        quantity INTEGER NOT NULL,
-        expires_at TEXT NOT NULL,
-        released_at TEXT,
-        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        order_id TEXT,
+        id TEXT PRIMARY KEY, cart_id TEXT NOT NULL, product_id TEXT NOT NULL, quantity INTEGER NOT NULL,
+        expires_at TEXT NOT NULL, released_at TEXT, order_id TEXT,
         FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id)
       );
@@ -199,11 +121,6 @@ export class D1SqliteTestDatabase {
 
   private execute(statement: BoundStatement): { meta: { changes: number; last_row_id: number } } {
     const result = this.db.prepare(statement.sql).run(...statement.params);
-    return {
-      meta: {
-        changes: Number(result.changes),
-        last_row_id: Number(result.lastInsertRowid),
-      },
-    };
+    return { meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) } };
   }
 }
