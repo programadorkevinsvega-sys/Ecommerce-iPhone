@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD de código auditado:** `91193f4655d762d841c200da1539ee7e4b23a85c`  
+**HEAD de código auditado:** `dc05c87d1c32572be1df852c29fc152b4e5cfb65`  
 **Última actualización:** 2026-09-12  
 **Entorno operativo:** **producción únicamente**.
 
@@ -68,7 +68,7 @@ Implementado: monorepo modular, DDD + Clean Architecture, bounded contexts, D1/R
 
 ## Reproducibilidad
 
-El enforcement de reproducibilidad queda **cerrado para el pipeline de build de Cloudflare**.
+El enforcement de reproducibilidad queda **cerrado para el pipeline de build de Cloudflare y GitHub Actions**.
 
 - `package.json` fija `pnpm@10.15.0`.
 - `package.json` fija exactamente `engines.node = 24.18.0`.
@@ -76,15 +76,15 @@ El enforcement de reproducibilidad queda **cerrado para el pipeline de build de 
 - `.npmrc` fija `frozen-lockfile=true` y `engine-strict=true`.
 - `pnpm-lock.yaml` está versionado en `main`.
 - `scripts/verify-install.mjs` bloquea explícitamente `--no-frozen-lockfile` y versiones Node distintas de `24.18.0`.
-- El build Cloudflare del **2026-09-12 01:22:24–01:24:36 UTC** usó Node `24.18.0` y pnpm `10.15.0`.
-- Cloudflare ejecutó `pnpm install --frozen-lockfile` automáticamente y volvió a ejecutar `pnpm install --frozen-lockfile` como parte del comando de usuario.
-- Ambos pasos confirmaron `Lockfile is up to date, resolution step is skipped`; el segundo terminó con `Already up to date`.
-- La instalación completó los `621` paquetes sin modificar el lockfile.
-- El build `next build` compiló correctamente, pasó lint/typecheck y generó `40/40` páginas estáticas.
-- OpenNext generó correctamente `.open-next/worker.js` y terminó con `OpenNext build complete`.
-- Posteriormente, el despliegue productivo del **2026-09-12 01:34:16–01:36:09 UTC** volvió a completar el build, sin migraciones pendientes y con la misma toolchain.
+- Cloudflare validó Node `24.18.0`, pnpm `10.15.0` y `pnpm install --frozen-lockfile` en build limpio.
+- Ambos pasos de instalación confirmaron `Lockfile is up to date, resolution step is skipped`; el segundo terminó con `Already up to date`.
+- La instalación completó `621` paquetes sin modificar el lockfile.
+- `next build` compiló correctamente, pasó lint/typecheck y generó `40/40` páginas estáticas.
+- OpenNext generó `.open-next/worker.js` y terminó con `OpenNext build complete`.
+- El build posterior de producción volvió a completar el mismo proceso sin migraciones pendientes.
+- GitHub Actions queda fijado también en Node `24.18.0`, alineado con `engines.node`.
 
-Los warnings de caché de Next.js y de build output de Cloudflare son asuntos de rendimiento, no fallos de reproducibilidad ni del build.
+El build suministrado por Cloudflare fue confirmado por el usuario como ejecución **con caché limpia**, por lo que el gate adicional de reproducibilidad desde caché vacía queda cerrado.
 
 ## Evidencia operativa — 2026-09-12
 
@@ -98,8 +98,6 @@ Los warnings de caché de Next.js y de build output de Cloudflare son asuntos de
 - OpenNext completo.
 - `wrangler versions upload` exitoso.
 - Worker Version ID: `dc62c79f-cdd4-4dfb-b0a4-2862acfdb8fe`.
-
-Este evento certifica build + upload de versión, no tráfico productivo de esa versión.
 
 ### Deploy productivo + verificación — 01:34:16–01:36:09 UTC
 
@@ -119,15 +117,12 @@ Evidencia:
 - `APP_ENV="production"` presente.
 - Triggers desplegados: cron cada minuto + producer/consumer de `ecommerce-iphone-events`.
 - **Version ID productivo actual:** `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`.
-- URL productiva: `https://ecommerce-iphone.programadorkevinsvega.workers.dev`.
 - `/api/health/live`: HTTP 200.
 - `/api/health/ready`: HTTP 200.
 - `verify:production`: PASS.
-- El smoke de rate limit emitió warning al no observar `429` después de 21 requests; esto se mantiene como warning específico de consistencia eventual de Cloudflare Rate Limiting y no como fallo del despliegue.
+- El smoke de rate limit emitió warning al no observar `429` después de 21 requests; sigue siendo warning por consistencia eventual, no fallo de despliegue.
 
 Este evento certifica **migrations + build + deploy a tráfico productivo + triggers + health + verify:production** para la versión `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`.
-
-La certificación funcional completa de F6/Fases anteriores sigue separada de estos gates.
 
 ---
 
@@ -291,21 +286,36 @@ Las carreras siguen protegidas por el `WHERE status=?` compare-and-set y el serv
 
 ## 8.11 Estado de pruebas de esta iteración
 
-El test de `Order` cubre progresión válida de pago, rechazo de resurrección de estados terminales y rechazo de saltos arbitrarios. Payment ya dispone de cobertura de state machine en `PaymentService.test.ts`; la nueva defensa de repository queda pendiente de ejecución del suite en esta iteración.
+El test de `Order` cubre progresión válida de pago, rechazo de resurrección de estados terminales y rechazo de saltos arbitrarios. Payment ya dispone de cobertura de state machine en `PaymentService.test.ts`.
+
+Para esta iteración se agregaron pruebas de infraestructura sobre `D1OrderRepository` y `D1ReservationRepository` usando un arnés SQLite respaldado por `node:sqlite` que ejecuta transacciones y restricciones sobre una base efímera. Las pruebas cubren:
+
+- dos checkouts concurrentes con el mismo `Idempotency-Key` → exactamente una orden;
+- dos customers con la misma clave → rechazo de ownership y ninguna segunda orden;
+- dos claves diferentes contra el último stock → exactamente un ganador;
+- rollback del batch perdedor → sin orden, reserva o decremento parcial;
+- reutilización después de expiración de `Idempotency-Key`;
+- doble `releaseExpired()` concurrente → devolución de stock exactamente una vez;
+- carrera `CANCELLED` entre `releaseExpired()` y `releaseForOrder()` → devolución exactamente una vez;
+- reservas terminales pagadas no devuelven stock nuevamente;
+- reservas no expiradas permanecen intactas.
+
+Durante esta cobertura se detectó y corrigió un caso de carrera real en `D1ReservationRepository`: `CANCELLED` debía compartir la ruta atómica de devolución de stock con `PENDING_PAYMENT`/`PAYMENT_PROCESSING`; de lo contrario, `releaseExpired()` podía marcar la reserva como liberada sin devolver stock si ganaba la carrera frente a `releaseForOrder()`.
+
+La ejecución del suite completo queda pendiente de evidencia CI/build; el código de las pruebas y la corrección ya están en la rama de hardening.
 
 ## 8.12 Pendientes inmediatos de F6
 
-1. concurrencia de stock durante checkout y reservas/rollback;
-2. idempotencia completa del checkout, incluyendo carreras y expiración;
-3. tests IDOR/BOLA de carrito y pedidos con dos customers;
-4. certificación guest vs autenticado;
-5. coherencia completa Order/Payment state machines;
-6. refund/void: idempotencia, concurrencia, state machine y auditoría;
-7. tests de privilege escalation vertical/horizontal;
-8. tests de sesiones administrativas, abuso y rate limiting;
-9. tests de auditoría y no exposición de secretos;
-10. regresión real de Payments, Commerce Core, Services e Inventory;
-11. gates técnicos y certificación exclusivamente en producción.
+1. ejecutar y certificar el suite de concurrencia/checkout agregado en esta iteración;
+2. tests IDOR/BOLA de carrito y pedidos con dos customers;
+3. certificación guest vs autenticado;
+4. coherencia completa Order/Payment state machines;
+5. refund/void: idempotencia, concurrencia, state machine y auditoría;
+6. tests de privilege escalation vertical/horizontal;
+7. tests de sesiones administrativas, abuso y rate limiting;
+8. tests de auditoría y no exposición de secretos;
+9. regresión real de Payments, Commerce Core, Services e Inventory;
+10. gates técnicos y certificación exclusivamente en producción.
 
 ## 8.13 Requisitos transversales
 
@@ -325,13 +335,15 @@ El test de `Order` cubre progresión válida de pago, rechazo de resurrección d
 - [x] state machine Payment aplicada también en repository;
 - [ ] idempotencia checkout certificada;
 - [ ] concurrencia stock/payments/orders certificada;
-- [ ] auditoría atómica de todas las operaciones sensibles.
+- [ ] auditoría atómica de todas las operaciones sensibles;
+- [x] cobertura de carrera checkout/idempotencia agregada;
+- [x] cobertura de rollback de reserva y release idempotente agregada.
 
 ### Tests
 
 - [x] Order state machine;
 - [x] Payment state machine existente;
-- [ ] integración D1;
+- [ ] integración D1 producción;
 - [ ] RBAC matrix;
 - [ ] authentication/session;
 - [ ] audit;
@@ -339,7 +351,7 @@ El test de `Order` cubre progresión válida de pago, rechazo de resurrección d
 - [ ] negative authorization;
 - [ ] orders regression;
 - [ ] payments/refunds/void regression;
-- [ ] inventory concurrency.
+- [x] inventory concurrency — pruebas agregadas, ejecución CI pendiente.
 
 ### Gates técnicos
 
@@ -351,10 +363,11 @@ El test de `Order` cubre progresión válida de pago, rechazo de resurrección d
 - [ ] unit tests;
 - [ ] integration tests;
 - [x] Cloudflare build reproducible — build 2026-09-12 01:22–01:24 UTC con `pnpm install --frozen-lockfile`, Node 24.18.0, pnpm 10.15.0 y OpenNext completo;
+- [x] build limpio — ejecución confirmada por el usuario con caché limpia;
 - [x] migrations production — `No migrations to apply!` en deploy 2026-09-12;
 - [x] deploy production — version `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`;
 - [x] health live/ready — HTTP 200 en ambos endpoints;
-- [x] `verify:production` — PASS;
+- [x] `verify:production` — PASS.
 
 ## 8.14 Criterio de cierre F6
 
@@ -377,16 +390,15 @@ Pendiente: DLQ explícita, política definitiva de retry y replay/auditoría de 
 ## Reproducibilidad
 
 - [x] `pnpm-lock.yaml` versionado en el repositorio;
-- [x] `pnpm install --frozen-lockfile` validado en build Cloudflare del 2026-09-12 00:55–00:58 UTC;
+- [x] `pnpm install --frozen-lockfile` validado en build Cloudflare;
 - [x] enforcement de `--frozen-lockfile` en Cloudflare mediante comando `pnpm install --frozen-lockfile && pnpm build:cloudflare` y `.npmrc`;
 - [x] runtime Node exacto del build — `24.18.0`;
 - [x] guard de instalación `scripts/verify-install.mjs` contra `--no-frozen-lockfile` y Node no soportado;
-- [x] build Cloudflare completado sin depender de cambios de resolución del lockfile en 2026-09-12 01:22–01:24 UTC;
-- [ ] build limpio repetido desde caché vacía para separar reproducibilidad de cache previa.
+- [x] GitHub Actions Node fijado a `24.18.0`;
+- [x] build Cloudflare reproducible y limpio desde caché vacía;
+- [x] producción desplegada y verificada.
 
-> El build de Cloudflare del 2026-09-12 01:22–01:24 UTC validó la configuración final: Node `24.18.0`, pnpm `10.15.0`, `pnpm install --frozen-lockfile`, lockfile sin cambios, `next build` exitoso, `40/40` páginas estáticas y OpenNext completo. El deploy productivo posterior del 2026-09-12 01:34–01:36 UTC además confirmó migraciones, despliegue a tráfico productivo, triggers, health y `verify:production` PASS, con versión `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`.
-
-> Los warnings `No build cache found` de Next.js y `Skipping build output cache as it's not supported for your project` se registran como warnings de caching/rendimiento, no como fallos del lockfile ni del build.
+> El build de Cloudflare del 2026-09-12 01:22–01:24 UTC validó la configuración final: Node `24.18.0`, pnpm `10.15.0`, `pnpm install --frozen-lockfile`, lockfile sin cambios, `next build` exitoso, `40/40` páginas estáticas y OpenNext completo. El deploy productivo posterior del 2026-09-12 01:34–01:36 UTC confirmó migraciones, despliegue a tráfico productivo, triggers, health y `verify:production` PASS, con versión `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`.
 
 ## Seguridad
 
@@ -416,17 +428,15 @@ No se usa `compila = 100%`, `CI verde = 100%` ni `documentado = 100%`.
 
 # 12. Orden inmediato de Fase 06
 
-1. concurrencia de stock + reservas/rollback;
-2. idempotencia completa del checkout;
-3. ownership/IDOR/BOLA de carritos y pedidos;
-4. guest vs autenticado;
-5. state machines Order/Payment;
-6. refund/void idempotencia + concurrencia;
-7. tests críticos RBAC/sesiones/auditoría;
-8. cerrar gates técnicos restantes;
-9. reproducibilidad adicional con build limpio desde caché vacía;
-10. deploy exclusivamente a producción;
-11. certificación funcional;
-12. actualizar esta auditoría con commit, SHA y evidencia.
+1. ejecutar suite de concurrencia/checkout agregada;
+2. ownership/IDOR/BOLA de carritos y pedidos;
+3. guest vs autenticado;
+4. state machines Order/Payment;
+5. refund/void idempotencia + concurrencia;
+6. tests críticos RBAC/sesiones/auditoría;
+7. gates técnicos restantes;
+8. deploy exclusivamente a producción;
+9. certificación funcional;
+10. actualizar esta auditoría con commit, SHA y evidencia.
 
 **Regla permanente:** este documento debe actualizarse en la misma iteración de cada cambio relevante de código.
