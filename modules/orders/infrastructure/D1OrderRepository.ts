@@ -58,7 +58,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
         crypto.randomUUID(), effectiveCart.id, item.productId, item.quantity, orderId,
       ));
       statements.push(this.db.prepare("INSERT INTO order_items(id,order_id,product_id,variant_id,product_name,product_slug,quantity,unit_price_in_cents,line_total_in_cents) VALUES(?,?,?,?,?,?,?,?,?)").bind(
-        item.id, orderId, item.productId, item.variantId ?? null, item.productName, item.slug, item.quantity, item.unitPriceInCents, item.quantity * item.unitPriceInCents,
+        item.id, orderId, item.productId, item.variantId ?? null, item.productName, item.slug, item.quantity, item.quantity * item.unitPriceInCents,
       ));
     }
 
@@ -121,12 +121,23 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
 
   async transitionStatus(id: string, from: string, to: string): Promise<boolean> {
     assertOrderTransition(from as OrderStatus, to as OrderStatus);
-    const result = await this.db.batch([
-      this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(to, id, from),
-      this.db.prepare("INSERT INTO order_events(id,order_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
-        crypto.randomUUID(), id, "OrderStatusChanged", JSON.stringify({ from, to }),
-      ),
-    ]);
+    const statements: ReturnType<D1Database["prepare"]>[] = [];
+
+    if (to === "PAID") {
+      statements.push(this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=? AND NOT EXISTS (SELECT 1 FROM inventory_reservations WHERE order_id=? AND released_at IS NULL AND expires_at<=CURRENT_TIMESTAMP)").bind(to, id, from, id));
+      statements.push(this.db.prepare("UPDATE inventory_reservations SET released_at=CURRENT_TIMESTAMP WHERE order_id=? AND released_at IS NULL AND expires_at>CURRENT_TIMESTAMP AND changes()=1").bind(id));
+    } else if (to === "CANCELLED") {
+      statements.push(this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(to, id, from));
+      statements.push(this.db.prepare("UPDATE products SET stock=stock+(SELECT COALESCE(SUM(ir.quantity),0) FROM inventory_reservations ir WHERE ir.order_id=? AND ir.product_id=products.id AND ir.released_at IS NULL AND ir.expires_at>CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id IN (SELECT product_id FROM inventory_reservations WHERE order_id=? AND released_at IS NULL AND expires_at>CURRENT_TIMESTAMP) AND changes()=1").bind(id, id));
+      statements.push(this.db.prepare("UPDATE inventory_reservations SET released_at=CURRENT_TIMESTAMP WHERE order_id=? AND released_at IS NULL AND expires_at>CURRENT_TIMESTAMP AND changes()=1").bind(id));
+    } else {
+      statements.push(this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(to, id, from));
+    }
+
+    statements.push(this.db.prepare("INSERT INTO order_events(id,order_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
+      crypto.randomUUID(), id, "OrderStatusChanged", JSON.stringify({ from, to }),
+    ));
+    const result = await this.db.batch(statements);
     return result[0]?.meta.changes === 1;
   }
 
