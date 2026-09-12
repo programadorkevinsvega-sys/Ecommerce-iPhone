@@ -66,7 +66,11 @@ Existe **un único entorno Cloudflare remoto: producción**. El desarrollo local
 
 Implementado: monorepo modular, DDD + Clean Architecture, bounded contexts, D1/R2/Queues, OpenNext + Workers, cron, observabilidad, rate limiting, health live/ready, request-id, headers de seguridad y enforcement arquitectónico.
 
-Reproducibilidad todavía no está cerrada: `package.json` fija `pnpm@10.15.0`, pero falta versionar `pnpm-lock.yaml` y exigir `pnpm install --frozen-lockfile`.
+La reproducibilidad depende de `pnpm@10.15.0`, `pnpm-workspace.yaml` y `pnpm-lock.yaml` versionado. El lockfile ya existe en el repositorio y fue incorporado a `main` mediante el commit `cae47a27280b1f55ff99fb8f38c118ed7ee14f23` (`up pnpm-lock.ymal`). El build de producción debe usar `pnpm install --frozen-lockfile`.
+
+El build de Cloudflare del 2026-09-12 reveló una desalineación temporal en la rama F6: esa rama había nacido antes del commit del lockfile, por lo que Workers Builds ejecutó `bun install`, generó un lockfile efímero y posteriormente `npm run build` terminó ejecutando `pnpm` sin `node_modules`. La rama F6 se sincroniza ahora con el lockfile real de `main` y el script raíz `build` fuerza `pnpm install --frozen-lockfile && pnpm build:cloudflare`.
+
+El mismo build informó `No build output detected to cache. Skipping.` y `No dependencies detected to cache. Skipping.`; por tanto, el cache de compilación queda como una validación pendiente de la configuración efectiva de Workers Builds. Esto no se marca PASS solo por documentación.
 
 Último deploy productivo confirmado el 2026-09-11: build Cloudflare, TypeScript/lint, generación estática, OpenNext, migraciones, Worker deploy, health live/ready y `verify:production` PASS. El smoke de rate-limit emitió warning al no observar 429 después de 21 requests; queda como validación específica de abuso.
 
@@ -352,10 +356,10 @@ Pendiente: DLQ explícita, política definitiva de retry y replay/auditoría de 
 
 ## Reproducibilidad
 
-- [ ] versionar `pnpm-lock.yaml`;
-- [ ] `pnpm install --frozen-lockfile`;
-- [ ] fijar runtime Node del build;
-- [ ] build limpio reproducible.
+- [x] `pnpm-lock.yaml` versionado;
+- [ ] `pnpm install --frozen-lockfile` en build Cloudflare;
+- [x] runtime Node declarado (>=22; build productivo observado Node 24.18.0);
+- [ ] build limpio reproducible con cache efectiva.
 
 ## Seguridad
 

@@ -5,15 +5,11 @@
   "packageManager": "pnpm@10.15.0",
   "engines": { "node": ">=22.0.0" },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "unrs-resolver",
-      "workerd"
-    ]
+    "onlyBuiltDependencies": ["esbuild", "unrs-resolver", "workerd"]
   },
   "scripts": {
     "dev": "pnpm --filter @ecommerce/web dev",
-    "build": "pnpm --filter @ecommerce/web build",
+    "build": "pnpm install --frozen-lockfile && pnpm build:cloudflare",
     "build:cloudflare": "pnpm --filter @ecommerce/web build:cloudflare",
     "preview:cloudflare": "pnpm --filter @ecommerce/web preview:cloudflare",
     "start": "pnpm --filter @ecommerce/web start",
