@@ -24,12 +24,25 @@ export type ServiceRequestProps = Readonly<{
   updatedAt: string;
 }>;
 
-const transitions: Record<ServiceRequestStatus, readonly ServiceRequestStatus[]> = {
-  PENDING: ["QUOTED", "REJECTED"], QUOTED: ["PAYMENT_PENDING", "REJECTED"],
-  PAYMENT_PENDING: ["PAID", "REJECTED"], PAID: ["PROCESSING", "REFUNDED"],
-  PROCESSING: ["WAITING_CUSTOMER", "COMPLETED", "REJECTED"], WAITING_CUSTOMER: ["PROCESSING", "COMPLETED", "REJECTED"],
-  COMPLETED: [], REJECTED: ["REFUNDED"], REFUNDED: []
+export const SERVICE_REQUEST_TRANSITIONS: Record<ServiceRequestStatus, readonly ServiceRequestStatus[]> = {
+  PENDING: ["QUOTED", "REJECTED"],
+  QUOTED: ["PAYMENT_PENDING", "REJECTED"],
+  PAYMENT_PENDING: ["PAID", "REJECTED"],
+  PAID: ["PROCESSING", "REFUNDED"],
+  PROCESSING: ["WAITING_CUSTOMER", "COMPLETED", "REJECTED"],
+  WAITING_CUSTOMER: ["PROCESSING", "COMPLETED", "REJECTED"],
+  COMPLETED: [],
+  REJECTED: ["REFUNDED"],
+  REFUNDED: [],
 };
+
+export function canTransitionServiceRequest(from: ServiceRequestStatus, to: ServiceRequestStatus): boolean {
+  return SERVICE_REQUEST_TRANSITIONS[from].includes(to);
+}
+
+export function assertServiceRequestTransition(from: ServiceRequestStatus, to: ServiceRequestStatus): void {
+  if (!canTransitionServiceRequest(from, to)) throw new DomainError(`Invalid service transition ${from} -> ${to}`);
+}
 
 export class ServiceRequest extends AggregateRoot<string> {
   private constructor(id: string, private props: ServiceRequestProps) { super(id); }
@@ -44,10 +57,14 @@ export class ServiceRequest extends AggregateRoot<string> {
     return new ServiceRequest(id, { ...props, status: props.status ?? "PENDING", currency: props.currency || "COP", createdAt: props.createdAt ?? now, updatedAt: props.updatedAt ?? now });
   }
   transitionTo(status: ServiceRequestStatus): void {
-    if (status !== this.props.status && !transitions[this.props.status].includes(status)) throw new DomainError(`Invalid service transition ${this.props.status} -> ${status}`);
+    if (status !== this.props.status) assertServiceRequestTransition(this.props.status, status);
     this.props = { ...this.props, status, updatedAt: new Date().toISOString() };
   }
-  quote(amountInCents: number): void { if (amountInCents < 0) throw new DomainError("Quote cannot be negative"); if (this.props.status !== "PENDING") throw new DomainError("Only pending requests can be quoted"); this.props = { ...this.props, quoteInCents: amountInCents, status: "QUOTED", updatedAt: new Date().toISOString() }; }
+  quote(amountInCents: number): void {
+    if (amountInCents < 0) throw new DomainError("Quote cannot be negative");
+    if (this.props.status !== "PENDING") throw new DomainError("Only pending requests can be quoted");
+    this.props = { ...this.props, quoteInCents: amountInCents, status: "QUOTED", updatedAt: new Date().toISOString() };
+  }
   assign(technicianId: string): void { if (!technicianId.trim()) throw new DomainError("Technician is required"); this.props = { ...this.props, assignedTechnicianId: technicianId, updatedAt: new Date().toISOString() }; }
   attachPayment(paymentId: string): void { if (!paymentId.trim()) throw new DomainError("Payment is required"); this.props = { ...this.props, paymentId, updatedAt: new Date().toISOString() }; }
   resolve(notes: string): void {
