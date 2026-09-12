@@ -46,17 +46,16 @@ function serializeValidated(value: unknown): string {
   validateJsonValue(value);
   let serialized: string;
   try { serialized = JSON.stringify(value); } catch { throw new Error("INVALID_SETTING"); }
-  if (serialized.length > MAX_JSON_LENGTH || serialized === undefined) throw new Error("INVALID_SETTING");
+  if (serialized === undefined || serialized.length > MAX_JSON_LENGTH) throw new Error("INVALID_SETTING");
   return serialized;
 }
 
 export class AdminSettings {
   constructor(private readonly repository: SettingsRepository) {}
-
   list(): Promise<unknown[]> { return this.repository.list(); }
-
   save(input: AdminSettingInput, adminUserId: string): Promise<boolean> {
-    if (!adminUserId || typeof adminUserId !== "string") throw new Error("INVALID_SETTING");
+    if (typeof adminUserId !== "string" || !adminUserId.trim()) throw new Error("INVALID_SETTING");
+    if (input.sensitive !== undefined && typeof input.sensitive !== "boolean") throw new Error("INVALID_SETTING");
     const key = normalizeKey(input.key);
     const serialized = serializeValidated(input.value);
     return this.repository.save({ key, value: JSON.parse(serialized), sensitive: input.sensitive === true }, adminUserId);
