@@ -66,9 +66,27 @@ Existe **un único entorno Cloudflare remoto: producción**. El desarrollo local
 
 Implementado: monorepo modular, DDD + Clean Architecture, bounded contexts, D1/R2/Queues, OpenNext + Workers, cron, observabilidad, rate limiting, health live/ready, request-id, headers de seguridad y enforcement arquitectónico.
 
-Reproducibilidad todavía no está cerrada: `package.json` fija `pnpm@10.15.0`, pero falta versionar `pnpm-lock.yaml` y exigir `pnpm install --frozen-lockfile`.
+## Reproducibilidad
 
-Último deploy productivo confirmado el 2026-09-11: build Cloudflare, TypeScript/lint, generación estática, OpenNext, migraciones, Worker deploy, health live/ready y `verify:production` PASS. El smoke de rate-limit emitió warning al no observar 429 después de 21 requests; queda como validación específica de abuso.
+La base de reproducibilidad mediante lockfile y frozen lockfile ya está cerrada:
+
+- `package.json` fija `pnpm@10.15.0`.
+- `pnpm-lock.yaml` está versionado en `main`.
+- El build de Cloudflare del **2026-09-12 00:55–00:58 UTC** ejecutó `pnpm install --frozen-lockfile` correctamente.
+- El log confirmó `Lockfile is up to date, resolution step is skipped` y completó la instalación de los 2 workspace projects sin errores.
+- El segundo `pnpm install --frozen-lockfile` ejecutado como parte de `npm run build` terminó con `Already up to date`.
+- Next.js compiló correctamente, lint/typecheck pasaron, se generaron 40/40 páginas estáticas, OpenNext finalizó y el Worker fue empaquetado/subido correctamente.
+- El cache de dependencias de Cloudflare se restauró y volvió a subir correctamente.
+
+Este build corresponde a una **Version Preview** y no se contabiliza como deploy de tráfico productivo. La evidencia de producción sigue siendo la del deploy productivo confirmado el 2026-09-11.
+
+El warning `No build cache found` de Next.js y el mensaje de que Cloudflare no soporta build output cache son problemas de **rendimiento/caching**, no fallos del lockfile ni de la reproducibilidad basada en `pnpm install --frozen-lockfile`.
+
+La fijación exacta del runtime Node todavía no está cerrada: el build detecta Node `24.18.0`, pero `package.json` mantiene `engines.node` como rango `>=22.0.0`. Por tanto, el runtime observado no debe marcarse todavía como pin reproducible.
+
+## Evidencia operativa
+
+Último deploy productivo confirmado el **2026-09-11**: build Cloudflare, TypeScript/lint, generación estática, OpenNext, migraciones, Worker deploy, health live/ready y `verify:production` PASS. El smoke de rate-limit emitió warning al no observar 429 después de 21 requests; queda como validación específica de abuso.
 
 ---
 
@@ -317,10 +335,14 @@ Pendiente: DLQ explícita, política definitiva de retry y replay/auditoría de 
 
 ## Reproducibilidad
 
-- [ ] versionar `pnpm-lock.yaml`;
-- [ ] `pnpm install --frozen-lockfile`;
-- [ ] fijar runtime Node del build;
-- [ ] build limpio reproducible.
+- [x] `pnpm-lock.yaml` versionado en el repositorio;
+- [x] `pnpm install --frozen-lockfile` validado en build Cloudflare del 2026-09-12 00:55–00:58 UTC;
+- [ ] fijar runtime Node exacto del build;
+- [ ] build limpio reproducible sin depender de caches previos.
+
+> El build Cloudflare anterior fue una Version Preview. Se considera evidencia de build y lockfile, no evidencia de tráfico productivo. El único entorno remoto operativo documentado sigue siendo producción.
+
+> `No build cache found` de Next.js y `Skipping build output cache as it's not supported for your project` se registran como warnings de caching/rendimiento, no como fallos de reproducibilidad del lockfile.
 
 ## Seguridad
 
