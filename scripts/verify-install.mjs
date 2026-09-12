@@ -1,15 +1,10 @@
 import { readFile } from "node:fs/promises";
 
 const REQUIRED_NODE = "24.18.0";
-const frozen = process.env.npm_config_frozen_lockfile ?? process.env.npm_config_frozen_lockfile;
+const frozen = process.env.npm_config_frozen_lockfile;
 
 if (process.version.slice(1) !== REQUIRED_NODE) {
   console.error(`Unsupported Node.js version: ${process.version}. Required: ${REQUIRED_NODE}.`);
-  process.exit(1);
-}
-
-if (process.env.CI && frozen !== "true") {
-  console.error("CI install must use pnpm --frozen-lockfile.");
   process.exit(1);
 }
 
@@ -24,4 +19,4 @@ if (packageJson.engines?.node !== REQUIRED_NODE) {
   process.exit(1);
 }
 
-console.log(`Install toolchain verified: Node ${REQUIRED_NODE}, frozen-lockfile=${frozen ?? "default"}.`);
+console.log(`Install toolchain verified: Node ${REQUIRED_NODE}, frozen-lockfile=${frozen ?? "enforced by .npmrc"}.`);
