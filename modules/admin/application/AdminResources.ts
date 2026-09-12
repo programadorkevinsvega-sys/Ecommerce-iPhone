@@ -1,6 +1,6 @@
 import type { AdminResourceRepository } from "./AdminResourceRepository";
 import { DEFAULT_AUTHORIZATION_POLICY, type AdminRole, type AuthorizationPolicy, type Permission } from "./Rbac";
-import { validateProductPatch } from "../../catalog/domain/Product";
+import { validateProductPatch, validateProductProps, type ProductCondition } from "../../catalog/domain/Product";
 
 export type AdminActor = { id: string; email: string; role: AdminRole };
 export type ResourceName = "products" | "customers" | "services" | "orders";
@@ -21,12 +21,12 @@ export function permissionFor(resource: ResourceName, write = false): Permission
   if (resource === "products") return write ? "products:write" : "products:read";
   return write ? "orders:write" : "orders:read";
 }
-function parseSpecs(value: unknown): string {
-  if (value === undefined || value === null || value === "") return "{}";
+function parseSpecs(value: unknown): Record<string, string> {
+  if (value === undefined || value === null || value === "") return {};
   const parsed = typeof value === "string" ? (() => { try { return JSON.parse(value); } catch { throw new Error("INVALID_PRODUCT"); } })() : value;
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("INVALID_PRODUCT");
   try { validateProductPatch({ specs_json: parsed }); } catch { throw new Error("INVALID_PRODUCT"); }
-  return JSON.stringify(parsed);
+  return parsed as Record<string, string>;
 }
 
 export class AdminResources {
@@ -55,19 +55,32 @@ export class AdminResources {
   private async createProduct(actor: AdminActor, body: Record<string, unknown>): Promise<{ id: string }> {
     const name = clean(body.name, 180), slug = clean(body.slug, 180), brand = clean(body.brand, 80), model = clean(body.model, 120), description = clean(body.description, 5000), condition = clean(body.condition, 20);
     const priceInCents = Number(body.price_in_cents), stock = Number(body.stock ?? 0);
-    if (!name || !slug || !brand || !model || !description || !["NEW", "USED", "REFURBISHED"].includes(condition) || !Number.isInteger(priceInCents) || !Number.isInteger(stock)) throw new Error("INVALID_PRODUCT");
-    const specsJson = parseSpecs(body.specs_json);
+    const warrantyMonths = Number(body.warranty_months ?? 12);
+    const batteryHealth = body.battery_health == null ? undefined : Number(body.battery_health);
+    const storageGb = body.storage_gb == null ? undefined : Number(body.storage_gb);
+    const color = body.color == null ? undefined : clean(body.color, 80);
+    const seoTitle = body.seo_title == null ? undefined : clean(body.seo_title, 180);
+    const seoDescription = body.seo_description == null ? undefined : clean(body.seo_description, 320);
+    const specs = parseSpecs(body.specs_json);
+    if (body.active !== undefined && typeof body.active !== "boolean" && body.active !== 0 && body.active !== 1) throw new Error("INVALID_PRODUCT");
     try {
-      validateProductPatch({ name, description, price_in_cents: priceInCents, stock, warranty_months: Number(body.warranty_months ?? 12), battery_health: body.battery_health ?? null, storage_gb: body.storage_gb ?? null, color: body.color ?? null, specs_json: specsJson });
-      validateProductPatch({ seo_title: body.seo_title ?? null, seo_description: body.seo_description ?? null });
-    } catch { throw new Error("INVALID_PRODUCT"); }
-    const id = await this.deps.repository.createProduct({
-      id: crypto.randomUUID(), name, slug, brand, model, description, condition, priceInCents, stock,
-      warrantyMonths: Number(body.warranty_months ?? 12), batteryHealth: body.battery_health == null ? null : Number(body.battery_health),
-      storageGb: body.storage_gb == null ? null : Number(body.storage_gb), color: body.color ? clean(body.color, 80) : null, specsJson,
-    });
-    await this.deps.repository.audit(actor.id, "ADMIN_PRODUCT_CREATED", "product", id, { name, slug });
-    return { id };
+      const validated = validateProductProps({
+        name, slug, brand, model, description, condition: condition as ProductCondition,
+        priceInCents, currency: "COP", stock, images: [], active: body.active === undefined ? true : bool(body.active),
+        warrantyMonths, batteryHealth, storageGb, color, specs, seoTitle, seoDescription,
+      });
+      const id = await this.deps.repository.createProduct({
+        id: crypto.randomUUID(), name: validated.name, slug: validated.slug, brand: validated.brand, model: validated.model,
+        description: validated.description, condition: validated.condition, priceInCents: validated.priceInCents, stock: validated.stock,
+        warrantyMonths: validated.warrantyMonths, batteryHealth: validated.batteryHealth ?? null, storageGb: validated.storageGb ?? null,
+        color: validated.color ?? null, specsJson: JSON.stringify(validated.specs),
+      });
+      await this.deps.repository.audit(actor.id, "ADMIN_PRODUCT_CREATED", "product", id, { name: validated.name, slug: validated.slug });
+      return { id };
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("Product ")) throw new Error("INVALID_PRODUCT");
+      throw error;
+    }
   }
 
   private async quoteService(actor: AdminActor, body: Record<string, unknown>): Promise<{}> {
@@ -84,7 +97,7 @@ export class AdminResources {
     const fields = Object.keys(body).filter((key) => allowed.has(key)); if (!fields.length) throw new Error("NO_EDITABLE_FIELDS");
     const validation: Record<string, unknown> = Object.fromEntries(fields.map((key) => [key, key === "active" ? bool(body[key]) : body[key]]));
     try { validateProductPatch(validation); } catch { throw new Error("INVALID_PRODUCT"); }
-    const values = fields.map((key) => key === "active" ? (bool(body[key]) ? 1 : 0) : key === "specs_json" ? parseSpecs(body[key]) : body[key]);
+    const values = fields.map((key) => key === "active" ? (bool(body[key]) ? 1 : 0) : key === "specs_json" ? JSON.stringify(parseSpecs(body[key])) : body[key]);
     await this.deps.repository.updateProduct(id, fields, values);
     await this.deps.repository.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "products", id, body);
   }
