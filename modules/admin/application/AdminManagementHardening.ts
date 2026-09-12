@@ -1,3 +1,4 @@
+import { hasPermission, PERMISSIONS } from "./Rbac";
 import type { AdminRole } from "../domain/AdminRole";
 import { AdminUser } from "../domain/AdminUser";
 
@@ -53,6 +54,6 @@ export class AdminManagementHardening {
   }
 
   private assertCanManage(actor: AdminUser): void {
-    if (!actor.active || actor.role !== "SUPER_ADMIN") throw new Error("ADMIN_MANAGEMENT_FORBIDDEN");
+    if (!actor.active || !hasPermission(actor.role, PERMISSIONS.adminsManage)) throw new Error("ADMIN_MANAGEMENT_FORBIDDEN");
   }
 }
