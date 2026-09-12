@@ -45,7 +45,7 @@ function stringField(value: unknown, field: string, max: number): string {
 }
 
 function integerField(value: unknown, field: string, min: number, max: number): number {
-  if (!Number.isInteger(value) || !Number.isFinite(value) || value < min || value > max) {
+  if (typeof value !== "number" || !Number.isInteger(value) || !Number.isFinite(value) || value < min || value > max) {
     throw new DomainError(`Invalid product ${field}`);
   }
   return value;
