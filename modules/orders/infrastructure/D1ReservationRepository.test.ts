@@ -32,6 +32,15 @@ describe("D1ReservationRepository concurrency", () => {
     expect(database.query<{ count: number }>("SELECT COUNT(*) AS count FROM inventory_reservations WHERE released_at IS NULL")[0].count).toBe(0);
   });
 
+  it("does not restore stock for a terminal paid reservation that has already been consumed", async () => {
+    database = createDatabase("PAID");
+    const repository = new D1ReservationRepository(database.asD1());
+
+    await expect(repository.releaseExpired()).resolves.toBe(1);
+    expect(database.query<{ stock: number }>("SELECT stock FROM products WHERE id='product-1'")[0].stock).toBe(0);
+    expect(database.query<{ released_at: string | null }>("SELECT released_at FROM inventory_reservations WHERE id='reservation-1'")[0].released_at).not.toBeNull();
+  });
+
   it("keeps a non-expired payment reservation untouched", async () => {
     database = createDatabase("PENDING_PAYMENT", false);
     const repository = new D1ReservationRepository(database.asD1());
