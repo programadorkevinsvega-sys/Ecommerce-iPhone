@@ -4,7 +4,6 @@ import { hasPermission, PERMISSIONS, ROLE_PERMISSIONS } from "../application/Rba
 export { hasPermission, PERMISSIONS, ROLE_PERMISSIONS };
 
 const ITERATIONS=150_000;const KEY_LENGTH=256;const HASH_ALGORITHM="SHA-256";
-const bytesToBase64=(bytes:Uint8Array)=>{let binary="";for(const byte of bytes)binary+=String.fromCharCode(byte);return binary;};
 const encodeBase64=(bytes:Uint8Array)=>{let binary="";for(const byte of bytes)binary+=String.fromCharCode(byte);return btoa(binary);};
 const bytesFromBase64=(value:string)=>Uint8Array.from(atob(value),c=>c.charCodeAt(0));
 export async function hashPassword(password:string):Promise<string>{if(password.length<12||password.length>128)throw new Error("Password must contain 12-128 characters");const salt=crypto.getRandomValues(new Uint8Array(16));const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);const bits=await crypto.subtle.deriveBits({name:"PBKDF2",salt,iterations:ITERATIONS,hash:HASH_ALGORITHM},key,KEY_LENGTH);return`pbkdf2-sha256$${ITERATIONS}$${encodeBase64(salt)}$${encodeBase64(new Uint8Array(bits))}`;}
