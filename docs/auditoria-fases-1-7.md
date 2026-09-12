@@ -5,7 +5,7 @@
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
 **HEAD de código auditado:** `0542424d8d19d6b2940144439044e832ba11c02f`  
-**Última actualización:** 2026-09-11  
+**Última actualización:** 2026-09-12  
 **Entorno operativo:** **producción únicamente**.
 
 > Esta auditoría es la fuente de verdad del roadmap de implementación. Una fase solo puede declararse 100% cuando código, pruebas, seguridad, reproducibilidad y evidencia operativa de su alcance estén cerrados. Compilar o tener CI verde no equivale a certificación.
@@ -68,25 +68,44 @@ Implementado: monorepo modular, DDD + Clean Architecture, bounded contexts, D1/R
 
 ## Reproducibilidad
 
-La base de reproducibilidad mediante lockfile y frozen lockfile ya está cerrada:
+La base de reproducibilidad mediante lockfile ya está cerrada, pero el enforcement completo del pipeline todavía no.
 
 - `package.json` fija `pnpm@10.15.0`.
 - `pnpm-lock.yaml` está versionado en `main`.
-- El build de Cloudflare del **2026-09-12 00:55–00:58 UTC** ejecutó `pnpm install --frozen-lockfile` correctamente.
+- El build Cloudflare del **2026-09-12 00:55–00:58 UTC** validó `pnpm install --frozen-lockfile` correctamente.
 - El log confirmó `Lockfile is up to date, resolution step is skipped` y completó la instalación de los 2 workspace projects sin errores.
-- El segundo `pnpm install --frozen-lockfile` ejecutado como parte de `npm run build` terminó con `Already up to date`.
-- Next.js compiló correctamente, lint/typecheck pasaron, se generaron 40/40 páginas estáticas, OpenNext finalizó y el Worker fue empaquetado/subido correctamente.
-- El cache de dependencias de Cloudflare se restauró y volvió a subir correctamente.
+- El segundo `pnpm install --frozen-lockfile` de ese build terminó con `Already up to date`.
+- El cache de dependencias de Cloudflare se restauró correctamente.
+- El build y deploy productivos del **2026-09-12 01:02–01:06 UTC** volvieron a resolver el lockfile sin cambios y completaron instalación, build y despliegue correctamente.
 
-Este build corresponde a una **Version Preview** y no se contabiliza como deploy de tráfico productivo. La evidencia de producción sigue siendo la del deploy productivo confirmado el 2026-09-11.
+**Importante:** el comando de build configurado actualmente en Cloudflare ejecuta `pnpm install --no-frozen-lockfile && pnpm build:cloudflare`. Por tanto, la validación de `--frozen-lockfile` existe y pasó, pero el pipeline de despliegue todavía no fuerza esa condición en cada build. Este punto permanece abierto hasta convertir el comando de Cloudflare a frozen-lockfile.
 
-El warning `No build cache found` de Next.js y el mensaje de que Cloudflare no soporta build output cache son problemas de **rendimiento/caching**, no fallos del lockfile ni de la reproducibilidad basada en `pnpm install --frozen-lockfile`.
+La fijación exacta del runtime Node todavía no está cerrada: Cloudflare detecta Node `24.18.0`, mientras `package.json` mantiene `engines.node` como `>=22.0.0`.
 
-La fijación exacta del runtime Node todavía no está cerrada: el build detecta Node `24.18.0`, pero `package.json` mantiene `engines.node` como rango `>=22.0.0`. Por tanto, el runtime observado no debe marcarse todavía como pin reproducible.
+El warning `No build cache found` de Next.js y `Skipping build output cache as it's not supported for your project` son asuntos de caching/rendimiento, no fallos del lockfile.
 
-## Evidencia operativa
+## Evidencia operativa — 2026-09-12
 
-Último deploy productivo confirmado el **2026-09-11**: build Cloudflare, TypeScript/lint, generación estática, OpenNext, migraciones, Worker deploy, health live/ready y `verify:production` PASS. El smoke de rate-limit emitió warning al no observar 429 después de 21 requests; queda como validación específica de abuso.
+El despliegue de **2026-09-12 01:02–01:06 UTC** se realizó directamente sobre el único entorno remoto operativo: **producción**.
+
+Evidencia:
+
+- D1 remoto: `No migrations to apply!`.
+- Next.js 15.5.25 compiló correctamente.
+- Lint y typecheck completaron correctamente.
+- Se generaron `40/40` páginas estáticas.
+- OpenNext finalizó correctamente.
+- Worker subido correctamente.
+- `APP_ENV` desplegado como `production`.
+- Bindings D1, R2, Queue y rate limiters presentes.
+- Version ID productivo: `d2769d6e-acce-4302-afee-681ff0c6b04c`.
+- URL productiva: `https://ecommerce-iphone.programadorkevinsvega.workers.dev`.
+- `/api/health/live`: HTTP 200.
+- `/api/health/ready`: HTTP 200.
+- `verify:production`: PASS.
+- El smoke de rate limit volvió a emitir warning al no observar `429` después de 21 requests; Cloudflare Rate Limiting es eventualmente consistente. Queda como validación específica de abuso, no como fallo de despliegue.
+
+El deploy productivo queda certificado a nivel de **build + migrations + deploy + health + verify:production**, pero no equivale por sí mismo a certificación funcional completa de F6/Fases anteriores.
 
 ---
 
@@ -310,10 +329,10 @@ El test de `Order` cubre progresión válida de pago, rechazo de resurrección d
 - [ ] unit tests;
 - [ ] integration tests;
 - [ ] Cloudflare build reproducible;
-- [ ] migrations production;
-- [ ] deploy production;
-- [ ] health live/ready;
-- [ ] `verify:production`.
+- [x] migrations production — `No migrations to apply!` en deploy 2026-09-12;
+- [x] deploy production — version `d2769d6e-acce-4302-afee-681ff0c6b04c`;
+- [x] health live/ready — HTTP 200 en ambos endpoints;
+- [x] `verify:production` — PASS;
 
 ## 8.14 Criterio de cierre F6
 
@@ -337,12 +356,13 @@ Pendiente: DLQ explícita, política definitiva de retry y replay/auditoría de 
 
 - [x] `pnpm-lock.yaml` versionado en el repositorio;
 - [x] `pnpm install --frozen-lockfile` validado en build Cloudflare del 2026-09-12 00:55–00:58 UTC;
+- [ ] enforcement de `--frozen-lockfile` en el comando de build de Cloudflare;
 - [ ] fijar runtime Node exacto del build;
 - [ ] build limpio reproducible sin depender de caches previos.
 
-> El build Cloudflare anterior fue una Version Preview. Se considera evidencia de build y lockfile, no evidencia de tráfico productivo. El único entorno remoto operativo documentado sigue siendo producción.
+> El build de producción del 2026-09-12 se desplegó correctamente, pero su comando de instalación fue `pnpm install --no-frozen-lockfile`. Esto deja abierto el enforcement estricto del lockfile aunque el lockfile ya esté versionado y una ejecución con `--frozen-lockfile` haya pasado.
 
-> `No build cache found` de Next.js y `Skipping build output cache as it's not supported for your project` se registran como warnings de caching/rendimiento, no como fallos de reproducibilidad del lockfile.
+> `No build cache found` de Next.js y `Skipping build output cache as it's not supported for your project` se registran como warnings de caching/rendimiento, no como fallos del lockfile.
 
 ## Seguridad
 
@@ -379,9 +399,10 @@ No se usa `compila = 100%`, `CI verde = 100%` ni `documentado = 100%`.
 5. state machines Order/Payment;
 6. refund/void idempotencia + concurrencia;
 7. tests críticos RBAC/sesiones/auditoría;
-8. gates técnicos;
-9. deploy exclusivamente a producción;
-10. certificación funcional;
-11. actualizar esta auditoría con commit, SHA y evidencia.
+8. cerrar enforcement `--frozen-lockfile` + runtime Node exacto;
+9. gates técnicos;
+10. deploy exclusivamente a producción;
+11. certificación funcional;
+12. actualizar esta auditoría con commit, SHA y evidencia.
 
 **Regla permanente:** este documento debe actualizarse en la misma iteración de cada cambio relevante de código.
