@@ -9,7 +9,7 @@ type Db = D1Database;
 const like = (query: string) => `%${query}%`;
 
 function auditStatement(db: Db, actorId: string, action: string, resource: string, resourceId: string, metadata: unknown) {
-  return db.prepare("INSERT INTO admin_audit_log (id,admin_user_id,action,resource_type,resource_id,payload_json) VALUES (?,?,?,?,?,?)")
+  return db.prepare("INSERT INTO admin_audit_log (id,admin_user_id,action,resource_type,resource_id,payload_json) SELECT ?,?,?,?,?,? WHERE changes()=1")
     .bind(crypto.randomUUID(), actorId, action, resource, resourceId, JSON.stringify(metadata));
 }
 
@@ -86,6 +86,7 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
   }
 
   async audit(actorId: string, action: string, resource: string, resourceId: string, metadata: unknown): Promise<void> {
-    await auditStatement(this.db, actorId, action, resource, resourceId, metadata).run();
+    await this.db.prepare("INSERT INTO admin_audit_log (id,admin_user_id,action,resource_type,resource_id,payload_json) VALUES (?,?,?,?,?,?)")
+      .bind(crypto.randomUUID(), actorId, action, resource, resourceId, JSON.stringify(metadata)).run();
   }
 }
