@@ -58,6 +58,7 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
   }
 
   async updateServiceStatus(id: string, status: string, actorId: string, fromStatus: string): Promise<void> {
+    if (fromStatus === status) throw new Error("SERVICE_NOOP_TRANSITION");
     assertServiceRequestTransition(fromStatus as ServiceRequestStatus, status as ServiceRequestStatus);
     const result = await this.db.batch([
       this.db.prepare("UPDATE service_requests SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(status, id, fromStatus),
@@ -74,6 +75,7 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
   }
 
   async updateOrderStatus(id: string, status: string, actorId: string, fromStatus: string): Promise<void> {
+    if (fromStatus === status) throw new Error("ORDER_NOOP_TRANSITION");
     assertOrderTransition(fromStatus as OrderStatus, status as OrderStatus);
     const result = await this.db.batch([
       this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(status, id, fromStatus),
