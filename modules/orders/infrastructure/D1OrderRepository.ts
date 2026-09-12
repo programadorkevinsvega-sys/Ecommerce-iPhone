@@ -122,24 +122,25 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
   async transitionStatus(id: string, from: string, to: string): Promise<boolean> {
     assertOrderTransition(from as OrderStatus, to as OrderStatus);
     const statements: ReturnType<D1Database["prepare"]>[] = [];
+    const eventId = crypto.randomUUID();
 
     if (to === "PAID") {
       statements.push(this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=? AND EXISTS (SELECT 1 FROM inventory_reservations WHERE order_id=? AND released_at IS NULL AND expires_at>CURRENT_TIMESTAMP) AND NOT EXISTS (SELECT 1 FROM inventory_reservations WHERE order_id=? AND released_at IS NULL AND expires_at<=CURRENT_TIMESTAMP)").bind(to, id, from, id, id));
       statements.push(this.db.prepare("INSERT INTO order_events(id,order_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
-        crypto.randomUUID(), id, "OrderStatusChanged", JSON.stringify({ from, to, reservationAction: "CONSUMED" }),
+        eventId, id, "OrderStatusChanged", JSON.stringify({ from, to, reservationAction: "CONSUMED" }),
       ));
-      statements.push(this.db.prepare("UPDATE inventory_reservations SET released_at=CURRENT_TIMESTAMP WHERE order_id=? AND released_at IS NULL AND expires_at>CURRENT_TIMESTAMP").bind(id));
+      statements.push(this.db.prepare("UPDATE inventory_reservations SET released_at=CURRENT_TIMESTAMP WHERE order_id=? AND released_at IS NULL AND expires_at>CURRENT_TIMESTAMP AND EXISTS (SELECT 1 FROM order_events WHERE id=? AND order_id=? AND event_type='OrderStatusChanged')").bind(id, eventId, id));
     } else if (to === "CANCELLED") {
       statements.push(this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(to, id, from));
       statements.push(this.db.prepare("INSERT INTO order_events(id,order_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
-        crypto.randomUUID(), id, "OrderStatusChanged", JSON.stringify({ from, to, reservationAction: "RELEASED" }),
+        eventId, id, "OrderStatusChanged", JSON.stringify({ from, to, reservationAction: "RELEASED" }),
       ));
-      statements.push(this.db.prepare("UPDATE products SET stock=stock+(SELECT COALESCE(SUM(ir.quantity),0) FROM inventory_reservations ir WHERE ir.order_id=? AND ir.product_id=products.id AND ir.released_at IS NULL AND ir.expires_at>CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id IN (SELECT product_id FROM inventory_reservations WHERE order_id=? AND released_at IS NULL AND expires_at>CURRENT_TIMESTAMP) AND EXISTS (SELECT 1 FROM orders WHERE id=? AND status='CANCELLED')").bind(id, id, id));
-      statements.push(this.db.prepare("UPDATE inventory_reservations SET released_at=CURRENT_TIMESTAMP WHERE order_id=? AND released_at IS NULL AND EXISTS (SELECT 1 FROM orders WHERE id=? AND status='CANCELLED')").bind(id, id));
+      statements.push(this.db.prepare("UPDATE products SET stock=stock+(SELECT COALESCE(SUM(ir.quantity),0) FROM inventory_reservations ir WHERE ir.order_id=? AND ir.product_id=products.id AND ir.released_at IS NULL AND ir.expires_at>CURRENT_TIMESTAMP),updated_at=CURRENT_TIMESTAMP WHERE id IN (SELECT product_id FROM inventory_reservations WHERE order_id=? AND released_at IS NULL AND expires_at>CURRENT_TIMESTAMP) AND EXISTS (SELECT 1 FROM order_events WHERE id=? AND order_id=? AND event_type='OrderStatusChanged')").bind(id, id, eventId, id));
+      statements.push(this.db.prepare("UPDATE inventory_reservations SET released_at=CURRENT_TIMESTAMP WHERE order_id=? AND released_at IS NULL AND EXISTS (SELECT 1 FROM order_events WHERE id=? AND order_id=? AND event_type='OrderStatusChanged')").bind(id, eventId, id));
     } else {
       statements.push(this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(to, id, from));
       statements.push(this.db.prepare("INSERT INTO order_events(id,order_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
-        crypto.randomUUID(), id, "OrderStatusChanged", JSON.stringify({ from, to }),
+        eventId, id, "OrderStatusChanged", JSON.stringify({ from, to }),
       ));
     }
 
