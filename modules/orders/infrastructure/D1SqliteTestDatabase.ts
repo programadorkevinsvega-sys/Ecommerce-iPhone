@@ -189,8 +189,8 @@ export class D1SqliteTestDatabase {
     this.db.close();
   }
 
-  exec(sql: string): void {
-    this.db.exec(sql);
+  exec(sql: string, ...params: unknown[]): void {
+    this.db.prepare(sql).run(...params);
   }
 
   query<T>(sql: string, ...params: unknown[]): T[] {
