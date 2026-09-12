@@ -3,14 +3,18 @@ import type { AdminResourceRepository, MutationOrder, MutationService, ProductCr
 import type { ResourceName } from "../application/AdminResources";
 import { assertOrderTransition, type OrderStatus } from "../../orders/domain/Order";
 import { assertServiceRequestTransition, type ServiceRequestStatus } from "../../services/domain/ServiceRequest";
-import type { D1AdminRepository } from "./D1AdminRepository";
 
 type Db = D1Database;
 
 const like = (query: string) => `%${query}%`;
 
+function auditStatement(db: Db, actorId: string, action: string, resource: string, resourceId: string, metadata: unknown) {
+  return db.prepare("INSERT INTO admin_audit_log (id,admin_user_id,action,resource_type,resource_id,payload_json) VALUES (?,?,?,?,?,?)")
+    .bind(crypto.randomUUID(), actorId, action, resource, resourceId, JSON.stringify(metadata));
+}
+
 export class D1AdminResourceRepository implements AdminResourceRepository {
-  constructor(private readonly db: Db, private readonly adminRepository: D1AdminRepository) {}
+  constructor(private readonly db: Db) {}
 
   async list(resource: ResourceName, query: string): Promise<unknown[]> {
     const pattern = like(query);
@@ -42,12 +46,13 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
     return this.db.prepare("SELECT status,email FROM service_requests WHERE id=?").bind(id).first<MutationService>();
   }
 
-  async quoteService(id: string, amountInCents: number): Promise<void> {
+  async quoteService(id: string, amountInCents: number, actorId: string): Promise<void> {
     const result = await this.db.batch([
       this.db.prepare("UPDATE service_requests SET quote_in_cents=?,status='QUOTED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'").bind(amountInCents, id),
       this.db.prepare("INSERT INTO service_audit_events (id,service_request_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
-        crypto.randomUUID(), id, "AdminServiceQuoted", JSON.stringify({ amountInCents }),
+        crypto.randomUUID(), id, "AdminServiceQuoted", JSON.stringify({ amountInCents, adminId: actorId }),
       ),
+      auditStatement(this.db, actorId, "ADMIN_SERVICE_QUOTED", "service_request", id, { amountInCents }),
     ]);
     if (result[0]?.meta.changes !== 1) throw new Error("INVALID_SERVICE_TRANSITION");
   }
@@ -59,6 +64,7 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
       this.db.prepare("INSERT INTO service_audit_events (id,service_request_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
         crypto.randomUUID(), id, "AdminServiceStatusChanged", JSON.stringify({ from: fromStatus, to: status, adminId: actorId }),
       ),
+      auditStatement(this.db, actorId, "ADMIN_RESOURCE_UPDATED", "services", id, { from: fromStatus, to: status }),
     ]);
     if (result[0]?.meta.changes !== 1) throw new Error("SERVICE_STATUS_CONFLICT");
   }
@@ -74,11 +80,12 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
       this.db.prepare("INSERT INTO order_events (id,order_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
         crypto.randomUUID(), id, "AdminOrderStatusChanged", JSON.stringify({ from: fromStatus, to: status, adminId: actorId }),
       ),
+      auditStatement(this.db, actorId, "ADMIN_RESOURCE_UPDATED", "orders", id, { from: fromStatus, to: status }),
     ]);
     if (result[0]?.meta.changes !== 1) throw new Error("ORDER_STATUS_CONFLICT");
   }
 
   async audit(actorId: string, action: string, resource: string, resourceId: string, metadata: unknown): Promise<void> {
-    await this.adminRepository.audit(actorId, action, resource, resourceId, metadata);
+    await auditStatement(this.db, actorId, action, resource, resourceId, metadata).run();
   }
 }
