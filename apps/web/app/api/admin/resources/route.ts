@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/adminAuth";
 import { adminResources } from "../../../../lib/adminResources";
-import { permissionFor, type ResourceName } from "../../../../../../modules/admin/application/AdminResources";
+import type { ResourceName } from "../../../../../../modules/admin/application/AdminResources";
 
 function bodyRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("INVALID_BODY");
@@ -33,9 +33,9 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const url = new URL(request.url);
     const resource = (url.searchParams.get("resource") ?? "orders") as ResourceName;
-    await requireAdmin(permissionFor(resource));
+    const { admin } = await requireAdmin();
     const { service } = adminResources();
-    const items = await service.list({ resource, query: url.searchParams.get("q") });
+    const items = await service.list({ actor: admin, resource, query: url.searchParams.get("q") });
     return NextResponse.json({ items });
   } catch (error) {
     return errorResponse(error);
@@ -46,7 +46,7 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const body = bodyRecord(await request.json());
     const resource = body.resource as ResourceName;
-    const { admin } = await requireAdmin(permissionFor(resource, true));
+    const { admin } = await requireAdmin();
     const { service } = adminResources();
     const result = await service.create({ actor: admin, resource, body });
     return NextResponse.json({ created: Boolean(result.id), ...result }, { status: result.id ? 201 : 200 });
@@ -61,7 +61,7 @@ export async function PATCH(request: Request): Promise<Response> {
     const resource = body.resource as ResourceName;
     const id = String(body.id ?? "").trim();
     if (!id) return NextResponse.json({ error: "Resource id is required" }, { status: 400 });
-    const { admin } = await requireAdmin(permissionFor(resource, true));
+    const { admin } = await requireAdmin();
     const { service } = adminResources();
     await service.update({ actor: admin, resource, id, body });
     return NextResponse.json({ updated: true });
