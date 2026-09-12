@@ -3,6 +3,8 @@ import { access, readFile } from "node:fs/promises";
 const requiredFiles = [
   "package.json",
   "pnpm-lock.yaml",
+  ".npmrc",
+  ".node-version",
   "wrangler.jsonc",
   ".env.example",
   ".gitignore",
@@ -12,6 +14,7 @@ const requiredFiles = [
   "docs/rollback.md",
   "scripts/check-architecture.mjs",
   "scripts/check-foundation.mjs",
+  "scripts/verify-install.mjs",
   "scripts/verify-production.mjs",
   "apps/web/next.config.ts",
   "apps/web/middleware.ts",
@@ -52,9 +55,18 @@ if (!liveRoute.includes("status")) failures.push("liveness endpoint is not imple
 if (!readyRoute.includes("status")) failures.push("readiness endpoint is not implemented");
 
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
+if (packageJson.packageManager !== "pnpm@10.15.0") failures.push("packageManager must pin pnpm@10.15.0");
+if (packageJson.engines?.node !== "24.18.0") failures.push("package.json must pin Node.js 24.18.0");
 for (const script of ["architecture:check", "foundation:check", "typecheck", "test", "build", "build:cloudflare", "verify:production", "format:check"]) {
   if (!packageJson.scripts?.[script]) failures.push(`missing root quality script: ${script}`);
 }
+
+const npmrc = await readFile(".npmrc", "utf8");
+if (!npmrc.includes("frozen-lockfile=true")) failures.push(".npmrc must enforce frozen-lockfile=true");
+if (!npmrc.includes("engine-strict=true")) failures.push(".npmrc must enforce engine-strict=true");
+
+const nodeVersion = (await readFile(".node-version", "utf8")).trim();
+if (nodeVersion !== "24.18.0") failures.push(".node-version must pin Node.js 24.18.0");
 
 const gitignore = await readFile(".gitignore", "utf8");
 for (const entry of [".env", ".env.*", ".dev.vars", ".dev.vars.*"]) {
