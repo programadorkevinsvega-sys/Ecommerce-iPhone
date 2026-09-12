@@ -82,19 +82,52 @@ El enforcement de reproducibilidad queda **cerrado para el pipeline de build de 
 - La instalación completó los `621` paquetes sin modificar el lockfile.
 - El build `next build` compiló correctamente, pasó lint/typecheck y generó `40/40` páginas estáticas.
 - OpenNext generó correctamente `.open-next/worker.js` y terminó con `OpenNext build complete`.
-- El comando de deploy ejecutó `npx wrangler versions upload` y completó la subida correctamente.
-- Worker version ID generado por este build: `dc62c79f-cdd4-4dfb-b0a4-2862acfdb8fe`.
-- Bindings presentes: D1, R2, Queue, rate limiters, Assets y `APP_ENV=production`.
+- Posteriormente, el despliegue productivo del **2026-09-12 01:34:16–01:36:09 UTC** volvió a completar el build, sin migraciones pendientes y con la misma toolchain.
 
-Los warnings `No build cache found` de Next.js y `Skipping build output cache as it's not supported for your project` son asuntos de caching/rendimiento, no fallos de reproducibilidad ni del build.
+Los warnings de caché de Next.js y de build output de Cloudflare son asuntos de rendimiento, no fallos de reproducibilidad ni del build.
 
 ## Evidencia operativa — 2026-09-12
 
-El build del **2026-09-12 01:22:24–01:24:36 UTC** se ejecutó sobre el único entorno remoto operativo: **producción**.
+### Build reproducible + upload de versión — 01:22:24–01:24:36 UTC
 
-El resultado confirma el pipeline de instalación reproducible y el empaquetado/deploy de una nueva versión. La salida final informa explícitamente `✨ Success! Build completed.`. La subida mediante `wrangler versions upload` deja la versión disponible, pero el log mostrado no ejecuta `wrangler versions deploy`; por tanto, este evento certifica **build + upload de versión**, no tráfico productivo de esa versión.
+- Node `24.18.0` y pnpm `10.15.0` detectados.
+- `pnpm install --frozen-lockfile` ejecutado por Cloudflare.
+- Segundo `pnpm install --frozen-lockfile` ejecutado por el comando de usuario.
+- Lockfile sin cambios y 621 paquetes instalados/reutilizados.
+- `next build` exitoso; lint/typecheck exitosos; `40/40` páginas estáticas.
+- OpenNext completo.
+- `wrangler versions upload` exitoso.
+- Worker Version ID: `dc62c79f-cdd4-4dfb-b0a4-2862acfdb8fe`.
 
-La evidencia previa de producción continúa certificando el deploy productivo de `d2769d6e-acce-4302-afee-681ff0c6b04c`, health live/ready 200 y `verify:production` PASS. La certificación funcional completa de F6/Fases anteriores sigue separada de estos gates.
+Este evento certifica build + upload de versión, no tráfico productivo de esa versión.
+
+### Deploy productivo + verificación — 01:34:16–01:36:09 UTC
+
+El comando configurado en Cloudflare ejecutó:
+
+`pnpm deploy:cloudflare` → `pnpm db:migrate:production && pnpm build:cloudflare && wrangler deploy --env="" && pnpm verify:production`
+
+Evidencia:
+
+- D1 remoto: `No migrations to apply!`.
+- Next.js `15.5.25` compiló correctamente.
+- Lint y typecheck completaron correctamente.
+- Se generaron `40/40` páginas estáticas.
+- OpenNext finalizó correctamente.
+- Worker subido correctamente.
+- Bindings D1, R2, Queue, Assets y rate limiters presentes.
+- `APP_ENV="production"` presente.
+- Triggers desplegados: cron cada minuto + producer/consumer de `ecommerce-iphone-events`.
+- **Version ID productivo actual:** `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`.
+- URL productiva: `https://ecommerce-iphone.programadorkevinsvega.workers.dev`.
+- `/api/health/live`: HTTP 200.
+- `/api/health/ready`: HTTP 200.
+- `verify:production`: PASS.
+- El smoke de rate limit emitió warning al no observar `429` después de 21 requests; esto se mantiene como warning específico de consistencia eventual de Cloudflare Rate Limiting y no como fallo del despliegue.
+
+Este evento certifica **migrations + build + deploy a tráfico productivo + triggers + health + verify:production** para la versión `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`.
+
+La certificación funcional completa de F6/Fases anteriores sigue separada de estos gates.
 
 ---
 
@@ -138,7 +171,7 @@ Implementado: aggregate Payment y state machine; invariantes amount/currency; Pa
 
 ## 6.2 Persistencia
 
-`0017_payment_refunds.sql` y `0018_payment_refund_locks.sql` están versionadas. El último deploy confirmado informó `No migrations to apply!`.
+`0017_payment_refunds.sql` y `0018_payment_refund_locks.sql` están versionadas. El último deploy confirmó `No migrations to apply!`.
 
 ## 6.3 Certificación
 
@@ -319,7 +352,7 @@ El test de `Order` cubre progresión válida de pago, rechazo de resurrección d
 - [ ] integration tests;
 - [x] Cloudflare build reproducible — build 2026-09-12 01:22–01:24 UTC con `pnpm install --frozen-lockfile`, Node 24.18.0, pnpm 10.15.0 y OpenNext completo;
 - [x] migrations production — `No migrations to apply!` en deploy 2026-09-12;
-- [x] deploy production previo — version `d2769d6e-acce-4302-afee-681ff0c6b04c`;
+- [x] deploy production — version `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`;
 - [x] health live/ready — HTTP 200 en ambos endpoints;
 - [x] `verify:production` — PASS;
 
@@ -351,9 +384,9 @@ Pendiente: DLQ explícita, política definitiva de retry y replay/auditoría de 
 - [x] build Cloudflare completado sin depender de cambios de resolución del lockfile en 2026-09-12 01:22–01:24 UTC;
 - [ ] build limpio repetido desde caché vacía para separar reproducibilidad de cache previa.
 
-> El build de Cloudflare del 2026-09-12 01:22–01:24 UTC validó la configuración final: Node `24.18.0`, pnpm `10.15.0`, `pnpm install --frozen-lockfile`, lockfile sin cambios, `next build` exitoso, `40/40` páginas estáticas y OpenNext completo. La subida terminó con Worker Version ID `dc62c79f-cdd4-4dfb-b0a4-2862acfdb8fe`.
+> El build de Cloudflare del 2026-09-12 01:22–01:24 UTC validó la configuración final: Node `24.18.0`, pnpm `10.15.0`, `pnpm install --frozen-lockfile`, lockfile sin cambios, `next build` exitoso, `40/40` páginas estáticas y OpenNext completo. El deploy productivo posterior del 2026-09-12 01:34–01:36 UTC además confirmó migraciones, despliegue a tráfico productivo, triggers, health y `verify:production` PASS, con versión `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`.
 
-> El warning `No build cache found` de Next.js y `Skipping build output cache as it's not supported for your project` se registran como warnings de caching/rendimiento, no como fallos del lockfile ni del build.
+> Los warnings `No build cache found` de Next.js y `Skipping build output cache as it's not supported for your project` se registran como warnings de caching/rendimiento, no como fallos del lockfile ni del build.
 
 ## Seguridad
 
