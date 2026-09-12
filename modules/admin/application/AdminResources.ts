@@ -1,9 +1,10 @@
 import type { AdminResourceRepository } from "./AdminResourceRepository";
+import { DEFAULT_AUTHORIZATION_POLICY, type AdminRole, type AuthorizationPolicy, type Permission } from "./Rbac";
 
 export type AdminActor = {
   id: string;
   email: string;
-  role: string;
+  role: AdminRole;
 };
 
 export type ResourceName = "products" | "customers" | "services" | "orders";
@@ -17,6 +18,7 @@ export type AdminNotificationPublisher = (event: {
 export type AdminResourcesDeps = {
   repository: AdminResourceRepository;
   publishNotification: AdminNotificationPublisher;
+  authorizationPolicy?: AuthorizationPolicy;
 };
 
 const MAX_QUERY_LENGTH = 100;
@@ -35,7 +37,7 @@ function normalizeResource(value: unknown): ResourceName {
   throw new Error("UNSUPPORTED_RESOURCE");
 }
 
-export function permissionFor(resource: ResourceName, write = false): string {
+export function permissionFor(resource: ResourceName, write = false): Permission {
   if (resource === "customers") return "customers:read";
   if (resource === "services") return write ? "services:write" : "services:read";
   if (resource === "products") return write ? "products:write" : "products:read";
@@ -43,16 +45,22 @@ export function permissionFor(resource: ResourceName, write = false): string {
 }
 
 export class AdminResources {
-  constructor(private readonly deps: AdminResourcesDeps) {}
+  private readonly authorizationPolicy: AuthorizationPolicy;
 
-  async list(input: { resource: unknown; query: unknown }): Promise<unknown[]> {
+  constructor(private readonly deps: AdminResourcesDeps) {
+    this.authorizationPolicy = deps.authorizationPolicy ?? DEFAULT_AUTHORIZATION_POLICY;
+  }
+
+  async list(input: { actor: AdminActor; resource: unknown; query: unknown }): Promise<unknown[]> {
     const resource = normalizeResource(input.resource);
+    this.authorize(input.actor, permissionFor(resource));
     const query = clean(input.query, MAX_QUERY_LENGTH);
     return this.deps.repository.list(resource, query);
   }
 
   async create(input: { actor: AdminActor; resource: unknown; body: Record<string, unknown> }): Promise<{ id?: string }> {
     const resource = normalizeResource(input.resource);
+    this.authorize(input.actor, permissionFor(resource, true));
     if (resource === "products") return this.createProduct(input.actor, input.body);
     if (resource === "services") return this.quoteService(input.actor, input.body);
     throw new Error("UNSUPPORTED_CREATE");
@@ -60,10 +68,15 @@ export class AdminResources {
 
   async update(input: { actor: AdminActor; resource: unknown; id: string; body: Record<string, unknown> }): Promise<void> {
     const resource = normalizeResource(input.resource);
+    this.authorize(input.actor, permissionFor(resource, true));
     if (resource === "products") return this.updateProduct(input.actor, input.id, input.body);
     if (resource === "orders") return this.updateOrder(input.actor, input.id, input.body);
     if (resource === "services") return this.updateService(input.actor, input.id, input.body);
     throw new Error("UNSUPPORTED_UPDATE");
+  }
+
+  private authorize(actor: AdminActor, permission: Permission): void {
+    if (!this.authorizationPolicy.can(actor.role, permission)) throw new Error("FORBIDDEN");
   }
 
   private async createProduct(actor: AdminActor, body: Record<string, unknown>): Promise<{ id: string }> {
@@ -101,8 +114,7 @@ export class AdminResources {
     const current = await this.deps.repository.getServiceForMutation(id);
     if (!current) throw new Error("SERVICE_NOT_FOUND");
 
-    await this.deps.repository.quoteService(id, amountInCents);
-    await this.deps.repository.audit(actor.id, "ADMIN_SERVICE_QUOTED", "service_request", id, { amountInCents });
+    await this.deps.repository.quoteService(id, amountInCents, actor.id);
     await this.deps.publishNotification({ eventType: "ServiceStatusChanged", aggregateId: id, payload: { email: current.email, serviceRequestId: id, status: "QUOTED", quoteInCents: amountInCents } });
     return {};
   }
@@ -127,7 +139,6 @@ export class AdminResources {
     if (current.status !== status) {
       await this.deps.publishNotification({ eventType: status === "PAID" ? "OrderPaid" : "OrderStatusChanged", aggregateId: id, payload: { email: current.email, orderId: id, orderNumber: current.orderNumber, status } });
     }
-    await this.deps.repository.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "orders", id, body);
   }
 
   private async updateService(actor: AdminActor, id: string, body: Record<string, unknown>): Promise<void> {
@@ -139,6 +150,5 @@ export class AdminResources {
     if (!current) throw new Error("SERVICE_NOT_FOUND");
     await this.deps.repository.updateServiceStatus(id, status, actor.id, current.status);
     if (current.status !== status) await this.deps.publishNotification({ eventType: "ServiceStatusChanged", aggregateId: id, payload: { email: current.email, serviceRequestId: id, status } });
-    await this.deps.repository.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "services", id, body);
   }
 }
