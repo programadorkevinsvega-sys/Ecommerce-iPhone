@@ -15,8 +15,8 @@ concurrency:
 
 env:
   DB_NAME: ecommerce-iphone
-  PRODUCTION_URL: https://ecommerce-iphone.programadorkevinsvega.workers.dev
-  PERF_BASE_URL: https://ecommerce-iphone.programadorkevinsvega.workers.dev
+  PRODUCTION_URL: https://ecommerce-iphone.programadorkevinsvega-sys.workers.dev
+  PERF_BASE_URL: https://ecommerce-iphone.programadorkevinsvega-sys.workers.dev
 
 jobs:
   deploy:
@@ -36,7 +36,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24.18.0
           cache: pnpm
 
       - name: Install dependencies
