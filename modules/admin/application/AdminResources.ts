@@ -81,13 +81,14 @@ export class AdminResources {
     const id = clean(body.id, 100), amountInCents = Number(body.quote_in_cents);
     if (!id || !Number.isInteger(amountInCents) || amountInCents < 0) throw new Error("INVALID_SERVICE_QUOTE");
     const current = await this.deps.repository.getServiceForMutation(id); if (!current) throw new Error("SERVICE_NOT_FOUND");
+    if (current.status === "QUOTED") throw new Error("SERVICE_NOOP_TRANSITION");
     await this.deps.repository.quoteService(id, amountInCents, actor.id);
     await this.deps.publishNotification({ eventType: "ServiceStatusChanged", aggregateId: id, payload: { email: current.email, serviceRequestId: id, status: "QUOTED", quoteInCents: amountInCents } });
     return {};
   }
 
   private async updateProduct(actor: AdminActor, id: string, body: Record<string, unknown>): Promise<void> {
-    const allowed = new Set(["name", "description", "price_in_cents", "stock", "active", "seo_title", "seo_description", "warranty_months", "battery_health", "storage_gb", "color", "specs_json"]);
+    const allowed = new Set(["name", "description", "price_in_cents", "active", "seo_title", "seo_description", "warranty_months", "battery_health", "storage_gb", "color", "specs_json"]);
     const fields = Object.keys(body).filter((key) => allowed.has(key)); if (!fields.length) throw new Error("NO_EDITABLE_FIELDS");
     const validation: Record<string, unknown> = Object.fromEntries(fields.map((key) => [key, key === "active" ? bool(body[key]) : body[key]]));
     try { validateProductPatch(validation); } catch { throw new Error("INVALID_PRODUCT"); }
@@ -100,15 +101,17 @@ export class AdminResources {
     const status = clean(body.status, 30); const allowed = ["PENDING_PAYMENT", "PAYMENT_PROCESSING", "PAID", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED", "REFUND_PENDING", "REFUNDED"];
     if (!allowed.includes(status)) throw new Error("INVALID_ORDER_STATUS");
     const current = await this.deps.repository.getOrderForMutation(id); if (!current) throw new Error("ORDER_NOT_FOUND");
+    if (current.status === status) throw new Error("ORDER_NOOP_TRANSITION");
     await this.deps.repository.updateOrderStatus(id, status, actor.id, current.status);
-    if (current.status !== status) await this.deps.publishNotification({ eventType: status === "PAID" ? "OrderPaid" : "OrderStatusChanged", aggregateId: id, payload: { email: current.email, orderId: id, orderNumber: current.orderNumber, status } });
+    await this.deps.publishNotification({ eventType: status === "PAID" ? "OrderPaid" : "OrderStatusChanged", aggregateId: id, payload: { email: current.email, orderId: id, orderNumber: current.orderNumber, status } });
   }
 
   private async updateService(actor: AdminActor, id: string, body: Record<string, unknown>): Promise<void> {
     const status = clean(body.status, 30); const allowed = ["PENDING", "QUOTED", "PAYMENT_PENDING", "PAID", "PROCESSING", "WAITING_CUSTOMER", "COMPLETED", "REJECTED", "REFUNDED"];
     if (!allowed.includes(status)) throw new Error("INVALID_SERVICE_STATUS");
     const current = await this.deps.repository.getServiceForMutation(id); if (!current) throw new Error("SERVICE_NOT_FOUND");
+    if (current.status === status) throw new Error("SERVICE_NOOP_TRANSITION");
     await this.deps.repository.updateServiceStatus(id, status, actor.id, current.status);
-    if (current.status !== status) await this.deps.publishNotification({ eventType: "ServiceStatusChanged", aggregateId: id, payload: { email: current.email, serviceRequestId: id, status } });
+    await this.deps.publishNotification({ eventType: "ServiceStatusChanged", aggregateId: id, payload: { email: current.email, serviceRequestId: id, status } });
   }
 }
