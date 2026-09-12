@@ -1,6 +1,8 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { AdminResourceRepository, MutationOrder, MutationService, ProductCreation } from "../application/AdminResourceRepository";
 import type { ResourceName } from "../application/AdminResources";
+import { assertOrderTransition, type OrderStatus } from "../../orders/domain/Order";
+import { assertServiceRequestTransition, type ServiceRequestStatus } from "../../services/domain/ServiceRequest";
 import type { D1AdminRepository } from "./D1AdminRepository";
 
 type Db = D1Database;
@@ -41,15 +43,24 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
   }
 
   async quoteService(id: string, amountInCents: number): Promise<void> {
-    await this.db.prepare("UPDATE service_requests SET quote_in_cents=?,status='QUOTED',updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(amountInCents, id).run();
-    await this.db.prepare("INSERT INTO service_audit_events (id,service_request_id,event_type,payload_json) VALUES (?,?,?,?)")
-      .bind(crypto.randomUUID(), id, "AdminServiceQuoted", JSON.stringify({ amountInCents })).run();
+    const result = await this.db.batch([
+      this.db.prepare("UPDATE service_requests SET quote_in_cents=?,status='QUOTED',updated_at=CURRENT_TIMESTAMP WHERE id=? AND status='PENDING'").bind(amountInCents, id),
+      this.db.prepare("INSERT INTO service_audit_events (id,service_request_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
+        crypto.randomUUID(), id, "AdminServiceQuoted", JSON.stringify({ amountInCents }),
+      ),
+    ]);
+    if (result[0]?.meta.changes !== 1) throw new Error("INVALID_SERVICE_TRANSITION");
   }
 
   async updateServiceStatus(id: string, status: string, actorId: string, fromStatus: string): Promise<void> {
-    await this.db.prepare("UPDATE service_requests SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(status, id).run();
-    await this.db.prepare("INSERT INTO service_audit_events (id,service_request_id,event_type,payload_json) VALUES (?,?,?,?)")
-      .bind(crypto.randomUUID(), id, "AdminServiceStatusChanged", JSON.stringify({ from: fromStatus, to: status, adminId: actorId })).run();
+    assertServiceRequestTransition(fromStatus as ServiceRequestStatus, status as ServiceRequestStatus);
+    const result = await this.db.batch([
+      this.db.prepare("UPDATE service_requests SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(status, id, fromStatus),
+      this.db.prepare("INSERT INTO service_audit_events (id,service_request_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
+        crypto.randomUUID(), id, "AdminServiceStatusChanged", JSON.stringify({ from: fromStatus, to: status, adminId: actorId }),
+      ),
+    ]);
+    if (result[0]?.meta.changes !== 1) throw new Error("SERVICE_STATUS_CONFLICT");
   }
 
   async getOrderForMutation(id: string): Promise<MutationOrder | null> {
@@ -57,9 +68,14 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
   }
 
   async updateOrderStatus(id: string, status: string, actorId: string, fromStatus: string): Promise<void> {
-    await this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(status, id).run();
-    await this.db.prepare("INSERT INTO order_events (id,order_id,event_type,payload_json) VALUES (?,?,?,?)")
-      .bind(crypto.randomUUID(), id, "AdminOrderStatusChanged", JSON.stringify({ from: fromStatus, to: status, adminId: actorId })).run();
+    assertOrderTransition(fromStatus as OrderStatus, status as OrderStatus);
+    const result = await this.db.batch([
+      this.db.prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?").bind(status, id, fromStatus),
+      this.db.prepare("INSERT INTO order_events (id,order_id,event_type,payload_json) SELECT ?,?,?,? WHERE changes()=1").bind(
+        crypto.randomUUID(), id, "AdminOrderStatusChanged", JSON.stringify({ from: fromStatus, to: status, adminId: actorId }),
+      ),
+    ]);
+    if (result[0]?.meta.changes !== 1) throw new Error("ORDER_STATUS_CONFLICT");
   }
 
   async audit(actorId: string, action: string, resource: string, resourceId: string, metadata: unknown): Promise<void> {
