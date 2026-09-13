@@ -64,3 +64,49 @@ Search parameters are normalized and length-bounded before reaching application 
 Contact page audit: the current `contacto` page is informational and does not expose a submission form or contact-ingestion API, so no unimplemented backend was invented during this phase.
 
 A separate storefront customer-login form was not found in the production route tree; the identified login UI is the admin login and is covered by this phase.
+
+## URL, routing and parameters — Security Phase 8 audit
+
+### Dynamic routes audited
+
+- `/iphone/[slug]`
+- `/productos/[slug]` legacy route redirecting internally to `/iphone/[slug]`
+- `/orders/[id]`
+- `/api/orders/[id]`
+
+### Open redirect audit
+
+No production use of `redirect`, `returnUrl`, `callback`, `next` or a user-controlled destination parameter was found in the audited routing surface. The payment-provider redirects are separately protected by the Phase 6 provider allowlist and HTTPS validation.
+
+The legacy product redirect is internally constructed and does not accept a destination URL. It should additionally validate the route slug before constructing the internal pathname.
+
+### ID manipulation / IDOR
+
+`/api/orders/[id]` does not trust the URL identifier as authorization. It resolves the authenticated `customer_session` server-side and calls `GetOrderForCustomer`, which requires `order.customerId === session.customerId` before returning the order. Changing `/orders/123` to another identifier therefore cannot by itself cross the customer ownership boundary.
+
+The remaining hardening item is early route-parameter validation before repository lookup so malformed identifiers are rejected before the application query.
+
+### Slug injection
+
+Product lookup uses a parameterized D1 query (`slug = ?`), so the `[slug]` value is not interpolated into SQL. The remaining hardening item is strict canonical slug validation before lookup and redirect construction.
+
+### SEO audit
+
+Product metadata is generated dynamically from the server-side product record and currently provides title, description, canonical URL, Open Graph metadata and Product JSON-LD. JSON-LD continues to pass through the existing safe serializer.
+
+Current SEO issue found: `sitemap.ts` only requests the first 48 catalog records, so it does not necessarily expose the complete product catalog. It also emits `/productos/[slug]` for non-Apple products even though `/productos/[slug]` is a legacy redirect to `/iphone/[slug]`. The sitemap should use the canonical `/iphone/[slug]` path and paginate until the catalog total has been exhausted.
+
+`robots.ts` correctly excludes `/admin` and `/api/` and points to `/sitemap.xml`, but both sitemap and robots currently use `example.com` as a fallback when `NEXT_PUBLIC_APP_URL` is absent. Production should use a validated canonical application URL rather than a placeholder domain.
+
+### Phase 8 certification state
+
+**🟡 AUDITED — not yet certified.**
+
+Code-level hardening still required before declaring Phase 8 complete:
+
+1. strict route slug validation before product lookup;
+2. strict resource-ID normalization before order lookup;
+3. generic server error responses for order retrieval failures;
+4. validated canonical application URL for metadata/sitemap/robots;
+5. complete sitemap pagination using canonical product paths;
+6. tests covering malformed slugs, malformed IDs and canonical SEO output.
