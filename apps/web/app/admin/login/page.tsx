@@ -12,80 +12,42 @@ export default function AdminLoginPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError("");
 
-    const response = await fetch("/api/admin/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const response = await fetch("/api/admin/auth/login", {
+        method: "POST",
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const data = (await response.json()) as { error?: string };
-    setLoading(false);
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        setError(data.error ?? "No se pudo iniciar sesión");
+        return;
+      }
 
-    if (!response.ok) {
-      setError(data.error ?? "No se pudo iniciar sesión");
-      return;
+      router.replace("/admin");
+      router.refresh();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Error de red. Inténtalo nuevamente.");
+    } finally {
+      setLoading(false);
     }
-
-    router.replace("/admin");
-    router.refresh();
   }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        padding: 24,
-      }}
-    >
-      <form
-        onSubmit={submit}
-        style={{
-          width: "100%",
-          maxWidth: 420,
-          display: "grid",
-          gap: 16,
-          padding: 28,
-          border: "1px solid #ddd",
-          borderRadius: 20,
-        }}
-      >
-        <div>
-          <h1>Panel administrativo</h1>
-          <p>Acceso seguro para operadores autorizados.</p>
-        </div>
-
-        <label>
-          Email
-          <input
-            required
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-
-        <label>
-          Contraseña
-          <input
-            required
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-
+    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
+      <form onSubmit={submit} style={{ width: "100%", maxWidth: 420, display: "grid", gap: 16, padding: 28, border: "1px solid #ddd", borderRadius: 20 }}>
+        <div><h1>Panel administrativo</h1><p>Acceso seguro para operadores autorizados.</p></div>
+        <label>Email<input required type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
+        <label>Contraseña<input required type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
         {error && <p role="alert">{error}</p>}
-
-        <button disabled={loading} type="submit">
-          {loading ? "Entrando…" : "Iniciar sesión"}
-        </button>
+        <button disabled={loading} type="submit">{loading ? "Entrando…" : "Iniciar sesión"}</button>
       </form>
     </main>
   );
