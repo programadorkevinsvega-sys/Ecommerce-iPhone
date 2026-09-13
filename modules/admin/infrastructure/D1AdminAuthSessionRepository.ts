@@ -1,3 +1,4 @@
+import type { D1Database } from "@cloudflare/workers-types";
 import type { AdminSessionRepository } from "../application/AdminSessionRepository";
 import { D1AdminRepository } from "./D1AdminRepository";
 
