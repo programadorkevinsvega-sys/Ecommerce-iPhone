@@ -36,14 +36,3 @@ CREATE INDEX IF NOT EXISTS idx_products_condition ON products(condition, active)
 CREATE INDEX IF NOT EXISTS idx_products_price ON products(price_in_cents, active);
 CREATE INDEX IF NOT EXISTS idx_products_created ON products(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_product_images_product ON product_images(product_id, sort_order);
-
-INSERT OR IGNORE INTO products (id,name,slug,brand,model,description,condition,price_in_cents,currency,stock,active,seo_title,seo_description,warranty_months,battery_health,storage_gb,color,specs_json)
-VALUES
-('prod-iphone-17-pro-max','iPhone 17 Pro Max','iphone-17-pro-max','Apple','iPhone 17 Pro Max','Smartphone premium con cámara Pro, gran autonomía y pantalla de alta gama.','NEW',649990000,'COP',8,1,'iPhone 17 Pro Max nuevo | Ecommerce iPhone','Compra iPhone 17 Pro Max nuevo con garantía, inventario y atención especializada.',12,NULL,256,'Titanio negro','{"Pantalla":"6.9 pulgadas","Chip":"A19 Pro","Cámara":"Pro 48 MP","Conectividad":"5G"}'),
-('prod-galaxy-s25-ultra','Samsung Galaxy S25 Ultra','galaxy-s25-ultra','Samsung','Galaxy S25 Ultra','Flagship Samsung con pantalla premium, cámara avanzada y alto rendimiento.','NEW',529990000,'COP',6,1,'Samsung Galaxy S25 Ultra | Ecommerce iPhone','Galaxy S25 Ultra nuevo con garantía y soporte especializado.',12,NULL,512,'Titanium Gray','{"Pantalla":"6.9 pulgadas","RAM":"12 GB","Cámara":"200 MP","Conectividad":"5G"}'),
-('prod-iphone-16-pro','iPhone 16 Pro','iphone-16-pro','Apple','iPhone 16 Pro','iPhone Pro de generación anterior en excelente estado, ideal para alto rendimiento.','REFURBISHED',389990000,'COP',4,1,'iPhone 16 Pro reacondicionado | Ecommerce iPhone','iPhone 16 Pro reacondicionado con batería verificada y garantía.',6,98,256,'Titanio natural','{"Pantalla":"6.3 pulgadas","Chip":"A18 Pro","Cámara":"Pro 48 MP","Conectividad":"5G"}');
-
-INSERT OR IGNORE INTO product_images (id,product_id,url,alt_text,sort_order) VALUES
-('img-iphone-17-1','prod-iphone-17-pro-max','/products/iphone-17-pro-max.webp','iPhone 17 Pro Max',0),
-('img-s25-1','prod-galaxy-s25-ultra','/products/galaxy-s25-ultra.webp','Samsung Galaxy S25 Ultra',0),
-('img-iphone-16-1','prod-iphone-16-pro','/products/iphone-16-pro.webp','iPhone 16 Pro',0);
