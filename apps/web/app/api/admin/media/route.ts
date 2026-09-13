@@ -12,6 +12,9 @@ export async function POST(request: Request) {
   try {
     await requireAdmin(PERMISSIONS.cmsWrite);
     const { env } = getCloudflareContext();
+    const scope = new URL(request.url).searchParams.get("scope");
+    const prefix = scope === "product" ? "product-images" : scope === "home" ? "home-carousel" : "";
+    if (!prefix) return NextResponse.json({ error: "Invalid media scope" }, { status: 400 });
     const form = await request.formData();
     const file = form.get("file");
     if (
@@ -22,7 +25,7 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({ error: "Archivo de imagen inválido" }, { status: 400 });
     }
-    const key = `home-carousel/${crypto.randomUUID()}.${TYPES.get(file.type)}`;
+    const key = `${prefix}/${crypto.randomUUID()}.${TYPES.get(file.type)}`;
     await env.MEDIA_BUCKET.put(key, await file.arrayBuffer(), {
       httpMetadata: { contentType: file.type },
     });

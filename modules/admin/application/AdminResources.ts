@@ -27,6 +27,7 @@ export type AdminResourcesDeps = {
 };
 const MAX_QUERY_LENGTH = 100;
 const MAX_PRODUCT_CATEGORIES = 50;
+const MAX_PRODUCT_IMAGES = 5;
 
 function clean(value: unknown, max: number): string {
   return String(value ?? "")
@@ -80,6 +81,17 @@ function parseCategoryIds(value: unknown): string[] {
   const ids = value.map((item) => clean(item, 128)).filter(Boolean);
   if (ids.length !== value.length) throw new Error("INVALID_PRODUCT_CATEGORIES");
   return [...new Set(ids)];
+}
+function parseProductImages(value: unknown): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > MAX_PRODUCT_IMAGES)
+    throw new Error("INVALID_PRODUCT_IMAGES");
+  const images = value.map((item) => clean(item, 2048));
+  if (
+    images.some((url) => !/^\/api\/media\/product-images\/[a-z0-9-]+\.(?:jpg|png|webp)$/i.test(url))
+  )
+    throw new Error("INVALID_PRODUCT_IMAGES");
+  return [...new Set(images)];
 }
 
 export class AdminResources {
@@ -150,6 +162,7 @@ export class AdminResources {
   ): Promise<{ id: string }> {
     const categoryIds =
       body.category_ids === undefined ? undefined : parseCategoryIds(body.category_ids);
+    const images = parseProductImages(body.images);
     const props = validateProductProps({
       name: clean(body.name, 180),
       slug: clean(body.slug, 180),
@@ -195,6 +208,7 @@ export class AdminResources {
     });
     if (categoryIds !== undefined)
       await this.replaceProductCategories({ actor, productId: id, categoryIds });
+    if (body.images !== undefined) await this.deps.repository.replaceProductImages(id, images);
     await this.deps.audit.audit(actor.id, "ADMIN_PRODUCT_CREATED", "product", id, {
       name: props.name,
       slug: props.slug,
@@ -250,6 +264,7 @@ export class AdminResources {
       "color",
       "specs_json",
     ]);
+    const images = body.images === undefined ? undefined : parseProductImages(body.images);
     const fields = Object.keys(body).filter((key) => allowed.has(key));
     if (!fields.length) throw new Error("NO_EDITABLE_FIELDS");
     const validation: Record<string, unknown> = Object.fromEntries(
@@ -272,6 +287,7 @@ export class AdminResources {
     await this.deps.repository.updateProduct(id, fields, values);
     if (body.category_ids !== undefined)
       await this.replaceProductCategories({ actor, productId: id, categoryIds: body.category_ids });
+    if (images !== undefined) await this.deps.repository.replaceProductImages(id, images);
     await this.deps.audit.audit(
       actor.id,
       "ADMIN_RESOURCE_UPDATED",

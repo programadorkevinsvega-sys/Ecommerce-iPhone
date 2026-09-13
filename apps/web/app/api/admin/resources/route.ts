@@ -11,12 +11,20 @@ function bodyRecord(value: unknown): Record<string, unknown> {
 
 function errorResponse(error: unknown): Response {
   const code = error instanceof Error ? error.message : "UNKNOWN";
-  const status = code === "UNAUTHORIZED" ? 401 : code === "FORBIDDEN" ? 403 : code.endsWith("_NOT_FOUND") ? 404 : 400;
+  const status =
+    code === "UNAUTHORIZED"
+      ? 401
+      : code === "FORBIDDEN"
+        ? 403
+        : code.endsWith("_NOT_FOUND")
+          ? 404
+          : 400;
   const messages: Record<string, string> = {
     UNAUTHORIZED: "Authentication required",
     FORBIDDEN: "Forbidden",
     INVALID_BODY: "Invalid request body",
     INVALID_PRODUCT: "Invalid product",
+    INVALID_PRODUCT_IMAGES: "A product can have at most 5 valid images",
     INVALID_SERVICE_QUOTE: "Valid service id and quote are required",
     INVALID_ORDER_STATUS: "Invalid order status",
     INVALID_SERVICE_STATUS: "Invalid service status",
@@ -51,7 +59,10 @@ export async function POST(request: Request): Promise<Response> {
     const { admin } = await requireAdmin();
     const { service } = adminResources();
     const result = await service.create({ actor: admin, resource, body });
-    return NextResponse.json({ created: Boolean(result.id), ...result }, { status: result.id ? 201 : 200 });
+    return NextResponse.json(
+      { created: Boolean(result.id), ...result },
+      { status: result.id ? 201 : 200 },
+    );
   } catch (error) {
     return errorResponse(error);
   }

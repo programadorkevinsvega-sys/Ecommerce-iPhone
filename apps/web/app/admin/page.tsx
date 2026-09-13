@@ -42,6 +42,8 @@ type ProductForm = {
   warrantyMonths: string;
   active: boolean;
   categoryIds: string[];
+  imageUrls: string[];
+  imageFiles: File[];
 };
 type CustomerForm = { id: string; firstName: string; lastName: string; phone: string };
 type ServiceType = {
@@ -101,6 +103,8 @@ const EMPTY_PRODUCT: ProductForm = {
   warrantyMonths: "12",
   active: true,
   categoryIds: [],
+  imageUrls: [],
+  imageFiles: [],
 };
 const money = (cents: number) =>
   new Intl.NumberFormat("es-CO", {
@@ -291,6 +295,28 @@ export default function AdminPage() {
     event.preventDefault();
     if (!productForm) return;
     const form = productForm;
+    const uploadedUrls: string[] = [];
+    for (const file of form.imageFiles) {
+      const upload = new FormData();
+      upload.set("file", file);
+      const uploadResponse = await fetch("/api/admin/media?scope=product", {
+        method: "POST",
+        body: upload,
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const uploadData = await json<{ url?: string; error?: string }>(uploadResponse);
+      if (!uploadResponse.ok || !uploadData.url) {
+        setError(uploadData.error ?? "No se pudo cargar una imagen del producto.");
+        return;
+      }
+      uploadedUrls.push(uploadData.url);
+    }
+    const images = [...form.imageUrls, ...uploadedUrls];
+    if (images.length > 5) {
+      setError("Un producto puede tener máximo 5 imágenes.");
+      return;
+    }
     const body = {
       resource: "products",
       name: normalizeSingleLine(form.name),
@@ -304,6 +330,7 @@ export default function AdminPage() {
       warranty_months: Number(form.warrantyMonths),
       active: form.active,
       category_ids: form.categoryIds,
+      images,
     };
     const ok = await mutate(
       "/api/admin/resources",
@@ -327,6 +354,14 @@ export default function AdminPage() {
           warrantyMonths: value(item, "warranty_months") || "12",
           active: item.active === 1 || item.active === true,
           categoryIds: [],
+          imageUrls: (() => {
+            try {
+              return JSON.parse(value(item, "image_urls"));
+            } catch {
+              return [];
+            }
+          })(),
+          imageFiles: [],
         }
       : { ...EMPTY_PRODUCT };
     const response = await fetch("/api/admin/categories", {
@@ -925,6 +960,7 @@ function ProductTable({
           <th>Producto</th>
           <th>Marca / modelo</th>
           <th>Precio</th>
+          <th>Imágenes</th>
           <th>Inventario</th>
           <th>Estado</th>
           <th className="align-right">Acciones</th>
@@ -943,6 +979,7 @@ function ProductTable({
             <td>
               <strong>{money(Number(item.price_in_cents ?? 0))}</strong>
             </td>
+            <td>{value(item, "image_count") || "0"} / 5</td>
             <td>
               <span className={Number(item.stock ?? 0) <= 2 ? "stock-low" : ""}>
                 {value(item, "stock")}
@@ -1297,6 +1334,45 @@ function ProductModal({
             </div>
           )}
         </fieldset>
+        <label>
+          Imágenes del producto (máximo 5)
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            onChange={(event) => {
+              const selected = Array.from(event.target.files ?? []);
+              setForm({
+                ...form,
+                imageFiles: selected.slice(0, Math.max(0, 5 - form.imageUrls.length)),
+              });
+            }}
+          />
+          <span className="form-help">
+            JPG, PNG o WebP. Las imágenes se almacenan en Cloudflare R2.
+          </span>
+          {form.imageUrls.length > 0 && (
+            <div className="product-image-list">
+              {form.imageUrls.map((url, index) => (
+                <div className="product-image-item" key={url}>
+                  <img src={url} alt={`Imagen ${index + 1} del producto`} />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({
+                        ...form,
+                        imageUrls: form.imageUrls.filter((_, itemIndex) => itemIndex !== index),
+                      })
+                    }
+                    aria-label={`Quitar imagen ${index + 1}`}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </label>
         <label>
           Descripción
           <textarea
@@ -1683,7 +1759,7 @@ function HomeSlideModal({
       if (file) {
         const upload = new FormData();
         upload.set("file", file);
-        const uploadResponse = await fetch("/api/admin/media", {
+        const uploadResponse = await fetch("/api/admin/media?scope=home", {
           method: "POST",
           body: upload,
           credentials: "same-origin",
