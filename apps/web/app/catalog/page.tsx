@@ -91,49 +91,47 @@ export default async function CatalogPage({
       </section>
       <section className="catalog-layout" aria-label="Catálogo de productos">
         <form className="filters" method="get" aria-label="Filtros de catálogo">
-          <strong>Filtrar productos</strong>
-          <label htmlFor="catalog-search">Buscar</label>
-          <input
-            id="catalog-search"
-            defaultValue={q}
-            placeholder="iPhone, Galaxy..."
-            name="q"
-            type="search"
-            maxLength={100}
-            autoComplete="off"
-            inputMode="search"
-          />
-          <label htmlFor="catalog-category">Categoría</label>
-          <select id="catalog-category" defaultValue={category ?? ""} name="category">
-            <option value="">Todas</option>
-            {categories.map((item) => (
-              <option key={item.id} value={item.slug}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-          <label htmlFor="catalog-brand">Marca</label>
-          <input
-            id="catalog-brand"
-            defaultValue={brand ?? ""}
-            name="brand"
-            type="search"
-            maxLength={80}
-            autoComplete="off"
-          />
-          <label htmlFor="catalog-condition">Condición</label>
-          <select id="catalog-condition" defaultValue={condition ?? ""} name="condition">
-            <option value="">Todas</option>
-            <option value="NEW">Nuevo</option>
-            <option value="USED">Usado</option>
-            <option value="REFURBISHED">Reacondicionado</option>
-          </select>
-          <label htmlFor="catalog-sort">Ordenar</label>
-          <select id="catalog-sort" defaultValue={sort} name="sort">
-            <option value="newest">Más recientes</option>
-            <option value="price-asc">Precio: menor a mayor</option>
-            <option value="price-desc">Precio: mayor a menor</option>
-          </select>
+          <label htmlFor="catalog-search">
+            Buscar
+            <input
+              id="catalog-search"
+              defaultValue={q}
+              placeholder="iPhone, Galaxy..."
+              name="q"
+              type="search"
+              maxLength={100}
+              autoComplete="off"
+              inputMode="search"
+            />
+          </label>
+          <label htmlFor="catalog-category">
+            Categoría
+            <select id="catalog-category" defaultValue={category ?? ""} name="category">
+              <option value="">Todas</option>
+              {categories.map((item) => (
+                <option key={item.id} value={item.slug}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor="catalog-condition">
+            Condición
+            <select id="catalog-condition" defaultValue={condition ?? ""} name="condition">
+              <option value="">Todas</option>
+              <option value="NEW">Nuevo</option>
+              <option value="USED">Usado</option>
+              <option value="REFURBISHED">Reacondicionado</option>
+            </select>
+          </label>
+          <label htmlFor="catalog-sort">
+            Ordenar
+            <select id="catalog-sort" defaultValue={sort} name="sort">
+              <option value="newest">Más recientes</option>
+              <option value="price-asc">Precio: menor a mayor</option>
+              <option value="price-desc">Precio: mayor a menor</option>
+            </select>
+          </label>
           <button type="submit">Aplicar filtros</button>
           <Link href="/catalog" className="text-link">
             Limpiar filtros

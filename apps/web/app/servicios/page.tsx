@@ -36,9 +36,6 @@ export default function ServicesPage() {
           Consulta los servicios publicados por la tienda y envía tu solicitud con los datos de tu
           equipo.
         </p>
-        <Link className="primary-button" href="/servicios/solicitar">
-          Solicitar servicio
-        </Link>
       </section>
       <section className="section">
         <div className="services-grid">
