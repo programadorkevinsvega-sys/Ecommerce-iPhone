@@ -3,6 +3,7 @@ import { adminServiceTypesApplication } from "../adminApplication";
 import { PERMISSIONS, requireAdmin } from "../adminAuth";
 
 export async function listAdminServiceTypes() {
+  await requireAdmin(PERMISSIONS.serviceTypesWrite);
   const { env } = getCloudflareContext();
   return adminServiceTypesApplication(env).list();
 }

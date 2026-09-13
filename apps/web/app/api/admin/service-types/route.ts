@@ -16,6 +16,8 @@ export async function POST(request: Request) {
     if (!body || typeof body !== "object" || Array.isArray(body)) return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     return NextResponse.json({ created: true, serviceType: await createAdminServiceType(body as Record<string, unknown>) }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid service type" }, { status: 400 });
+    const code = error instanceof Error ? error.message : "UNKNOWN";
+    const status = code === "UNAUTHORIZED" ? 401 : code === "FORBIDDEN" ? 403 : 400;
+    return NextResponse.json({ error: status === 401 ? "Authentication required" : status === 403 ? "Forbidden" : "Invalid service type" }, { status, headers: { "cache-control": "no-store" } });
   }
 }
