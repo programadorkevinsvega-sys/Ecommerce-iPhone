@@ -29,6 +29,7 @@
     "db:migration:list": "wrangler d1 migrations list DB --remote",
     "architecture:check": "node scripts/check-architecture.mjs",
     "foundation:check": "node scripts/check-foundation.mjs",
+    "frontend:data:check": "node scripts/check-frontend-production-data.mjs",
     "lint": "pnpm --filter @ecommerce/web lint",
     "typecheck": "pnpm --filter @ecommerce/web typecheck",
     "test": "pnpm --filter @ecommerce/web test",
