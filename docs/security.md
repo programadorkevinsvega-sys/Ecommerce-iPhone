@@ -25,3 +25,42 @@ The application layer exposes an `AuditLogger` port for security-sensitive actio
 ## Sensitive device data
 
 IMEI/serial information must be treated as private service data: never expose it in public URLs, catalog pages, logs or analytics events. Access should be authorized and auditable.
+
+## Form and input hardening — Security Phase 7
+
+All implemented production forms follow the same boundary contract:
+
+```text
+input
+  ↓
+normalización
+  ↓
+validación
+  ↓
+submit
+  ↓
+manejo seguro del error
+```
+
+The shared implementation is `apps/web/lib/inputValidation.ts` and its unit tests are in `apps/web/lib/inputValidation.test.ts`.
+
+Covered surfaces:
+
+- admin login;
+- checkout and shipping data;
+- product reviews;
+- service requests;
+- catalog search and filters;
+- admin resource search/state controls.
+
+The browser layer adds `required`, `minLength`, `maxLength`, `type`, `inputMode`, `autoComplete`, labels and ARIA metadata where applicable. These constraints are UX/accessibility controls only.
+
+Every sensitive API boundary repeats normalization and validation server-side. Browser `required`, `minLength`, `maxLength`, pattern and type checks are never treated as security authority.
+
+User-controlled values are not echoed directly into error responses. Client presentation uses generic status-aware errors for authentication, authorization, conflicts and invalid input.
+
+Search parameters are normalized and length-bounded before reaching application search. Administrative identifiers are normalized before mutation operations.
+
+Contact page audit: the current `contacto` page is informational and does not expose a submission form or contact-ingestion API, so no unimplemented backend was invented during this phase.
+
+A separate storefront customer-login form was not found in the production route tree; the identified login UI is the admin login and is covered by this phase.
