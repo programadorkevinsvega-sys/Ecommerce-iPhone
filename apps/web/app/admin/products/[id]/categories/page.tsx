@@ -27,11 +27,10 @@ export default function ProductCategoriesPage() {
     const controller = new AbortController();
     async function load() {
       try {
-        const headers = { credentials: "same-origin" } as const;
         const [categoriesResponse, assignmentResponse, productsResponse] = await Promise.all([
-          fetch("/api/admin/categories", { cache: "no-store", credentials: headers.credentials, signal: controller.signal }),
-          fetch(`/api/admin/products/${encodeURIComponent(productId)}/categories`, { cache: "no-store", credentials: headers.credentials, signal: controller.signal }),
-          fetch(`/api/admin/resources?resource=products`, { cache: "no-store", credentials: headers.credentials, signal: controller.signal }),
+          fetch("/api/admin/categories", { cache: "no-store", credentials: "same-origin", signal: controller.signal }),
+          fetch(`/api/admin/products/${encodeURIComponent(productId)}/categories`, { cache: "no-store", credentials: "same-origin", signal: controller.signal }),
+          fetch(`/api/admin/resources?resource=products&q=${encodeURIComponent(productId)}`, { cache: "no-store", credentials: "same-origin", signal: controller.signal }),
         ]);
         if ([categoriesResponse, assignmentResponse, productsResponse].some((response) => response.status === 401 || response.status === 403)) {
           router.replace("/admin/login");
@@ -42,7 +41,7 @@ export default function ProductCategoriesPage() {
         const productsData = (await productsResponse.json()) as ProductsResponse;
         if (!categoriesResponse.ok || !assignmentResponse.ok || !productsResponse.ok) throw new Error(categoriesData.error ?? assignmentData.error ?? productsData.error ?? "No se pudo cargar la información.");
         const foundProduct = (productsData.items ?? []).find((item) => String(item.id) === productId) ?? null;
-        if (!foundProduct) throw new Error("Producto no encontrado o no está disponible en el listado administrativo.");
+        if (!foundProduct) throw new Error("Producto no encontrado.");
         setProduct(foundProduct);
         setCategories(categoriesData.items ?? []);
         setSelected(new Set(assignmentData.categoryIds ?? []));
