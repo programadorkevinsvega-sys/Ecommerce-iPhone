@@ -41,19 +41,26 @@ export default function ServicesPage() {
         </Link>
       </section>
       <section className="section">
-        <div className="category-grid">
+        <div className="services-grid">
           {services.map((service) => (
-            <article className="category-card" key={service.code}>
-              <h2>{service.name}</h2>
-              <p>{service.description}</p>
-              <small>
-                {service.workflow.quoteRequired ? "Cotización" : "Precio definido"}
-                {service.workflow.paymentRequired ? " · Pago requerido" : ""}
-              </small>
-              <br />
-              <Link href={`/servicios/solicitar?type=${encodeURIComponent(service.code)}`}>
-                Solicitar →
-              </Link>
+            <article className="service-card" key={service.code}>
+              <div className="service-card-content">
+                <p className="service-category">{service.category}</p>
+                <h2>{service.name}</h2>
+                <p>{service.description}</p>
+              </div>
+              <div className="service-card-footer">
+                <span>
+                  {service.workflow.quoteRequired ? "Cotización" : "Precio definido"}
+                  {service.workflow.paymentRequired ? " · Pago requerido" : ""}
+                </span>
+                <Link
+                  className="service-card-link"
+                  href={`/servicios/solicitar?type=${encodeURIComponent(service.code)}`}
+                >
+                  Solicitar <span aria-hidden="true">→</span>
+                </Link>
+              </div>
             </article>
           ))}
         </div>
@@ -69,8 +76,8 @@ export default function ServicesPage() {
             <h2>Cuéntanos qué necesitas.</h2>
             <p>Envía una solicitud personalizada y nuestro equipo revisará tu caso.</p>
           </div>
-          <Link className="button secondary" href="/servicios/solicitar">
-            Crear solicitud
+          <Link className="button secondary service-banner-action" href="/servicios/solicitar">
+            Crear solicitud <span aria-hidden="true">→</span>
           </Link>
         </aside>
       </section>

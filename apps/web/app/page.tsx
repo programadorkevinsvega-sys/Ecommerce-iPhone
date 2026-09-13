@@ -1,9 +1,103 @@
 import Link from "next/link";
 import { listPublicCategories } from "../lib/catalog";
+import HomeCarousel from "./components/HomeCarousel";
+import { listPublicHomeSlides } from "../lib/homeCarousel";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage(){
+export default async function HomePage() {
   const categories = await listPublicCategories();
-  return <main className="store-shell"><header className="store-header"><span className="brand">Ecommerce iPhone</span><nav aria-label="Principal"><Link href="/" aria-current="page">Inicio</Link><Link href="/catalog">Catálogo</Link><Link href="/servicios">Servicios</Link><Link href="/contacto">Contacto</Link><Link href="/cart">Carrito</Link></nav></header><section className="home-hero"><div><p className="eyebrow">Smartphones · Servicios · Confianza</p><h1>Tecnología que eliges con confianza.</h1><p>Compra smartphones nuevos, usados o reacondicionados y solicita servicios técnicos legítimos desde una experiencia simple y segura.</p><div className="hero-actions"><Link className="button primary" href="/catalog">Explorar catálogo</Link><Link className="button secondary" href="/servicios">Ver servicios</Link></div></div><div className="hero-device" aria-hidden="true"><span>iPhone</span></div></section><section className="section" aria-labelledby="categories-title"><div className="section-heading"><p className="eyebrow">Categorías</p><h2 id="categories-title">Encuentra lo que buscas.</h2></div>{categories.length>0?<div className="category-grid">{categories.map((category)=> <Link className="category-card" href={`/catalog?category=${encodeURIComponent(category.slug)}`} key={category.id}><span>{category.name}</span><span aria-hidden="true">↗</span></Link>)}</div>:<div className="empty-state"><h2>No hay categorías publicadas.</h2><p>Las categorías activas aparecerán aquí cuando se creen desde administración.</p><Link href="/catalog">Ver catálogo</Link></div>}</section><section className="section split-section"><div><p className="eyebrow">Compra con tranquilidad</p><h2>Inventario, estado y garantía claros.</h2></div><p>Cada producto muestra condición, capacidad, color, estado de batería cuando corresponde, garantía, disponibilidad y opciones de entrega.</p></section><section className="section service-banner"><div><p className="eyebrow">Servicios</p><h2>También cuidamos tu dispositivo.</h2><p>Diagnóstico, reparación, configuración y seguimiento de solicitudes con procesos legítimos.</p></div><div className="hero-actions"><Link className="button secondary" style={{color:"#171715"}} href="/servicios">Conocer servicios</Link><Link className="button secondary" style={{color:"#171715"}} href="/contacto">Contactarnos</Link></div></section></main>
+  const slides = await listPublicHomeSlides();
+  return (
+    <main className="store-shell">
+      <header className="store-header">
+        <span className="brand">Ecommerce iPhone</span>
+        <nav aria-label="Principal">
+          <Link href="/" aria-current="page">
+            Inicio
+          </Link>
+          <Link href="/catalog">Catálogo</Link>
+          <Link href="/servicios">Servicios</Link>
+          <Link href="/contacto">Contacto</Link>
+          <Link href="/cart">Carrito</Link>
+        </nav>
+      </header>
+      <section className="home-hero">
+        <div>
+          <p className="eyebrow">Smartphones · Servicios · Confianza</p>
+          <h1>Tecnología que eliges con confianza.</h1>
+          <p>
+            Compra smartphones nuevos, usados o reacondicionados y solicita servicios técnicos
+            legítimos desde una experiencia simple y segura.
+          </p>
+          <div className="hero-actions">
+            <Link className="button primary" href="/catalog">
+              Explorar catálogo
+            </Link>
+            <Link className="button secondary" href="/servicios">
+              Ver servicios
+            </Link>
+          </div>
+        </div>
+        <div className="hero-device" aria-hidden="true">
+          <span>iPhone</span>
+        </div>
+      </section>
+      <HomeCarousel slides={slides} />
+      <section className="section" aria-labelledby="categories-title">
+        <div className="section-heading">
+          <p className="eyebrow">Categorías</p>
+          <h2 id="categories-title">Encuentra lo que buscas.</h2>
+        </div>
+        {categories.length > 0 ? (
+          <div className="category-grid">
+            {categories.map((category) => (
+              <Link
+                className="category-card"
+                href={`/catalog?category=${encodeURIComponent(category.slug)}`}
+                key={category.id}
+              >
+                <span>{category.name}</span>
+                <span aria-hidden="true">↗</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">
+            <h2>No hay categorías publicadas.</h2>
+            <p>Las categorías activas aparecerán aquí cuando se creen desde administración.</p>
+            <Link href="/catalog">Ver catálogo</Link>
+          </div>
+        )}
+      </section>
+      <section className="section split-section">
+        <div>
+          <p className="eyebrow">Compra con tranquilidad</p>
+          <h2>Inventario, estado y garantía claros.</h2>
+        </div>
+        <p>
+          Cada producto muestra condición, capacidad, color, estado de batería cuando corresponde,
+          garantía, disponibilidad y opciones de entrega.
+        </p>
+      </section>
+      <section className="section service-banner">
+        <div>
+          <p className="eyebrow">Servicios</p>
+          <h2>También cuidamos tu dispositivo.</h2>
+          <p>
+            Diagnóstico, reparación, configuración y seguimiento de solicitudes con procesos
+            legítimos.
+          </p>
+        </div>
+        <div className="hero-actions">
+          <Link className="button secondary" style={{ color: "#171715" }} href="/servicios">
+            Conocer servicios
+          </Link>
+          <Link className="button secondary" style={{ color: "#171715" }} href="/contacto">
+            Contactarnos
+          </Link>
+        </div>
+      </section>
+    </main>
+  );
 }

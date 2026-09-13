@@ -20,7 +20,14 @@ type Metric = {
 type Admin = { firstName: string; lastName: string; role: string };
 type Item = Record<string, unknown>;
 type Resource =
-  "dashboard" | "orders" | "products" | "categories" | "customers" | "services" | "service-types";
+  | "dashboard"
+  | "orders"
+  | "products"
+  | "categories"
+  | "customers"
+  | "services"
+  | "service-types"
+  | "home-carousel";
 type Category = { id: string; name: string; slug: string; active: boolean };
 type ProductForm = {
   id: string | null;
@@ -60,6 +67,16 @@ type ServiceTypeForm = {
   quoteRequired: boolean;
   paymentRequired: boolean;
 };
+type HomeSlide = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  href: string;
+  active: boolean;
+};
+type HomeSlideForm = Omit<HomeSlide, "id"> & { id: string };
 
 const NAV: { key: Resource; label: string; icon: string }[] = [
   { key: "dashboard", label: "Dashboard", icon: "⌂" },
@@ -68,6 +85,7 @@ const NAV: { key: Resource; label: string; icon: string }[] = [
   { key: "categories", label: "Categorías", icon: "⌘" },
   { key: "customers", label: "Clientes", icon: "♙" },
   { key: "service-types", label: "Servicios ofrecidos", icon: "◇" },
+  { key: "home-carousel", label: "Carrusel de inicio", icon: "▧" },
   { key: "services", label: "Solicitudes", icon: "⚙" },
 ];
 const EMPTY_PRODUCT: ProductForm = {
@@ -128,6 +146,9 @@ export default function AdminPage() {
     slug: string;
   } | null>(null);
   const [serviceTypeForm, setServiceTypeForm] = useState<ServiceTypeForm | null>(null);
+  const [homeSlides, setHomeSlides] = useState<HomeSlide[]>([]);
+  const [homeSlideForm, setHomeSlideForm] = useState<HomeSlideForm | null>(null);
+  const [homeCmsId, setHomeCmsId] = useState("");
   const [categoryBusy, setCategoryBusy] = useState(false);
   const [serviceAction, setServiceAction] = useState<string | null>(null);
   const query = useMemo(() => normalizeSearchQuery(search) ?? "", [search]);
@@ -147,7 +168,9 @@ export default function AdminPage() {
               ? `/api/admin/customers?q=${encodeURIComponent(query)}`
               : resource === "service-types"
                 ? "/api/admin/service-types"
-                : `/api/admin/resources?resource=${resource}&q=${encodeURIComponent(query)}`;
+                : resource === "home-carousel"
+                  ? "/api/admin/cms"
+                  : `/api/admin/resources?resource=${resource}&q=${encodeURIComponent(query)}`;
         const init: RequestInit = { cache: "no-store", credentials: "same-origin" };
         if (signal) init.signal = signal;
         const response = await fetch(endpoint, init);
@@ -162,7 +185,16 @@ export default function AdminPage() {
           );
         if (resource === "categories") setCategories((data.items ?? []) as Category[]);
         else if (resource === "service-types") setServiceTypes((data.items ?? []) as ServiceType[]);
-        else setItems(data.items ?? []);
+        else if (resource === "home-carousel") {
+          const page = (data.items ?? [])[0] as Item | undefined;
+          setHomeCmsId(value(page ?? {}, "id"));
+          try {
+            const content = JSON.parse(value(page ?? {}, "content")) as { slides?: HomeSlide[] };
+            setHomeSlides(Array.isArray(content.slides) ? content.slides : []);
+          } catch {
+            setHomeSlides([]);
+          }
+        } else setItems(data.items ?? []);
       } catch (caught) {
         if (!signal?.aborted)
           setError(caught instanceof Error ? caught.message : "No se pudo cargar la información.");
@@ -377,6 +409,32 @@ export default function AdminPage() {
     });
     if (ok) setServiceAction(null);
   }
+  async function toggleHomeSlide(id: string) {
+    const nextSlides = homeSlides.map((slide) =>
+      slide.id === id ? { ...slide, active: !slide.active } : slide,
+    );
+    const response = await fetch("/api/admin/cms", {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: homeCmsId || undefined,
+        slug: "home-carousel",
+        title: "Carrusel de inicio",
+        content: JSON.stringify({ slides: nextSlides }),
+        active: true,
+      }),
+    });
+    if (!response.ok) {
+      setError("No se pudo actualizar la promoción.");
+      return;
+    }
+    const data = await json<{ id?: string }>(response);
+    setHomeSlides(nextSlides);
+    setHomeCmsId(data.id ?? homeCmsId);
+    setNotice("Cambios guardados correctamente.");
+  }
   async function saveServiceType(event: FormEvent) {
     event.preventDefault();
     if (!serviceTypeForm) return;
@@ -567,6 +625,25 @@ export default function AdminPage() {
                     + Nuevo servicio
                   </button>
                 )}
+                {resource === "home-carousel" && (
+                  <button
+                    className="admin-button primary"
+                    type="button"
+                    onClick={() =>
+                      setHomeSlideForm({
+                        id: crypto.randomUUID(),
+                        eyebrow: "",
+                        title: "",
+                        description: "",
+                        imageUrl: "",
+                        href: "/catalog",
+                        active: true,
+                      })
+                    }
+                  >
+                    + Nueva promoción
+                  </button>
+                )}
               </div>
             </div>
             {notice && (
@@ -631,6 +708,12 @@ export default function AdminPage() {
                 }
                 onToggle={(type) => void toggleServiceType(type)}
               />
+            ) : resource === "home-carousel" ? (
+              <HomeCarouselManager
+                slides={homeSlides}
+                onEdit={setHomeSlideForm}
+                onToggle={(id) => void toggleHomeSlide(id)}
+              />
             ) : resource === "services" ? (
               <ServiceTable
                 items={items}
@@ -681,6 +764,21 @@ export default function AdminPage() {
           setForm={setServiceTypeForm}
           onSubmit={saveServiceType}
           onClose={() => setServiceTypeForm(null)}
+        />
+      )}
+      {homeSlideForm && (
+        <HomeSlideModal
+          form={homeSlideForm}
+          setForm={setHomeSlideForm}
+          cmsId={homeCmsId}
+          slides={homeSlides}
+          onSaved={async (nextSlides, id) => {
+            setHomeSlides(nextSlides);
+            setHomeCmsId(id);
+            setHomeSlideForm(null);
+            setNotice("Cambios guardados correctamente.");
+          }}
+          onClose={() => setHomeSlideForm(null)}
         />
       )}
       {serviceAction && (
@@ -1502,6 +1600,209 @@ function ServiceActionModal({
           </button>
           <button className="admin-button primary" type="submit">
             Aplicar
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function HomeCarouselManager({
+  slides,
+  onEdit,
+  onToggle,
+}: {
+  slides: HomeSlide[];
+  onEdit: (slide: HomeSlideForm) => void;
+  onToggle: (id: string) => void;
+}) {
+  return (
+    <TableFrame empty={!slides.length}>
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Promoción</th>
+            <th>Enlace</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {slides.map((slide) => (
+            <tr key={slide.id}>
+              <td>
+                <strong>{slide.title}</strong>
+                <span className="table-subtext">{slide.eyebrow}</span>
+              </td>
+              <td>{slide.href}</td>
+              <td>
+                <span className={`status ${slide.active ? "success" : "muted-status"}`}>
+                  {slide.active ? "Publicado" : "Oculto"}
+                </span>
+              </td>
+              <td>
+                <button className="table-action" type="button" onClick={() => onEdit(slide)}>
+                  Editar
+                </button>
+                <button className="table-action" type="button" onClick={() => onToggle(slide.id)}>
+                  {slide.active ? "Ocultar" : "Publicar"}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableFrame>
+  );
+}
+
+function HomeSlideModal({
+  form,
+  setForm,
+  cmsId,
+  slides,
+  onSaved,
+  onClose,
+}: {
+  form: HomeSlideForm;
+  setForm: (form: HomeSlideForm) => void;
+  cmsId: string;
+  slides: HomeSlide[];
+  onSaved: (slides: HomeSlide[], cmsId: string) => void;
+  onClose: () => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      let imageUrl = form.imageUrl;
+      if (file) {
+        const upload = new FormData();
+        upload.set("file", file);
+        const uploadResponse = await fetch("/api/admin/media", {
+          method: "POST",
+          body: upload,
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        const uploadData = await json<{ url?: string; error?: string }>(uploadResponse);
+        if (!uploadResponse.ok || !uploadData.url)
+          throw new Error(uploadData.error ?? "No se pudo cargar la imagen.");
+        imageUrl = uploadData.url;
+      }
+      if (!imageUrl) throw new Error("Selecciona una imagen para la promoción.");
+      const next = { ...form, imageUrl };
+      const nextSlides = slides.some((slide) => slide.id === form.id)
+        ? slides.map((slide) => (slide.id === form.id ? next : slide))
+        : [...slides, next];
+      const response = await fetch("/api/admin/cms", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: cmsId || undefined,
+          slug: "home-carousel",
+          title: "Carrusel de inicio",
+          content: JSON.stringify({ slides: nextSlides }),
+          active: true,
+        }),
+      });
+      const data = await json<{ id?: string; error?: string }>(response);
+      if (!response.ok || !data.id)
+        throw new Error(data.error ?? "No se pudo guardar la promoción.");
+      onSaved(nextSlides, data.id);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudo guardar la promoción.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal
+      title={
+        form.id && slides.some((slide) => slide.id === form.id)
+          ? "Editar promoción"
+          : "Nueva promoción"
+      }
+      onClose={onClose}
+    >
+      <form className="admin-form" onSubmit={submit}>
+        {error && (
+          <p className="admin-error" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="form-grid">
+          <label>
+            Etiqueta
+            <input
+              required
+              maxLength={80}
+              value={form.eyebrow}
+              onChange={(e) => setForm({ ...form, eyebrow: e.target.value })}
+            />
+          </label>
+          <label>
+            Enlace
+            <input
+              required
+              maxLength={300}
+              value={form.href}
+              onChange={(e) => setForm({ ...form, href: e.target.value })}
+            />
+          </label>
+        </div>
+        <label>
+          Título
+          <input
+            required
+            maxLength={180}
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+          />
+        </label>
+        <label>
+          Descripción
+          <textarea
+            required
+            maxLength={500}
+            rows={3}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+        </label>
+        <label>
+          Imagen de la promoción
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+          {form.imageUrl && (
+            <span className="form-help">
+              Imagen actual cargada. Selecciona otra para reemplazarla.
+            </span>
+          )}
+        </label>
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={form.active}
+            onChange={(e) => setForm({ ...form, active: e.target.checked })}
+          />{" "}
+          Publicada en el inicio
+        </label>
+        <div className="modal-actions">
+          <button className="admin-button" type="button" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="admin-button primary" disabled={busy} type="submit">
+            {busy ? "Guardando…" : "Guardar promoción"}
           </button>
         </div>
       </form>
