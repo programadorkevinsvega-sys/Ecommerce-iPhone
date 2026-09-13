@@ -110,3 +110,48 @@ Code-level hardening still required before declaring Phase 8 complete:
 4. validated canonical application URL for metadata/sitemap/robots;
 5. complete sitemap pagination using canonical product paths;
 6. tests covering malformed slugs, malformed IDs and canonical SEO output.
+
+## Images and external content — Security Phase 9
+
+### Image surface audited
+
+- `next/image` usage in the catalog and product detail pages;
+- product image URLs loaded from the D1 `product_images` table;
+- product primary-image fallback loaded from `products.primary_image_url`;
+- dynamic Product Open Graph image metadata;
+- JSON-LD Product `image` values;
+- avatar/image surfaces (no production avatar image field or avatar renderer was found in the audited route/component surface);
+- CMS data (no CMS image field is currently accepted or rendered; current CMS input is text/SEO/canonical metadata only);
+- payment checkout URLs (these are navigation targets, not image sources, and remain protected by the Phase 6 payment-provider allowlist).
+
+### Dangerous URL schemes
+
+Product images are now restricted at the domain boundary to same-origin asset paths under `/products/`. Absolute external URLs and the schemes `javascript:`, `data:`, `file:` and protocol-relative `//host/...` are rejected. Image query strings and fragments are also rejected to prevent turning an approved asset path into a remote/proxy-style URL.
+
+The existing production seed uses `/products/*.webp` paths, so the new invariant matches the current catalog representation. External image hosting is not required by the current rendering policy.
+
+### Next.js remote image / SSRF review
+
+`apps/web/next.config.ts` now declares `images.remotePatterns: []`, meaning no remote image host is authorized for the Next image optimizer. This is intentional: the application stores and renders same-origin product assets only.
+
+Because no remote host is configured, a database value cannot make the Next image optimizer fetch an arbitrary attacker-controlled server. The CSP also keeps `img-src` limited to `'self'`, `data:` and `blob:`. Together these controls prevent an attacker-controlled absolute image URL from becoming an approved remote image source through `next/image`.
+
+There is currently no `javascript:`, `data:`, `file:` or `http:`/`https:` exception path for product image storage. Payment redirects remain a separate URL-control surface and continue to require HTTPS plus an exact provider hostname allowlist.
+
+### Verification tests
+
+`modules/catalog/domain/Product.test.ts` now covers:
+
+- valid same-origin `/products/...` assets;
+- external hosts;
+- `javascript:` URLs;
+- `data:` URLs;
+- `file:` URLs;
+- protocol-relative external URLs;
+- image query-string and fragment attempts.
+
+### Phase 9 certification state
+
+**🟢 CODE HARDENED — pending CI verification.**
+
+The implementation is complete for the audited production surface, but the phase is not marked fully certified until the repository CI run for the resulting commit passes the normal lint, typecheck, unit-test and production build/deploy gates.
