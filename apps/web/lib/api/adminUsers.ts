@@ -30,5 +30,6 @@ export async function hardenAdminLifecycle(body: Record<string, unknown>) {
   if (body.action === "activate") return management.activate(targetId, admin.id);
   if (body.action === "deactivate") return management.deactivate(targetId, admin.id);
   if (body.action === "change_role") return management.changeRole(targetId, body.role, admin.id);
+  if (body.action === "reset_password") return management.resetPassword(targetId, String(body.password ?? ""), admin.id);
   throw new Error("INVALID_ADMIN_ACTION");
 }
