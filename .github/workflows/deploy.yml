@@ -45,6 +45,9 @@ jobs:
       - name: Foundation invariant check
         run: pnpm foundation:check
 
+      - name: Frontend production-data check
+        run: pnpm frontend:data:check
+
       - name: Architecture boundary check
         run: pnpm architecture:check
 
