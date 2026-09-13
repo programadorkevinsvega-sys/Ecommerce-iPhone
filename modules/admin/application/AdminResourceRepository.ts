@@ -24,6 +24,8 @@ export interface AdminResourceRepository {
   list(resource: ResourceName, query: string): Promise<unknown[]>;
   createProduct(product: ProductCreation): Promise<string>;
   updateProduct(id: string, fields: string[], values: unknown[]): Promise<void>;
+  getProductCategoryIds(productId: string): Promise<string[]>;
+  replaceProductCategories(productId: string, categoryIds: readonly string[]): Promise<void>;
   getServiceForMutation(id: string): Promise<MutationService | null>;
   quoteService(id: string, amountInCents: number, actorId: string): Promise<void>;
   updateServiceStatus(id: string, status: string, actorId: string, fromStatus: string): Promise<void>;
