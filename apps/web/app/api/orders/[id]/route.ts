@@ -6,19 +6,16 @@ import { GetOrderForCustomer } from "../../../../../../modules/orders/applicatio
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    if (!id) return NextResponse.json({ error: "Order id is required" }, { status: 400 });
-
+    if (!id) return NextResponse.json({ error: "Revisa los datos ingresados e inténtalo nuevamente." }, { status: 422 });
     const token = (await cookies()).get("customer_session")?.value;
-    if (!token) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-
+    if (!token) return NextResponse.json({ error: "No encontramos el pedido solicitado." }, { status: 404 });
     const context = await commerceContext();
     const session = await context.customerSession.resolve(token);
-    if (!session) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-
+    if (!session) return NextResponse.json({ error: "No encontramos el pedido solicitado." }, { status: 404 });
     const order = await new GetOrderForCustomer(context.orderRepository).execute(id, session.customerId);
-    if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    return NextResponse.json({ order });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to load order" }, { status: 500 });
+    if (!order) return NextResponse.json({ error: "No encontramos el pedido solicitado." }, { status: 404 });
+    return NextResponse.json({ order }, { headers: { "cache-control": "no-store" } });
+  } catch {
+    return NextResponse.json({ error: "No pudimos completar la operación." }, { status: 500, headers: { "cache-control": "no-store" } });
   }
 }
