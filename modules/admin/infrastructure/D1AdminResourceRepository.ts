@@ -33,7 +33,30 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
 
   async updateProduct(id: string, fields: string[], values: unknown[]): Promise<void> {
     const assignments = fields.map((field) => `${field}=?`).join(",");
-    await this.db.prepare(`UPDATE products SET ${assignments},updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(...values, id).run();
+    const result = await this.db.prepare(`UPDATE products SET ${assignments},updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(...values, id).run();
+    if (result.meta.changes !== 1) throw new Error("PRODUCT_NOT_FOUND");
+  }
+
+  async getProductCategoryIds(productId: string): Promise<string[]> {
+    const rows = await this.db.prepare("SELECT category_id FROM product_categories WHERE product_id=? ORDER BY category_id ASC").bind(productId).all<{ category_id: string }>();
+    return rows.results.map((row) => row.category_id);
+  }
+
+  async replaceProductCategories(productId: string, categoryIds: readonly string[]): Promise<void> {
+    const product = await this.db.prepare("SELECT id FROM products WHERE id=? LIMIT 1").bind(productId).first<{ id: string }>();
+    if (!product) throw new Error("PRODUCT_NOT_FOUND");
+
+    const uniqueIds = [...new Set(categoryIds)];
+    if (uniqueIds.length > 0) {
+      const placeholders = uniqueIds.map(() => "?").join(",");
+      const rows = await this.db.prepare(`SELECT id FROM categories WHERE active=1 AND id IN (${placeholders})`).bind(...uniqueIds).all<{ id: string }>();
+      const validIds = new Set(rows.results.map((row) => row.id));
+      if (validIds.size !== uniqueIds.length) throw new Error("INVALID_PRODUCT_CATEGORIES");
+    }
+
+    const statements = [this.db.prepare("DELETE FROM product_categories WHERE product_id=?").bind(productId)];
+    statements.push(...uniqueIds.map((categoryId) => this.db.prepare("INSERT INTO product_categories (product_id,category_id) VALUES (?,?)").bind(productId, categoryId)));
+    await this.db.batch(statements);
   }
 
   async getServiceForMutation(id: string): Promise<MutationService | null> {
