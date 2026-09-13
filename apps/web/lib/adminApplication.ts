@@ -7,7 +7,13 @@ import { D1PaymentAdminRepository } from "../../../modules/payments/infrastructu
 import { D1PaymentAuditPort } from "../../../modules/payments/infrastructure/D1PaymentAuditPort";
 import { D1PaymentLedgerRepository } from "../../../modules/payments/infrastructure/D1PaymentLedgerRepository";
 import { D1PaymentRefundRepository } from "../../../modules/payments/infrastructure/D1PaymentRefundRepository";
-import { paymentContext } from "./payments";
+import { AdminServiceDetailsService } from "../../../modules/services/application/AdminServiceDetails";
+import { AdminServiceQueryService } from "../../../modules/services/application/AdminServiceQuery";
+import { ServiceWorkflowService } from "../../../modules/services/application/ServiceWorkflowService";
+import { D1ServiceRequestRepository } from "../../../modules/services/infrastructure/D1ServiceRequestRepository";
+import { D1ServiceTypeRepository } from "../../../modules/services/infrastructure/D1ServiceTypeRepository";
+import type { ServiceRequestRepository } from "../../../modules/services/application/ServiceRequestRepository";
+import type { ServiceTypeRepository } from "../../../modules/services/application/ServiceTypeRepository";
 
 export function adminDashboardApplication(env: CloudflareEnv): AdminDashboardService {
   return new AdminDashboardService(new D1AdminDashboardQuery(env.DB));
@@ -18,6 +24,7 @@ export function adminNotificationsApplication(env: CloudflareEnv): AdminNotifica
 }
 
 export async function adminPaymentsApplication(env: CloudflareEnv): Promise<AdminPayments> {
+  const { paymentContext } = await import("./payments");
   const context = await paymentContext();
   return new AdminPayments(
     new D1PaymentAdminRepository(env.DB),
@@ -26,4 +33,24 @@ export async function adminPaymentsApplication(env: CloudflareEnv): Promise<Admi
     context.service,
     new D1PaymentAuditPort(env.DB),
   );
+}
+
+function serviceRequestRepository(env: CloudflareEnv): ServiceRequestRepository {
+  return new D1ServiceRequestRepository(env.DB);
+}
+
+function serviceTypeRepository(env: CloudflareEnv): ServiceTypeRepository {
+  return new D1ServiceTypeRepository(env.DB);
+}
+
+export function adminServiceQueryApplication(env: CloudflareEnv): AdminServiceQueryService {
+  return new AdminServiceQueryService(serviceRequestRepository(env));
+}
+
+export function adminServiceDetailsApplication(env: CloudflareEnv): AdminServiceDetailsService {
+  return new AdminServiceDetailsService(serviceRequestRepository(env));
+}
+
+export function serviceWorkflowApplication(env: CloudflareEnv): ServiceWorkflowService {
+  return new ServiceWorkflowService(serviceRequestRepository(env), serviceTypeRepository(env));
 }
