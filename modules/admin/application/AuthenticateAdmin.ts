@@ -4,6 +4,7 @@ import type { AdminRepository } from "./AdminRepository";
 import type { AdminSessionRepository } from "./AdminSessionRepository";
 import type { PasswordHasher } from "./PasswordHasher";
 import type { AuditPort } from "./AuditPort";
+import type { CreateAdminSession } from "./CreateAdminSession";
 
 export type AdminPrincipal = Readonly<{
   id: string;
@@ -34,7 +35,7 @@ export class AuthenticateAdmin {
     private readonly sessions: AdminSessionRepository,
     private readonly passwords: PasswordHasher,
     private readonly audit: AuditPort,
-    private readonly hashToken: (value: string) => Promise<string>,
+    private readonly createSession: CreateAdminSession,
     private readonly now: () => Date = () => new Date(),
   ) {}
 
@@ -66,7 +67,7 @@ export class AuthenticateAdmin {
 
     const token = newToken();
     const expiresAt = new Date(this.now().getTime() + 8 * 86_400_000);
-    await this.sessions.create(user.getId(), await this.hashToken(token), expiresAt.toISOString(), ipHash, userAgentHash);
+    await this.createSession.execute(user.getId(), token, expiresAt, ipHash, userAgentHash);
     await this.audit.audit(user.getId(), "ADMIN_LOGIN_SUCCESS", "admin_user", user.getId(), { role: current.role, ipHash: ipHash ?? null });
 
     return { admin: principal(user), token, expiresAt };
