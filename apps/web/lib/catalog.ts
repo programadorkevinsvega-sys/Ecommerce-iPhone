@@ -11,7 +11,9 @@ export async function catalogRepository(): Promise<D1ProductRepository> {
 }
 
 export async function searchCatalog(criteria: ProductSearch) {
-  const normalized: ProductSearch = { ...criteria, ...(criteria.q !== undefined ? { q: normalizeSearchQuery(criteria.q) } : {}) };
+  if (criteria.q === undefined) return new SearchProducts(await catalogRepository()).execute(criteria);
+  const normalizedQuery = normalizeSearchQuery(criteria.q);
+  const normalized: ProductSearch = normalizedQuery === undefined ? { ...criteria } : { ...criteria, q: normalizedQuery };
   return new SearchProducts(await catalogRepository()).execute(normalized);
 }
 
