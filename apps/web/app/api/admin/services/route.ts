@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
-import { listAdminServices, parseServiceRequestStatus } from "../../../../lib/api/adminServices";
-import { requireAdmin, PERMISSIONS } from "../../../../lib/adminAuth";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { adminServiceQueryApplication } from "../../../../lib/adminApplication";
+import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
+import { parseServiceRequestStatus } from "../../../../../../modules/services/application/ServiceWorkflowService";
 
 export async function GET(request: Request) {
   try {
     await requireAdmin(PERMISSIONS.servicesRead);
     const raw = new URL(request.url).searchParams.get("status");
     const status = raw ? parseServiceRequestStatus(raw) : undefined;
-    return NextResponse.json({ items: await listAdminServices(status) });
+    const { env } = getCloudflareContext();
+    const query = adminServiceQueryApplication(env);
+    return NextResponse.json({ items: (await query.list(status)).map((item) => item.toPrimitives()) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load services";
     const status = message === "FORBIDDEN" ? 403 : message === "UNAUTHORIZED" ? 401 : 400;
