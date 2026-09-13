@@ -1,0 +1,49 @@
+import type { D1Database } from "@cloudflare/workers-types";
+import { AdminUser, type AdminUserProps } from "../domain/AdminUser";
+import type { AdminRole } from "../domain/AdminRole";
+import type { AdminUserRepository } from "../application/AdminUserManagement";
+
+export class D1AdminUserRepository implements AdminUserRepository {
+  constructor(private readonly db: D1Database) {}
+
+  async findByEmail(email: string): Promise<AdminUser | null> {
+    const row = await this.db.prepare("SELECT * FROM admin_users WHERE email = ? COLLATE NOCASE LIMIT 1").bind(email.trim().toLowerCase()).first<Record<string, unknown>>();
+    return row ? this.mapUser(row) : null;
+  }
+
+  async findById(id: string): Promise<AdminUser | null> {
+    const row = await this.db.prepare("SELECT * FROM admin_users WHERE id = ? LIMIT 1").bind(id).first<Record<string, unknown>>();
+    return row ? this.mapUser(row) : null;
+  }
+
+  async list(): Promise<ReadonlyArray<AdminUser>> {
+    const rows = await this.db.prepare("SELECT * FROM admin_users ORDER BY created_at DESC").all<Record<string, unknown>>();
+    return rows.results.map((row) => this.mapUser(row));
+  }
+
+  async countActiveSuperAdmins(): Promise<number> {
+    const row = await this.db.prepare("SELECT COUNT(*) AS count FROM admin_users WHERE role = ? AND active = 1").bind("SUPER_ADMIN").first<{ count: number }>();
+    return Number(row?.count ?? 0);
+  }
+
+  async save(user: AdminUser): Promise<void> {
+    const p = user.toPrimitives();
+    await this.db.prepare(`INSERT INTO admin_users (id,email,password_hash,role,first_name,last_name,active,failed_login_count,locked_until,last_login_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email,password_hash=excluded.password_hash,role=excluded.role,first_name=excluded.first_name,last_name=excluded.last_name,active=excluded.active,failed_login_count=excluded.failed_login_count,locked_until=excluded.locked_until,last_login_at=excluded.last_login_at,updated_at=excluded.updated_at`).bind(p.id,p.email,p.passwordHash,p.role,p.firstName,p.lastName,p.active?1:0,p.failedLoginCount,p.lockedUntil??null,p.lastLoginAt??null,p.createdAt,p.updatedAt).run();
+  }
+
+  private mapUser(row: Record<string, unknown>): AdminUser {
+    return AdminUser.create(String(row.id), {
+      email: String(row.email),
+      passwordHash: String(row.password_hash),
+      role: String(row.role) as AdminRole,
+      firstName: String(row.first_name),
+      lastName: String(row.last_name),
+      active: Number(row.active) === 1,
+      failedLoginCount: Number(row.failed_login_count ?? 0),
+      lockedUntil: row.locked_until ? String(row.locked_until) : undefined,
+      lastLoginAt: row.last_login_at ? String(row.last_login_at) : undefined,
+      createdAt: String(row.created_at),
+      updatedAt: String(row.updated_at),
+    } as AdminUserProps);
+  }
+}
