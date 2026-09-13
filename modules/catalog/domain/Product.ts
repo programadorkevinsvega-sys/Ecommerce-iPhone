@@ -129,7 +129,15 @@ export function validateProductPatch(fields: Record<string, unknown>): void {
   for (const [field, value] of Object.entries(fields)) {
     switch (field) {
       case "name": stringField(value, "name", PRODUCT_TEXT_LIMITS.name); break;
+      case "slug": {
+        const slug = stringField(value, "slug", PRODUCT_TEXT_LIMITS.slug).toLowerCase();
+        if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new DomainError("Invalid product slug");
+        break;
+      }
+      case "brand": stringField(value, "brand", PRODUCT_TEXT_LIMITS.brand); break;
+      case "model": stringField(value, "model", PRODUCT_TEXT_LIMITS.model); break;
       case "description": stringField(value, "description", PRODUCT_TEXT_LIMITS.description); break;
+      case "condition": if (!(["NEW", "USED", "REFURBISHED"] as readonly string[]).includes(String(value))) throw new DomainError("Invalid product condition"); break;
       case "price_in_cents": integerField(value, "price", 0, 9_999_999_999); break;
       case "stock": integerField(value, "stock", 0, 1_000_000); break;
       case "active": if (typeof value !== "boolean" && value !== 0 && value !== 1) throw new DomainError("Invalid product active flag"); break;

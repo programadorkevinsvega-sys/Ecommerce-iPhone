@@ -103,7 +103,7 @@ export class AdminResources {
   }
 
   private async updateProduct(actor: AdminActor, id: string, body: Record<string, unknown>): Promise<void> {
-    const allowed = new Set(["name", "description", "price_in_cents", "active", "seo_title", "seo_description", "warranty_months", "battery_health", "storage_gb", "color", "specs_json"]);
+    const allowed = new Set(["name", "slug", "brand", "model", "description", "condition", "price_in_cents", "stock", "active", "seo_title", "seo_description", "warranty_months", "battery_health", "storage_gb", "color", "specs_json"]);
     const fields = Object.keys(body).filter((key) => allowed.has(key)); if (!fields.length) throw new Error("NO_EDITABLE_FIELDS");
     const validation: Record<string, unknown> = Object.fromEntries(fields.map((key) => [key, key === "active" ? bool(body[key]) : body[key]]));
     try { validateProductPatch(validation); } catch { throw new Error("INVALID_PRODUCT"); }
