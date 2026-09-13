@@ -16,6 +16,8 @@ const forbiddenBrowserStorage = /\b(?:localStorage|sessionStorage|indexedDB|docu
 const forbiddenBrowserLogging = /\bconsole\.(?:log|error|warn|info|debug|trace)\s*\(/i;
 const forbiddenDebugStatement = /\bdebugger\b/;
 const forbiddenSensitiveQueryKey = /(?:URLSearchParams|searchParams|location\.(?:search|href)|history\.(?:pushState|replaceState)|router\.(?:push|replace))[^\n]*(?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)/i;
+const forbiddenClientSecrets = /\b(?:secretKey|privateKey|accessToken|apiKey|apiSecret|clientSecret|integritySecret|certificateSN)\b/i;
+const forbiddenCardData = /\b(?:cardNumber|card_number|cvv|cvc|securityCode|security_code)\b/i;
 
 const violations = [];
 
@@ -67,6 +69,12 @@ async function inspect(path) {
     if (forbiddenSensitiveQueryKey.test(line)) {
       violations.push(`${file}:${lineNumber}: sensitive credentials/payment data must not be placed in browser URLs or query strings: ${line.trim()}`);
     }
+    if (forbiddenClientSecrets.test(line)) {
+      violations.push(`${file}:${lineNumber}: frontend must not contain server secret/private key/access token variables: ${line.trim()}`);
+    }
+    if (forbiddenCardData.test(line)) {
+      violations.push(`${file}:${lineNumber}: frontend must not handle raw card number/CVV/security-code fields: ${line.trim()}`);
+    }
   });
 }
 
@@ -78,4 +86,4 @@ if (violations.length) {
   process.exit(1);
 }
 
-console.log("Frontend production-data check passed: no mock/demo business data, demo credentials, production InMemory repository imports, hardcoded business price fields, browser storage/cookie access, console logging, debugger statements, or sensitive URL/query data were found in the production frontend paths.");
+console.log("Frontend production-data check passed: no mock/demo business data, demo credentials, production InMemory repository imports, hardcoded business price fields, browser storage/cookie access, console logging, debugger statements, sensitive URL/query data, server-side secrets, or raw card/CVV fields were found in the production frontend paths.");
