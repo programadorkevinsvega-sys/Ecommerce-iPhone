@@ -12,6 +12,10 @@ const forbiddenBusinessNames = /\b(?:mock|fake|demo|dummy|fixture|sample|seed|fa
 const forbiddenSensitiveValues = /(?:admin@(?:example\.(?:com|org)|test\.(?:com|org))|(?:demo|fake|test)@(?:example\.(?:com|org)|test\.(?:com|org))|password(?:123|1234|!|@)|secret(?:123|1234)?|token(?:123|demo)|\b(?:555)[- .]?\d{3}[- .]?\d{4}\b)/i;
 const forbiddenInMemoryImport = /(?:from\s+["'][^"']*InMemoryProductRepository|require\s*\(\s*["'][^"']*InMemoryProductRepository)/i;
 const businessPriceLiteral = /(?:priceInCents|unitPriceInCents|totalInCents|shippingInCents|discountInCents)\s*[:=]\s*\d+/i;
+const forbiddenBrowserStorage = /\b(?:localStorage|sessionStorage|indexedDB|document\.cookie)\b/i;
+const forbiddenBrowserLogging = /\bconsole\.(?:log|error|warn|info|debug|trace)\s*\(/i;
+const forbiddenDebugStatement = /\bdebugger\b/;
+const forbiddenSensitiveQueryKey = /(?:URLSearchParams|searchParams|location\.(?:search|href)|history\.(?:pushState|replaceState)|router\.(?:push|replace))[^\n]*(?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)/i;
 
 const violations = [];
 
@@ -51,6 +55,18 @@ async function inspect(path) {
     if (businessPriceLiteral.test(line)) {
       violations.push(`${file}:${lineNumber}: frontend must not hardcode business price fields: ${line.trim()}`);
     }
+    if (forbiddenBrowserStorage.test(line)) {
+      violations.push(`${file}:${lineNumber}: frontend must not persist or read browser storage/cookies directly: ${line.trim()}`);
+    }
+    if (forbiddenBrowserLogging.test(line)) {
+      violations.push(`${file}:${lineNumber}: frontend must not log browser data: ${line.trim()}`);
+    }
+    if (forbiddenDebugStatement.test(line)) {
+      violations.push(`${file}:${lineNumber}: frontend must not contain debugger statements: ${line.trim()}`);
+    }
+    if (forbiddenSensitiveQueryKey.test(line)) {
+      violations.push(`${file}:${lineNumber}: sensitive credentials/payment data must not be placed in browser URLs or query strings: ${line.trim()}`);
+    }
   });
 }
 
@@ -62,4 +78,4 @@ if (violations.length) {
   process.exit(1);
 }
 
-console.log("Frontend production-data check passed: no mock/demo business data, demo credentials, production InMemory repository imports, or hardcoded business price fields were found in the production frontend paths.");
+console.log("Frontend production-data check passed: no mock/demo business data, demo credentials, production InMemory repository imports, hardcoded business price fields, browser storage/cookie access, console logging, debugger statements, or sensitive URL/query data were found in the production frontend paths.");
