@@ -1,387 +1,319 @@
-# Auditoría viva y plan maestro — Fases 1 a 7
+# Auditoría viva — Fases 1 a 7
 
 ## Ecommerce-iPhone
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD de código auditado:** `f02c1fcb9a887b76abca71c99995c5e4d1b01527`  
-**Última actualización:** 2026-09-12  
-**Entorno operativo:** **producción únicamente**.
+**HEAD auditado:** `3510041fc8097a030301d2a50b359d8806dd9b05`  
+**Última actualización:** 2026-09-12/13 UTC  
+**Entorno remoto operativo:** producción únicamente.
 
-> Esta auditoría es la fuente de verdad del roadmap de implementación. Una fase solo puede declararse 100% cuando código, pruebas, seguridad, reproducibilidad y evidencia operativa de su alcance estén cerrados. Compilar o tener CI verde no equivale a certificación.
-
----
-
-# 1. Estado de cierre
-
-| Fase | Estado | Cierre de código | Certificación final |
-|---|---|---:|---:|
-| 01 Foundation | 🟢 Implementada | Alta | Pendiente auditoría final |
-| 02 Storefront | 🟢 Implementada | Alta | Pendiente E2E/performance/accessibility |
-| 03 Commerce Core | 🟢 Implementada | 100% | Pendiente certificación funcional exhaustiva contra producción |
-| 04 Payments | 🟡 Implementada — hardening técnico + deploy aplicado | Alta | Pendiente certificación funcional manual de proveedores |
-| 05 Services | 🟡 Implementación funcional + hardening cerrados | Alta | Pendiente gates automatizados + certificación funcional producción |
-| 06 Admin + RBAC | 🟡 Implementación avanzada + hardening en curso | Alta | Seguridad + módulos restantes + certificación |
-| 07 Notifications + Queues | 🟡 Implementada parcialmente | — | DLQ/retry definitivo |
-
-El trabajo actual corresponde a **Fase 06 Admin + RBAC**. La auditoría se mantiene sincronizada con los cambios de código relevantes y no usa el roadmap externo como fuente de alcance.
+> Una fase no se declara 100% por compilar. El cierre exige código, pruebas, seguridad, reproducibilidad, deploy y evidencia operativa.
 
 ---
 
-# 2. Política de arquitectura y entornos
+# 1. Estado
+
+| Fase | Estado | Certificación |
+|---|---|---|
+| 01 Foundation | 🟢 Implementada | Pendiente auditoría final |
+| 02 Storefront | 🟢 Implementada | Pendiente E2E/performance/accessibility |
+| 03 Commerce Core | 🟢 Implementación cerrada | Pendiente certificación exhaustiva en producción |
+| 04 Payments | 🟡 Implementada + hardening | Pendiente certificación real de proveedores |
+| 05 Services | 🟢 Implementación + hardening | Pendiente gates/certificación |
+| 06 Admin + RBAC | 🟡 Application consolidada + hardening | Pendiente build/tests/gates |
+| 07 Notifications + Queues | 🟡 Parcial | DLQ/retry/replay pendiente |
+
+El trabajo reciente corresponde al cierre arquitectónico de **Fase 06**.
+
+---
+
+# 2. Arquitectura obligatoria
 
 ```text
-HTTP / Next.js Route
-        ↓
-Presentation
-        ↓
+HTTP Route
+   ↓
+HTTP Adapter
+   ↓
 Application / Use Case
-        ↓
+   ↓
 Domain
-        ↑
-Ports
-        ↑
-Infrastructure / Adapters
-        ↓
-Cloudflare / D1 / R2 / Queue
+   ↑
+Application Ports
+   ↑
+Infrastructure
+   ↓
+D1 / R2 / Queue / Cloudflare
 ```
 
-Reglas obligatorias:
+Reglas:
 
 - Presentation no ejecuta SQL/D1.
-- Presentation no importa Infrastructure directamente salvo composition roots autorizados.
-- Application no depende de Next.js, Cloudflare o Infrastructure.
-- Domain no depende de frameworks ni proveedores.
-- Infrastructure implementa puertos internos.
-- `architecture:check` es el enforcement automático.
-- Cada bounded context conserva Domain/Application/Infrastructure separados.
-
-## Entornos
-
-Existe **un único entorno Cloudflare remoto: producción**. El desarrollo local puede usar Next.js, Vitest, Playwright y D1 local/emulado; esto no constituye un entorno operativo adicional.
+- Presentation no construye entidades de Domain para resolver casos de uso.
+- `apps/web/lib/api/*` no contiene SQL ni `repo.audit()`.
+- Application no depende de Next.js, Cloudflare ni Infrastructure.
+- Infrastructure implementa ports.
+- Auditoría de comandos administrativos vive dentro de Application mediante `AuditPort`.
+- `apps/web/lib/adminAuth.ts` queda como adapter/composition layer para cookies, headers y Cloudflare context.
+- `architecture:check` mantiene el enforcement.
 
 ---
 
 # 3. Foundation
 
-Implementado: monorepo modular, DDD + Clean Architecture, bounded contexts, D1/R2/Queues, OpenNext + Workers, cron, observabilidad, rate limiting, health live/ready, request-id, headers de seguridad y enforcement arquitectónico.
+Implementado: monorepo modular, DDD + Clean Architecture, bounded contexts, D1/R2/Queues, OpenNext + Workers, cron, observabilidad, health live/ready, rate limiting, request-id, security headers y enforcement arquitectónico.
 
 ## Reproducibilidad
 
-El enforcement de reproducibilidad queda **cerrado para el pipeline de build de Cloudflare y GitHub Actions**.
-
-- `package.json` fija `pnpm@10.15.0`.
-- `package.json` fija exactamente `engines.node = 24.18.0`.
-- `.node-version` y `.nvmrc` fijan `24.18.0`.
-- `.npmrc` fija `frozen-lockfile=true` y `engine-strict=true`.
-- `pnpm-lock.yaml` está versionado en `main`.
-- `scripts/verify-install.mjs` bloquea explícitamente `--no-frozen-lockfile` y versiones Node distintas de `24.18.0`.
-- Cloudflare validó Node `24.18.0`, pnpm `10.15.0` y `pnpm install --frozen-lockfile` en build limpio.
-- Ambos pasos de instalación confirmaron `Lockfile is up to date, resolution step is skipped`; el segundo terminó con `Already up to date`.
-- La instalación completó `621` paquetes sin modificar el lockfile.
-- `next build` compiló correctamente, pasó lint/typecheck y generó `40/40` páginas estáticas.
-- OpenNext generó `.open-next/worker.js` y terminó con `OpenNext build complete`.
-- El build posterior de producción volvió a completar el mismo proceso sin migraciones pendientes.
-- GitHub Actions queda fijado también en Node `24.18.0`, alineado con `engines.node`.
-
-El build suministrado por Cloudflare fue confirmado por el usuario como ejecución **con caché limpia**, por lo que el gate adicional de reproducibilidad desde caché vacía queda cerrado.
-
-## Evidencia operativa — 2026-09-12
-
-### Build reproducible + upload de versión — 01:22:24–01:24:36 UTC
-
-- Node `24.18.0` y pnpm `10.15.0` detectados.
-- `pnpm install --frozen-lockfile` ejecutado por Cloudflare.
-- Segundo `pnpm install --frozen-lockfile` ejecutado por el comando de usuario.
-- Lockfile sin cambios y 621 paquetes instalados/reutilizados.
-- `next build` exitoso; lint/typecheck exitosos; `40/40` páginas estáticas.
+- Node `24.18.0`.
+- pnpm `10.15.0`.
+- `pnpm install --frozen-lockfile`.
+- lockfile versionado.
+- `.node-version` / `.nvmrc` fijados.
+- `engine-strict` y guard de instalación activos.
+- build Cloudflare limpio confirmado.
 - OpenNext completo.
-- `wrangler versions upload` exitoso.
-- Worker Version ID: `dc62c79f-cdd4-4dfb-b0a4-2862acfdb8fe`.
 
-### Deploy productivo + verificación — 01:34:16–01:36:09 UTC
+## Deploy más reciente informado
 
-El comando configurado en Cloudflare ejecutó:
-
-`pnpm deploy:cloudflare` → `pnpm db:migrate:production && pnpm build:cloudflare && wrangler deploy --env="" && pnpm verify:production`
-
-Evidencia:
-
-- D1 remoto: `No migrations to apply!`.
-- Next.js `15.5.25` compiló correctamente.
-- Lint y typecheck completaron correctamente.
-- Se generaron `40/40` páginas estáticas.
-- OpenNext finalizó correctamente.
-- Worker subido correctamente.
-- Bindings D1, R2, Queue, Assets y rate limiters presentes.
-- `APP_ENV="production"` presente.
-- Triggers desplegados: cron cada minuto + producer/consumer de `ecommerce-iphone-events`.
-- **Version ID productivo actual:** `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`.
-- `/api/health/live`: HTTP 200.
-- `/api/health/ready`: HTTP 200.
-- `verify:production`: PASS.
-- El smoke de rate limit emitió warning al no observar `429` después de 21 requests; sigue siendo warning por consistencia eventual, no fallo de despliegue.
-
-Este evento certifica **migrations + build + deploy a tráfico productivo + triggers + health + verify:production** para la versión `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`.
+- Build: **SUCCESS**.
+- Typecheck/lint: **SUCCESS**.
+- Static pages: `40/40`.
+- OpenNext: **SUCCESS**.
+- D1: `No migrations to apply!`.
+- Worker deploy: **SUCCESS**.
+- Version ID: `d1405ac6-71a1-4db1-8454-2db575bad847`.
+- `/api/health/live`: `200`.
+- `/api/health/ready`: `200`.
+- `verify:production`: **PASS**.
+- Rate limit smoke: warning por consistencia eventual, no fallo de deploy.
 
 ---
 
 # 4. Storefront Premium
 
-Implementado: catálogo D1; búsqueda, filtros, ordenamiento y paginación; detalle por slug y variantes; reviews, FAQ y relacionados; galería responsive; inventario; SEO metadata, canonical/Open Graph, JSON-LD; sitemap/robots; separación Domain/Application/Infrastructure.
+Implementado: catálogo, búsqueda, filtros, ordenamiento, paginación, variantes, reviews, FAQ, relacionados, galería, inventario, SEO metadata, canonical/Open Graph, JSON-LD, sitemap/robots y separación por capas.
 
-Pendiente de certificación completa: E2E, accesibilidad, LCP/CLS reales, SEO en URLs reales, regresiones responsive y cobertura exhaustiva de filtros/variantes/agotados.
+Pendiente: E2E, accesibilidad, LCP/CLS reales, SEO sobre URLs reales y regresiones responsive.
 
 ---
 
-# 5. Commerce Core — implementación cerrada
+# 5. Commerce Core
 
 Implementado y endurecido:
 
-- sesión `customer_session` HttpOnly, SameSite lax y Secure en producción;
-- identidad server-side y revocación;
-- carrito guest y claim ownership;
-- ownership de carrito/customer;
-- `Idempotency-Key` obligatoria en checkout;
-- precios recalculados server-side;
-- producto/variante activa verificados;
-- decremento atómico de stock con `stock >= quantity`;
-- batch D1 transaccional;
+- sesión customer server-side;
+- guest cart + claim ownership;
+- ownership por customer;
+- `Idempotency-Key` obligatoria;
+- precios server-side;
+- producto/variante activa;
+- stock atómico;
+- batch D1;
 - order `PENDING_PAYMENT`;
-- reservas de inventario con expiración de 15 minutos;
+- reservas de 15 minutos;
 - release/consume idempotentes;
-- scheduler de expiraciones;
-- pedidos autenticados filtrados por `customer_id`;
-- promociones calculadas server-side y consumidas atómicamente dentro del checkout.
+- expiración programada;
+- promociones server-side y consumo atómico;
+- pedidos filtrados por `customer_id`.
 
-La certificación funcional exhaustiva contra producción permanece separada de la implementación.
+Pendiente: certificación funcional exhaustiva contra producción.
 
 ---
 
 # 6. Payments — FASE 04
 
-## 6.1 Código
+Implementado: aggregate/state machine, ports, Wompi, Stripe, Mercado Pago, PayPal, Binance Pay, webhook verification, deduplicación/out-of-order, ledger/reconciliation, idempotencia de intent/webhook/refund, refunds y locks concurrentes, void y RBAC.
 
-Implementado: aggregate Payment y state machine; invariantes amount/currency; PaymentRepository y PaymentProviderPort; Wompi, Stripe, Mercado Pago, PayPal y Binance Pay; recovery/correlación; verificadores específicos de webhook; deduplicación/out-of-order; ledger/reconciliation; idempotencia de intent/webhook/refund; ownership server-side; refund persistido y reconciliación cuando el provider lo soporta; lock atómico contra refunds concurrentes; void administrativo donde corresponde; RBAC para refund/void.
+Persistencia versionada: `0017_payment_refunds.sql`, `0018_payment_refund_locks.sql`.
 
-## 6.2 Persistencia
-
-`0017_payment_refunds.sql` y `0018_payment_refund_locks.sql` están versionadas. El último deploy confirmó `No migrations to apply!`.
-
-## 6.3 Certificación
-
-Deploy productivo exitoso, health live/ready PASS y `verify:production` PASS. Continúa pendiente evidencia manual con proveedores productivos: aprobado/rechazado, webhook duplicado/out-of-order, manipulación amount/currency/reference, refund/void real y reservas consumidas/liberadas una sola vez.
+Pendiente: pruebas reales con proveedores productivos y certificación de refund/void/webhook/race conditions.
 
 ---
 
 # 7. Services — FASE 05
 
-## 7.1 Implementación
+Implementado: ownership server-side, workflow, quote, technician, completion, RBAC y auditoría.
 
-Customer Portal usa sesión server-side y ownership por `customer_id`; el detalle de un request de otro customer responde `404`. Workflow y operaciones administrativas validan estados, quote, técnico, completion y notas. Mutaciones usan RBAC y auditan `actorId`. IMEI/serial se minimizan.
+## Application administrativa
 
-## 7.2 Tests
+`AdminServiceQuery` gobierna listados. `AdminServiceDetails` gobierna detalle. `ServiceWorkflowService` gobierna las mutaciones. `D1ServiceRequestRepository` queda detrás de `ServiceRequestRepository`.
 
-Se cubren ownership, rechazo de customer diferente, acceso del propietario, políticas de estado, quote, completion, notas, técnico y estados arbitrarios.
+## Service Types
 
-## 7.3 Certificación
-
-Código funcional + hardening implementado para el alcance definido. Certificación 100% pendiente de gates técnicos y evidencia funcional de producción: sesión real, aislamiento, operaciones D1, auditoría y regresión de Payments/Commerce Core.
+`AdminServiceTypes` gobierna list/create, normalización, construcción de `ServiceTypeDefinition`, persistencia y auditoría mediante `AuditPort`. `D1ServiceTypeRepository` y `D1ServiceTypeAuditPort` son Infrastructure.
 
 ---
 
 # 8. Admin + RBAC — FASE 06
 
-## 8.1 Estado real
+## 8.1 Estado
 
-**🟡 Implementación avanzada + hardening en curso + certificación pendiente.**
+**🟡 Arquitectura Application consolidada + hardening avanzado. F6 no certificada todavía.**
 
-Existe una base administrativa considerable. El trabajo actual prioriza cierre de integridad de dominio, autorización, ownership/IDOR, idempotencia, concurrencia, auditoría y pruebas antes de declarar F6 completa.
+## 8.2 Admin Users
 
-## 8.2 Identidad administrativa
+`AdminUserManagement` es el único flujo administrativo y gobierna:
 
-**🟢 Implementado** — `AdminUser`, `D1AdminRepository`, sesiones, lockout y lifecycle administrativo.
+- `list`
+- `create`
+- `update`
+- `activate`
+- `deactivate`
+- `changeRole`
+- `resetPassword`
 
-## 8.3 Roles y RBAC
+Ports:
 
-**🟢 Base implementada / 🟡 certificación pendiente**
+- `AdminUserRepository`
+- `PasswordHasher`
+- `SessionRepository`
+- `AuditPort`
 
-Roles: `SUPER_ADMIN`, `ADMIN`, `MANAGER`, `SALES`, `SUPPORT`, `INVENTORY`, `FINANCE`, `CONTENT_EDITOR`, `TECHNICIAN`.
+Reglas centralizadas en Application/Domain:
 
-Existe autorización server-side mediante `requireAdmin()` y permisos explícitos. Pendiente matriz completa rol/permisión y pruebas sistemáticas de privilege escalation vertical/horizontal.
+- self deactivation;
+- self role change;
+- last `SUPER_ADMIN` protection;
+- email duplicado;
+- password hashing;
+- revocación de sesiones;
+- auditoría.
 
-## 8.4 Password security
+El DTO de listado excluye `passwordHash`.
 
-**🟢 Implementado / 🟡 pruebas pendientes** — PBKDF2-SHA256, salt aleatorio, derivación de clave, comparación segura y política de longitud administrativa.
+`AdminManagementHardening` ya no actúa como flujo paralelo desde `apps/web/lib/api/adminUsers.ts`.
 
-## 8.5 Sesiones administrativas
+## 8.3 Dashboard / Notifications
 
-**🟢 Implementado / 🟡 certificación pendiente** — token hash, expiración, revocación, fingerprints hash y cookie `HttpOnly`, `Secure`, `SameSite=Strict`, `Path=/`. Pendientes pruebas adversariales y abuso/rate limiting.
+`AdminDashboardService` y `AdminNotificationsService` gobiernan las consultas; `apps/web/lib/api` solamente adapta HTTP/Application.
 
-## 8.6 Login/logout/lockout
+## 8.4 Payments administrativos
 
-**🟢 Implementado / 🟡 certificación pendiente** — credenciales, lockout, intentos, revocación de sesiones previas, creación de sesión y auditoría.
+Consultas, refund y void administrativos están detrás de Application use cases y ports. No existe SQL ni `repo.audit()` en `apps/web/lib/api`.
 
-## 8.7 Auditoría administrativa
+## 8.5 Audit
 
-**🟢 Infraestructura + viewer implementados / 🟡 cobertura pendiente** — `admin_audit_log`, API de consulta, filtros/paginación y permiso `audit:read`. Pendiente comprobar cobertura total y ausencia de secretos en payloads.
+Lectura: `AdminAuditViewer` + `D1AdminAuditRepository`.
 
-## 8.8 Backoffice
+Escritura:
 
-- Dashboard: **🟢**
-- Services / Service Types: **🟢**
-- Promotions: **🟢 administración + integración server-side con checkout desplegada; certificación funcional pendiente**
-- CMS/SEO: **🟢 administración implementada; consumo/integración pendiente**
-- Inventory: **🟡 parcial, con ajustes idempotentes y stock atómico**
-- Products / Customers / Orders: **🟡 parcial**
-- Payments / Refunds / Void: **🟡 base + endpoints; certificación de estado/idempotencia/concurrencia pendiente**
-- Reviews / Settings: **🟢 administración implementada; certificación pendiente**
-- Admin management: **🟢 lifecycle hardening implementado; certificación pendiente**
+```text
+Application command
+ ├── validar
+ ├── ejecutar operación
+ └── AuditPort.audit(...)
+```
 
-## 8.9 Hardening realizado — Orders / Checkout
+CMS y Settings ya registran auditoría dentro de `AdminCms` / `AdminSettings`. Las routes ya no ejecutan `repo.audit()` después del caso de uso. `D1AuditPort` implementa el port.
 
-### State machine de pedidos
+## 8.6 CMS / Settings
 
-Se corrigió un bypass de integridad en `D1OrderRepository.transitionStatus()`.
+`AdminCms` y `AdminSettings` encapsulan validación, operación y auditoría. Las routes solo componen Application + ports.
 
-Ahora:
+## 8.7 Admin Auth
 
-- `assertOrderTransition()` se ejecuta antes de cualquier mutación;
-- estados desconocidos y saltos arbitrarios son rechazados;
-- `CANCELLED` y `REFUNDED` no pueden resucitar;
-- actualización y `OrderStatusChanged` se ejecutan en un único `D1.batch`;
-- `WHERE status=?` mantiene compare-and-set contra carreras concurrentes.
+`adminAuth.ts` fue reducido a adapter/composition para:
 
-### Checkout
+- `cookies()`;
+- `headers()`;
+- `getCloudflareContext()`.
 
-Se mantiene:
+Application cases:
 
-- idempotencia obligatoria;
-- precios server-side;
-- producto/variante activa;
-- stock decrementado atómicamente;
-- reservas de 15 minutos dentro del batch;
-- promociones server-side y uso condicionado atómicamente;
-- recuperación de carreras de idempotencia para el mismo customer;
-- aislamiento del `Idempotency-Key` entre customers.
+- `AuthenticateAdmin`;
+- `CreateAdminSession`;
+- `LogoutAdmin`;
+- `BootstrapAdmin`;
+- `ResolveCurrentAdmin`;
+- `RequireAdmin`.
 
-### Ownership / IDOR
+Ports:
 
-El claim de carrito solo permite `customer_id IS NULL` o el mismo customer. Un carrito de otro customer no puede ser reclamado. Los pedidos se consultan por `customer_id` y el detalle resuelve el customer desde `customer_session`, devolviendo `404` sin ownership.
+- `AdminRepository`;
+- `AdminSessionRepository`;
+- `PasswordHasher`;
+- `AuditPort`.
 
-### Guest vs autenticado
+El login, logout, bootstrap, resolución del admin actual y autorización ya no hacen acceso D1 directo desde HTTP. `AuthenticateAdmin` delega creación de sesión a `CreateAdminSession`.
 
-El carrito puede ser guest. En checkout, si el email ya corresponde a un customer, se exige una sesión cuyo customer coincida; si el email es nuevo, el checkout puede crear el customer y establecer la sesión. Una sesión existente de otro customer nunca puede apropiarse de ese email/carrito.
+## 8.8 Composition root
 
-## 8.10 Hardening realizado — Payments
+`apps/web/lib/adminApplication.ts` y la composición específica de auth construyen los grafos de Application + Infrastructure. `apps/web/lib/api/*` no debe instanciar repositorios para ejecutar lógica administrativa.
 
-`D1PaymentRepository.transition()` ahora aplica `assertPaymentTransition()` antes de modificar persistencia. Esto elimina el bypass de infraestructura que permitía solicitar desde un adapter una transición no permitida por el Domain.
+## 8.9 Backoffice
 
-La defensa queda en dos niveles:
+- Dashboard: 🟢
+- Notifications: 🟢
+- Services / Service Types: 🟢
+- Payments / Refunds / Void: 🟢
+- Admin Users: 🟢
+- CMS/SEO: 🟢 + AuditPort
+- Settings: 🟢 + AuditPort
+- Audit viewer: 🟢
+- Admin Auth: 🟢 Application + adapter
+- Inventory / Products / Customers / Orders: 🟡 revisión/certificación final pendiente
+- Promotions / Reviews: 🟡 implementación existente, certificación pendiente
 
-1. `PaymentService` ya valida transiciones críticas mediante `assertPaymentTransition()`.
-2. `D1PaymentRepository` vuelve a imponer la misma invariante en el límite de persistencia.
+## 8.10 Anti-bypass permanente
 
-Las carreras siguen protegidas por el `WHERE status=?` compare-and-set y el servicio maneja el resultado cuando otro proceso ganó la transición.
+Nunca debe existir:
 
-## 8.11 Estado de pruebas de esta iteración
+```text
+route → D1Repository
+route → Domain Entity
+apps/web/lib/api → SQL
+apps/web/lib/api → repo.audit()
+HTTP → flujo administrativo paralelo a Application
+Application → Next.js / Cloudflare / Infrastructure
+```
 
-El test de `Order` cubre progresión válida de pago, rechazo de resurrección de estados terminales y rechazo de saltos arbitrarios. Payment ya dispone de cobertura de state machine en `PaymentService.test.ts`.
+## 8.11 Pendientes para cerrar F6
 
-Para esta iteración se agregaron pruebas de infraestructura sobre `D1OrderRepository` y `D1ReservationRepository` usando un arnés SQLite respaldado por `node:sqlite` sobre una base efímera. Las pruebas cubren:
+1. build de producción posterior a toda la refactorización;
+2. `foundation:check`;
+3. `architecture:check`;
+4. unit/integration tests de Application + Domain;
+5. matriz RBAC completa;
+6. privilege escalation vertical/horizontal;
+7. IDOR/BOLA;
+8. auth/session/lockout/rate limiting administrativo;
+9. audit + ausencia de secretos en payloads;
+10. concurrencia/idempotencia de operaciones críticas;
+11. refund/void regression;
+12. regresión Services/Inventory/Commerce/Payments;
+13. deploy production + health + `verify:production`;
+14. evidencia final y certificación.
 
-- dos checkouts concurrentes con el mismo `Idempotency-Key` → exactamente una orden;
-- dos customers con la misma clave → rechazo de ownership y ninguna segunda orden;
-- dos claves diferentes contra el último stock → exactamente un ganador;
-- rollback del batch perdedor → sin orden, reserva o decremento parcial;
-- reutilización después de expiración de `Idempotency-Key`;
-- doble `releaseExpired()` concurrente → devolución de stock exactamente una vez;
-- carrera `CANCELLED` entre `releaseExpired()` y `releaseForOrder()` → devolución exactamente una vez;
-- reservas terminales pagadas no devuelven stock nuevamente;
-- reservas no expiradas permanecen intactas.
+## 8.12 Gates F6
 
-Durante esta cobertura se detectó y corrigió un caso de carrera real en `D1ReservationRepository`: `CANCELLED` debía compartir la ruta atómica de devolución de stock con `PENDING_PAYMENT`/`PAYMENT_PROCESSING`; de lo contrario, `releaseExpired()` podía marcar la reserva como liberada sin devolver stock si ganaba la carrera frente a `releaseForOrder()`.
+- [ ] foundation:check
+- [ ] architecture:check
+- [ ] format
+- [ ] lint
+- [ ] typecheck posterior a la refactorización
+- [ ] unit tests
+- [ ] integration tests
+- [x] build Cloudflare reproducible
+- [x] build limpio
+- [x] production migrations
+- [x] production deploy
+- [x] health live/ready
+- [x] verify:production
 
-La ejecución del suite completo queda pendiente de evidencia CI/build; el código de las pruebas y la corrección ya están en `main`.
+## 8.13 Criterio de cierre F6
 
-## 8.12 Pendientes inmediatos de F6
+F6 será 🟢 100% solamente cuando todos los módulos administrativos relevantes estén gobernados por Application, RBAC/auth/sesiones estén certificados, no existan bypasses, las operaciones sensibles tengan auditoría interna al use case, pasen tests/gates y exista evidencia productiva completa.
 
-1. ejecutar y certificar el suite de concurrencia/checkout agregado en esta iteración;
-2. tests IDOR/BOLA de carrito y pedidos con dos customers;
-3. certificación guest vs autenticado;
-4. coherencia completa Order/Payment state machines;
-5. refund/void: idempotencia, concurrencia, state machine y auditoría;
-6. tests de privilege escalation vertical/horizontal;
-7. tests de sesiones administrativas, abuso y rate limiting;
-8. tests de auditoría y no exposición de secretos;
-9. regresión real de Payments, Commerce Core, Services e Inventory;
-10. gates técnicos y certificación exclusivamente en producción.
-
-## 8.13 Requisitos transversales
-
-### RBAC
-
-- [ ] matriz completa rol/permisión;
-- [ ] denegación por defecto;
-- [ ] rutas sensibles protegidas server-side;
-- [ ] ningún admin_id/rol/permiso confiado desde cliente;
-- [ ] privilege escalation vertical/horizontal;
-- [ ] pruebas por recurso.
-
-### Integridad
-
-- [x] state machine Order aplicada server-side;
-- [x] transición Order + evento atómicos;
-- [x] state machine Payment aplicada también en repository;
-- [ ] idempotencia checkout certificada;
-- [ ] concurrencia stock/payments/orders certificada;
-- [ ] auditoría atómica de todas las operaciones sensibles;
-- [x] cobertura de carrera checkout/idempotencia agregada;
-- [x] cobertura de rollback de reserva y release idempotente agregada.
-
-### Tests
-
-- [x] Order state machine;
-- [x] Payment state machine existente;
-- [ ] integración D1 producción;
-- [ ] RBAC matrix;
-- [ ] authentication/session;
-- [ ] audit;
-- [ ] IDOR/BOLA;
-- [ ] negative authorization;
-- [ ] orders regression;
-- [ ] payments/refunds/void regression;
-- [x] inventory concurrency — pruebas agregadas, ejecución CI pendiente.
-
-### Gates técnicos
-
-- [ ] `foundation:check`;
-- [ ] `architecture:check`;
-- [ ] format;
-- [ ] lint;
-- [ ] typecheck;
-- [ ] unit tests;
-- [ ] integration tests;
-- [x] Cloudflare build reproducible — build 2026-09-12 01:22–01:24 UTC con `pnpm install --frozen-lockfile`, Node 24.18.0, pnpm 10.15.0 y OpenNext completo;
-- [x] build limpio — ejecución confirmada por el usuario con caché limpia;
-- [x] migrations production — `No migrations to apply!` en deploy 2026-09-12;
-- [x] deploy production — version `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`;
-- [x] health live/ready — HTTP 200 en ambos endpoints;
-- [x] `verify:production` — PASS.
-
-## 8.14 Criterio de cierre F6
-
-F6 solo podrá cambiar a **🟢 100% COMPLETA** cuando todos los módulos estén implementados, endurecidos y certificados; la matriz RBAC esté probada; autenticación/sesiones estén certificadas; no existan bypasses de autorización o state machine; las operaciones críticas tengan auditoría; pasen tests unitarios/integración/seguridad; pasen `foundation:check` y `architecture:check`; exista build reproducible; se despliegue a producción; pasen health checks y `verify:production`; y no existan regresiones en Commerce/Payments/Fases anteriores.
-
-**Estado de cierre actual: 🟡 NO CERTIFICADA.**
+**Estado actual: 🟡 NO CERTIFICADA.**
 
 ---
 
 # 9. Notifications + Queues — FASE 07
 
-Implementado: notification ports, NotificationService, templates, D1 outbox/deliveries, Resend provider, Queue, cron, IDs deterministas para eventos de pedido y claim atómico de deliveries/outbox.
+Implementado: notification ports, NotificationService, templates, D1 outbox/deliveries, Resend, Queue, cron, IDs deterministas, claim atómico de deliveries/outbox.
 
-Pendiente: DLQ explícita, política definitiva de retry y replay/auditoría de fallos terminales.
+Pendiente: DLQ explícita, retry definitivo, replay y auditoría de fallos terminales.
 
 ---
 
@@ -389,16 +321,12 @@ Pendiente: DLQ explícita, política definitiva de retry y replay/auditoría de 
 
 ## Reproducibilidad
 
-- [x] `pnpm-lock.yaml` versionado en el repositorio;
-- [x] `pnpm install --frozen-lockfile` validado en build Cloudflare;
-- [x] enforcement de `--frozen-lockfile` en Cloudflare mediante comando `pnpm install --frozen-lockfile && pnpm build:cloudflare` y `.npmrc`;
-- [x] runtime Node exacto del build — `24.18.0`;
-- [x] guard de instalación `scripts/verify-install.mjs` contra `--no-frozen-lockfile` y Node no soportado;
-- [x] GitHub Actions Node fijado a `24.18.0`;
-- [x] build Cloudflare reproducible y limpio desde caché vacía;
+- [x] lockfile versionado;
+- [x] frozen install;
+- [x] Node `24.18.0`;
+- [x] pnpm `10.15.0`;
+- [x] build limpio;
 - [x] producción desplegada y verificada.
-
-> El build de Cloudflare del 2026-09-12 01:22–01:24 UTC validó la configuración final: Node `24.18.0`, pnpm `10.15.0`, `pnpm install --frozen-lockfile`, lockfile sin cambios, `next build` exitoso, `40/40` páginas estáticas y OpenNext completo. El deploy productivo posterior del 2026-09-12 01:34–01:36 UTC confirmó migraciones, despliegue a tráfico productivo, triggers, health y `verify:production` PASS, con versión `b6226472-9f1a-4996-a4a1-ec8d62c0b59f`.
 
 ## Seguridad
 
@@ -407,7 +335,6 @@ Pendiente: DLQ explícita, política definitiva de retry y replay/auditoría de 
 - [ ] autorización server-side completa;
 - [ ] CORS/Origin;
 - [ ] CSRF donde corresponda;
-- [ ] headers;
 - [ ] secrets/dependencias;
 - [ ] abuso/rate-limit;
 - [ ] regresiones de seguridad.
@@ -416,27 +343,27 @@ Estos gates no se convierten en PASS por documentación.
 
 ---
 
-# 11. Criterio de cierre
+# 11. Criterio general de cierre
 
 ```text
-Código + Pruebas + Seguridad + Reproducibilidad + Deploy + Verificación de producción = 100%
+Código + Pruebas + Seguridad + Reproducibilidad + Deploy + Verificación = 100%
 ```
 
 No se usa `compila = 100%`, `CI verde = 100%` ni `documentado = 100%`.
 
 ---
 
-# 12. Orden inmediato de Fase 06
+# 12. Orden inmediato
 
-1. ejecutar suite de concurrencia/checkout agregada;
-2. ownership/IDOR/BOLA de carritos y pedidos;
-3. guest vs autenticado;
-4. state machines Order/Payment;
-5. refund/void idempotencia + concurrencia;
-6. tests críticos RBAC/sesiones/auditoría;
-7. gates técnicos restantes;
-8. deploy exclusivamente a producción;
-9. certificación funcional;
-10. actualizar esta auditoría con commit, SHA y evidencia.
+1. build de producción posterior a F6;
+2. corregir errores reales de TypeScript/imports/arquitectura;
+3. foundation:check + architecture:check;
+4. tests Application/Domain/RBAC/auth/audit;
+5. IDOR/BOLA + privilege escalation;
+6. concurrencia/idempotencia crítica;
+7. regresión Payments/Commerce/Services/Inventory;
+8. deploy production;
+9. health + verify:production;
+10. certificación F6 con evidencia exacta.
 
 **Regla permanente:** este documento debe actualizarse en la misma iteración de cada cambio relevante de código.
