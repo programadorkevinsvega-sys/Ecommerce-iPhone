@@ -1,3 +1,4 @@
+import type { AdminResourceAuditPort } from "./AdminResourceAuditPort";
 import type { AdminResourceRepository } from "./AdminResourceRepository";
 import { DEFAULT_AUTHORIZATION_POLICY, type AdminRole, type AuthorizationPolicy, type Permission } from "./Rbac";
 import { validateProductPatch, validateProductProps, type ProductCondition } from "../../catalog/domain/Product";
@@ -5,7 +6,7 @@ import { validateProductPatch, validateProductProps, type ProductCondition } fro
 export type AdminActor = { id: string; email: string; role: AdminRole };
 export type ResourceName = "products" | "customers" | "services" | "orders";
 export type AdminNotificationPublisher = (event: { eventType: string; aggregateId: string; payload: Record<string, unknown> }) => Promise<void>;
-export type AdminResourcesDeps = { repository: AdminResourceRepository; publishNotification: AdminNotificationPublisher; authorizationPolicy?: AuthorizationPolicy };
+export type AdminResourcesDeps = { repository: AdminResourceRepository; audit: AdminResourceAuditPort; publishNotification: AdminNotificationPublisher; authorizationPolicy?: AuthorizationPolicy };
 const MAX_QUERY_LENGTH = 100;
 
 function clean(value: unknown, max: number): string { return String(value ?? "").trim().slice(0, max); }
@@ -60,19 +61,17 @@ export class AdminResources {
         priceInCents: Number(body.price_in_cents), currency: "COP", stock: Number(body.stock ?? 0), images: [],
         active: body.active === undefined ? true : bool(body.active), warrantyMonths: Number(body.warranty_months ?? 12),
         batteryHealth: body.battery_health == null ? undefined : Number(body.battery_health),
-        storageGb: body.storage_gb == null ? undefined : Number(body.storage_gb),
-        color: body.color == null ? undefined : clean(body.color, 80),
+        storageGb: body.storage_gb == null ? undefined : Number(body.storage_gb), color: body.color == null ? undefined : clean(body.color, 80),
         specs: parseSpecs(body.specs_json), seoTitle: body.seo_title == null ? undefined : clean(body.seo_title, 180),
         seoDescription: body.seo_description == null ? undefined : clean(body.seo_description, 320),
       });
       if (body.active !== undefined && typeof body.active !== "boolean" && body.active !== 0 && body.active !== 1) throw new Error("INVALID_PRODUCT");
       const id = await this.deps.repository.createProduct({
-        id: crypto.randomUUID(), name: props.name, slug: props.slug, brand: props.brand, model: props.model,
-        description: props.description, condition: props.condition, priceInCents: props.priceInCents, stock: props.stock,
-        warrantyMonths: props.warrantyMonths, batteryHealth: props.batteryHealth ?? null, storageGb: props.storageGb ?? null,
-        color: props.color ?? null, specsJson: JSON.stringify(props.specs),
+        id: crypto.randomUUID(), name: props.name, slug: props.slug, brand: props.brand, model: props.model, description: props.description,
+        condition: props.condition, priceInCents: props.priceInCents, stock: props.stock, warrantyMonths: props.warrantyMonths,
+        batteryHealth: props.batteryHealth ?? null, storageGb: props.storageGb ?? null, color: props.color ?? null, specsJson: JSON.stringify(props.specs),
       });
-      await this.deps.repository.audit(actor.id, "ADMIN_PRODUCT_CREATED", "product", id, { name: props.name, slug: props.slug });
+      await this.deps.audit.audit(actor.id, "ADMIN_PRODUCT_CREATED", "product", id, { name: props.name, slug: props.slug });
       return { id };
     } catch { throw new Error("INVALID_PRODUCT"); }
   }
@@ -83,6 +82,7 @@ export class AdminResources {
     const current = await this.deps.repository.getServiceForMutation(id); if (!current) throw new Error("SERVICE_NOT_FOUND");
     if (current.status === "QUOTED") throw new Error("SERVICE_NOOP_TRANSITION");
     await this.deps.repository.quoteService(id, amountInCents, actor.id);
+    await this.deps.audit.audit(actor.id, "ADMIN_SERVICE_QUOTED", "service_request", id, { amountInCents });
     await this.deps.publishNotification({ eventType: "ServiceStatusChanged", aggregateId: id, payload: { email: current.email, serviceRequestId: id, status: "QUOTED", quoteInCents: amountInCents } });
     return {};
   }
@@ -94,7 +94,7 @@ export class AdminResources {
     try { validateProductPatch(validation); } catch { throw new Error("INVALID_PRODUCT"); }
     const values = fields.map((key) => key === "active" ? (bool(body[key]) ? 1 : 0) : key === "specs_json" ? JSON.stringify(parseSpecs(body[key])) : body[key]);
     await this.deps.repository.updateProduct(id, fields, values);
-    await this.deps.repository.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "products", id, body);
+    await this.deps.audit.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "products", id, Object.fromEntries(fields.map((field) => [field, body[field]])));
   }
 
   private async updateOrder(actor: AdminActor, id: string, body: Record<string, unknown>): Promise<void> {
@@ -103,6 +103,7 @@ export class AdminResources {
     const current = await this.deps.repository.getOrderForMutation(id); if (!current) throw new Error("ORDER_NOT_FOUND");
     if (current.status === status) throw new Error("ORDER_NOOP_TRANSITION");
     await this.deps.repository.updateOrderStatus(id, status, actor.id, current.status);
+    await this.deps.audit.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "orders", id, { from: current.status, to: status });
     await this.deps.publishNotification({ eventType: status === "PAID" ? "OrderPaid" : "OrderStatusChanged", aggregateId: id, payload: { email: current.email, orderId: id, orderNumber: current.orderNumber, status } });
   }
 
@@ -112,6 +113,7 @@ export class AdminResources {
     const current = await this.deps.repository.getServiceForMutation(id); if (!current) throw new Error("SERVICE_NOT_FOUND");
     if (current.status === status) throw new Error("SERVICE_NOOP_TRANSITION");
     await this.deps.repository.updateServiceStatus(id, status, actor.id, current.status);
+    await this.deps.audit.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "services", id, { from: current.status, to: status });
     await this.deps.publishNotification({ eventType: "ServiceStatusChanged", aggregateId: id, payload: { email: current.email, serviceRequestId: id, status } });
   }
 }
