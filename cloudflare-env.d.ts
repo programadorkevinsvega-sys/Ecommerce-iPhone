@@ -8,6 +8,8 @@ declare global {
     SENSITIVE_RATE_LIMITER: { limit(input: { key: string }): Promise<{ success: boolean }> };
     APP_ENV: string;
     ALLOWED_ORIGIN: string;
+    ADMIN_EMAIL?: string;
+    ADMIN_PASSWORD?: string;
     ADMIN_BOOTSTRAP_TOKEN?: string;
     RESEND_API_KEY?: string;
     EMAIL_FROM?: string;
