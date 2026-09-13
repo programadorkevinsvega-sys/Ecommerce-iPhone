@@ -22,6 +22,16 @@ export class D1AdminRepository {
     const p = user.toPrimitives();
     await this.db.prepare(`INSERT INTO admin_users (id,email,password_hash,role,first_name,last_name,active,failed_login_count,locked_until,last_login_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email,password_hash=excluded.password_hash,role=excluded.role,first_name=excluded.first_name,last_name=excluded.last_name,active=excluded.active,failed_login_count=excluded.failed_login_count,locked_until=excluded.locked_until,last_login_at=excluded.last_login_at,created_at=excluded.created_at,updated_at=excluded.updated_at`).bind(p.id,p.email,p.passwordHash,p.role,p.firstName,p.lastName,p.active?1:0,p.failedLoginCount,p.lockedUntil??null,p.lastLoginAt??null,p.createdAt,p.updatedAt).run();
   }
+  async createInitialSuperAdmin(user: AdminUser): Promise<boolean> {
+    const p = user.toPrimitives();
+    const result = await this.db.prepare(`INSERT INTO admin_users (id,email,password_hash,role,first_name,last_name,active,failed_login_count,locked_until,last_login_at,created_at,updated_at)
+      SELECT ?,?,?,?,?,?,?,?,?,?,?,?
+      WHERE NOT EXISTS (SELECT 1 FROM admin_users WHERE role='SUPER_ADMIN' AND active=1)
+        AND NOT EXISTS (SELECT 1 FROM admin_users WHERE email=? COLLATE NOCASE)`).bind(
+      p.id,p.email,p.passwordHash,p.role,p.firstName,p.lastName,p.active?1:0,p.failedLoginCount,p.lockedUntil??null,p.lastLoginAt??null,p.createdAt,p.updatedAt,p.email,
+    ).run();
+    return result.meta.changes === 1;
+  }
   async recordFailedLogin(id:string,now:Date,maxAttempts:number,lockMinutes:number):Promise<LoginFailureState>{
     const nowIso=now.toISOString();
     const lockedIso=new Date(now.getTime()+lockMinutes*60_000).toISOString();

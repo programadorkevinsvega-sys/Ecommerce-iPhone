@@ -1,6 +1,6 @@
 export interface AuditPort {
   audit(
-    adminUserId: string,
+    adminUserId: string | null,
     action: string,
     resourceType: string,
     resourceId: string | null,

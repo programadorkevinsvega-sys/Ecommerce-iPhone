@@ -15,28 +15,10 @@ export async function POST(request: Request) {
       );
     }
 
-    let body: Record<string, unknown> = {};
-
-    try {
-      const parsed = await request.json();
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        body = parsed as Record<string, unknown>;
-      }
-    } catch {
-    }
-
     const id = await bootstrapAdmin(
       {
         email,
         password,
-        firstName:
-          typeof body.firstName === "string" && body.firstName.trim()
-            ? body.firstName.trim()
-            : "Administrador",
-        lastName:
-          typeof body.lastName === "string" && body.lastName.trim()
-            ? body.lastName.trim()
-            : "Principal",
         role: "SUPER_ADMIN",
       },
       request.headers.get("X-Admin-Bootstrap-Token"),
@@ -44,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ created: true, adminId: id }, { status: 201 });
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
-    const status = code === "NOT_FOUND" ? 404 : code === "ADMIN_ALREADY_EXISTS" ? 409 : 400;
+    const status = code === "NOT_FOUND" ? 404 : code === "ADMIN_ALREADY_EXISTS" ? 409 : code === "INVALID_ADMIN_DATA" || code === "INVALID_ROLE" || code === "INVALID_ADMIN_EMAIL" || code === "INVALID_ADMIN_NAME" || code === "INVALID_PASSWORD_HASH" ? 400 : 500;
     return NextResponse.json(
       {
         error:
@@ -52,7 +34,9 @@ export async function POST(request: Request) {
             ? "Not found"
             : status === 409
               ? "Admin already exists"
-              : "Invalid admin configuration",
+              : status === 400
+                ? "Invalid admin configuration"
+                : "Unable to bootstrap administrator",
       },
       { status },
     );

@@ -32,7 +32,7 @@ Permissions cover dashboard, products, orders, customers, services, refunds, inv
 
 ## First administrator
 
-Set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_BOOTSTRAP_TOKEN` as Cloudflare Worker secrets. Call the bootstrap endpoint once with the token in `X-Admin-Bootstrap-Token`, then rotate/remove the bootstrap secrets. The request body may be empty; optional `firstName` and `lastName` can be sent as JSON. Never commit these values.
+Set `ADMIN_EMAIL` as a Cloudflare runtime variable and `ADMIN_PASSWORD` plus `ADMIN_BOOTSTRAP_TOKEN` as Worker secrets. Call the bootstrap endpoint once with the token in `X-Admin-Bootstrap-Token`, then rotate/remove the bootstrap secrets. The endpoint does not accept credentials from the request body. Never commit these values.
 
 ```sh
 curl -X POST \

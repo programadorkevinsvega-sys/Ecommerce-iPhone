@@ -16,11 +16,14 @@ export class AuthenticateAdminAtomic {
     const user=await this.admins.findByEmail(email);
     if(!user){
       await this.passwords.verifyUnknownAccount(password);
-      await this.audit.audit("","ADMIN_LOGIN_FAILED","admin_user",null,{reason:"invalid_credentials",email,ipHash:ipHash??null});
+      await this.audit.audit(null,"ADMIN_LOGIN_FAILED","admin_user",null,{reason:"invalid_credentials",email,ipHash:ipHash??null});
       throw new Error("INVALID_CREDENTIALS");
     }
     const current=user.toPrimitives(),now=this.now();
-    if(current.lockedUntil&&new Date(current.lockedUntil).getTime()>now.getTime())throw new Error("ACCOUNT_LOCKED");
+    if(current.lockedUntil&&new Date(current.lockedUntil).getTime()>now.getTime()){
+      await this.audit.audit(user.getId(),"ADMIN_LOGIN_BLOCKED","admin_user",user.getId(),{reason:"account_locked",lockedUntil:current.lockedUntil,ipHash:ipHash??null});
+      throw new Error("ACCOUNT_LOCKED");
+    }
     if(!(await this.passwords.verify(password,current.passwordHash))){
       const state=await this.admins.recordFailedLogin(user.getId(),now,5,15);
       await this.audit.audit(user.getId(),"ADMIN_LOGIN_FAILED","admin_user",user.getId(),{reason:"invalid_credentials",failedLoginCount:state.failedLoginCount,lockedUntil:state.lockedUntil??null,ipHash:ipHash??null});

@@ -5,7 +5,7 @@ export class D1AuditPort implements AuditPort {
   constructor(private readonly db: D1Database) {}
 
   async audit(
-    adminUserId: string,
+    adminUserId: string | null,
     action: string,
     resourceType: string,
     resourceId: string | null,

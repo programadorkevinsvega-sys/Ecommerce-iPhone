@@ -8,6 +8,7 @@ export class D1AdminAuthRepository implements AdminRepository {
   findByEmail(email: string) { return this.repository.findByEmail(email); }
   findById(id: string) { return this.repository.findById(id); }
   save(user: Parameters<AdminRepository["save"]>[0]) { return this.repository.saveUser(user); }
+  createInitialSuperAdmin(user: Parameters<AdminRepository["createInitialSuperAdmin"]>[0]) { return this.repository.createInitialSuperAdmin(user); }
   recordFailedLogin(id: string, now: Date, maxAttempts: number, lockMinutes: number): Promise<LoginFailureState> { return this.repository.recordFailedLogin(id, now, maxAttempts, lockMinutes); }
   recordSuccessfulLogin(id: string, now: Date) { return this.repository.recordSuccessfulLogin(id, now); }
 }

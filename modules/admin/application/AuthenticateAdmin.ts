@@ -45,12 +45,14 @@ export class AuthenticateAdmin {
 
     const user = await this.admins.findByEmail(email);
     if (!user) {
-      await this.audit.audit("", "ADMIN_LOGIN_FAILED", "admin_user", null, { reason: "invalid_credentials", email, ipHash: ipHash ?? null });
+      await this.passwords.verifyUnknownAccount(password);
+      await this.audit.audit(null, "ADMIN_LOGIN_FAILED", "admin_user", null, { reason: "invalid_credentials", email, ipHash: ipHash ?? null });
       throw new Error("INVALID_CREDENTIALS");
     }
 
     const current = user.toPrimitives();
     if (current.lockedUntil && new Date(current.lockedUntil).getTime() > this.now().getTime()) {
+      await this.audit.audit(user.getId(), "ADMIN_LOGIN_BLOCKED", "admin_user", user.getId(), { reason: "account_locked", lockedUntil: current.lockedUntil, ipHash: ipHash ?? null });
       throw new Error("ACCOUNT_LOCKED");
     }
 
