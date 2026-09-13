@@ -56,7 +56,19 @@ function parseRole(value: unknown, fallback: AdminRole = "ADMIN"): AdminRole {
 
 function toListItem(user: AdminUser): AdminUserListItem {
   const value = user.toPrimitives();
-  return value;
+  return {
+    id: value.id,
+    email: value.email,
+    role: value.role,
+    firstName: value.firstName,
+    lastName: value.lastName,
+    active: value.active,
+    failedLoginCount: value.failedLoginCount,
+    lockedUntil: value.lockedUntil,
+    lastLoginAt: value.lastLoginAt,
+    createdAt: value.createdAt,
+    updatedAt: value.updatedAt,
+  };
 }
 
 export class AdminUserManagement {
