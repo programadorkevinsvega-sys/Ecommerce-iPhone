@@ -36,7 +36,7 @@ describe("validatePaymentRedirect", () => {
   });
 
   it("rejects credentials embedded in the redirect URL", () => {
-    expect(() => validatePaymentRedirect("PAYPAL", "https://user:password@www.paypal.com/checkoutnow?token=x", origin)).toThrow(/payment redirect/i);
+    expect(() => validatePaymentRedirect("PAYPAL", "https://user:pass@www.paypal.com/checkoutnow?token=x", origin)).toThrow(/payment redirect/i);
   });
 
   it("rejects arbitrary same-origin paths", () => {
