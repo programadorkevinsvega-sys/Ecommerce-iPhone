@@ -8,6 +8,7 @@
   "assets": {"directory": "apps/web/.open-next/assets", "binding": "ASSETS"},
   "vars": {
     "APP_ENV": "production",
+    "ADMIN_EMAIL": "yesidvegamar@gmail.com",
     "ALLOWED_ORIGIN": "https://iphone.jnmtortas.com"
   },
   "ratelimits": [
