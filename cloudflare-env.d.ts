@@ -5,6 +5,7 @@ declare global {
     DB: D1Database;
     MEDIA_BUCKET: R2Bucket;
     EVENTS_QUEUE: Queue;
+    SENSITIVE_RATE_LIMITER: { limit(input: { key: string }): Promise<{ success: boolean }> };
     APP_ENV: string;
     ALLOWED_ORIGIN: string;
     ADMIN_BOOTSTRAP_TOKEN?: string;
