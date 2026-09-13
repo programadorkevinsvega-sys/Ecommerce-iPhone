@@ -23,7 +23,7 @@ function repository(): AdminRepository & { users: AdminUser[] } {
 
 function setup() {
   const admins = repository();
-  const passwords = { hash: vi.fn(async (value: string) => `pbkdf2-sha256$150000$${value.length}`), verify: vi.fn(), verifyUnknownAccount: vi.fn() };
+  const passwords = { hash: vi.fn(async (value: string) => `pbkdf2-sha256$100000$${value.length}`), verify: vi.fn(), verifyUnknownAccount: vi.fn() };
   const audit = { audit: vi.fn().mockResolvedValue(undefined) };
   const service = new BootstrapAdmin(admins, passwords, audit);
   return { admins, passwords, audit, service };
@@ -52,7 +52,7 @@ describe("BootstrapAdmin", () => {
     const context = setup();
     const id = await context.service.execute({ email: " ADMIN@EXAMPLE.COM ", password: "plain-secret" }, "token", "token");
     expect(id).toBe(context.admins.users[0]?.getId());
-    expect(context.admins.users[0]?.toPrimitives()).toMatchObject({ email: "admin@example.com", role: "SUPER_ADMIN", passwordHash: "pbkdf2-sha256$150000$12" });
+    expect(context.admins.users[0]?.toPrimitives()).toMatchObject({ email: "admin@example.com", role: "SUPER_ADMIN", passwordHash: "pbkdf2-sha256$100000$12" });
     expect(context.admins.users[0]?.toPrimitives().passwordHash).not.toContain("plain-secret");
     expect(context.audit.audit).toHaveBeenCalledOnce();
   });

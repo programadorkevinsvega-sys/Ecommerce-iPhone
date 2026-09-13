@@ -4,7 +4,7 @@ import { hashPassword, hasPermission, PERMISSIONS, verifyPassword } from "./Admi
 describe("AdminSecurity", () => {
   it("hashes and verifies passwords without storing plaintext", async () => {
     const hash = await hashPassword("Correct-Horse-Battery-77!");
-    expect(hash).toMatch(/^pbkdf2-sha256\$150000\$/);
+    expect(hash).toMatch(/^pbkdf2-sha256\$100000\$/);
     expect(hash).not.toContain("Correct-Horse");
     expect(await verifyPassword("Correct-Horse-Battery-77!", hash)).toBe(true);
     expect(await verifyPassword("wrong-password", hash)).toBe(false);

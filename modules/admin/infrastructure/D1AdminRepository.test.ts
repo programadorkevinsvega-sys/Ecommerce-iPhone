@@ -27,7 +27,7 @@ function testDb() {
 function admin(id: string, email: string) {
   return AdminUser.create(id, {
     email,
-    passwordHash: "pbkdf2-sha256$150000$hash",
+    passwordHash: "pbkdf2-sha256$100000$hash",
     role: "SUPER_ADMIN",
     firstName: "Administrador",
     lastName: "Principal",
@@ -43,7 +43,7 @@ describe("D1AdminRepository bootstrap guard", () => {
     expect(await repository.createInitialSuperAdmin(admin("admin-1", "one@example.com"))).toBe(true);
     expect(await repository.createInitialSuperAdmin(admin("admin-2", "two@example.com"))).toBe(false);
     expect(db.query<{ email: string; password_hash: string }>("SELECT email, password_hash FROM admin_users")).toEqual([
-      { email: "one@example.com", password_hash: "pbkdf2-sha256$150000$hash" },
+      { email: "one@example.com", password_hash: "pbkdf2-sha256$100000$hash" },
     ]);
     db.close();
   });

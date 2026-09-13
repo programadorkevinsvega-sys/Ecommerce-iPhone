@@ -26,8 +26,7 @@ export class BootstrapAdmin {
     let passwordHash: string;
     try {
       passwordHash = await this.passwords.hash(password);
-    } catch (error) {
-      console.error("admin bootstrap password hashing failed", error instanceof Error ? { name: error.name, message: error.message } : { type: typeof error });
+    } catch {
       throw new Error("INVALID_ADMIN_PASSWORD");
     }
 
@@ -45,13 +44,11 @@ export class BootstrapAdmin {
       if (!(await this.admins.createInitialSuperAdmin(user))) throw new Error("ADMIN_ALREADY_EXISTS");
     } catch (error) {
       if (error instanceof Error && error.message === "ADMIN_ALREADY_EXISTS") throw error;
-      console.error("admin bootstrap persistence failed");
       throw new Error("ADMIN_BOOTSTRAP_STORAGE_ERROR");
     }
     try {
       await this.audit.audit(user.getId(), "ADMIN_BOOTSTRAPPED", "admin_user", user.getId(), { role, email });
     } catch {
-      console.error("admin bootstrap audit failed");
       throw new Error("ADMIN_BOOTSTRAP_AUDIT_ERROR");
     }
     return user.getId();

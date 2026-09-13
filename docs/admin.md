@@ -7,7 +7,7 @@ Phase 06 implements the administrative bounded context and its server-side integ
 - HttpOnly + Secure + SameSite=Strict admin session cookie.
 - Sessions are stored in D1 as SHA-256 token hashes and expire after 8 days.
 - Successful login revokes previous sessions for the user.
-- Passwords use PBKDF2-HMAC-SHA-256 with a per-password random salt and 150,000 iterations. Plaintext passwords are never persisted.
+- Passwords use PBKDF2-HMAC-SHA-256 with a per-password random salt and 100,000 iterations, the maximum supported by Cloudflare Workers Web Crypto. Plaintext passwords are never persisted.
 - Five consecutive failed attempts temporarily lock an account for 15 minutes.
 - RBAC is enforced in the server-side application boundary; UI visibility is not a security control.
 - Admin actions are written to `admin_audit_log`.
