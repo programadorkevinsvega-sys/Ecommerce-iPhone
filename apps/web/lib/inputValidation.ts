@@ -68,13 +68,13 @@ export function assertLength(value: string, field: keyof typeof INPUT_LIMITS): s
   return value;
 }
 
-export function validateEmail(value: string): string {
+export function validateEmail(value: unknown): string {
   const normalized = assertLength(normalizeEmail(value), "email");
   if (!EMAIL_PATTERN.test(normalized)) throw new Error("INVALID_EMAIL");
   return normalized;
 }
 
-export function validatePhone(value: string): string {
+export function validatePhone(value: unknown): string {
   const normalized = assertLength(normalizePhone(value), "phone");
   if (!PHONE_PATTERN.test(normalized)) throw new Error("INVALID_PHONE");
   return normalized;
