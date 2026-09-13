@@ -4,8 +4,8 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD auditado:** `499ef7ac4583a8515be0711ea61d67c882f8758a`  
-**Última actualización:** 2026-09-12/13 UTC  
+**HEAD auditado:** `87d684119875e57bb12a2818da1804c440206325`  
+**Última actualización:** 2026-09-13 UTC  
 **Entorno remoto operativo:** producción únicamente.
 
 > Una fase no se declara 100% por compilar. El cierre exige código, pruebas, seguridad, reproducibilidad, deploy y evidencia operativa.
@@ -16,7 +16,7 @@
 
 | Fase | Estado | Certificación |
 |---|---|---|
-| 01 Foundation | 🟢 Implementada | Pendiente auditoría final |
+| 01 Foundation | 🟡 Implementada + frontend data hardening | Pendiente gate/certificación final |
 | 02 Storefront | 🟢 Implementada | Pendiente E2E/performance/accessibility |
 | 03 Commerce Core | 🟢 Implementación cerrada | Pendiente certificación exhaustiva en producción |
 | 04 Payments | 🟡 Implementada + hardening | Pendiente certificación real de proveedores |
@@ -24,7 +24,7 @@
 | 06 Admin + RBAC | 🟡 Application consolidada + hardening | Pendiente build/tests/gates |
 | 07 Notifications + Queues | 🟡 Parcial | DLQ/retry/replay pendiente |
 
-El trabajo reciente corresponde al cierre arquitectónico y hardening de **Fase 06**.
+El trabajo reciente corresponde al hardening de **Fase 01 — eliminación de datos/mock de negocio en frontend** y al cierre arquitectónico/hardening de **Fase 06**.
 
 ---
 
@@ -56,6 +56,7 @@ Reglas:
 - Auditoría de comandos administrativos vive dentro de Application mediante `AuditPort`.
 - `apps/web/lib/adminAuth.ts` queda como adapter/composition layer para cookies, headers y Cloudflare context.
 - `architecture:check` mantiene el enforcement.
+- El frontend de producción no contiene datasets mock/demo ni repositorios in-memory en su camino ejecutable.
 
 ---
 
@@ -87,6 +88,66 @@ Implementado: monorepo modular, DDD + Clean Architecture, bounded contexts, D1/R
 - `/api/health/ready`: `200`.
 - `verify:production`: **PASS**.
 - Rate limit smoke: warning por consistencia eventual, no fallo de deploy.
+
+## 3.1 Fase 01 — Frontend: eliminación de mocks y datos de demostración
+
+### Alcance auditado
+
+Se inspeccionaron como superficie de producción:
+
+- `apps/web/app/**`
+- `apps/web/components/**`
+- `apps/web/lib/**`
+
+La comprobación cubre marcadores y patrones de:
+
+```text
+mock / mocks
+ demo
+ fake
+ dummy
+ fixture
+ sample
+ seed
+ hardcoded
+ InMemory
+ TODO
+```
+
+Además detecta identificadores de datos de negocio falsos, credenciales/test data evidentes, imports de `InMemoryProductRepository` y literales numéricos usados directamente como campos de precio de negocio en frontend.
+
+### Gate permanente
+
+Se creó `scripts/check-frontend-production-data.mjs` y el script raíz:
+
+```text
+pnpm frontend:data:check
+```
+
+El deploy de producción ejecuta este gate antes de arquitectura, formato, lint, typecheck, tests y build.
+
+### Datos reales
+
+El catálogo productivo de frontend se compone mediante `D1ProductRepository`, `D1ProductVariantRepository` y casos de uso de Application; no utiliza `InMemoryProductRepository` para resolver catálogo. `apps/web/lib/catalog.ts` instancia el repositorio D1 y delega búsqueda/variantes a Application.
+
+### InMemoryProductRepository
+
+`modules/catalog/infrastructure/InMemoryProductRepository.ts` existe únicamente como adapter de soporte para pruebas del contrato del repositorio y su test asociado. No forma parte del código de `apps/web` ni del camino real del frontend. El gate de producción bloquea cualquier importación accidental desde las rutas/componentes/libs de producción.
+
+### Checkout / precios
+
+Se eliminó del frontend el precio de envío `$15.000` y el texto comercial `gratis` que estaban hardcodeados en el selector de checkout. La UI ahora envía únicamente el método de envío; el cálculo efectivo del pedido continúa siendo responsabilidad server-side.
+
+### Resultado del estado de código
+
+- `mockProducts[]`: no encontrado en la superficie frontend auditada.
+- `fakeUser`: no encontrado en la superficie frontend auditada.
+- `demoOrder`: no encontrado en la superficie frontend auditada.
+- credenciales demo evidentes: no encontradas en la superficie frontend auditada.
+- import productivo de `InMemoryProductRepository`: no encontrado en la superficie frontend auditada.
+- precio de envío hardcodeado en checkout frontend: eliminado.
+
+**Fase 01 frontend data hardening: 🟡 IMPLEMENTADO, pendiente ejecución del gate/build y certificación final.**
 
 ---
 
@@ -395,15 +456,15 @@ No se usa `compila = 100%`, `CI verde = 100%` ni `documentado = 100%`.
 
 # 12. Orden inmediato
 
-1. build de producción posterior a F6;
-2. corregir errores reales de TypeScript/imports/arquitectura;
-3. foundation:check + architecture:check;
+1. ejecutar `pnpm frontend:data:check` y resolver cualquier hallazgo real;
+2. build de producción posterior al hardening frontend/F6;
+3. `foundation:check` + `architecture:check`;
 4. tests Application/Domain/RBAC/auth/audit;
 5. IDOR/BOLA + privilege escalation;
 6. concurrencia/idempotencia crítica;
 7. regresión Payments/Commerce/Services/Inventory;
 8. deploy production;
 9. health + verify:production;
-10. certificación F6 con evidencia exacta.
+10. certificación F6 y F1 con evidencia exacta.
 
 **Regla permanente:** este documento debe actualizarse en la misma iteración de cada cambio relevante de código.
