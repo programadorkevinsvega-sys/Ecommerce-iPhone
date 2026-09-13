@@ -42,6 +42,12 @@ describe("BootstrapAdmin", () => {
     await expect(context.service.execute({ email: "", password: "" }, "token", "token")).rejects.toThrow("INVALID_ADMIN_DATA");
   });
 
+  it("rejects a bootstrap password outside the hasher policy", async () => {
+    const context = setup();
+    await expect(context.service.execute({ email: "admin@example.com", password: "short" }, "token", "token")).rejects.toThrow("INVALID_ADMIN_PASSWORD");
+    expect(context.passwords.hash).not.toHaveBeenCalled();
+  });
+
   it("creates a SUPER_ADMIN with only the generated hash", async () => {
     const context = setup();
     const id = await context.service.execute({ email: " ADMIN@EXAMPLE.COM ", password: "plain-secret" }, "token", "token");

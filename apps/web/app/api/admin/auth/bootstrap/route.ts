@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ created: true, adminId: id }, { status: 201 });
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
-    const status = code === "NOT_FOUND" ? 404 : code === "ADMIN_ALREADY_EXISTS" ? 409 : code === "INVALID_ADMIN_DATA" || code === "INVALID_ROLE" || code === "INVALID_ADMIN_EMAIL" || code === "INVALID_ADMIN_NAME" || code === "INVALID_PASSWORD_HASH" ? 400 : 500;
+    const status = code === "NOT_FOUND" ? 404 : code === "ADMIN_ALREADY_EXISTS" ? 409 : code === "INVALID_ADMIN_DATA" || code === "INVALID_ADMIN_PASSWORD" || code === "INVALID_ROLE" || code === "INVALID_ADMIN_EMAIL" || code === "INVALID_ADMIN_NAME" || code === "INVALID_PASSWORD_HASH" ? 400 : 500;
     return NextResponse.json(
       {
         error:

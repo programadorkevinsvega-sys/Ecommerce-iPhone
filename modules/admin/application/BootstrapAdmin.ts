@@ -19,6 +19,7 @@ export class BootstrapAdmin {
     const lastName = String(input.lastName ?? "Principal").trim();
     const role = String(input.role ?? "SUPER_ADMIN") as AdminRole;
     if (!email || !password || !firstName || !lastName) throw new Error("INVALID_ADMIN_DATA");
+    if (password.length < 12 || password.length > 128) throw new Error("INVALID_ADMIN_PASSWORD");
     if (role !== "SUPER_ADMIN") throw new Error("INVALID_ROLE");
     if (await this.admins.findByEmail(email)) throw new Error("ADMIN_ALREADY_EXISTS");
 
