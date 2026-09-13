@@ -15,9 +15,9 @@ export async function GET() {
     if (!session) return NextResponse.json({ customer: null });
     const result = await context.customer.get(session.customerId);
     if (!result.customer) return NextResponse.json({ customer: null });
-    return NextResponse.json({ customer: result.customer.toPrimitives(), addresses: result.addresses });
-  } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Unable to load customer" }, { status: 500 });
+    return NextResponse.json({ customer: result.customer.toPrimitives(), addresses: result.addresses }, { headers: { "cache-control": "no-store" } });
+  } catch {
+    return NextResponse.json({ error: "No pudimos completar la operación." }, { status: 500, headers: { "cache-control": "no-store" } });
   }
 }
 
@@ -30,8 +30,8 @@ export async function POST(request: Request) {
     const currentToken = (await cookies()).get("customer_session")?.value;
     const currentSession = currentToken ? await context.customerSession.resolve(currentToken) : null;
 
-    if (existing && (!currentSession || currentSession.customerId !== existing.getId())) return NextResponse.json({ error: "Customer session required" }, { status: 401 });
-    if (currentSession && currentSession.customerId !== existing?.getId()) return NextResponse.json({ error: "Customer session does not match customer" }, { status: 401 });
+    if (existing && (!currentSession || currentSession.customerId !== existing.getId())) return NextResponse.json({ error: "Tu sesión ya no es válida. Inicia sesión nuevamente." }, { status: 401 });
+    if (currentSession && currentSession.customerId !== existing?.getId()) return NextResponse.json({ error: "Tu sesión ya no es válida. Inicia sesión nuevamente." }, { status: 401 });
 
     const address = body.address ? {
       label: String(body.address.label ?? "Principal"),
@@ -59,7 +59,9 @@ export async function POST(request: Request) {
     response.cookies.set("customer_id", "", { httpOnly: true, maxAge: 0, path: "/" });
     return response;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to save customer";
-    return NextResponse.json({ error: message }, { status: message === "Customer session required" ? 401 : 400 });
+    const code = error instanceof Error ? error.message.toUpperCase() : "UNKNOWN";
+    const status = code.includes("UNAUTHORIZED") || code.includes("SESSION") ? 401 : code.includes("FORBIDDEN") ? 403 : code.includes("CONFLICT") || code.includes("ALREADY") ? 409 : code.includes("INVALID") || code.includes("VALIDATION") ? 422 : 500;
+    const message = status === 401 ? "Tu sesión ya no es válida. Inicia sesión nuevamente." : status === 403 ? "No tienes autorización para realizar esta operación." : status === 409 ? "La operación entra en conflicto con el estado actual." : status === 422 ? "Revisa los datos ingresados e inténtalo nuevamente." : "No pudimos completar la operación.";
+    return NextResponse.json({ error: message }, { status, headers: { "cache-control": "no-store" } });
   }
 }
