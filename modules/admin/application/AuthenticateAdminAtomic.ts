@@ -14,7 +14,11 @@ export class AuthenticateAdminAtomic {
   async execute(emailInput:string,password:string,ipHash?:string,userAgentHash?:string):Promise<AuthenticationResult>{
     const email=emailInput.trim().toLowerCase();if(!email||!password)throw new Error("INVALID_CREDENTIALS");
     const user=await this.admins.findByEmail(email);
-    if(!user){await this.audit.audit("","ADMIN_LOGIN_FAILED","admin_user",null,{reason:"invalid_credentials",email,ipHash:ipHash??null});throw new Error("INVALID_CREDENTIALS");}
+    if(!user){
+      await this.passwords.verifyUnknownAccount(password);
+      await this.audit.audit("","ADMIN_LOGIN_FAILED","admin_user",null,{reason:"invalid_credentials",email,ipHash:ipHash??null});
+      throw new Error("INVALID_CREDENTIALS");
+    }
     const current=user.toPrimitives(),now=this.now();
     if(current.lockedUntil&&new Date(current.lockedUntil).getTime()>now.getTime())throw new Error("ACCOUNT_LOCKED");
     if(!(await this.passwords.verify(password,current.passwordHash))){
