@@ -9,8 +9,10 @@ import { D1PaymentLedgerRepository } from "../../../modules/payments/infrastruct
 import { D1PaymentRefundRepository } from "../../../modules/payments/infrastructure/D1PaymentRefundRepository";
 import { AdminServiceDetailsService } from "../../../modules/services/application/AdminServiceDetails";
 import { AdminServiceQueryService } from "../../../modules/services/application/AdminServiceQuery";
+import { AdminServiceTypes } from "../../../modules/services/application/AdminServiceTypes";
 import { ServiceWorkflowService } from "../../../modules/services/application/ServiceWorkflowService";
 import { D1ServiceRequestRepository } from "../../../modules/services/infrastructure/D1ServiceRequestRepository";
+import { D1ServiceTypeAuditPort } from "../../../modules/services/infrastructure/D1ServiceTypeAuditPort";
 import { D1ServiceTypeRepository } from "../../../modules/services/infrastructure/D1ServiceTypeRepository";
 import type { ServiceRequestRepository } from "../../../modules/services/application/ServiceRequestRepository";
 import type { ServiceTypeRepository } from "../../../modules/services/application/ServiceTypeRepository";
@@ -53,4 +55,11 @@ export function adminServiceDetailsApplication(env: CloudflareEnv): AdminService
 
 export function serviceWorkflowApplication(env: CloudflareEnv): ServiceWorkflowService {
   return new ServiceWorkflowService(serviceRequestRepository(env), serviceTypeRepository(env));
+}
+
+export function adminServiceTypesApplication(env: CloudflareEnv): AdminServiceTypes {
+  return new AdminServiceTypes(
+    serviceTypeRepository(env),
+    new D1ServiceTypeAuditPort(env.DB),
+  );
 }
