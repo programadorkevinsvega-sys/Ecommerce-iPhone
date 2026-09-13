@@ -6,13 +6,6 @@
   "engines": {
     "node": "24.18.0"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "unrs-resolver",
-      "workerd"
-    ]
-  },
   "scripts": {
     "preinstall": "node scripts/verify-install.mjs",
     "dev": "pnpm --filter @ecommerce/web dev",
