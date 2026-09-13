@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import type { CmsPageInput } from "../../../../../../modules/cms/application/AdminCms";
 import { AdminCms } from "../../../../../../modules/cms/application/AdminCms";
 import { D1CmsRepository } from "../../../../../../modules/cms/infrastructure/D1CmsRepository";
+import { D1AuditPort } from "../../../../../../modules/admin/infrastructure/D1AuditPort";
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
 
 export async function GET() {
   try {
     const { env } = await requireAdmin(PERMISSIONS.cmsWrite);
     return NextResponse.json(
-      { items: await new AdminCms(new D1CmsRepository(env.DB)).list() },
+      { items: await new AdminCms(new D1CmsRepository(env.DB), new D1AuditPort(env.DB)).list() },
       { headers: { "cache-control": "no-store" } },
     );
   } catch (error) {
@@ -18,15 +19,14 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { env, admin, repo } = await requireAdmin(PERMISSIONS.cmsWrite);
+    const { env, admin } = await requireAdmin(PERMISSIONS.cmsWrite);
     const body = (await request.json()) as Record<string, unknown>;
     const input = parseCmsInput(body);
-    const id = await new AdminCms(new D1CmsRepository(env.DB)).save(
+    const id = await new AdminCms(new D1CmsRepository(env.DB), new D1AuditPort(env.DB)).save(
       input,
       typeof body.id === "string" ? body.id : undefined,
       admin.id,
     );
-    await repo.audit(admin.id, "ADMIN_CMS_PAGE_SAVED", "cms_page", id, { slug: input.slug });
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
@@ -35,12 +35,11 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { env, admin, repo } = await requireAdmin(PERMISSIONS.cmsWrite);
+    const { env, admin } = await requireAdmin(PERMISSIONS.cmsWrite);
     const body = (await request.json()) as Record<string, unknown>;
     const id = String(body.id ?? "");
     const active = body.active === true;
-    const updated = await new AdminCms(new D1CmsRepository(env.DB)).setActive(id, active, admin.id);
-    await repo.audit(admin.id, "ADMIN_CMS_PAGE_ACTIVATED", "cms_page", id, { active });
+    const updated = await new AdminCms(new D1CmsRepository(env.DB), new D1AuditPort(env.DB)).setActive(id, active, admin.id);
     return NextResponse.json({ updated });
   } catch (error) {
     return errorResponse(error);
