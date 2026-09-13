@@ -19,7 +19,15 @@ export type AdminPaymentListResult = Readonly<{ items: readonly AdminPaymentSumm
 
 export interface PaymentAdminRepository {
   list(filter: AdminPaymentFilter): Promise<AdminPaymentListResult>;
-  findDetails(id: string): Promise<AdminPaymentDetails | null>;
+  findByIdForAdmin(id: string): Promise<AdminPaymentDetails["payment"] | null>;
+}
+
+export interface PaymentRefundRepository {
+  listByPaymentId(paymentId: string): Promise<readonly unknown[]>;
+}
+
+export interface PaymentLedgerRepository {
+  listByPaymentId(paymentId: string): Promise<readonly unknown[]>;
 }
 
 export interface AdminPaymentQuery {
@@ -28,7 +36,11 @@ export interface AdminPaymentQuery {
 }
 
 export class AdminPaymentQueryService implements AdminPaymentQuery {
-  constructor(private readonly repository: PaymentAdminRepository) {}
+  constructor(
+    private readonly payments: PaymentAdminRepository,
+    private readonly refunds: PaymentRefundRepository,
+    private readonly ledger: PaymentLedgerRepository,
+  ) {}
 
   async list(filter: Partial<AdminPaymentFilter>): Promise<AdminPaymentListResult> {
     const limit = Number(filter.limit ?? 50);
@@ -39,7 +51,7 @@ export class AdminPaymentQueryService implements AdminPaymentQuery {
     const provider = filter.provider === undefined ? undefined : String(filter.provider).trim().toUpperCase();
     if (status !== undefined && !PAYMENT_STATUSES.includes(status as PaymentStatus)) throw new Error("INVALID_PAYMENT_STATUS");
     if (provider !== undefined && !PAYMENT_PROVIDERS.includes(provider as PaymentProvider)) throw new Error("INVALID_PAYMENT_PROVIDER");
-    return this.repository.list({
+    return this.payments.list({
       ...(status === undefined ? {} : { status: status as PaymentStatus }),
       ...(provider === undefined ? {} : { provider: provider as PaymentProvider }),
       limit,
@@ -50,8 +62,12 @@ export class AdminPaymentQueryService implements AdminPaymentQuery {
   async get(id: string): Promise<AdminPaymentDetails> {
     const normalized = id.trim();
     if (!normalized) throw new Error("PAYMENT_ID_REQUIRED");
-    const payment = await this.repository.findDetails(normalized);
+    const payment = await this.payments.findByIdForAdmin(normalized);
     if (!payment) throw new Error("PAYMENT_NOT_FOUND");
-    return payment;
+    const [refunds, ledger] = await Promise.all([
+      this.refunds.listByPaymentId(normalized),
+      this.ledger.listByPaymentId(normalized),
+    ]);
+    return { payment, refunds, ledger };
   }
 }
