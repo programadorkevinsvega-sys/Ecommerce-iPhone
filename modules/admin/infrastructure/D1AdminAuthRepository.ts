@@ -1,3 +1,4 @@
+import type { D1Database } from "@cloudflare/workers-types";
 import type { AdminRepository, LoginFailureState } from "../application/AdminRepository";
 import { D1AdminRepository } from "./D1AdminRepository";
 
