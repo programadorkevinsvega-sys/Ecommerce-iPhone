@@ -1,3 +1,5 @@
+import type { AuditPort } from "./AuditPort";
+
 export type AdminSettingInput = Readonly<{ key: string; value: unknown; sensitive?: boolean }>;
 export type SettingsRepository = { list(): Promise<unknown[]>; save(input: AdminSettingInput, adminUserId: string): Promise<boolean> };
 
@@ -51,13 +53,16 @@ function serializeValidated(value: unknown): string {
 }
 
 export class AdminSettings {
-  constructor(private readonly repository: SettingsRepository) {}
+  constructor(private readonly repository: SettingsRepository, private readonly audit: AuditPort) {}
   list(): Promise<unknown[]> { return this.repository.list(); }
-  save(input: AdminSettingInput, adminUserId: string): Promise<boolean> {
-    if (typeof adminUserId !== "string" || !adminUserId.trim()) throw new Error("INVALID_SETTING");
+  async save(input: AdminSettingInput, adminUserId: string): Promise<boolean> {
+    const adminId = adminUserId.trim();
+    if (!adminId) throw new Error("INVALID_SETTING");
     if (input.sensitive !== undefined && typeof input.sensitive !== "boolean") throw new Error("INVALID_SETTING");
     const key = normalizeKey(input.key);
     const serialized = serializeValidated(input.value);
-    return this.repository.save({ key, value: JSON.parse(serialized), sensitive: input.sensitive === true }, adminUserId);
+    const ok = await this.repository.save({ key, value: JSON.parse(serialized), sensitive: input.sensitive === true }, adminId);
+    await this.audit.audit(adminId, "ADMIN_SETTING_SAVED", "admin_setting", key, { sensitive: input.sensitive === true });
+    return ok;
   }
 }
