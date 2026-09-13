@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "../../../../lib/adminAuth";
 import { adminResources } from "../../../../lib/adminResources";
+import { normalizeIdentifier, normalizeSearchQuery } from "../../../../lib/inputValidation";
 import type { ResourceName } from "../../../../../../modules/admin/application/AdminResources";
 
 function bodyRecord(value: unknown): Record<string, unknown> {
@@ -33,9 +34,10 @@ export async function GET(request: Request): Promise<Response> {
   try {
     const url = new URL(request.url);
     const resource = (url.searchParams.get("resource") ?? "orders") as ResourceName;
+    const query = normalizeSearchQuery(url.searchParams.get("q"));
     const { admin } = await requireAdmin();
     const { service } = adminResources();
-    const items = await service.list({ actor: admin, resource, query: url.searchParams.get("q") });
+    const items = await service.list({ actor: admin, resource, query });
     return NextResponse.json({ items });
   } catch (error) {
     return errorResponse(error);
@@ -59,7 +61,7 @@ export async function PATCH(request: Request): Promise<Response> {
   try {
     const body = bodyRecord(await request.json());
     const resource = body.resource as ResourceName;
-    const id = String(body.id ?? "").trim();
+    const id = normalizeIdentifier(body.id);
     if (!id) return NextResponse.json({ error: "Resource id is required" }, { status: 400 });
     const { admin } = await requireAdmin();
     const { service } = adminResources();
