@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { adminPaymentsApplication } from "../../../../../lib/adminApplication";
-import { PERMISSIONS, requireAdmin } from "../../../../../lib/adminAuth";
+import { adminPaymentsApplication } from "../../../../../../lib/adminApplication";
+import { PERMISSIONS, requireAdmin } from "../../../../../../lib/adminAuth";
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {

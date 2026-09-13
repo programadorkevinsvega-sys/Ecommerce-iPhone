@@ -2,7 +2,7 @@ import type { ProductProps } from "../domain/Product";
 import type { ProductRepository } from "./ProductRepository";
 
 export type ProductSearch = Readonly<{
-  q?: string; brand?: string; model?: string; condition?: ProductProps["condition"];
+  q?: string; brand?: string; category?: string; model?: string; condition?: ProductProps["condition"];
   minPriceInCents?: number; maxPriceInCents?: number; storageGb?: number; color?: string;
   inStock?: boolean; page?: number; pageSize?: number; sort?: "newest" | "price-asc" | "price-desc";
 }>;

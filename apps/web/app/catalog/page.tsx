@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { searchCatalog } from "../../lib/catalog";
+import { listPublicCategories, searchCatalog } from "../../lib/catalog";
 import { normalizeSearchQuery } from "../../lib/inputValidation";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Catálogo de smartphones | Ecommerce iPhone",
-  description: "Explora iPhone, Samsung y otros smartphones por marca, condición y precio.",
+  description: "Explora smartphones por categoría, marca, condición y precio.",
   alternates: { canonical: "/catalog" },
 };
 
@@ -21,12 +21,15 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   const params = await searchParams;
   const q = normalizeSearchQuery(typeof params.q === "string" ? params.q : undefined);
   const brand = typeof params.brand === "string" ? params.brand.trim().slice(0, 80) || undefined : undefined;
+  const requestedCategory = typeof params.category === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(params.category) ? params.category : undefined;
   const condition = typeof params.condition === "string" && (["NEW", "USED", "REFURBISHED"] as const).includes(params.condition as Condition) ? params.condition as Condition : undefined;
   const sort = typeof params.sort === "string" && (["newest", "price-asc", "price-desc"] as const).includes(params.sort as Sort) ? params.sort as Sort : "newest";
   const page = Math.max(1, Math.min(10000, Number(params.page ?? 1) || 1));
-  const result = await searchCatalog({ ...(q ? { q } : {}), ...(brand ? { brand } : {}), ...(condition ? { condition } : {}), sort, page, pageSize: 12 });
+  const categories = await listPublicCategories();
+  const category = requestedCategory && categories.some((item) => item.slug === requestedCategory) ? requestedCategory : undefined;
+  const result = await searchCatalog({ ...(q ? { q } : {}), ...(brand ? { brand } : {}), ...(category ? { category } : {}), ...(condition ? { condition } : {}), sort, page, pageSize: 12 });
   const pages = Math.max(1, Math.ceil(result.total / result.pageSize));
-  const qs = (nextPage: number) => new URLSearchParams({ ...(q ? { q } : {}), ...(brand ? { brand } : {}), ...(condition ? { condition } : {}), sort, page: String(nextPage) }).toString();
+  const qs = (nextPage: number) => new URLSearchParams({ ...(q ? { q } : {}), ...(brand ? { brand } : {}), ...(category ? { category } : {}), ...(condition ? { condition } : {}), sort, page: String(nextPage) }).toString();
 
   return (
     <main className="store-shell">
@@ -36,7 +39,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         <form className="filters" method="get" aria-label="Filtros de catálogo">
           <strong>Filtrar productos</strong>
           <label htmlFor="catalog-search">Buscar</label><input id="catalog-search" defaultValue={q} placeholder="iPhone, Galaxy..." name="q" type="search" maxLength={100} autoComplete="off" inputMode="search" />
-          <label htmlFor="catalog-brand">Marca</label><select id="catalog-brand" defaultValue={brand ?? ""} name="brand"><option value="">Todas</option><option value="Apple">Apple</option><option value="Samsung">Samsung</option><option value="Xiaomi">Xiaomi</option><option value="Motorola">Motorola</option></select>
+          <label htmlFor="catalog-category">Categoría</label><select id="catalog-category" defaultValue={category ?? ""} name="category"><option value="">Todas</option>{categories.map((item)=><option key={item.id} value={item.slug}>{item.name}</option>)}</select>
+          <label htmlFor="catalog-brand">Marca</label><input id="catalog-brand" defaultValue={brand ?? ""} name="brand" type="search" maxLength={80} autoComplete="off" />
           <label htmlFor="catalog-condition">Condición</label><select id="catalog-condition" defaultValue={condition ?? ""} name="condition"><option value="">Todas</option><option value="NEW">Nuevo</option><option value="USED">Usado</option><option value="REFURBISHED">Reacondicionado</option></select>
           <label htmlFor="catalog-sort">Ordenar</label><select id="catalog-sort" defaultValue={sort} name="sort"><option value="newest">Más recientes</option><option value="price-asc">Precio: menor a mayor</option><option value="price-desc">Precio: mayor a menor</option></select>
           <button type="submit">Aplicar filtros</button><Link href="/catalog" className="text-link">Limpiar filtros</Link>

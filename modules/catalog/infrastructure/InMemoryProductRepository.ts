@@ -11,6 +11,7 @@ export class InMemoryProductRepository implements ProductSearchRepository {
     const filtered = [...this.items.values()].map((p) => p.toPrimitives()).filter((p) => p.active)
       .filter((p) => !q || `${p.name} ${p.brand} ${p.model}`.toLowerCase().includes(q))
       .filter((p) => !criteria.brand || p.brand.toLowerCase() === criteria.brand.toLowerCase())
+      .filter(() => !criteria.category)
       .filter((p) => !criteria.model || p.model.toLowerCase().includes(criteria.model.toLowerCase()))
       .filter((p) => !criteria.condition || p.condition === criteria.condition)
       .filter((p) => criteria.minPriceInCents === undefined || p.priceInCents >= criteria.minPriceInCents)

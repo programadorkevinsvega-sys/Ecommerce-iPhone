@@ -27,6 +27,8 @@ import { AdminCms } from "../../../modules/cms/application/AdminCms";
 import { D1CmsRepository } from "../../../modules/cms/infrastructure/D1CmsRepository";
 import { AdminInventory } from "../../../modules/inventory/application/AdminInventory";
 import { D1InventoryRepository } from "../../../modules/inventory/infrastructure/D1InventoryRepository";
+import { AdminCategories } from "../../../modules/catalog/application/Categories";
+import { D1CategoryRepository } from "../../../modules/catalog/infrastructure/D1CategoryRepository";
 import type { ServiceRequestRepository } from "../../../modules/services/application/ServiceRequestRepository";
 import type { ServiceTypeRepository } from "../../../modules/services/application/ServiceTypeRepository";
 
@@ -52,6 +54,10 @@ export function adminSettingsApplication(env: CloudflareEnv): AdminSettings {
 
 export function adminInventoryApplication(env: CloudflareEnv): AdminInventory {
   return new AdminInventory(new D1InventoryRepository(env.DB), new D1AuditPort(env.DB));
+}
+
+export function adminCategoriesApplication(env: CloudflareEnv): AdminCategories {
+  return new AdminCategories(new D1CategoryRepository(env.DB), new D1AuditPort(env.DB));
 }
 
 export async function adminPaymentsApplication(env: CloudflareEnv): Promise<AdminPayments> {
