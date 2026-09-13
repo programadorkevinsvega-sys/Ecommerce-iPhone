@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { normalizeSearchQuery, safeFormError } from "../lib/inputValidation";
+import { normalizeSearchQuery, safeFormError } from "../../lib/inputValidation";
 
 type Metric = { orders: number; customers: number; products: number; openServices: number; revenueInCents: number; pendingPayments: number; lowStock: number };
 type Admin = { firstName: string; lastName: string; role: string };
