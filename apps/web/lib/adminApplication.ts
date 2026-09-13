@@ -30,7 +30,7 @@ import type { ServiceRequestRepository } from "../../../modules/services/applica
 import type { ServiceTypeRepository } from "../../../modules/services/application/ServiceTypeRepository";
 
 export function adminDashboardApplication(env: CloudflareEnv): AdminDashboardService {
-  return new AdminDashboardService(new D1AdminDashboardQuery(env.DB));
+  return new AdminDashboardService(new D1AdminDashboardQuery(env.DB), new D1AuditPort(env.DB));
 }
 
 export function adminNotificationsApplication(env: CloudflareEnv): AdminNotificationsService {
