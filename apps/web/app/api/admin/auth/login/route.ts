@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { buildAuthenticateAdmin } from "../../../../../lib/adminAuthComposition";
+import { buildAuthenticateAdmin } from "../../../../../lib/adminAuthCompositionV2";
 import { requestFingerprint, setAdminSession } from "../../../../../lib/adminAuth";
 
 export async function POST(request: Request) {
