@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { adminServiceDetailsApplication, serviceWorkflowApplication } from "../../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../../lib/adminAuth";
-import { parseServiceRequestStatus } from "../../../../../../modules/services/application/ServiceWorkflowService";
+import { parseServiceRequestStatus } from "../../../../../../modules/services/domain/ServiceRequest";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
