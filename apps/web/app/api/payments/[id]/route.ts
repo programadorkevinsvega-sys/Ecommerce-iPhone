@@ -6,18 +6,16 @@ import { paymentContext } from "../../../../lib/payments";
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const token = (await cookies()).get("customer_session")?.value;
-    if (!token) return NextResponse.json({ error: "Customer session required" }, { status: 401 });
+    if (!token) return NextResponse.json({ error: "Tu sesión ya no es válida. Inicia sesión nuevamente." }, { status: 401 });
     const commerce = await commerceContext();
     const session = await commerce.customerSession.resolve(token);
-    if (!session) return NextResponse.json({ error: "Customer session expired" }, { status: 401 });
+    if (!session) return NextResponse.json({ error: "Tu sesión ya no es válida. Inicia sesión nuevamente." }, { status: 401 });
     const { id } = await context.params;
-    if (!id || id.length > 128) return NextResponse.json({ error: "Invalid payment id" }, { status: 400 });
-    const payments = await paymentContext();
-    const payment = await payments.service.getPayment(id, session.customerId);
-    if (!payment) return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+    if (!id || id.length > 128) return NextResponse.json({ error: "Revisa los datos ingresados e inténtalo nuevamente." }, { status: 422 });
+    const payment = await (await paymentContext()).service.getPayment(id, session.customerId);
+    if (!payment) return NextResponse.json({ error: "No encontramos el pago solicitado." }, { status: 404 });
     return NextResponse.json({ payment }, { headers: { "cache-control": "no-store" } });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Payment lookup failed";
-    return NextResponse.json({ error: message }, { status: 400 });
+  } catch {
+    return NextResponse.json({ error: "No pudimos completar la operación." }, { status: 500, headers: { "cache-control": "no-store" } });
   }
 }

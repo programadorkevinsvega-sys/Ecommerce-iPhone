@@ -3,24 +3,34 @@ import { NextResponse } from "next/server";
 import { paymentContext, parsePaymentProvider } from "../../../../lib/payments";
 import { commerceContext } from "../../../../lib/commerce";
 
+const ERROR_GENERIC = "No pudimos completar la operación.";
+const ERROR_VALIDATION = "Revisa los datos ingresados e inténtalo nuevamente.";
+
+function safePaymentError(error: unknown): Response {
+  const code = error instanceof Error ? error.message.toUpperCase() : "UNKNOWN";
+  const status = code.includes("RATE_LIMIT") || code.includes("TOO_MANY") ? 429 : code.includes("UNAUTHORIZED") || code.includes("SESSION") ? 401 : code.includes("FORBIDDEN") || code.includes("PERMISSION") ? 403 : code.includes("NOT_FOUND") || code.includes("NOT FOUND") ? 404 : code.includes("CONFLICT") || code.includes("ALREADY") || code.includes("IDEMPOTENCY") ? 409 : code.includes("INVALID") || code.includes("VALIDATION") ? 422 : 500;
+  const message = status === 401 ? "Tu sesión ya no es válida. Inicia sesión nuevamente." : status === 403 ? "No tienes autorización para realizar esta operación." : status === 404 ? "No encontramos el recurso solicitado." : status === 409 ? "La operación ya fue registrada o entra en conflicto con el estado actual." : status === 422 ? ERROR_VALIDATION : status === 429 ? "Demasiadas solicitudes. Inténtalo nuevamente en unos minutos." : ERROR_GENERIC;
+  return NextResponse.json({ error: message }, { status, headers: { "cache-control": "no-store" } });
+}
+
 export async function POST(request: Request) {
   try {
     const idempotencyKey = request.headers.get("Idempotency-Key")?.trim();
-    if (!idempotencyKey || idempotencyKey.length > 255) return NextResponse.json({ error: "A valid Idempotency-Key header is required" }, { status: 400 });
+    if (!idempotencyKey || idempotencyKey.length > 255) return NextResponse.json({ error: ERROR_VALIDATION }, { status: 422 });
     const body = await request.json() as { orderId?: unknown; paymentProvider?: unknown };
     const orderId = typeof body.orderId === "string" ? body.orderId.trim() : "";
-    if (!orderId) return NextResponse.json({ error: "orderId is required" }, { status: 400 });
+    if (!orderId) return NextResponse.json({ error: ERROR_VALIDATION }, { status: 422 });
     const paymentProvider = parsePaymentProvider(body.paymentProvider);
     const requestCookies = await cookies();
     const sessionToken = requestCookies.get("customer_session")?.value;
-    if (!sessionToken) return NextResponse.json({ error: "Customer session required" }, { status: 401 });
+    if (!sessionToken) return NextResponse.json({ error: "Tu sesión ya no es válida. Inicia sesión nuevamente." }, { status: 401 });
     const context = await commerceContext();
     const session = await context.customerSession.resolve(sessionToken);
-    if (!session) return NextResponse.json({ error: "Customer session expired" }, { status: 401 });
+    if (!session) return NextResponse.json({ error: "Tu sesión ya no es válida. Inicia sesión nuevamente." }, { status: 401 });
     const payments = await paymentContext();
     const order = await payments.orders.findById(orderId);
-    if (!order || order.customerId !== session.customerId) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    if (order.status !== "PENDING_PAYMENT") return NextResponse.json({ error: "Order is not awaiting payment" }, { status: 409 });
+    if (!order || order.customerId !== session.customerId) return NextResponse.json({ error: "No encontramos el pedido solicitado." }, { status: 404 });
+    if (order.status !== "PENDING_PAYMENT") return NextResponse.json({ error: "El pedido no está disponible para pago en este momento." }, { status: 409 });
     const result = await payments.service.createIntent(paymentProvider, {
       orderId: order.id, customerId: session.customerId, amountInCents: order.totalInCents, currency: order.currency,
       idempotencyKey, customerEmail: order.email, customerName: order.shippingAddress.recipientName, customerPhone: order.shippingAddress.phone,
@@ -28,7 +38,6 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ payment: result.payment, checkout: { provider: result.checkout.provider, reference: result.checkout.providerReference, publicKey: result.checkout.publicKey, currency: result.checkout.currency, amountInCents: result.checkout.amountInCents, integritySignature: result.checkout.integritySignature, checkoutUrl: result.checkout.checkoutUrl, ...(result.checkout.clientSecret ? { clientSecret: result.checkout.clientSecret } : {}) } }, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Payment intent failed";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return safePaymentError(error);
   }
 }
