@@ -29,5 +29,4 @@ export interface AdminResourceRepository {
   updateServiceStatus(id: string, status: string, actorId: string, fromStatus: string): Promise<void>;
   getOrderForMutation(id: string): Promise<MutationOrder | null>;
   updateOrderStatus(id: string, status: string, actorId: string, fromStatus: string): Promise<void>;
-  audit(actorId: string, action: string, resource: string, resourceId: string, metadata: unknown): Promise<void>;
 }
