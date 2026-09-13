@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { normalizeIdentifier } from "../../../../../../../lib/inputValidation";
-import { adminResources } from "../../../../../../../lib/adminResources";
-import { requireAdmin } from "../../../../../../../lib/adminAuth";
+import { normalizeIdentifier } from "../../../../../../lib/inputValidation";
+import { adminResources } from "../../../../../../lib/adminResources";
+import { requireAdmin } from "../../../../../../lib/adminAuth";
 
 function errorResponse(error: unknown): Response {
   const code = error instanceof Error ? error.message : "UNKNOWN";
