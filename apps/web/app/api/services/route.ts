@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { currentCustomerId } from "../../../lib/customerSession";
 import { serviceCustomerPortal } from "../../../lib/services";
-import { assertLength, normalizeMultiline, normalizeSingleLine, validateEmail } from "../../../lib/inputValidation";
+import {
+  assertLength,
+  normalizeMultiline,
+  normalizeSingleLine,
+  validateEmail,
+} from "../../../lib/inputValidation";
 
 const last4Digits = (value: unknown) => {
   const digits = normalizeSingleLine(value).replace(/\D/gu, "");
@@ -12,7 +17,7 @@ const last4Digits = (value: unknown) => {
 
 function safeError(error: unknown): string {
   const code = error instanceof Error ? error.message : "UNKNOWN";
-  const known: Record<string,string> = {
+  const known: Record<string, string> = {
     INVALID_EMAIL: "Invalid email",
     INVALID_PHONE: "Invalid phone",
     INVALID_DEVICEBRAND: "Device brand is required",
@@ -29,8 +34,12 @@ function safeError(error: unknown): string {
 export async function GET() {
   try {
     const customerId = await currentCustomerId();
-    if (!customerId) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    return NextResponse.json(await serviceCustomerPortal().list(customerId));
+    const result = await serviceCustomerPortal().list(customerId ?? undefined);
+    return NextResponse.json(result, {
+      headers: customerId
+        ? { "cache-control": "private, no-store" }
+        : { "cache-control": "public, max-age=60, s-maxage=60, stale-while-revalidate=300" },
+    });
   } catch {
     return NextResponse.json({ error: "Unable to load services" }, { status: 500 });
   }
@@ -45,9 +54,14 @@ export async function POST(request: Request) {
     const deviceBrand = assertLength(normalizeSingleLine(body.deviceBrand), "deviceBrand");
     const deviceModel = assertLength(normalizeSingleLine(body.deviceModel), "deviceModel");
     const carrier = normalizeSingleLine(body.carrier);
-    const deviceSerialLast4 = body.serial ? assertLength(normalizeSingleLine(body.serial), "serial").slice(-4) : undefined;
+    const deviceSerialLast4 = body.serial
+      ? assertLength(normalizeSingleLine(body.serial), "serial").slice(-4)
+      : undefined;
     const imeiLast4 = body.imei ? last4Digits(body.imei) : undefined;
-    const problemDescription = assertLength(normalizeMultiline(body.problemDescription), "serviceDescription");
+    const problemDescription = assertLength(
+      normalizeMultiline(body.problemDescription),
+      "serviceDescription",
+    );
     const customerNotes = normalizeMultiline(body.customerNotes);
     if (customerNotes.length > 2000) throw new Error("INVALID_SERVICENOTES");
     if (type === "CARRIER_UNLOCK") assertLength(carrier, "carrier");

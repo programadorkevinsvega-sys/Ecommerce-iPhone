@@ -1,20 +1,50 @@
 import type { AdminResourceAuditPort } from "./AdminResourceAuditPort";
 import type { AdminResourceRepository } from "./AdminResourceRepository";
-import { DEFAULT_AUTHORIZATION_POLICY, type AdminRole, type AuthorizationPolicy, type Permission } from "./Rbac";
-import { validateProductPatch, validateProductProps, type ProductCondition } from "../../catalog/domain/Product";
+import {
+  DEFAULT_AUTHORIZATION_POLICY,
+  type AdminRole,
+  type AuthorizationPolicy,
+  type Permission,
+} from "./Rbac";
+import {
+  validateProductPatch,
+  validateProductProps,
+  type ProductCondition,
+} from "../../catalog/domain/Product";
 
 export type AdminActor = { id: string; email: string; role: AdminRole };
 export type ResourceName = "products" | "customers" | "services" | "orders";
-export type AdminNotificationPublisher = (event: { eventType: string; aggregateId: string; payload: Record<string, unknown> }) => Promise<void>;
-export type AdminResourcesDeps = { repository: AdminResourceRepository; audit: AdminResourceAuditPort; publishNotification: AdminNotificationPublisher; authorizationPolicy?: AuthorizationPolicy };
+export type AdminNotificationPublisher = (event: {
+  eventType: string;
+  aggregateId: string;
+  payload: Record<string, unknown>;
+}) => Promise<void>;
+export type AdminResourcesDeps = {
+  repository: AdminResourceRepository;
+  audit: AdminResourceAuditPort;
+  publishNotification: AdminNotificationPublisher;
+  authorizationPolicy?: AuthorizationPolicy;
+};
 const MAX_QUERY_LENGTH = 100;
 const MAX_PRODUCT_CATEGORIES = 50;
 
-function clean(value: unknown, max: number): string { return String(value ?? "").trim().slice(0, max); }
-function bool(value: unknown): boolean { return value === true || value === 1 || value === "1"; }
+function clean(value: unknown, max: number): string {
+  return String(value ?? "")
+    .trim()
+    .slice(0, max);
+}
+function bool(value: unknown): boolean {
+  return value === true || value === 1 || value === "1";
+}
 function normalizeResource(value: unknown): ResourceName {
   const resource = clean(value, 30);
-  if (resource === "products" || resource === "customers" || resource === "services" || resource === "orders") return resource;
+  if (
+    resource === "products" ||
+    resource === "customers" ||
+    resource === "services" ||
+    resource === "orders"
+  )
+    return resource;
   throw new Error("UNSUPPORTED_RESOURCE");
 }
 export function permissionFor(resource: ResourceName, write = false): Permission {
@@ -25,13 +55,28 @@ export function permissionFor(resource: ResourceName, write = false): Permission
 }
 function parseSpecs(value: unknown): Record<string, string> {
   if (value === undefined || value === null || value === "") return {};
-  const parsed = typeof value === "string" ? (() => { try { return JSON.parse(value); } catch { throw new Error("INVALID_PRODUCT"); } })() : value;
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("INVALID_PRODUCT");
-  try { validateProductPatch({ specs_json: parsed }); } catch { throw new Error("INVALID_PRODUCT"); }
+  const parsed =
+    typeof value === "string"
+      ? (() => {
+          try {
+            return JSON.parse(value);
+          } catch {
+            throw new Error("INVALID_PRODUCT");
+          }
+        })()
+      : value;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+    throw new Error("INVALID_PRODUCT");
+  try {
+    validateProductPatch({ specs_json: parsed });
+  } catch {
+    throw new Error("INVALID_PRODUCT");
+  }
   return parsed as Record<string, string>;
 }
 function parseCategoryIds(value: unknown): string[] {
-  if (!Array.isArray(value) || value.length > MAX_PRODUCT_CATEGORIES) throw new Error("INVALID_PRODUCT_CATEGORIES");
+  if (!Array.isArray(value) || value.length > MAX_PRODUCT_CATEGORIES)
+    throw new Error("INVALID_PRODUCT_CATEGORIES");
   const ids = value.map((item) => clean(item, 128)).filter(Boolean);
   if (ids.length !== value.length) throw new Error("INVALID_PRODUCT_CATEGORIES");
   return [...new Set(ids)];
@@ -39,97 +84,267 @@ function parseCategoryIds(value: unknown): string[] {
 
 export class AdminResources {
   private readonly authorizationPolicy: AuthorizationPolicy;
-  constructor(private readonly deps: AdminResourcesDeps) { this.authorizationPolicy = deps.authorizationPolicy ?? DEFAULT_AUTHORIZATION_POLICY; }
+  constructor(private readonly deps: AdminResourcesDeps) {
+    this.authorizationPolicy = deps.authorizationPolicy ?? DEFAULT_AUTHORIZATION_POLICY;
+  }
 
   async list(input: { actor: AdminActor; resource: unknown; query: unknown }): Promise<unknown[]> {
-    const resource = normalizeResource(input.resource); this.authorize(input.actor, permissionFor(resource));
+    const resource = normalizeResource(input.resource);
+    this.authorize(input.actor, permissionFor(resource));
     return this.deps.repository.list(resource, clean(input.query, MAX_QUERY_LENGTH));
   }
-  async create(input: { actor: AdminActor; resource: unknown; body: Record<string, unknown> }): Promise<{ id?: string }> {
-    const resource = normalizeResource(input.resource); this.authorize(input.actor, permissionFor(resource, true));
+  async create(input: {
+    actor: AdminActor;
+    resource: unknown;
+    body: Record<string, unknown>;
+  }): Promise<{ id?: string }> {
+    const resource = normalizeResource(input.resource);
+    this.authorize(input.actor, permissionFor(resource, true));
     if (resource === "products") return this.createProduct(input.actor, input.body);
     if (resource === "services") return this.quoteService(input.actor, input.body);
     throw new Error("UNSUPPORTED_CREATE");
   }
-  async update(input: { actor: AdminActor; resource: unknown; id: string; body: Record<string, unknown> }): Promise<void> {
-    const resource = normalizeResource(input.resource); this.authorize(input.actor, permissionFor(resource, true));
+  async update(input: {
+    actor: AdminActor;
+    resource: unknown;
+    id: string;
+    body: Record<string, unknown>;
+  }): Promise<void> {
+    const resource = normalizeResource(input.resource);
+    this.authorize(input.actor, permissionFor(resource, true));
     if (resource === "products") return this.updateProduct(input.actor, input.id, input.body);
     if (resource === "orders") return this.updateOrder(input.actor, input.id, input.body);
     if (resource === "services") return this.updateService(input.actor, input.id, input.body);
     throw new Error("UNSUPPORTED_UPDATE");
   }
-  async getProductCategoryIds(input: { actor: AdminActor; productId: string }): Promise<readonly string[]> {
+  async getProductCategoryIds(input: {
+    actor: AdminActor;
+    productId: string;
+  }): Promise<readonly string[]> {
     this.authorize(input.actor, permissionFor("products"));
     return this.deps.repository.getProductCategoryIds(input.productId);
   }
-  async replaceProductCategories(input: { actor: AdminActor; productId: string; categoryIds: unknown }): Promise<void> {
+  async replaceProductCategories(input: {
+    actor: AdminActor;
+    productId: string;
+    categoryIds: unknown;
+  }): Promise<void> {
     this.authorize(input.actor, permissionFor("products", true));
     const categoryIds = parseCategoryIds(input.categoryIds);
     await this.deps.repository.replaceProductCategories(input.productId, categoryIds);
-    await this.deps.audit.audit(input.actor.id, "ADMIN_PRODUCT_CATEGORIES_UPDATED", "product", input.productId, { categoryIds });
+    await this.deps.audit.audit(
+      input.actor.id,
+      "ADMIN_PRODUCT_CATEGORIES_UPDATED",
+      "product",
+      input.productId,
+      { categoryIds },
+    );
   }
-  private authorize(actor: AdminActor, permission: Permission): void { if (!this.authorizationPolicy.can(actor.role, permission)) throw new Error("FORBIDDEN"); }
+  private authorize(actor: AdminActor, permission: Permission): void {
+    if (!this.authorizationPolicy.can(actor.role, permission)) throw new Error("FORBIDDEN");
+  }
 
-  private async createProduct(actor: AdminActor, body: Record<string, unknown>): Promise<{ id: string }> {
+  private async createProduct(
+    actor: AdminActor,
+    body: Record<string, unknown>,
+  ): Promise<{ id: string }> {
+    const categoryIds =
+      body.category_ids === undefined ? undefined : parseCategoryIds(body.category_ids);
     const props = validateProductProps({
-      name: clean(body.name, 180), slug: clean(body.slug, 180), brand: clean(body.brand, 80), model: clean(body.model, 120),
-      description: clean(body.description, 5000), condition: clean(body.condition, 20) as ProductCondition,
-      priceInCents: Number(body.price_in_cents), currency: "COP", stock: Number(body.stock ?? 0), images: [],
-      active: body.active === undefined ? true : bool(body.active), warrantyMonths: Number(body.warranty_months ?? 12),
+      name: clean(body.name, 180),
+      slug: clean(body.slug, 180),
+      brand: clean(body.brand, 80),
+      model: clean(body.model, 120),
+      description: clean(body.description, 5000),
+      condition: clean(body.condition, 20) as ProductCondition,
+      priceInCents: Number(body.price_in_cents),
+      currency: "COP",
+      stock: Number(body.stock ?? 0),
+      images: [],
+      active: body.active === undefined ? true : bool(body.active),
+      warrantyMonths: Number(body.warranty_months ?? 12),
       batteryHealth: body.battery_health == null ? undefined : Number(body.battery_health),
-      storageGb: body.storage_gb == null ? undefined : Number(body.storage_gb), color: body.color == null ? undefined : clean(body.color, 80),
-      specs: parseSpecs(body.specs_json), seoTitle: body.seo_title == null ? undefined : clean(body.seo_title, 180),
+      storageGb: body.storage_gb == null ? undefined : Number(body.storage_gb),
+      color: body.color == null ? undefined : clean(body.color, 80),
+      specs: parseSpecs(body.specs_json),
+      seoTitle: body.seo_title == null ? undefined : clean(body.seo_title, 180),
       seoDescription: body.seo_description == null ? undefined : clean(body.seo_description, 320),
     });
-    if (body.active !== undefined && typeof body.active !== "boolean" && body.active !== 0 && body.active !== 1) throw new Error("INVALID_PRODUCT");
+    if (
+      body.active !== undefined &&
+      typeof body.active !== "boolean" &&
+      body.active !== 0 &&
+      body.active !== 1
+    )
+      throw new Error("INVALID_PRODUCT");
     const id = await this.deps.repository.createProduct({
-      id: crypto.randomUUID(), name: props.name, slug: props.slug, brand: props.brand, model: props.model, description: props.description,
-      condition: props.condition, priceInCents: props.priceInCents, stock: props.stock, warrantyMonths: props.warrantyMonths,
-      batteryHealth: props.batteryHealth ?? null, storageGb: props.storageGb ?? null, color: props.color ?? null, specsJson: JSON.stringify(props.specs),
+      id: crypto.randomUUID(),
+      name: props.name,
+      slug: props.slug,
+      brand: props.brand,
+      model: props.model,
+      description: props.description,
+      condition: props.condition,
+      priceInCents: props.priceInCents,
+      stock: props.stock,
+      warrantyMonths: props.warrantyMonths,
+      batteryHealth: props.batteryHealth ?? null,
+      storageGb: props.storageGb ?? null,
+      color: props.color ?? null,
+      specsJson: JSON.stringify(props.specs),
     });
-    await this.deps.audit.audit(actor.id, "ADMIN_PRODUCT_CREATED", "product", id, { name: props.name, slug: props.slug });
+    if (categoryIds !== undefined)
+      await this.replaceProductCategories({ actor, productId: id, categoryIds });
+    await this.deps.audit.audit(actor.id, "ADMIN_PRODUCT_CREATED", "product", id, {
+      name: props.name,
+      slug: props.slug,
+    });
     return { id };
   }
 
   private async quoteService(actor: AdminActor, body: Record<string, unknown>): Promise<{}> {
-    const id = clean(body.id, 100), amountInCents = Number(body.quote_in_cents);
-    if (!id || !Number.isInteger(amountInCents) || amountInCents < 0) throw new Error("INVALID_SERVICE_QUOTE");
-    const current = await this.deps.repository.getServiceForMutation(id); if (!current) throw new Error("SERVICE_NOT_FOUND");
+    const id = clean(body.id, 100),
+      amountInCents = Number(body.quote_in_cents);
+    if (!id || !Number.isInteger(amountInCents) || amountInCents < 0)
+      throw new Error("INVALID_SERVICE_QUOTE");
+    const current = await this.deps.repository.getServiceForMutation(id);
+    if (!current) throw new Error("SERVICE_NOT_FOUND");
     if (current.status === "QUOTED") throw new Error("SERVICE_NOOP_TRANSITION");
     await this.deps.repository.quoteService(id, amountInCents, actor.id);
-    await this.deps.audit.audit(actor.id, "ADMIN_SERVICE_QUOTED", "service_request", id, { amountInCents });
-    await this.deps.publishNotification({ eventType: "ServiceStatusChanged", aggregateId: id, payload: { email: current.email, serviceRequestId: id, status: "QUOTED", quoteInCents: amountInCents } });
+    await this.deps.audit.audit(actor.id, "ADMIN_SERVICE_QUOTED", "service_request", id, {
+      amountInCents,
+    });
+    await this.deps.publishNotification({
+      eventType: "ServiceStatusChanged",
+      aggregateId: id,
+      payload: {
+        email: current.email,
+        serviceRequestId: id,
+        status: "QUOTED",
+        quoteInCents: amountInCents,
+      },
+    });
     return {};
   }
 
-  private async updateProduct(actor: AdminActor, id: string, body: Record<string, unknown>): Promise<void> {
-    const allowed = new Set(["name", "slug", "brand", "model", "description", "condition", "price_in_cents", "stock", "active", "seo_title", "seo_description", "warranty_months", "battery_health", "storage_gb", "color", "specs_json"]);
-    const fields = Object.keys(body).filter((key) => allowed.has(key)); if (!fields.length) throw new Error("NO_EDITABLE_FIELDS");
-    const validation: Record<string, unknown> = Object.fromEntries(fields.map((key) => [key, key === "active" ? bool(body[key]) : body[key]]));
-    try { validateProductPatch(validation); } catch { throw new Error("INVALID_PRODUCT"); }
-    const values = fields.map((key) => key === "active" ? (bool(body[key]) ? 1 : 0) : key === "specs_json" ? JSON.stringify(parseSpecs(body[key])) : body[key]);
+  private async updateProduct(
+    actor: AdminActor,
+    id: string,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    const allowed = new Set([
+      "name",
+      "slug",
+      "brand",
+      "model",
+      "description",
+      "condition",
+      "price_in_cents",
+      "stock",
+      "active",
+      "seo_title",
+      "seo_description",
+      "warranty_months",
+      "battery_health",
+      "storage_gb",
+      "color",
+      "specs_json",
+    ]);
+    const fields = Object.keys(body).filter((key) => allowed.has(key));
+    if (!fields.length) throw new Error("NO_EDITABLE_FIELDS");
+    const validation: Record<string, unknown> = Object.fromEntries(
+      fields.map((key) => [key, key === "active" ? bool(body[key]) : body[key]]),
+    );
+    try {
+      validateProductPatch(validation);
+    } catch {
+      throw new Error("INVALID_PRODUCT");
+    }
+    const values = fields.map((key) =>
+      key === "active"
+        ? bool(body[key])
+          ? 1
+          : 0
+        : key === "specs_json"
+          ? JSON.stringify(parseSpecs(body[key]))
+          : body[key],
+    );
     await this.deps.repository.updateProduct(id, fields, values);
-    if (body.category_ids !== undefined) await this.replaceProductCategories({ actor, productId: id, categoryIds: body.category_ids });
-    await this.deps.audit.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "products", id, Object.fromEntries(fields.map((field) => [field, body[field]])));
+    if (body.category_ids !== undefined)
+      await this.replaceProductCategories({ actor, productId: id, categoryIds: body.category_ids });
+    await this.deps.audit.audit(
+      actor.id,
+      "ADMIN_RESOURCE_UPDATED",
+      "products",
+      id,
+      Object.fromEntries(fields.map((field) => [field, body[field]])),
+    );
   }
 
-  private async updateOrder(actor: AdminActor, id: string, body: Record<string, unknown>): Promise<void> {
-    const status = clean(body.status, 30); const allowed = ["PENDING_PAYMENT", "PAYMENT_PROCESSING", "PAID", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELLED", "REFUND_PENDING", "REFUNDED"];
+  private async updateOrder(
+    actor: AdminActor,
+    id: string,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    const status = clean(body.status, 30);
+    const allowed = [
+      "PENDING_PAYMENT",
+      "PAYMENT_PROCESSING",
+      "PAID",
+      "PROCESSING",
+      "READY_TO_SHIP",
+      "SHIPPED",
+      "DELIVERED",
+      "CANCELLED",
+      "REFUND_PENDING",
+      "REFUNDED",
+    ];
     if (!allowed.includes(status)) throw new Error("INVALID_ORDER_STATUS");
-    const current = await this.deps.repository.getOrderForMutation(id); if (!current) throw new Error("ORDER_NOT_FOUND");
+    const current = await this.deps.repository.getOrderForMutation(id);
+    if (!current) throw new Error("ORDER_NOT_FOUND");
     if (current.status === status) throw new Error("ORDER_NOOP_TRANSITION");
     await this.deps.repository.updateOrderStatus(id, status, actor.id, current.status);
-    await this.deps.audit.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "orders", id, { from: current.status, to: status });
-    await this.deps.publishNotification({ eventType: status === "PAID" ? "OrderPaid" : "OrderStatusChanged", aggregateId: id, payload: { email: current.email, orderId: id, orderNumber: current.orderNumber, status } });
+    await this.deps.audit.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "orders", id, {
+      from: current.status,
+      to: status,
+    });
+    await this.deps.publishNotification({
+      eventType: status === "PAID" ? "OrderPaid" : "OrderStatusChanged",
+      aggregateId: id,
+      payload: { email: current.email, orderId: id, orderNumber: current.orderNumber, status },
+    });
   }
 
-  private async updateService(actor: AdminActor, id: string, body: Record<string, unknown>): Promise<void> {
-    const status = clean(body.status, 30); const allowed = ["PENDING", "QUOTED", "PAYMENT_PENDING", "PAID", "PROCESSING", "WAITING_CUSTOMER", "COMPLETED", "REJECTED", "REFUNDED"];
+  private async updateService(
+    actor: AdminActor,
+    id: string,
+    body: Record<string, unknown>,
+  ): Promise<void> {
+    const status = clean(body.status, 30);
+    const allowed = [
+      "PENDING",
+      "QUOTED",
+      "PAYMENT_PENDING",
+      "PAID",
+      "PROCESSING",
+      "WAITING_CUSTOMER",
+      "COMPLETED",
+      "REJECTED",
+      "REFUNDED",
+    ];
     if (!allowed.includes(status)) throw new Error("INVALID_SERVICE_STATUS");
-    const current = await this.deps.repository.getServiceForMutation(id); if (!current) throw new Error("SERVICE_NOT_FOUND");
+    const current = await this.deps.repository.getServiceForMutation(id);
+    if (!current) throw new Error("SERVICE_NOT_FOUND");
     if (current.status === status) throw new Error("SERVICE_NOOP_TRANSITION");
     await this.deps.repository.updateServiceStatus(id, status, actor.id, current.status);
-    await this.deps.audit.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "services", id, { from: current.status, to: status });
-    await this.deps.publishNotification({ eventType: "ServiceStatusChanged", aggregateId: id, payload: { email: current.email, serviceRequestId: id, status } });
+    await this.deps.audit.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "services", id, {
+      from: current.status,
+      to: status,
+    });
+    await this.deps.publishNotification({
+      eventType: "ServiceStatusChanged",
+      aggregateId: id,
+      payload: { email: current.email, serviceRequestId: id, status },
+    });
   }
 }
