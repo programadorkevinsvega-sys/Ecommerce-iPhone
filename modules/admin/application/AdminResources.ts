@@ -8,6 +8,7 @@ export type ResourceName = "products" | "customers" | "services" | "orders";
 export type AdminNotificationPublisher = (event: { eventType: string; aggregateId: string; payload: Record<string, unknown> }) => Promise<void>;
 export type AdminResourcesDeps = { repository: AdminResourceRepository; audit: AdminResourceAuditPort; publishNotification: AdminNotificationPublisher; authorizationPolicy?: AuthorizationPolicy };
 const MAX_QUERY_LENGTH = 100;
+const MAX_PRODUCT_CATEGORIES = 50;
 
 function clean(value: unknown, max: number): string { return String(value ?? "").trim().slice(0, max); }
 function bool(value: unknown): boolean { return value === true || value === 1 || value === "1"; }
@@ -28,6 +29,12 @@ function parseSpecs(value: unknown): Record<string, string> {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("INVALID_PRODUCT");
   try { validateProductPatch({ specs_json: parsed }); } catch { throw new Error("INVALID_PRODUCT"); }
   return parsed as Record<string, string>;
+}
+function parseCategoryIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.length > MAX_PRODUCT_CATEGORIES) throw new Error("INVALID_PRODUCT_CATEGORIES");
+  const ids = value.map((item) => clean(item, 128)).filter(Boolean);
+  if (ids.length !== value.length) throw new Error("INVALID_PRODUCT_CATEGORIES");
+  return [...new Set(ids)];
 }
 
 export class AdminResources {
@@ -50,6 +57,16 @@ export class AdminResources {
     if (resource === "orders") return this.updateOrder(input.actor, input.id, input.body);
     if (resource === "services") return this.updateService(input.actor, input.id, input.body);
     throw new Error("UNSUPPORTED_UPDATE");
+  }
+  async getProductCategoryIds(input: { actor: AdminActor; productId: string }): Promise<readonly string[]> {
+    this.authorize(input.actor, permissionFor("products"));
+    return this.deps.repository.getProductCategoryIds(input.productId);
+  }
+  async replaceProductCategories(input: { actor: AdminActor; productId: string; categoryIds: unknown }): Promise<void> {
+    this.authorize(input.actor, permissionFor("products", true));
+    const categoryIds = parseCategoryIds(input.categoryIds);
+    await this.deps.repository.replaceProductCategories(input.productId, categoryIds);
+    await this.deps.audit.audit(input.actor.id, "ADMIN_PRODUCT_CATEGORIES_UPDATED", "product", input.productId, { categoryIds });
   }
   private authorize(actor: AdminActor, permission: Permission): void { if (!this.authorizationPolicy.can(actor.role, permission)) throw new Error("FORBIDDEN"); }
 
@@ -92,6 +109,7 @@ export class AdminResources {
     try { validateProductPatch(validation); } catch { throw new Error("INVALID_PRODUCT"); }
     const values = fields.map((key) => key === "active" ? (bool(body[key]) ? 1 : 0) : key === "specs_json" ? JSON.stringify(parseSpecs(body[key])) : body[key]);
     await this.deps.repository.updateProduct(id, fields, values);
+    if (body.category_ids !== undefined) await this.replaceProductCategories({ actor, productId: id, categoryIds: body.category_ids });
     await this.deps.audit.audit(actor.id, "ADMIN_RESOURCE_UPDATED", "products", id, Object.fromEntries(fields.map((field) => [field, body[field]])));
   }
 
