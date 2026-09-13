@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD auditado:** `3510041fc8097a030301d2a50b359d8806dd9b05`  
+**HEAD auditado:** `499ef7ac4583a8515be0711ea61d67c882f8758a`  
 **Última actualización:** 2026-09-12/13 UTC  
 **Entorno remoto operativo:** producción únicamente.
 
@@ -24,7 +24,7 @@
 | 06 Admin + RBAC | 🟡 Application consolidada + hardening | Pendiente build/tests/gates |
 | 07 Notifications + Queues | 🟡 Parcial | DLQ/retry/replay pendiente |
 
-El trabajo reciente corresponde al cierre arquitectónico de **Fase 06**.
+El trabajo reciente corresponde al cierre arquitectónico y hardening de **Fase 06**.
 
 ---
 
@@ -82,7 +82,7 @@ Implementado: monorepo modular, DDD + Clean Architecture, bounded contexts, D1/R
 - OpenNext: **SUCCESS**.
 - D1: `No migrations to apply!`.
 - Worker deploy: **SUCCESS**.
-- Version ID: `d1405ac6-71a1-4db1-8454-2db575bad847`.
+- Version ID: `d1405ac6-71a1-4db8-8454-2db575bad847`.
 - `/api/health/live`: `200`.
 - `/api/health/ready`: `200`.
 - `verify:production`: **PASS**.
@@ -175,6 +175,7 @@ Reglas centralizadas en Application/Domain:
 - self deactivation;
 - self role change;
 - last `SUPER_ADMIN` protection;
+- transición crítica de `SUPER_ADMIN` mediante escritura condicional atómica;
 - email duplicado;
 - password hashing;
 - revocación de sesiones;
@@ -207,9 +208,9 @@ Application command
 
 CMS y Settings ya registran auditoría dentro de `AdminCms` / `AdminSettings`. Las routes ya no ejecutan `repo.audit()` después del caso de uso. `D1AuditPort` implementa el port.
 
-## 8.6 CMS / Settings
+## 8.6 CMS / Settings / Inventory
 
-`AdminCms` y `AdminSettings` encapsulan validación, operación y auditoría. Las routes solo componen Application + ports.
+`AdminCms`, `AdminSettings` y `AdminInventory` encapsulan operación y auditoría mediante Application + ports. Las routes solo adaptan HTTP/composición y no instancian repositorios D1 para ejecutar lógica de negocio.
 
 ## 8.7 Admin Auth
 
@@ -221,7 +222,7 @@ CMS y Settings ya registran auditoría dentro de `AdminCms` / `AdminSettings`. L
 
 Application cases:
 
-- `AuthenticateAdmin`;
+- `AuthenticateAdminAtomic`;
 - `CreateAdminSession`;
 - `LogoutAdmin`;
 - `BootstrapAdmin`;
@@ -235,7 +236,46 @@ Ports:
 - `PasswordHasher`;
 - `AuditPort`.
 
-El login, logout, bootstrap, resolución del admin actual y autorización ya no hacen acceso D1 directo desde HTTP. `AuthenticateAdmin` delega creación de sesión a `CreateAdminSession`.
+El login, logout, bootstrap, resolución del admin actual y autorización ya no hacen acceso D1 directo desde HTTP. `AuthenticateAdminAtomic` delega creación de sesión a `CreateAdminSession`.
+
+### Lockout concurrente
+
+El registro de fallos de login usa una mutación D1 condicional/atómica sobre `failed_login_count` y `locked_until`, evitando carreras que pudieran perder incrementos concurrentes. El éxito limpia el estado de lockout en una única actualización.
+
+### Timing de usuario inexistente
+
+Se eliminó la salida temprana que permitía distinguir fácilmente entre email existente e inexistente por coste de password verification. `PasswordHasher` expone `verifyUnknownAccount(password)` y el adapter D1 ejecuta una verificación PBKDF2-SHA256 precomputada con el mismo coste criptográfico base que una contraseña administrativa real.
+
+El caso inexistente:
+
+1. busca el usuario;
+2. ejecuta `verifyUnknownAccount(password)`;
+3. registra el intento fallido;
+4. devuelve exactamente `INVALID_CREDENTIALS`.
+
+No crea sesión, no modifica ninguna cuenta y no revela si el email existe.
+
+### Session security
+
+- el token de sesión se genera aleatoriamente;
+- solo se persiste su hash;
+- cookies administrativas son `httpOnly`, `secure`, `sameSite=strict` y `path=/`;
+- la resolución exige sesión activa, no revocada, no expirada y usuario activo;
+- logout revoca la sesión;
+- operaciones de cambio/reset de credenciales revocan sesiones según el caso de uso.
+
+### Rate limiting
+
+El Worker aplica el rate limiting nativo de Cloudflare antes del árbol de autenticación para rutas API sensibles. `/api/admin/*` utiliza `SENSITIVE_RATE_LIMITER`; la autenticación por cuenta dispone además de lockout por `admin_users`.
+
+### Limpieza de artefactos experimentales
+
+Se eliminaron los artefactos no usados del intento anterior de rate limiting D1:
+
+- `modules/admin/application/AdminLoginRateLimitPort.ts`;
+- `migrations/0019_admin_login_rate_limit.sql`.
+
+La búsqueda del repositorio no mantiene referencias al port ni a la tabla experimental. No forman parte del flujo activo ni de las migraciones de producción.
 
 ## 8.8 Composition root
 
@@ -251,7 +291,7 @@ El login, logout, bootstrap, resolución del admin actual y autorización ya no 
 - CMS/SEO: 🟢 + AuditPort
 - Settings: 🟢 + AuditPort
 - Audit viewer: 🟢
-- Admin Auth: 🟢 Application + adapter
+- Admin Auth: 🟢 Application + adapter + hardening de timing/lockout
 - Inventory / Products / Customers / Orders: 🟡 revisión/certificación final pendiente
 - Promotions / Reviews: 🟡 implementación existente, certificación pendiente
 
@@ -277,7 +317,7 @@ Application → Next.js / Cloudflare / Infrastructure
 5. matriz RBAC completa;
 6. privilege escalation vertical/horizontal;
 7. IDOR/BOLA;
-8. auth/session/lockout/rate limiting administrativo;
+8. auth/session/lockout/rate limiting administrativo: **hardening implementado; falta evidencia de pruebas/certificación**;
 9. audit + ausencia de secretos en payloads;
 10. concurrencia/idempotencia de operaciones críticas;
 11. refund/void regression;
