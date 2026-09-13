@@ -1,7 +1,12 @@
 import { AdminDashboardService } from "../../../modules/admin/application/AdminDashboardService";
 import { AdminNotificationsService } from "../../../modules/admin/application/AdminNotificationsService";
+import { AdminUserManagement } from "../../../modules/admin/application/AdminUserManagement";
 import { D1AdminDashboardQuery } from "../../../modules/admin/infrastructure/D1AdminDashboardQuery";
 import { D1AdminNotificationsQuery } from "../../../modules/admin/infrastructure/D1AdminNotificationsQuery";
+import { D1AdminPasswordHasher } from "../../../modules/admin/infrastructure/D1AdminPasswordHasher";
+import { D1AdminSessionRepository } from "../../../modules/admin/infrastructure/D1AdminSessionRepository";
+import { D1AdminUserAuditPort } from "../../../modules/admin/infrastructure/D1AdminUserAuditPort";
+import { D1AdminUserRepository } from "../../../modules/admin/infrastructure/D1AdminUserRepository";
 import { AdminPayments } from "../../../modules/payments/application/AdminPayments";
 import { D1PaymentAdminRepository } from "../../../modules/payments/infrastructure/D1PaymentAdminRepository";
 import { D1PaymentAuditPort } from "../../../modules/payments/infrastructure/D1PaymentAuditPort";
@@ -61,5 +66,14 @@ export function adminServiceTypesApplication(env: CloudflareEnv): AdminServiceTy
   return new AdminServiceTypes(
     serviceTypeRepository(env),
     new D1ServiceTypeAuditPort(env.DB),
+  );
+}
+
+export function adminUserManagementApplication(env: CloudflareEnv): AdminUserManagement {
+  return new AdminUserManagement(
+    new D1AdminUserRepository(env.DB),
+    new D1AdminPasswordHasher(),
+    new D1AdminSessionRepository(env.DB),
+    new D1AdminUserAuditPort(env.DB),
   );
 }
