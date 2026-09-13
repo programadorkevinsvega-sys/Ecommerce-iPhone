@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { assertLength, normalizeMultiline, normalizeSingleLine, safeFormError, validateEmail } from "../../lib/inputValidation";
+import { assertLength, normalizeMultiline, normalizeSingleLine, safeFormError, validateEmail } from "../../../lib/inputValidation";
 
 type ServiceType={code:string;name:string;description:string;workflow:{customerOwnershipProofRequired:boolean;quoteRequired:boolean;paymentRequired:boolean}};
 
