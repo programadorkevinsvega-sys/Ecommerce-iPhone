@@ -1,9 +1,15 @@
 import type { AdminDashboardQuery, AdminDashboardSnapshot } from "./AdminDashboardQuery";
+import type { AuditPort } from "./AuditPort";
 
 export class AdminDashboardService {
-  constructor(private readonly query: AdminDashboardQuery) {}
+  constructor(
+    private readonly query: AdminDashboardQuery,
+    private readonly audit: AuditPort,
+  ) {}
 
-  execute(): Promise<AdminDashboardSnapshot> {
-    return this.query.execute();
+  async execute(adminUserId: string): Promise<AdminDashboardSnapshot> {
+    const snapshot = await this.query.execute();
+    await this.audit.audit(adminUserId, "ADMIN_DASHBOARD_VIEW", "dashboard", null, {});
+    return snapshot;
   }
 }
