@@ -11,6 +11,13 @@
     "ADMIN_EMAIL": "yesidvegamar@gmail.com",
     "ALLOWED_ORIGIN": "https://iphone.jnmtortas.com"
   },
+  "routes": [
+    {
+      "pattern": "iphone.jnmtortas.com",
+      "zone_name": "jnmtortas.com",
+      "custom_domain": true
+    }
+  ],
   "ratelimits": [
     {"name": "API_RATE_LIMITER", "namespace_id": "10001", "simple": {"limit": 120, "period": 60}},
     {"name": "SENSITIVE_RATE_LIMITER", "namespace_id": "10002", "simple": {"limit": 20, "period": 60}}
