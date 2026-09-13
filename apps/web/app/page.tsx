@@ -22,7 +22,8 @@ export default async function HomePage() {
           <Link href="/cart">Carrito</Link>
         </nav>
       </header>
-      <section className="home-hero">
+      {slides.length > 0 && <HomeCarousel slides={slides} />}
+      <section className="home-intro">
         <div>
           <p className="eyebrow">Smartphones · Servicios · Confianza</p>
           <h1>Tecnología que eliges con confianza.</h1>
@@ -39,11 +40,7 @@ export default async function HomePage() {
             </Link>
           </div>
         </div>
-        <div className="hero-device" aria-hidden="true">
-          <span>iPhone</span>
-        </div>
       </section>
-      <HomeCarousel slides={slides} />
       <section className="section" aria-labelledby="categories-title">
         <div className="section-heading">
           <p className="eyebrow">Categorías</p>
