@@ -13,7 +13,7 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
   async list(resource: ResourceName, query: string): Promise<unknown[]> {
     const pattern = like(query);
     if (resource === "products") {
-      return (await this.db.prepare("SELECT p.*, (SELECT COUNT(*) FROM product_images i WHERE i.product_id=p.id) AS image_count FROM products p WHERE (?='' OR p.name LIKE ? OR p.slug LIKE ? OR p.brand LIKE ?) ORDER BY p.created_at DESC LIMIT 100").bind(query, pattern, pattern, pattern).all()).results;
+      return (await this.db.prepare("SELECT p.*, (SELECT COUNT(*) FROM product_images i WHERE i.product_id=p.id) AS image_count FROM products p WHERE (?='' OR p.id LIKE ? OR p.name LIKE ? OR p.slug LIKE ? OR p.brand LIKE ?) ORDER BY p.created_at DESC LIMIT 100").bind(query, pattern, pattern, pattern, pattern).all()).results;
     }
     if (resource === "customers") {
       return (await this.db.prepare("SELECT id,email,first_name,last_name,phone,created_at,updated_at FROM customers WHERE (?='' OR email LIKE ? OR first_name LIKE ? OR last_name LIKE ?) ORDER BY created_at DESC LIMIT 100").bind(query, pattern, pattern, pattern).all()).results;
