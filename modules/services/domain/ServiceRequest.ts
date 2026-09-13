@@ -24,6 +24,15 @@ export type ServiceRequestProps = Readonly<{
   updatedAt: string;
 }>;
 
+const SERVICE_REQUEST_STATUSES: readonly ServiceRequestStatus[] = ["PENDING", "QUOTED", "PAYMENT_PENDING", "PAID", "PROCESSING", "WAITING_CUSTOMER", "COMPLETED", "REJECTED", "REFUNDED"];
+
+export function parseServiceRequestStatus(value: unknown): ServiceRequestStatus {
+  if (typeof value !== "string" || !SERVICE_REQUEST_STATUSES.includes(value as ServiceRequestStatus)) {
+    throw new Error("INVALID_SERVICE_REQUEST_STATUS");
+  }
+  return value as ServiceRequestStatus;
+}
+
 export const SERVICE_REQUEST_TRANSITIONS: Record<ServiceRequestStatus, readonly ServiceRequestStatus[]> = {
   PENDING: ["QUOTED", "REJECTED"],
   QUOTED: ["PAYMENT_PENDING", "REJECTED"],
