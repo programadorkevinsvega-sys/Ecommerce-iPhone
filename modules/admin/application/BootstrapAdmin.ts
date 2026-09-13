@@ -26,8 +26,8 @@ export class BootstrapAdmin {
     let passwordHash: string;
     try {
       passwordHash = await this.passwords.hash(password);
-    } catch {
-      console.error("admin bootstrap password hashing failed");
+    } catch (error) {
+      console.error("admin bootstrap password hashing failed", error instanceof Error ? { name: error.name, message: error.message } : { type: typeof error });
       throw new Error("INVALID_ADMIN_PASSWORD");
     }
 
