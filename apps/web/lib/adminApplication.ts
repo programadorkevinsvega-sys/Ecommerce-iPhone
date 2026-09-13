@@ -7,6 +7,9 @@ import { D1AdminPasswordHasher } from "../../../modules/admin/infrastructure/D1A
 import { D1AdminSessionRepository } from "../../../modules/admin/infrastructure/D1AdminSessionRepository";
 import { D1AdminUserAuditPort } from "../../../modules/admin/infrastructure/D1AdminUserAuditPort";
 import { D1AdminUserRepository } from "../../../modules/admin/infrastructure/D1AdminUserRepository";
+import { D1AdminSettingsRepository } from "../../../modules/admin/infrastructure/D1AdminSettingsRepository";
+import { D1AuditPort } from "../../../modules/admin/infrastructure/D1AuditPort";
+import { AdminSettings } from "../../../modules/admin/application/AdminSettings";
 import { AdminPayments } from "../../../modules/payments/application/AdminPayments";
 import { D1PaymentAdminRepository } from "../../../modules/payments/infrastructure/D1PaymentAdminRepository";
 import { D1PaymentAuditPort } from "../../../modules/payments/infrastructure/D1PaymentAuditPort";
@@ -19,6 +22,10 @@ import { ServiceWorkflowService } from "../../../modules/services/application/Se
 import { D1ServiceRequestRepository } from "../../../modules/services/infrastructure/D1ServiceRequestRepository";
 import { D1ServiceTypeAuditPort } from "../../../modules/services/infrastructure/D1ServiceTypeAuditPort";
 import { D1ServiceTypeRepository } from "../../../modules/services/infrastructure/D1ServiceTypeRepository";
+import { AdminCms } from "../../../modules/cms/application/AdminCms";
+import { D1CmsRepository } from "../../../modules/cms/infrastructure/D1CmsRepository";
+import { AdminInventory } from "../../../modules/inventory/application/AdminInventory";
+import { D1InventoryRepository } from "../../../modules/inventory/infrastructure/D1InventoryRepository";
 import type { ServiceRequestRepository } from "../../../modules/services/application/ServiceRequestRepository";
 import type { ServiceTypeRepository } from "../../../modules/services/application/ServiceTypeRepository";
 
@@ -28,6 +35,18 @@ export function adminDashboardApplication(env: CloudflareEnv): AdminDashboardSer
 
 export function adminNotificationsApplication(env: CloudflareEnv): AdminNotificationsService {
   return new AdminNotificationsService(new D1AdminNotificationsQuery(env.DB));
+}
+
+export function adminCmsApplication(env: CloudflareEnv): AdminCms {
+  return new AdminCms(new D1CmsRepository(env.DB), new D1AuditPort(env.DB));
+}
+
+export function adminSettingsApplication(env: CloudflareEnv): AdminSettings {
+  return new AdminSettings(new D1AdminSettingsRepository(env.DB), new D1AuditPort(env.DB));
+}
+
+export function adminInventoryApplication(env: CloudflareEnv): AdminInventory {
+  return new AdminInventory(new D1InventoryRepository(env.DB), new D1AuditPort(env.DB));
 }
 
 export async function adminPaymentsApplication(env: CloudflareEnv): Promise<AdminPayments> {
