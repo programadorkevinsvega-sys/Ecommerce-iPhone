@@ -1,16 +1,105 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import { ServiceRequest, type ServiceRequestProps, type ServiceRequestStatus } from "../domain/ServiceRequest";
+import {
+  ServiceRequest,
+  type ServiceRequestProps,
+  type ServiceRequestStatus,
+} from "../domain/ServiceRequest";
 
 export class D1ServiceRequestRepository {
   constructor(private readonly db: D1Database) {}
   async save(request: ServiceRequest): Promise<void> {
     const p = request.toPrimitives();
-    await this.db.prepare(`INSERT INTO service_requests (id,customer_id,email,type,service_type_code,device_brand,device_model,device_serial_last4,imei_last4,carrier,problem_description,customer_notes,status,quote_in_cents,currency,payment_id,assigned_technician_id,resolution_notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET status=excluded.status,quote_in_cents=excluded.quote_in_cents,payment_id=excluded.payment_id,assigned_technician_id=excluded.assigned_technician_id,resolution_notes=excluded.resolution_notes,customer_notes=excluded.customer_notes,service_type_code=excluded.service_type_code,updated_at=excluded.updated_at`).bind(p.id,p.customerId??null,p.email,p.type,p.type,p.deviceBrand,p.deviceModel,p.deviceSerialLast4??null,p.imeiLast4??null,p.carrier??null,p.problemDescription,p.customerNotes??null,p.status,p.quoteInCents??null,p.currency,p.paymentId??null,p.assignedTechnicianId??null,p.resolutionNotes??null,p.createdAt,p.updatedAt).run();
-    await this.audit(p.id,"ServiceRequestSaved",{status:p.status,quoteInCents:p.quoteInCents??null});
+    await this.db
+      .prepare(
+        `INSERT INTO service_requests (id,customer_id,email,phone,whatsapp,country_code,type,service_type_code,device_brand,device_model,device_serial_last4,imei_last4,carrier,problem_description,customer_notes,status,quote_in_cents,currency,payment_id,assigned_technician_id,resolution_notes,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET status=excluded.status,quote_in_cents=excluded.quote_in_cents,payment_id=excluded.payment_id,assigned_technician_id=excluded.assigned_technician_id,resolution_notes=excluded.resolution_notes,customer_notes=excluded.customer_notes,service_type_code=excluded.service_type_code,updated_at=excluded.updated_at`,
+      )
+      .bind(
+        p.id,
+        p.customerId ?? null,
+        p.email,
+        p.phone ?? null,
+        p.whatsapp ?? null,
+        p.countryCode ?? null,
+        p.type,
+        p.type,
+        p.deviceBrand,
+        p.deviceModel,
+        p.deviceSerialLast4 ?? null,
+        p.imeiLast4 ?? null,
+        p.carrier ?? null,
+        p.problemDescription,
+        p.customerNotes ?? null,
+        p.status,
+        p.quoteInCents ?? null,
+        p.currency,
+        p.paymentId ?? null,
+        p.assignedTechnicianId ?? null,
+        p.resolutionNotes ?? null,
+        p.createdAt,
+        p.updatedAt,
+      )
+      .run();
+    await this.audit(p.id, "ServiceRequestSaved", {
+      status: p.status,
+      quoteInCents: p.quoteInCents ?? null,
+    });
   }
-  async findById(id:string):Promise<ServiceRequest|null>{const row=await this.db.prepare("SELECT * FROM service_requests WHERE id=?").bind(id).first<any>();return row?this.map(row):null;}
-  async listForCustomer(customerId:string):Promise<ServiceRequest[]>{const rows=await this.db.prepare("SELECT * FROM service_requests WHERE customer_id=? ORDER BY created_at DESC").bind(customerId).all<any>();return rows.results.map(r=>this.map(r));}
-  async listQueue(status?:ServiceRequestStatus):Promise<ServiceRequest[]>{const q=status?this.db.prepare("SELECT * FROM service_requests WHERE status=? ORDER BY created_at ASC").bind(status):this.db.prepare("SELECT * FROM service_requests WHERE status NOT IN ('COMPLETED','REFUNDED','REJECTED') ORDER BY created_at ASC");const rows=await q.all<any>();return rows.results.map(r=>this.map(r));}
-  async audit(id:string,eventType:string,payload:unknown):Promise<void>{await this.db.prepare("INSERT INTO service_audit_events (id,service_request_id,event_type,payload_json,created_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP)").bind(crypto.randomUUID(),id,eventType,JSON.stringify(payload)).run();}
-  private map(r:any):ServiceRequest{return ServiceRequest.create(r.id,{customerId:r.customer_id??undefined,email:r.email,type:r.service_type_code??r.type,deviceBrand:r.device_brand,deviceModel:r.device_model,deviceSerialLast4:r.device_serial_last4??undefined,imeiLast4:r.imei_last4??undefined,carrier:r.carrier??undefined,problemDescription:r.problem_description,customerNotes:r.customer_notes??undefined,status:r.status as ServiceRequestProps["status"],quoteInCents:r.quote_in_cents??undefined,currency:r.currency,paymentId:r.payment_id??undefined,assignedTechnicianId:r.assigned_technician_id??undefined,resolutionNotes:r.resolution_notes??undefined,createdAt:r.created_at,updatedAt:r.updated_at});}
+  async findById(id: string): Promise<ServiceRequest | null> {
+    const row = await this.db
+      .prepare("SELECT * FROM service_requests WHERE id=?")
+      .bind(id)
+      .first<any>();
+    return row ? this.map(row) : null;
+  }
+  async listForCustomer(customerId: string): Promise<ServiceRequest[]> {
+    const rows = await this.db
+      .prepare("SELECT * FROM service_requests WHERE customer_id=? ORDER BY created_at DESC")
+      .bind(customerId)
+      .all<any>();
+    return rows.results.map((r) => this.map(r));
+  }
+  async listQueue(status?: ServiceRequestStatus): Promise<ServiceRequest[]> {
+    const q = status
+      ? this.db
+          .prepare("SELECT * FROM service_requests WHERE status=? ORDER BY created_at ASC")
+          .bind(status)
+      : this.db.prepare(
+          "SELECT * FROM service_requests WHERE status NOT IN ('COMPLETED','REFUNDED','REJECTED') ORDER BY created_at ASC",
+        );
+    const rows = await q.all<any>();
+    return rows.results.map((r) => this.map(r));
+  }
+  async audit(id: string, eventType: string, payload: unknown): Promise<void> {
+    await this.db
+      .prepare(
+        "INSERT INTO service_audit_events (id,service_request_id,event_type,payload_json,created_at) VALUES (?,?,?,?,CURRENT_TIMESTAMP)",
+      )
+      .bind(crypto.randomUUID(), id, eventType, JSON.stringify(payload))
+      .run();
+  }
+  private map(r: any): ServiceRequest {
+    return ServiceRequest.create(r.id, {
+      customerId: r.customer_id ?? undefined,
+      email: r.email,
+      phone: r.phone ?? undefined,
+      whatsapp: r.whatsapp ?? undefined,
+      countryCode: r.country_code ?? undefined,
+      type: r.service_type_code ?? r.type,
+      deviceBrand: r.device_brand,
+      deviceModel: r.device_model,
+      deviceSerialLast4: r.device_serial_last4 ?? undefined,
+      imeiLast4: r.imei_last4 ?? undefined,
+      carrier: r.carrier ?? undefined,
+      problemDescription: r.problem_description,
+      customerNotes: r.customer_notes ?? undefined,
+      status: r.status as ServiceRequestProps["status"],
+      quoteInCents: r.quote_in_cents ?? undefined,
+      currency: r.currency,
+      paymentId: r.payment_id ?? undefined,
+      assignedTechnicianId: r.assigned_technician_id ?? undefined,
+      resolutionNotes: r.resolution_notes ?? undefined,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    });
+  }
 }

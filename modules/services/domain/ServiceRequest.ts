@@ -6,6 +6,9 @@ export type ServiceRequestStatus = "PENDING" | "QUOTED" | "PAYMENT_PENDING" | "P
 export type ServiceRequestProps = Readonly<{
   customerId?: string;
   email: string;
+  phone?: string;
+  whatsapp?: string;
+  countryCode?: string;
   type: ServiceType;
   deviceBrand: string;
   deviceModel: string;

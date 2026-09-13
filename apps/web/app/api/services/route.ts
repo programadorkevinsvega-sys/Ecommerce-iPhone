@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { currentCustomerId } from "../../../lib/customerSession";
 import { serviceCustomerPortal } from "../../../lib/services";
 import {
   assertLength,
   normalizeMultiline,
   normalizeSingleLine,
   validateEmail,
+  validatePhone,
 } from "../../../lib/inputValidation";
 
 const last4Digits = (value: unknown) => {
@@ -20,6 +20,7 @@ function safeError(error: unknown): string {
   const known: Record<string, string> = {
     INVALID_EMAIL: "Invalid email",
     INVALID_PHONE: "Invalid phone",
+    INVALID_COUNTRY: "Invalid country",
     INVALID_DEVICEBRAND: "Device brand is required",
     INVALID_DEVICEMODEL: "Device model is required",
     INVALID_CARRIER: "Carrier is required",
@@ -46,9 +47,12 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    const customerId = await currentCustomerId();
     const type = assertLength(normalizeSingleLine(body.type).toUpperCase(), "serviceType");
     const email = validateEmail(body.email);
+    const phone = validatePhone(body.phone);
+    const whatsapp = validatePhone(body.whatsapp);
+    const countryCode = normalizeSingleLine(body.countryCode).toUpperCase();
+    if (!/^[A-Z]{2}$/u.test(countryCode)) throw new Error("INVALID_COUNTRY");
     const deviceBrand = assertLength(normalizeSingleLine(body.deviceBrand), "deviceBrand");
     const deviceModel = assertLength(normalizeSingleLine(body.deviceModel), "deviceModel");
     const carrier = normalizeSingleLine(body.carrier);
@@ -66,8 +70,10 @@ export async function POST(request: Request) {
 
     const result = await serviceCustomerPortal().create({
       id: crypto.randomUUID(),
-      ...(customerId ? { customerId } : {}),
       email,
+      phone,
+      whatsapp,
+      countryCode,
       type,
       deviceBrand,
       deviceModel,

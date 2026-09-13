@@ -6,6 +6,9 @@ export class ServiceRequestFactory implements ServiceRequestFactoryPort {
   create(input: CreateServiceRequestInput, _definition: ServiceTypeDefinition): ServiceRequest {
     const props: Omit<ServiceRequestProps, "status" | "createdAt" | "updatedAt"> = {
       email: input.email,
+      ...(input.phone !== undefined ? { phone: input.phone } : {}),
+      ...(input.whatsapp !== undefined ? { whatsapp: input.whatsapp } : {}),
+      ...(input.countryCode !== undefined ? { countryCode: input.countryCode } : {}),
       type: input.type,
       deviceBrand: input.deviceBrand,
       deviceModel: input.deviceModel,

@@ -27,6 +27,7 @@ export default function RequestServicePage() {
   const [loading, setLoading] = useState(false);
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [message, setMessage] = useState("");
+  const [createdRequestId, setCreatedRequestId] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -72,6 +73,12 @@ export default function RequestServicePage() {
       const selectedType = types.find((x) => x.code === normalizeSingleLine(type));
       if (!selectedType) throw new Error("INVALID_SERVICE_TYPE");
       const email = validateEmail(form.get("email"));
+      const phone = normalizeSingleLine(form.get("phone"));
+      const whatsapp = normalizeSingleLine(form.get("whatsapp"));
+      if (!/^[+()\d][\d\s().-]{6,24}$/u.test(phone)) throw new Error("INVALID_PHONE");
+      if (!/^[+()\d][\d\s().-]{6,24}$/u.test(whatsapp)) throw new Error("INVALID_PHONE");
+      const countryCode = normalizeSingleLine(form.get("countryCode")).toUpperCase();
+      if (!/^[A-Z]{2}$/u.test(countryCode)) throw new Error("INVALID_COUNTRY");
       const deviceBrand = assertLength(normalizeSingleLine(form.get("deviceBrand")), "deviceBrand");
       const deviceModel = assertLength(normalizeSingleLine(form.get("deviceModel")), "deviceModel");
       const carrier = normalizeSingleLine(form.get("carrier"));
@@ -92,6 +99,9 @@ export default function RequestServicePage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           email,
+          phone,
+          whatsapp,
+          countryCode,
           type: selectedType.code,
           deviceBrand,
           deviceModel,
@@ -111,7 +121,8 @@ export default function RequestServicePage() {
       const data = (await response.json()) as { request?: { id?: unknown } };
       const requestId = typeof data.request?.id === "string" ? data.request.id : "";
       if (!requestId) throw new Error("INVALID_SERVICE_RESPONSE");
-      window.location.assign(`/servicios/solicitud/${encodeURIComponent(requestId)}`);
+      setCreatedRequestId(requestId);
+      e.currentTarget.reset();
     } catch (error) {
       setMessage(
         error instanceof Error && error.message.startsWith("INVALID_")
@@ -139,7 +150,7 @@ export default function RequestServicePage() {
         <h1>Cuéntanos qué necesita tu dispositivo.</h1>
         <p>Los servicios y sus requisitos se configuran desde el catálogo operativo.</p>
       </section>
-      <form
+      {createdRequestId ? <section className="service-success" aria-live="polite"><p className="eyebrow">Solicitud recibida</p><h2>Ya tenemos tu solicitud.</h2><p>Conserva este identificador para consultar el avance con nuestro equipo:</p><strong>{createdRequestId}</strong><div className="hero-actions"><Link className="button primary" href="/servicios">Volver a servicios</Link><button className="button secondary" type="button" onClick={() => setCreatedRequestId("")}>Crear otra solicitud</button></div></section> : <form
         className="checkout-card"
         onSubmit={submit}
         aria-describedby={message ? "service-form-message" : undefined}
@@ -181,6 +192,14 @@ export default function RequestServicePage() {
               inputMode="email"
               placeholder="tu@email.com"
             />
+            <div className="form-grid">
+              <div><label htmlFor="service-phone">Teléfono de llamada</label><input id="service-phone" required name="phone" type="tel" maxLength={25} autoComplete="tel" placeholder="+57 300 000 0000" /></div>
+              <div><label htmlFor="service-whatsapp">WhatsApp</label><input id="service-whatsapp" required name="whatsapp" type="tel" maxLength={25} autoComplete="tel" placeholder="+57 300 000 0000" /></div>
+            </div>
+            <label htmlFor="service-country">País</label>
+            <select id="service-country" required name="countryCode" defaultValue="CO" autoComplete="country">
+              <option value="CO">Colombia</option><option value="MX">México</option><option value="PA">Panamá</option><option value="EC">Ecuador</option><option value="PE">Perú</option><option value="US">Estados Unidos</option><option value="ES">España</option>
+            </select>
             <div className="form-grid">
               <div>
                 <label htmlFor="service-brand">Marca</label>
@@ -279,7 +298,7 @@ export default function RequestServicePage() {
             </button>
           </>
         )}
-      </form>
+      </form>}
     </main>
   );
 }

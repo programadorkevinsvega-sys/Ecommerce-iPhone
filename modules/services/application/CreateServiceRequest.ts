@@ -7,6 +7,9 @@ export type CreateServiceRequestInput = Readonly<{
   id: string;
   customerId?: string;
   email: string;
+  phone?: string;
+  whatsapp?: string;
+  countryCode?: string;
   type: string;
   deviceBrand: string;
   deviceModel: string;
