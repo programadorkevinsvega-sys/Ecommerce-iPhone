@@ -23,9 +23,17 @@ export class BootstrapAdmin {
     if (role !== "SUPER_ADMIN") throw new Error("INVALID_ROLE");
     if (await this.admins.findByEmail(email)) throw new Error("ADMIN_ALREADY_EXISTS");
 
+    let passwordHash: string;
+    try {
+      passwordHash = await this.passwords.hash(password);
+    } catch {
+      console.error("admin bootstrap password hashing failed");
+      throw new Error("INVALID_ADMIN_PASSWORD");
+    }
+
     const user = AdminUser.create(crypto.randomUUID(), {
       email,
-      passwordHash: await this.passwords.hash(password),
+      passwordHash,
       role,
       firstName,
       lastName,
@@ -33,8 +41,19 @@ export class BootstrapAdmin {
       failedLoginCount: 0,
     });
 
-    if (!(await this.admins.createInitialSuperAdmin(user))) throw new Error("ADMIN_ALREADY_EXISTS");
-    await this.audit.audit(user.getId(), "ADMIN_BOOTSTRAPPED", "admin_user", user.getId(), { role, email });
+    try {
+      if (!(await this.admins.createInitialSuperAdmin(user))) throw new Error("ADMIN_ALREADY_EXISTS");
+    } catch (error) {
+      if (error instanceof Error && error.message === "ADMIN_ALREADY_EXISTS") throw error;
+      console.error("admin bootstrap persistence failed");
+      throw new Error("ADMIN_BOOTSTRAP_STORAGE_ERROR");
+    }
+    try {
+      await this.audit.audit(user.getId(), "ADMIN_BOOTSTRAPPED", "admin_user", user.getId(), { role, email });
+    } catch {
+      console.error("admin bootstrap audit failed");
+      throw new Error("ADMIN_BOOTSTRAP_AUDIT_ERROR");
+    }
     return user.getId();
   }
 }
