@@ -1,0 +1,1 @@
+export type RateLimitDecision={allowed:boolean;retryAfterSeconds:number}; export interface AdminLoginRateLimitPort{consume(scope:string,value:string,limit:number,windowSeconds:number,now:Date):Promise<RateLimitDecision>}
