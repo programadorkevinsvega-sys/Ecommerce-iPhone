@@ -38,6 +38,8 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
   }
 
   async getProductCategoryIds(productId: string): Promise<string[]> {
+    const product = await this.db.prepare("SELECT id FROM products WHERE id=? LIMIT 1").bind(productId).first<{ id: string }>();
+    if (!product) throw new Error("PRODUCT_NOT_FOUND");
     const rows = await this.db.prepare("SELECT category_id FROM product_categories WHERE product_id=? ORDER BY category_id ASC").bind(productId).all<{ category_id: string }>();
     return rows.results.map((row) => row.category_id);
   }
