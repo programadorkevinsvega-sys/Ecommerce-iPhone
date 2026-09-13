@@ -33,12 +33,10 @@ function safeError(error: unknown): string {
 
 export async function GET() {
   try {
-    const customerId = await currentCustomerId();
-    const result = await serviceCustomerPortal().list(customerId ?? undefined);
+    // The service catalog is public. Customer accounts are not required for requests.
+    const result = await serviceCustomerPortal().list();
     return NextResponse.json(result, {
-      headers: customerId
-        ? { "cache-control": "private, no-store" }
-        : { "cache-control": "public, max-age=60, s-maxage=60, stale-while-revalidate=300" },
+      headers: { "cache-control": "public, max-age=60, s-maxage=60, stale-while-revalidate=300" },
     });
   } catch {
     return NextResponse.json({ error: "Unable to load services" }, { status: 500 });
