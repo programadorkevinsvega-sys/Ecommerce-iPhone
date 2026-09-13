@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { assertLength, normalizeIdentifier, normalizeMultiline, safeFormError, validateRating } from "../app/lib/inputValidation";
+import { assertLength, normalizeIdentifier, normalizeMultiline, safeFormError, validateRating } from "../lib/inputValidation";
 
 type Review = { id:string; rating:number; title?:string; body:string; customerName:string; verifiedPurchase:boolean; adminResponse?:string };
 
