@@ -3,15 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { PaymentProvider } from "../../../../modules/payments/domain/Payment";
-import {
-  assertLength,
-  normalizeSingleLine,
-  safeFormError,
-  validateEmail,
-  validatePhone,
-  PAYMENT_PROVIDER_OPTIONS,
-} from "../../lib/inputValidation";
-import { validatePaymentRedirect } from "../../lib/paymentProviderConfig";
+import { assertLength, normalizeSingleLine, safeFormError, validateEmail, validatePhone } from "../../lib/inputValidation";
+import { PAYMENT_PROVIDER_OPTIONS, validatePaymentRedirect } from "../../lib/paymentProviderConfig";
 
 export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
