@@ -55,7 +55,7 @@ if (!liveRoute.includes("status")) failures.push("liveness endpoint is not imple
 if (!readyRoute.includes("status")) failures.push("readiness endpoint is not implemented");
 
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
-if (packageJson.packageManager !== "pnpm@10.15.0") failures.push("packageManager must pin pnpm@10.15.0");
+if (packageJson.packageManager !== "pnpm@12.4.1") failures.push("packageManager must pin pnpm@12.4.1");
 if (packageJson.engines?.node !== "24.18.0") failures.push("package.json must pin Node.js 24.18.0");
 for (const script of ["architecture:check", "foundation:check", "typecheck", "test", "build", "build:cloudflare", "verify:production", "format:check"]) {
   if (!packageJson.scripts?.[script]) failures.push(`missing root quality script: ${script}`);
