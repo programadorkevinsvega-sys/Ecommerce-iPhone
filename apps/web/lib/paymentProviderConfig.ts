@@ -63,7 +63,7 @@ export function validatePaymentRedirect(provider: PaymentProvider, checkoutUrl: 
 
   const sameOrigin = url.origin === origin.origin;
   if (sameOrigin) {
-    if (!config.sameOriginPath || url.pathname !== config.sameOriginPath || url.search || url.hash) {
+    if (!("sameOriginPath" in config) || !config.sameOriginPath || url.pathname !== config.sameOriginPath || url.search || url.hash) {
       throw new Error("Invalid same-origin payment redirect");
     }
     if (url.protocol !== "https:" && !isLocalDevelopmentOrigin(url)) {
