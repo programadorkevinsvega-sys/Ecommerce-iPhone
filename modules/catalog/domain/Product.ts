@@ -74,12 +74,13 @@ function validateImages(value: unknown): readonly string[] {
   return value.map((image) => {
     const url = stringField(image, "image", PRODUCT_TEXT_LIMITS.imageUrl);
     try {
-      const parsed = new URL(url);
-      if (!["http:", "https:"].includes(parsed.protocol)) throw new Error();
+      const parsed = new URL(url, "https://same-origin.invalid");
+      if (parsed.origin !== "https://same-origin.invalid" || !parsed.pathname.startsWith("/products/")) throw new Error();
+      if (parsed.search || parsed.hash || parsed.pathname.includes("\\")) throw new Error();
     } catch {
       throw new DomainError("Invalid product image URL");
     }
-    return url;
+    return new URL(url, "https://same-origin.invalid").pathname;
   });
 }
 
