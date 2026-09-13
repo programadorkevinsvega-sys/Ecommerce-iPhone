@@ -5,6 +5,8 @@ import { D1AdminNotificationsQuery } from "../../../modules/admin/infrastructure
 import { AdminPayments } from "../../../modules/payments/application/AdminPayments";
 import { D1PaymentAdminRepository } from "../../../modules/payments/infrastructure/D1PaymentAdminRepository";
 import { D1PaymentAuditPort } from "../../../modules/payments/infrastructure/D1PaymentAuditPort";
+import { D1PaymentLedgerRepository } from "../../../modules/payments/infrastructure/D1PaymentLedgerRepository";
+import { D1PaymentRefundRepository } from "../../../modules/payments/infrastructure/D1PaymentRefundRepository";
 import { paymentContext } from "./payments";
 
 export function adminDashboardApplication(env: CloudflareEnv): AdminDashboardService {
@@ -19,6 +21,8 @@ export async function adminPaymentsApplication(env: CloudflareEnv): Promise<Admi
   const context = await paymentContext();
   return new AdminPayments(
     new D1PaymentAdminRepository(env.DB),
+    new D1PaymentRefundRepository(env.DB),
+    new D1PaymentLedgerRepository(env.DB),
     context.service,
     new D1PaymentAuditPort(env.DB),
   );
