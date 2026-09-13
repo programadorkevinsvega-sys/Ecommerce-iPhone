@@ -3,7 +3,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { PERMISSIONS } from "../../../modules/admin/application/Rbac";
 import type { AdminPrincipal } from "../../../modules/admin/application/AuthenticateAdmin";
 import { buildRequestFingerprint } from "./adminFingerprintComposition";
-import { buildBootstrapAdmin, buildLogoutAdmin, buildRequireAdmin } from "./adminAuthComposition";
+import { buildBootstrapAdmin, buildLogoutAdmin, buildRequireAdmin } from "./adminAuthCompositionV2";
 
 export { PERMISSIONS };
 export const ADMIN_COOKIE = "admin_session";
@@ -32,23 +32,11 @@ export async function requestFingerprint() {
 }
 
 export async function setAdminSession(token: string, expires: Date) {
-  (await cookies()).set(ADMIN_COOKIE, token, {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    path: "/",
-    expires,
-  });
+  (await cookies()).set(ADMIN_COOKIE, token, { httpOnly: true, secure: true, sameSite: "strict", path: "/", expires });
 }
 
 export async function clearAdminSession() {
-  (await cookies()).set(ADMIN_COOKIE, "", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "strict",
-    path: "/",
-    expires: new Date(0),
-  });
+  (await cookies()).set(ADMIN_COOKIE, "", { httpOnly: true, secure: true, sameSite: "strict", path: "/", expires: new Date(0) });
 }
 
 export async function logoutAdmin() {
