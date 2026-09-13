@@ -1,6 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { AdminUser, type AdminUserProps } from "../domain/AdminUser";
-import type { AdminRole } from "../application/Rbac";
+import type { AdminRole } from "../domain/AdminRole";
+import type { LoginFailureState } from "../application/AdminRepository";
 
 export class D1AdminRepository {
   constructor(private readonly db: D1Database) {}
@@ -19,7 +20,20 @@ export class D1AdminRepository {
   }
   async saveUser(user: AdminUser): Promise<void> {
     const p = user.toPrimitives();
-    await this.db.prepare(`INSERT INTO admin_users (id,email,password_hash,role,first_name,last_name,active,failed_login_count,locked_until,last_login_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email,password_hash=excluded.password_hash,role=excluded.role,first_name=excluded.first_name,last_name=excluded.last_name,active=excluded.active,failed_login_count=excluded.failed_login_count,locked_until=excluded.locked_until,last_login_at=excluded.last_login_at,updated_at=excluded.updated_at`).bind(p.id,p.email,p.passwordHash,p.role,p.firstName,p.lastName,p.active?1:0,p.failedLoginCount,p.lockedUntil??null,p.lastLoginAt??null,p.createdAt,p.updatedAt).run();
+    await this.db.prepare(`INSERT INTO admin_users (id,email,password_hash,role,first_name,last_name,active,failed_login_count,locked_until,last_login_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET email=excluded.email,password_hash=excluded.password_hash,role=excluded.role,first_name=excluded.first_name,last_name=excluded.last_name,active=excluded.active,failed_login_count=excluded.failed_login_count,locked_until=excluded.locked_until,last_login_at=excluded.last_login_at,created_at=excluded.created_at,updated_at=excluded.updated_at`).bind(p.id,p.email,p.passwordHash,p.role,p.firstName,p.lastName,p.active?1:0,p.failedLoginCount,p.lockedUntil??null,p.lastLoginAt??null,p.createdAt,p.updatedAt).run();
+  }
+  async recordFailedLogin(id:string,now:Date,maxAttempts:number,lockMinutes:number):Promise<LoginFailureState>{
+    const nowIso=now.toISOString();
+    const lockedIso=new Date(now.getTime()+lockMinutes*60_000).toISOString();
+    const result=await this.db.prepare("UPDATE admin_users SET failed_login_count=failed_login_count+1,locked_until=CASE WHEN failed_login_count+1>=? THEN ? ELSE locked_until END,updated_at=? WHERE id=? AND active=1").bind(maxAttempts,lockedIso,nowIso,id).run();
+    if(result.meta.changes!==1)throw new Error("ADMIN_NOT_FOUND");
+    const row=await this.db.prepare("SELECT failed_login_count,locked_until FROM admin_users WHERE id=? LIMIT 1").bind(id).first<{failed_login_count:number;locked_until:string|null}>();
+    if(!row)throw new Error("ADMIN_NOT_FOUND");
+    return {failedLoginCount:Number(row.failed_login_count),lockedUntil:row.locked_until??undefined};
+  }
+  async recordSuccessfulLogin(id:string,now:Date):Promise<void>{
+    const result=await this.db.prepare("UPDATE admin_users SET failed_login_count=0,locked_until=NULL,last_login_at=?,updated_at=? WHERE id=? AND active=1").bind(now.toISOString(),now.toISOString(),id).run();
+    if(result.meta.changes!==1)throw new Error("ADMIN_NOT_FOUND");
   }
   async createSession(adminUserId: string, tokenHash: string, expiresAt: string, ipHash?: string, userAgentHash?: string): Promise<string> {
     const id = crypto.randomUUID();
