@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { AdminInventory } from "../../../../../../modules/inventory/application/AdminInventory";
-import { D1InventoryRepository } from "../../../../../../modules/inventory/infrastructure/D1InventoryRepository";
+import { adminInventoryApplication } from "../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
 
 function bodyRecord(value: unknown): Record<string, unknown> {
@@ -17,11 +16,8 @@ export async function GET(request: Request) {
     if (!Number.isInteger(limit) || !Number.isInteger(offset) || limit < 1 || limit > 100 || offset < 0) {
       return NextResponse.json({ error: "Invalid pagination" }, { status: 400 });
     }
-    const items = await new AdminInventory(new D1InventoryRepository(env.DB)).list(
-      url.searchParams.get("productId") ?? undefined,
-      limit,
-      offset,
-    );
+    const application = adminInventoryApplication(env);
+    const items = await application.list(url.searchParams.get("productId") ?? undefined, limit, offset);
     return NextResponse.json({ items, limit, offset }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return errorResponse(error);
@@ -30,14 +26,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const { env, admin, repo } = await requireAdmin(PERMISSIONS.inventoryWrite);
+    const { env, admin } = await requireAdmin(PERMISSIONS.inventoryWrite);
     const body = bodyRecord(await request.json());
     const productId = String(body.productId ?? "");
     const delta = typeof body.delta === "number" ? body.delta : Number(body.delta);
     const reason = String(body.reason ?? "");
     const key = request.headers.get("Idempotency-Key") ?? String(body.idempotencyKey ?? "");
-    const result = await new AdminInventory(new D1InventoryRepository(env.DB)).adjust(productId, delta, reason, key, admin.id);
-    await repo.audit(admin.id, "ADMIN_INVENTORY_ADJUSTED", "product", productId, { delta, reason });
+    const application = adminInventoryApplication(env);
+    const result = await application.adjust(productId, delta, reason, key, admin.id);
     return NextResponse.json({ adjustment: result }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
