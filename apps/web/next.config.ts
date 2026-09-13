@@ -23,6 +23,9 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: {
+    remotePatterns: [],
+  },
   async headers() {
     return [
       {
