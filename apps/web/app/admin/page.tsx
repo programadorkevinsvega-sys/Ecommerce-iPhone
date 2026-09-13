@@ -76,10 +76,10 @@ export default function AdminPage() {
           return;
         }
 
-        const data = await readJson<{ metrics: Metric; recentOrders: ResourceItem[] }>(dashboard);
+        const dashboardData = await readJson<{ metrics: Metric; recentOrders: ResourceItem[] }>(dashboard);
         if (active) {
-          setMetrics(data.metrics);
-          setOrders(data.recentOrders);
+          setMetrics(dashboardData.metrics);
+          setOrders(dashboardData.recentOrders);
         }
       } catch (error) {
         if (controller.signal.aborted) return;
