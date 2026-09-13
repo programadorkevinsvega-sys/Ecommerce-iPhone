@@ -9,6 +9,7 @@ export default defineConfig([
   ...compat.extends("next/core-web-vitals"),
   {
     rules: {
+      "no-console": "error",
       "no-eval": "error",
       "no-implied-eval": "error",
       "no-new-func": "error",
@@ -33,7 +34,7 @@ export default defineConfig([
         {
           selector: 'CallExpression[callee.object.name="document"][callee.property.name="write"]',
           message: "Do not use document.write in the frontend.",
-        },
+        }
       ],
     },
   },
