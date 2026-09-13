@@ -81,6 +81,7 @@ export default async function CatalogPage({
             Catálogo
           </Link>
           <Link href="/servicios">Servicios</Link>
+          <Link href="/contacto">Contacto</Link>
           <Link href="/cart">Carrito</Link>
         </nav>
       </header>

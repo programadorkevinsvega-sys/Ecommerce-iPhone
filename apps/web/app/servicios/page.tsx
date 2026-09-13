@@ -25,7 +25,9 @@ export default function ServicesPage() {
           Ecommerce iPhone
         </Link>
         <nav>
+          <Link href="/">Inicio</Link>
           <Link href="/catalog">Catálogo</Link>
+          <Link href="/contacto">Contacto</Link>
           <Link href="/cart">Carrito</Link>
         </nav>
       </header>
