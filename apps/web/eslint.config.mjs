@@ -34,6 +34,22 @@ export default defineConfig([
         {
           selector: 'CallExpression[callee.object.name="document"][callee.property.name="write"]',
           message: "Do not use document.write in the frontend.",
+        },
+        {
+          selector: 'MemberExpression[object.name="localStorage"]',
+          message: "Do not persist application data in localStorage.",
+        },
+        {
+          selector: 'MemberExpression[object.name="sessionStorage"]',
+          message: "Do not persist application data in sessionStorage.",
+        },
+        {
+          selector: 'MemberExpression[object.name="indexedDB"]',
+          message: "Do not persist application data in IndexedDB.",
+        },
+        {
+          selector: 'AssignmentExpression[left.object.name="window"]',
+          message: "Do not expose application secrets or sensitive data through window globals.",
         }
       ],
     },
