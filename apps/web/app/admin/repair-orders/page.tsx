@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import AdminSidebar from "../AdminSidebar";
 
@@ -214,9 +213,6 @@ export default function RepairOrdersAdmin() {
           <p className="admin-kicker">Administración</p>
           <h1>Órdenes de reparación</h1>
         </div>
-        <Link className="admin-button" href="/admin">
-          Volver al Admin
-        </Link>
       </header>
       <section className="admin-workspace">
         <div className="admin-section-heading">
