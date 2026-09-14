@@ -31,6 +31,9 @@ import { AdminCategories } from "../../../modules/catalog/application/Categories
 import { D1CategoryRepository } from "../../../modules/catalog/infrastructure/D1CategoryRepository";
 import type { ServiceRequestRepository } from "../../../modules/services/application/ServiceRequestRepository";
 import type { ServiceTypeRepository } from "../../../modules/services/application/ServiceTypeRepository";
+import { CreateRepairOrder } from "../../../modules/repairs/application/CreateRepairOrder";
+import { RepairOrderManagement } from "../../../modules/repairs/application/RepairOrderManagement";
+import { D1RepairOrderRepository } from "../../../modules/repairs/infrastructure/D1RepairOrderRepository";
 
 export function adminDashboardApplication(env: CloudflareEnv): AdminDashboardService {
   return new AdminDashboardService(new D1AdminDashboardQuery(env.DB), new D1AuditPort(env.DB));
@@ -103,4 +106,16 @@ export function adminUserManagementApplication(env: CloudflareEnv): AdminUserMan
     new D1AdminSessionRepository(env.DB),
     new D1AdminUserAuditPort(env.DB),
   );
+}
+
+export function repairOrderRepository(env: CloudflareEnv): D1RepairOrderRepository {
+  return new D1RepairOrderRepository(env.DB);
+}
+
+export function createRepairOrderApplication(env: CloudflareEnv): CreateRepairOrder {
+  return new CreateRepairOrder(serviceRequestRepository(env), repairOrderRepository(env));
+}
+
+export function repairOrderManagementApplication(env: CloudflareEnv): RepairOrderManagement {
+  return new RepairOrderManagement(repairOrderRepository(env));
 }

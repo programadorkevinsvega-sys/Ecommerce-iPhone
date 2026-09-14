@@ -16,6 +16,8 @@ export const PERMISSIONS = {
   customersWrite: "customers:write",
   servicesRead: "services:read",
   servicesWrite: "services:write",
+  repairOrdersRead: "repair_orders:read",
+  repairOrdersWrite: "repair_orders:write",
   refundsCreate: "refunds:create",
   paymentsVoid: "payments:void",
   paymentsRead: "payments:read",
@@ -47,6 +49,8 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     PERMISSIONS.customersWrite,
     PERMISSIONS.servicesRead,
     PERMISSIONS.servicesWrite,
+    PERMISSIONS.repairOrdersRead,
+    PERMISSIONS.repairOrdersWrite,
     PERMISSIONS.paymentsRead,
     PERMISSIONS.inventoryRead,
     PERMISSIONS.inventoryWrite,
@@ -104,6 +108,8 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     PERMISSIONS.dashboardRead,
     PERMISSIONS.servicesRead,
     PERMISSIONS.servicesWrite,
+    PERMISSIONS.repairOrdersRead,
+    PERMISSIONS.repairOrdersWrite,
   ],
 };
 
