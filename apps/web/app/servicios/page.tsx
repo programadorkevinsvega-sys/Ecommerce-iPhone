@@ -19,7 +19,7 @@ export default function ServicesPage() {
       .catch(() => setServices([]));
   }, []);
   return (
-    <main className="store-shell">
+    <main className="store-shell services-page">
       <header className="store-header">
         <Link className="brand" href="/">
           Ecommerce iPhone
@@ -27,11 +27,14 @@ export default function ServicesPage() {
         <nav>
           <Link href="/">Inicio</Link>
           <Link href="/catalog">Catálogo</Link>
+          <Link href="/servicios" aria-current="page">
+            Servicios
+          </Link>
           <Link href="/contacto">Contacto</Link>
           <Link href="/cart">Carrito</Link>
         </nav>
       </header>
-      <section className="catalog-hero">
+      <section className="catalog-hero services-hero">
         <p className="eyebrow">Servicios</p>
         <h1>Soporte técnico configurable.</h1>
         <p>
