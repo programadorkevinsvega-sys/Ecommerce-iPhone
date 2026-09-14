@@ -150,6 +150,10 @@ export default function AdminPage() {
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [metrics, setMetrics] = useState<Metric | null>(null);
   const [resource, setResource] = useState<Resource>("dashboard");
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("section") as Resource | null;
+    if (requested && NAV.some((item) => item.key === requested)) setResource(requested);
+  }, []);
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);

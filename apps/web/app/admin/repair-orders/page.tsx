@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import AdminSidebar from "../AdminSidebar";
 
 type Condition = { component: string; condition: string; notes?: string };
 type Order = {
@@ -199,15 +200,7 @@ export default function RepairOrdersAdmin() {
   }
   return (
     <main className="admin-shell">
-      <aside className="admin-sidebar">
-        <Link className="admin-brand" href="/admin"><span className="admin-brand-mark">K</span><span><strong>KEVINS</strong><small>Administración</small></span></Link>
-        <nav className="admin-nav" aria-label="Secciones administrativas">
-          <Link className="active" href="/admin/repair-orders"><span>◫</span>Órdenes de reparación</Link>
-          <Link href="/admin/repair-parts"><span>⚙</span>Repuestos de taller</Link>
-          <Link href="/admin"><span>←</span>Panel de control</Link>
-        </nav>
-        <div className="admin-sidebar-footer"><span className="admin-status-dot" /> Sistema operativo</div>
-      </aside>
+      <AdminSidebar active="repair-orders" />
       <section className="admin-content">
       <header className="admin-topbar">
         <div>
