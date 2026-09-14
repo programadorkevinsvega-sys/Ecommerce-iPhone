@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   normalizeSearchQuery,
@@ -639,14 +640,14 @@ export default function AdminPage() {
               {item.label}
             </button>
           ))}
-          <button type="button" onClick={() => router.push("/admin/repair-orders")}>
+          <Link className="admin-nav-link" href="/admin/repair-orders">
             <span>◫</span>
             Órdenes de reparación
-          </button>
-          <button type="button" onClick={() => router.push("/admin/repair-parts")}>
+          </Link>
+          <Link className="admin-nav-link" href="/admin/repair-parts">
             <span>⚙</span>
             Repuestos de taller
-          </button>
+          </Link>
         </nav>
         <div className="admin-sidebar-footer">
           <span className="admin-status-dot" /> Sistema operativo
