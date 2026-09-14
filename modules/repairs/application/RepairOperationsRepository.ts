@@ -1,0 +1,30 @@
+export type RepairPartInput = Readonly<{ id?: string; sku: string; name: string; description?: string; quality: "ORIGINAL" | "OEM" | "AFTERMARKET"; supplier?: string; lot?: string; unitCostInCents: number; salePriceInCents: number; stock: number; minimumStock: number; active: boolean }>;
+export type RepairPart = RepairPartInput & Readonly<{ id: string }>;
+export type RepairHistoryEntry = Readonly<{ id: string; fromStatus: string | null; toStatus: string; actorId: string | null; createdAt: string }>;
+export type RepairMediaItem = Readonly<{ id: string; stage: string; url: string; mimeType: string; sizeBytes: number; uploadedBy: string; createdAt: string }>;
+export type RepairQcCheck = Readonly<{ id?: string; checkName: string; result: "PASS" | "FAIL" | "NOT_TESTED" | "NOT_APPLICABLE"; notes?: string; checkedBy?: string; checkedAt?: string }>;
+export type RepairLabor = Readonly<{ id?: string; description: string; minutes: number; costInCents: number; priceInCents: number; technicianId?: string }>;
+export type RepairQuote = Readonly<{ id: string; status: "DRAFT" | "SENT" | "APPROVED" | "REJECTED"; partsTotalInCents: number; laborTotalInCents: number; totalInCents: number; currency: string; notes?: string; sentAt?: string; customerRespondedAt?: string; approvedBy?: string }>;
+export type RepairWarranty = Readonly<{ id: string; warrantyNumber: string; coverage: string; months: number; startsAt: string; expiresAt: string; status: "ACTIVE" | "EXPIRED" | "VOID" }>;
+export type RepairOrderPart = Readonly<{ id: string; sku: string; name: string; quantity: number; status: "RESERVED" | "CONSUMED" | "RELEASED" }>;
+export interface RepairOperationsRepository {
+  listTechnicians(): Promise<readonly { id: string; name: string; email: string }[]>;
+  isActiveTechnician(id: string): Promise<boolean>;
+  listHistory(orderId: string): Promise<readonly RepairHistoryEntry[]>;
+  listMedia(orderId: string): Promise<readonly RepairMediaItem[]>;
+  listQc(orderId: string): Promise<readonly RepairQcCheck[]>;
+  listLabor(orderId: string): Promise<readonly RepairLabor[]>;
+  listOrderParts(orderId: string): Promise<readonly RepairOrderPart[]>;
+  listParts(): Promise<readonly RepairPart[]>;
+  savePart(part: RepairPart): Promise<void>;
+  assign(orderId: string, technicianId: string, actorId: string): Promise<void>;
+  replaceQc(orderId: string, checks: readonly RepairQcCheck[], actorId: string): Promise<void>;
+  replaceLabor(orderId: string, labor: readonly RepairLabor[], actorId: string): Promise<void>;
+  reservePart(orderId: string, partId: string, quantity: number, actorId: string): Promise<void>;
+  consumeParts(orderId: string, actorId: string): Promise<void>;
+  releaseParts(orderId: string, actorId: string): Promise<void>;
+  getQuote(orderId: string): Promise<RepairQuote | null>;
+  saveQuote(orderId: string, input: { status: RepairQuote["status"]; notes?: string; actorId: string }): Promise<RepairQuote>;
+  saveWarranty(orderId: string, input: { coverage: string; months: number; actorId: string }): Promise<RepairWarranty>;
+  getWarranty(orderId: string): Promise<RepairWarranty | null>;
+}

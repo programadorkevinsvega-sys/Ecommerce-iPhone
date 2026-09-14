@@ -18,7 +18,11 @@ export class D1RepairOrderRepository implements RepairOrderRepository {
       this.db.prepare("DELETE FROM repair_device_condition_items WHERE device_sheet_id=?").bind(d.id),
     ];
     for (const item of d.conditions) statements.push(this.db.prepare("INSERT INTO repair_device_condition_items (id,device_sheet_id,component,condition,notes) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), d.id, item.component, item.condition, item.notes ?? null));
-    if (!previous || previous.status !== p.status) statements.push(this.db.prepare("INSERT INTO repair_order_status_history (id,repair_order_id,from_status,to_status,actor_id) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), p.id, previous?.status ?? null, p.status, actorId));
+    if (!previous || previous.status !== p.status) {
+      statements.push(this.db.prepare("INSERT INTO repair_order_status_history (id,repair_order_id,from_status,to_status,actor_id) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), p.id, previous?.status ?? null, p.status, actorId));
+      const eventId = crypto.randomUUID();
+      statements.push(this.db.prepare("INSERT OR IGNORE INTO notification_outbox (id,event_key,event_type,aggregate_id,payload_json,created_at) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)").bind(eventId, `ServiceStatusChanged:${p.id}:${eventId}`, "ServiceStatusChanged", p.id, JSON.stringify({ email: p.email, serviceId: p.orderNumber, status: p.status })));
+    }
     await this.db.batch(statements);
   }
 

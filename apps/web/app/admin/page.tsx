@@ -643,6 +643,10 @@ export default function AdminPage() {
             <span>◫</span>
             Órdenes de reparación
           </button>
+          <button type="button" onClick={() => router.push("/admin/repair-parts")}>
+            <span>⚙</span>
+            Repuestos de taller
+          </button>
         </nav>
         <div className="admin-sidebar-footer">
           <span className="admin-status-dot" /> Sistema operativo

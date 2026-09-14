@@ -37,6 +37,8 @@ import { D1RepairOrderRepository } from "../../../modules/repairs/infrastructure
 import { RepairTracking } from "../../../modules/repairs/application/RepairTracking";
 import { RepairEvidenceService } from "../../../modules/repairs/application/RepairEvidence";
 import { D1RepairEvidenceRepository } from "../../../modules/repairs/infrastructure/D1RepairEvidenceRepository";
+import { RepairOperations } from "../../../modules/repairs/application/RepairOperations";
+import { D1RepairOperationsRepository } from "../../../modules/repairs/infrastructure/D1RepairOperationsRepository";
 
 export function adminDashboardApplication(env: CloudflareEnv): AdminDashboardService {
   return new AdminDashboardService(new D1AdminDashboardQuery(env.DB), new D1AuditPort(env.DB));
@@ -122,5 +124,6 @@ export function createRepairOrderApplication(env: CloudflareEnv): CreateRepairOr
 export function repairOrderManagementApplication(env: CloudflareEnv): RepairOrderManagement {
   return new RepairOrderManagement(repairOrderRepository(env));
 }
-export function repairTrackingApplication(env: CloudflareEnv): RepairTracking { return new RepairTracking(repairOrderRepository(env)); }
+export function repairTrackingApplication(env: CloudflareEnv): RepairTracking { return new RepairTracking(repairOrderRepository(env), new D1RepairOperationsRepository(env.DB)); }
 export function repairEvidenceApplication(env: CloudflareEnv): RepairEvidenceService { return new RepairEvidenceService(new D1RepairEvidenceRepository(env.DB)); }
+export function repairOperationsApplication(env: CloudflareEnv): RepairOperations { return new RepairOperations(new D1RepairOperationsRepository(env.DB)); }
