@@ -81,6 +81,8 @@ Cada fase debe terminar con:
 
 ## 3. Fase 0: auditoría y preparación
 
+La auditoría ejecutada para este proyecto está documentada en [FASE-00-AUDITORIA-ARQUITECTURA.md](./FASE-00-AUDITORIA-ARQUITECTURA.md).
+
 ### Objetivo
 
 Entender y preparar la infraestructura actual antes de agregar módulos operativos.
