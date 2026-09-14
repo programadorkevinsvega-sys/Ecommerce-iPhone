@@ -152,6 +152,7 @@ export default function AdminPage() {
   const [serviceTypeForm, setServiceTypeForm] = useState<ServiceTypeForm | null>(null);
   const [homeSlides, setHomeSlides] = useState<HomeSlide[]>([]);
   const [homeSlideForm, setHomeSlideForm] = useState<HomeSlideForm | null>(null);
+  const [homeSlidePreview, setHomeSlidePreview] = useState<HomeSlide | null>(null);
   const [homeCmsId, setHomeCmsId] = useState("");
   const [categoryBusy, setCategoryBusy] = useState(false);
   const [serviceAction, setServiceAction] = useState<string | null>(null);
@@ -747,6 +748,7 @@ export default function AdminPage() {
               <HomeCarouselManager
                 slides={homeSlides}
                 onEdit={setHomeSlideForm}
+                onView={setHomeSlidePreview}
                 onToggle={(id) => void toggleHomeSlide(id)}
               />
             ) : resource === "services" ? (
@@ -815,6 +817,9 @@ export default function AdminPage() {
           }}
           onClose={() => setHomeSlideForm(null)}
         />
+      )}
+      {homeSlidePreview && (
+        <HomeSlidePreviewModal slide={homeSlidePreview} onClose={() => setHomeSlidePreview(null)} />
       )}
       {serviceAction && (
         <ServiceActionModal
@@ -1686,10 +1691,12 @@ function ServiceActionModal({
 function HomeCarouselManager({
   slides,
   onEdit,
+  onView,
   onToggle,
 }: {
   slides: HomeSlide[];
   onEdit: (slide: HomeSlideForm) => void;
+  onView: (slide: HomeSlide) => void;
   onToggle: (id: string) => void;
 }) {
   return (
@@ -1717,6 +1724,9 @@ function HomeCarouselManager({
                 </span>
               </td>
               <td>
+                <button className="table-action" type="button" onClick={() => onView(slide)}>
+                  Ver
+                </button>
                 <button className="table-action" type="button" onClick={() => onEdit(slide)}>
                   Editar
                 </button>
@@ -1729,6 +1739,25 @@ function HomeCarouselManager({
         </tbody>
       </table>
     </TableFrame>
+  );
+}
+
+function HomeSlidePreviewModal({ slide, onClose }: { slide: HomeSlide; onClose: () => void }) {
+  return (
+    <Modal title="Vista previa de promoción" onClose={onClose}>
+      <article className="home-slide-preview">
+        <img src={slide.imageUrl} alt={slide.title} />
+        <div>
+          <p className="eyebrow">{slide.eyebrow}</p>
+          <h3>{slide.title}</h3>
+          <p>{slide.description}</p>
+          <strong>Enlace: {slide.href}</strong>
+          <span className={`status ${slide.active ? "success" : "muted-status"}`}>
+            {slide.active ? "Publicado" : "Oculto"}
+          </span>
+        </div>
+      </article>
+    </Modal>
   );
 }
 
