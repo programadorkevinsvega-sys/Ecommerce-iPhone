@@ -8,4 +8,5 @@ describe("RepairOrder", () => {
   it("rejects skipping from received to ready", () => { expect(() => assertRepairOrderTransition("RECEIVED", "READY")).toThrow("INVALID_REPAIR_TRANSITION"); });
   it("records delivery time only when delivered", () => { const value = order(); value.transitionTo("DIAGNOSING"); expect(value.toPrimitives().deliveredAt).toBeUndefined(); });
   it("validates protected order numbers", () => { expect(() => RepairOrder.create({ ...order().toPrimitives(), orderNumber: "REP-2026-1" })).toThrow("INVALID_REPAIR_ORDER_NUMBER"); });
+  it("updates the technical record without losing the device identity", () => { const value = order(); value.updateTechnicalRecord({ diagnosisSummary: "Pantalla dañada", workSummary: "Cambio de display", conditions: [{ component: "Pantalla", condition: "DAMAGED", notes: "Cristal roto" }] }); expect(value.toPrimitives().diagnosisSummary).toBe("Pantalla dañada"); expect(value.toPrimitives().device.conditions[0]?.condition).toBe("DAMAGED"); expect(value.toPrimitives().device.model).toBe("iPhone 15 Pro"); });
 });

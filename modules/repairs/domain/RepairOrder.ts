@@ -26,5 +26,12 @@ export class RepairOrder {
     return new RepairOrder({ ...props, publicToken, problemReported: props.problemReported.trim().slice(0, 5000), device });
   }
   transitionTo(status: RepairOrderStatus): void { if (status !== this.props.status) assertRepairOrderTransition(this.props.status, status); const deliveredAt = status === "DELIVERED" ? new Date().toISOString() : this.props.deliveredAt; this.props = { ...this.props, status, updatedAt: new Date().toISOString(), ...(deliveredAt ? { deliveredAt } : {}) }; }
+  updateTechnicalRecord(input: { diagnosisSummary?: string | null; workSummary?: string | null; conditions: readonly RepairDeviceCondition[] }): void {
+    const diagnosisSummary = input.diagnosisSummary?.trim() || undefined;
+    const workSummary = input.workSummary?.trim() || undefined;
+    const conditions = input.conditions.map((item) => ({ component: required(item.component, "condition component", 80), condition: item.condition, ...(item.notes?.trim() ? { notes: item.notes.trim().slice(0, 500) } : {}) }));
+    const { diagnosisSummary: _previousDiagnosis, workSummary: _previousWork, ...base } = this.props;
+    this.props = { ...base, updatedAt: new Date().toISOString(), ...(diagnosisSummary ? { diagnosisSummary } : {}), ...(workSummary ? { workSummary } : {}), device: { ...this.props.device, conditions } };
+  }
   toPrimitives(): RepairOrderProps { return this.props; }
 }
