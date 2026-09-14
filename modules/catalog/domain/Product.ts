@@ -75,7 +75,9 @@ function validateImages(value: unknown): readonly string[] {
     const url = stringField(image, "image", PRODUCT_TEXT_LIMITS.imageUrl);
     try {
       const parsed = new URL(url, "https://same-origin.invalid");
-      if (parsed.origin !== "https://same-origin.invalid" || !parsed.pathname.startsWith("/products/")) throw new Error();
+      const isLegacyImage = parsed.pathname.startsWith("/products/");
+      const isManagedImage = /^\/api\/media\/product-images\/[a-z0-9-]+\.(?:jpg|png|webp)$/i.test(parsed.pathname);
+      if (parsed.origin !== "https://same-origin.invalid" || (!isLegacyImage && !isManagedImage)) throw new Error();
       if (parsed.search || parsed.hash || parsed.pathname.includes("\\")) throw new Error();
     } catch {
       throw new DomainError("Invalid product image URL");
