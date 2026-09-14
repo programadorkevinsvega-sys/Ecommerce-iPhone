@@ -31,6 +31,7 @@ type Details = {
 };
 type Technician = { id: string; name: string; email: string };
 type Part = { id: string; sku: string; name: string; stock: number };
+type ServiceRequest = { id: string; serviceType: string; email: string; phone: string | null; countryCode: string | null; device: { brand: string; model: string }; problemDescription: string; status: string; createdAt: string };
 const statuses = [
   "RECEIVED",
   "DIAGNOSING",
@@ -65,12 +66,12 @@ const money = (value: number) =>
 
 export default function RepairOrdersAdmin() {
   const [orders, setOrders] = useState<Order[]>([]),
+    [requests, setRequests] = useState<ServiceRequest[]>([]),
     [selected, setSelected] = useState<Order | null>(null),
     [details, setDetails] = useState<Details | null>(null),
     [technicians, setTechnicians] = useState<Technician[]>([]),
     [parts, setParts] = useState<Part[]>([]);
-  const [requestId, setRequestId] = useState(""),
-    [diagnosis, setDiagnosis] = useState(""),
+  const [diagnosis, setDiagnosis] = useState(""),
     [work, setWork] = useState(""),
     [deviceConditions, setDeviceConditions] = useState<Condition[]>([]),
     [stage, setStage] = useState("RECEPTION"),
@@ -94,6 +95,12 @@ export default function RepairOrdersAdmin() {
     const data = (await response.json()) as { items?: Order[] };
     setOrders(data.items ?? []);
   }
+  async function loadRequests() {
+    const response = await fetch("/api/admin/repair-orders?view=requests", { cache: "no-store", credentials: "same-origin" });
+    if (response.status === 401 || response.status === 403) { window.location.href = "/admin/login"; return; }
+    const data = (await response.json()) as { items?: ServiceRequest[] };
+    setRequests(data.items ?? []);
+  }
   async function loadDetails(id: string) {
     const response = await fetch(`/api/admin/repair-orders/${id}/operations`, {
       cache: "no-store",
@@ -105,6 +112,7 @@ export default function RepairOrdersAdmin() {
   }
   useEffect(() => {
     void load();
+    void loadRequests();
     void fetch("/api/admin/repair-orders/technicians", { cache: "no-store" })
       .then((response) => response.json() as Promise<{ items?: Technician[] }>)
       .then((data) => setTechnicians(data.items ?? []));
@@ -122,21 +130,20 @@ export default function RepairOrdersAdmin() {
     setDetails(null);
     void loadDetails(order.id);
   }
-  async function create() {
-    if (!requestId.trim()) return;
+  async function create(serviceRequestId: string) {
     setBusy(true);
     const response = await fetch("/api/admin/repair-orders", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ serviceRequestId: requestId.trim() }),
+      body: JSON.stringify({ serviceRequestId }),
     });
     const data = (await response.json()) as { error?: string };
     setMessage(
       response.ok ? "Orden creada correctamente." : (data.error ?? "No se pudo crear la orden."),
     );
     if (response.ok) {
-      setRequestId("");
       await load();
+      await loadRequests();
     }
     setBusy(false);
   }
@@ -216,17 +223,17 @@ export default function RepairOrdersAdmin() {
           <div>
             <p className="admin-kicker">Recepción</p>
             <h2>Convertir solicitud en orden</h2>
+            <p className="admin-section-description">Selecciona una solicitud real para iniciar su recepción y crear la ficha técnica.</p>
           </div>
         </div>
-        <div className="repair-create-bar">
-          <input
-            placeholder="ID de solicitud REPAIR"
-            value={requestId}
-            onChange={(event) => setRequestId(event.target.value)}
-          />
-          <button className="admin-button primary" disabled={busy} onClick={() => void create()}>
-            Crear orden
-          </button>
+        <div className="repair-intake">
+          <div className="repair-intake-heading"><div><strong>Solicitudes pendientes de recepción</strong><span>La información viene del formulario público de servicios.</span></div><span className="repair-intake-count">{requests.length}</span></div>
+          {requests.length > 0 ? <div className="repair-intake-list">{requests.map((request) => <article className="repair-intake-row" key={request.id}>
+            <div><span className="repair-intake-label">Dispositivo</span><strong>{request.device.brand} {request.device.model}</strong><small>{request.problemDescription}</small></div>
+            <div><span className="repair-intake-label">Cliente</span><strong>{request.email}</strong><small>{request.phone || request.countryCode || "Sin teléfono registrado"}</small></div>
+            <div><span className="repair-intake-label">Solicitud</span><strong>{request.status}</strong><small>{new Date(request.createdAt).toLocaleString("es-CO")}</small></div>
+            <button className="admin-button primary" disabled={busy} onClick={() => void create(request.id)}>Crear orden</button>
+          </article>)}</div> : <div className="repair-intake-empty"><strong>No hay solicitudes pendientes</strong><span>Cuando un cliente solicite una reparación, aparecerá aquí para recibirla.</span></div>}
         </div>
         {message && (
           <p className="admin-notice" role="status">
