@@ -92,9 +92,12 @@ function validateCarouselContent(content: string) {
       String(slide.eyebrow).length > 80 ||
       String(slide.title).length > 180 ||
       String(slide.description).length > 500 ||
-      !/^(?:\/api\/media\/home-carousel\/)[a-z0-9-]+\.(?:jpg|png|webp)$/i.test(
+      (!/^(?:\/api\/media\/home-carousel\/)[a-z0-9-]+\.(?:jpg|png|webp)$/i.test(
         String(slide.imageUrl),
-      ) ||
+      ) &&
+        !/^https:\/\/(?:drive\.google\.com|lh3\.googleusercontent\.com|[^/]+\.googleusercontent\.com)\//i.test(
+          String(slide.imageUrl),
+        )) ||
       !/^\/(?!\/)[^\s]*$/.test(String(slide.href)) ||
       String(slide.href).length > 300
     )

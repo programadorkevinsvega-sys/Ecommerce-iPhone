@@ -1893,6 +1893,18 @@ function HomeSlideModal({
           <label>
             Imagen de la promoción
             <input
+              type="url"
+              placeholder="https://drive.google.com/..."
+              value={file ? "" : form.imageUrl}
+              onChange={(e) => {
+                setFile(null);
+                setForm({ ...form, imageUrl: e.target.value });
+              }}
+            />
+            <span className="form-help">
+              Puedes subir un archivo o usar una URL pública de Google Drive.
+            </span>
+            <input
               type="file"
               accept="image/jpeg,image/png,image/webp"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}

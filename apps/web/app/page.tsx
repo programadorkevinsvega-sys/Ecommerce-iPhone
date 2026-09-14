@@ -1,13 +1,20 @@
 import Link from "next/link";
 import { listPublicCategories } from "../lib/catalog";
 import HomeCarousel from "./components/HomeCarousel";
-import { listPublicHomeSlides } from "../lib/homeCarousel";
+import HomeCollectionCarousel from "./components/HomeCollectionCarousel";
+import {
+  listHomeProductItems,
+  listHomeServiceItems,
+  listPublicHomeSlides,
+} from "../lib/homeCarousel";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const categories = await listPublicCategories();
   const slides = await listPublicHomeSlides();
+  const products = await listHomeProductItems();
+  const services = await listHomeServiceItems();
   return (
     <main className="store-shell">
       <header className="store-header">
@@ -67,6 +74,8 @@ export default async function HomePage() {
           </div>
         )}
       </section>
+      <HomeCollectionCarousel title="Productos destacados." items={products} />
+      <HomeCollectionCarousel title="Servicios disponibles." items={services} />
       <section className="section split-section">
         <div>
           <p className="eyebrow">Compra con tranquilidad</p>
