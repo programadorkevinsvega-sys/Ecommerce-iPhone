@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     await requireAdmin(PERMISSIONS.cmsWrite);
     const { env } = getCloudflareContext();
     const scope = new URL(request.url).searchParams.get("scope");
-    const prefix = scope === "product" ? "product-images" : scope === "home" ? "home-carousel" : "";
+    const prefix = scope === "product" ? "product-images" : scope === "home" ? "home-carousel" : scope === "category" ? "category-images" : scope === "service" ? "service-images" : "";
     if (!prefix) return NextResponse.json({ error: "Invalid media scope" }, { status: 400 });
     const form = await request.formData();
     const file = form.get("file");

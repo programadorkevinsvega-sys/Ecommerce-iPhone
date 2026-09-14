@@ -28,7 +28,7 @@ type Resource =
   | "services"
   | "service-types"
   | "home-carousel";
-type Category = { id: string; name: string; slug: string; active: boolean };
+type Category = { id: string; name: string; slug: string; imageUrl?: string; active: boolean };
 type ProductForm = {
   id: string | null;
   name: string;
@@ -51,6 +51,7 @@ type ServiceType = {
   slug: string;
   name: string;
   description: string;
+  imageUrl?: string;
   category: string;
   enabled: boolean;
   workflow: {
@@ -64,6 +65,8 @@ type ServiceTypeForm = {
   slug: string;
   name: string;
   description: string;
+  imageUrl: string;
+  imageFile: File | null;
   category: string;
   enabled: boolean;
   quoteRequired: boolean;
@@ -148,6 +151,8 @@ export default function AdminPage() {
     id: string;
     name: string;
     slug: string;
+    imageUrl: string;
+    imageFile: File | null;
   } | null>(null);
   const [serviceTypeForm, setServiceTypeForm] = useState<ServiceTypeForm | null>(null);
   const [homeSlides, setHomeSlides] = useState<HomeSlide[]>([]);
@@ -406,6 +411,24 @@ export default function AdminPage() {
     const endpoint = categoryForm.id
       ? `/api/admin/categories/${encodeURIComponent(categoryForm.id)}`
       : "/api/admin/categories";
+    let imageUrl = categoryForm.imageUrl;
+    if (categoryForm.imageFile) {
+      const upload = new FormData();
+      upload.set("file", categoryForm.imageFile);
+      const uploadResponse = await fetch("/api/admin/media?scope=category", {
+        method: "POST",
+        body: upload,
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      const uploadData = await json<{ url?: string; error?: string }>(uploadResponse);
+      if (!uploadResponse.ok || !uploadData.url) {
+        setError(uploadData.error ?? "No se pudo cargar la imagen de la categoría.");
+        setCategoryBusy(false);
+        return;
+      }
+      imageUrl = uploadData.url;
+    }
     const response = await fetch(endpoint, {
       method: categoryForm.id ? "PATCH" : "POST",
       headers: { "Content-Type": "application/json" },
@@ -413,6 +436,7 @@ export default function AdminPage() {
       body: JSON.stringify({
         name: normalizeSingleLine(categoryForm.name),
         slug: slugify(categoryForm.slug || categoryForm.name),
+        imageUrl,
       }),
     });
     if (!response.ok) {
@@ -475,6 +499,18 @@ export default function AdminPage() {
     event.preventDefault();
     if (!serviceTypeForm) return;
     const form = serviceTypeForm;
+    let imageUrl = form.imageUrl;
+    if (form.imageFile) {
+      const upload = new FormData();
+      upload.set("file", form.imageFile);
+      const uploadResponse = await fetch("/api/admin/media?scope=service", { method: "POST", body: upload, credentials: "same-origin", cache: "no-store" });
+      const uploadData = await json<{ url?: string; error?: string }>(uploadResponse);
+      if (!uploadResponse.ok || !uploadData.url) {
+        setError(uploadData.error ?? "No se pudo cargar la imagen del servicio.");
+        return;
+      }
+      imageUrl = uploadData.url;
+    }
     const response = await fetch("/api/admin/service-types", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -484,6 +520,7 @@ export default function AdminPage() {
         slug: slugify(form.slug || form.name),
         name: form.name,
         description: form.description,
+        imageUrl,
         category: form.category,
         enabled: form.enabled,
         workflow: {
@@ -511,6 +548,7 @@ export default function AdminPage() {
         slug: type.slug,
         name: type.name,
         description: type.description,
+        imageUrl: type.imageUrl ?? "",
         category: type.category,
         enabled: !type.enabled,
         workflow: type.workflow,
@@ -636,7 +674,7 @@ export default function AdminPage() {
                   <button
                     className="admin-button primary"
                     type="button"
-                    onClick={() => setCategoryForm({ id: "", name: "", slug: "" })}
+                    onClick={() => setCategoryForm({ id: "", name: "", slug: "", imageUrl: "", imageFile: null })}
                   >
                     + Nueva categoría
                   </button>
@@ -651,6 +689,8 @@ export default function AdminPage() {
                         slug: "",
                         name: "",
                         description: "",
+                        imageUrl: "",
+                        imageFile: null,
                         category: "OTHER",
                         enabled: true,
                         quoteRequired: false,
@@ -698,7 +738,7 @@ export default function AdminPage() {
                 categories={categories}
                 busy={categoryBusy}
                 onEdit={(category) =>
-                  setCategoryForm({ id: category.id, name: category.name, slug: category.slug })
+                  setCategoryForm({ id: category.id, name: category.name, slug: category.slug, imageUrl: category.imageUrl ?? "", imageFile: null })
                 }
                 onDeactivate={(id) => void deactivateCategory(id)}
               />
@@ -736,6 +776,8 @@ export default function AdminPage() {
                     slug: type.slug,
                     name: type.name,
                     description: type.description,
+                    imageUrl: type.imageUrl ?? "",
+                    imageFile: null,
                     category: type.category,
                     enabled: type.enabled,
                     quoteRequired: type.workflow.quoteRequired,
@@ -1471,8 +1513,8 @@ function CategoryModal({
   onClose,
   busy,
 }: {
-  form: { id: string; name: string; slug: string };
-  setForm: (form: { id: string; name: string; slug: string }) => void;
+  form: { id: string; name: string; slug: string; imageUrl: string; imageFile: File | null };
+  setForm: (form: { id: string; name: string; slug: string; imageUrl: string; imageFile: File | null }) => void;
   onSubmit: (event: FormEvent) => void;
   onClose: () => void;
   busy: boolean;
@@ -1503,6 +1545,12 @@ function CategoryModal({
             value={form.slug}
             onChange={(e) => setForm({ ...form, slug: slugify(e.target.value) })}
           />
+        </label>
+        <label>
+          Imagen de la categoría
+          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setForm({ ...form, imageFile: event.target.files?.[0] ?? null })} />
+          <span className="form-help">JPG, PNG o WebP. Se almacena en Cloudflare R2.</span>
+          {form.imageUrl && <><img className="admin-form-image-preview" src={form.imageUrl} alt="Imagen actual de la categoría" /><button className="table-action danger" type="button" onClick={() => setForm({ ...form, imageUrl: "", imageFile: null })}>Quitar imagen</button></>}
         </label>
         <div className="modal-actions">
           <button className="admin-button" type="button" onClick={onClose}>
@@ -1585,6 +1633,12 @@ function ServiceTypeModal({
             value={form.description}
             onChange={(e) => set("description", e.target.value)}
           />
+        </label>
+        <label>
+          Imagen del servicio
+          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setForm({ ...form, imageFile: event.target.files?.[0] ?? null })} />
+          <span className="form-help">JPG, PNG o WebP. Se almacena en Cloudflare R2.</span>
+          {form.imageUrl && <><img className="admin-form-image-preview" src={form.imageUrl} alt="Imagen actual del servicio" /><button className="table-action danger" type="button" onClick={() => setForm({ ...form, imageUrl: "", imageFile: null })}>Quitar imagen</button></>}
         </label>
         <div className="form-grid">
           <label className="checkbox-label">

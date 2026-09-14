@@ -22,7 +22,7 @@ export class D1ServiceTypeRepository implements ServiceTypeRepository {
 
   async save(type: ServiceTypeDefinition): Promise<void> {
     const p = type.toPrimitives();
-    await this.db.prepare(`INSERT INTO service_types (code,slug,name,description,category,workflow_json,enabled,metadata_json,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(code) DO UPDATE SET slug=excluded.slug,name=excluded.name,description=excluded.description,category=excluded.category,workflow_json=excluded.workflow_json,enabled=excluded.enabled,metadata_json=excluded.metadata_json,sort_order=excluded.sort_order,updated_at=excluded.updated_at`).bind(p.code,p.slug,p.name,p.description,p.category,JSON.stringify(p.workflow),p.enabled?1:0,JSON.stringify(p.metadata),0,p.createdAt,p.updatedAt).run();
+    await this.db.prepare(`INSERT INTO service_types (code,slug,name,description,image_url,category,workflow_json,enabled,metadata_json,sort_order,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(code) DO UPDATE SET slug=excluded.slug,name=excluded.name,description=excluded.description,image_url=excluded.image_url,category=excluded.category,workflow_json=excluded.workflow_json,enabled=excluded.enabled,metadata_json=excluded.metadata_json,sort_order=excluded.sort_order,updated_at=excluded.updated_at`).bind(p.code,p.slug,p.name,p.description,p.imageUrl ?? null,p.category,JSON.stringify(p.workflow),p.enabled?1:0,JSON.stringify(p.metadata),0,p.createdAt,p.updatedAt).run();
   }
 
   private map(row: any): ServiceTypeDefinition {
@@ -31,6 +31,7 @@ export class D1ServiceTypeRepository implements ServiceTypeRepository {
       slug: row.slug,
       name: row.name,
       description: row.description,
+      ...(row.image_url ? { imageUrl: row.image_url } : {}),
       category: row.category as ServiceCategory,
       workflow: JSON.parse(row.workflow_json),
       enabled: Boolean(row.enabled),

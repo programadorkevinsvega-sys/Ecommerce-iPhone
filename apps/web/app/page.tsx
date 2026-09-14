@@ -61,6 +61,7 @@ export default async function HomePage() {
                 href={`/catalog?category=${encodeURIComponent(category.slug)}`}
                 key={category.id}
               >
+                {category.imageUrl ? <img src={category.imageUrl} alt="" /> : <span className="category-card-placeholder" aria-hidden="true" />}
                 <span>{category.name}</span>
                 <span aria-hidden="true">↗</span>
               </Link>

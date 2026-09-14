@@ -108,6 +108,7 @@ export class AdminServiceTypes {
       slug: String(input.slug ?? "").trim().toLowerCase(),
       name: String(input.name ?? ""),
       description: String(input.description ?? ""),
+      ...(typeof input.imageUrl === "string" ? { imageUrl: input.imageUrl } : {}),
       category: parseCategory(input.category ?? "OTHER"),
       workflow: parseWorkflow(input.workflow),
       enabled: input.enabled !== false,

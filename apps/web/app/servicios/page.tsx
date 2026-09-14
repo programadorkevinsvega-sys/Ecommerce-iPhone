@@ -6,6 +6,7 @@ type ServiceType = {
   code: string;
   name: string;
   description: string;
+  imageUrl?: string;
   category: string;
   workflow: { quoteRequired: boolean; paymentRequired: boolean };
 };
@@ -46,6 +47,7 @@ export default function ServicesPage() {
         <div className="services-grid">
           {services.map((service) => (
             <article className="service-card" key={service.code}>
+              {service.imageUrl && <img className="service-card-image" src={service.imageUrl} alt="" />}
               <div className="service-card-content">
                 <p className="service-category">{service.category}</p>
                 <h2>{service.name}</h2>

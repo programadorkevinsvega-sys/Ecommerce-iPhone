@@ -30,7 +30,8 @@ function categoryPayload(input: Record<string, unknown>, fallback?: CategoryPrim
   const name = input.name === undefined ? fallback?.name ?? "" : String(input.name);
   const suppliedSlug = input.slug === undefined ? fallback?.slug ?? categorySlugFromName(name) : String(input.slug);
   const slug = suppliedSlug.trim() ? normalizeCategorySlug(suppliedSlug) : categorySlugFromName(name);
-  return { name, slug, active: parseActive(input.active, fallback?.active ?? true) };
+  const imageUrl = input.imageUrl === undefined ? fallback?.imageUrl : typeof input.imageUrl === "string" ? input.imageUrl : "";
+  return { name, slug, ...(imageUrl !== undefined ? { imageUrl } : {}), active: parseActive(input.active, fallback?.active ?? true) };
 }
 
 export class PublicCategories {
@@ -86,7 +87,7 @@ export class AdminCategories {
     const current = await this.repository.findById(input.id);
     if (!current) throw new Error("CATEGORY_NOT_FOUND");
     const record = asRecord(input.body);
-    const allowed = ["name", "slug", "active"];
+    const allowed = ["name", "slug", "imageUrl", "active"];
     if (!Object.keys(record).some((key) => allowed.includes(key))) throw new Error("NO_EDITABLE_CATEGORY_FIELDS");
     const payload = categoryPayload(record, current.toPrimitives());
     const category = Category.create(input.id, { ...current.toPrimitives(), ...payload, updatedAt: new Date().toISOString() });

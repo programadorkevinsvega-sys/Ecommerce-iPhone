@@ -58,14 +58,15 @@ export async function listHomeProductItems(): Promise<HomeCollectionItem[]> {
 export async function listHomeServiceItems(): Promise<HomeCollectionItem[]> {
   const { env } = await getCloudflareContext({ async: true });
   const rows = await env.DB.prepare(
-    "SELECT code,name,description,category FROM service_types WHERE enabled=1 ORDER BY sort_order ASC,name ASC LIMIT 12",
-  ).all<{ code: string; name: string; description: string; category: string }>();
+    "SELECT code,name,description,category,image_url FROM service_types WHERE enabled=1 ORDER BY sort_order ASC,name ASC LIMIT 12",
+  ).all<{ code: string; name: string; description: string; category: string; image_url: string | null }>();
   return rows.results.map((service) => ({
     id: service.code,
     eyebrow: service.category,
     title: service.name,
     description: service.description,
     href: `/servicios/solicitar?type=${encodeURIComponent(service.code)}`,
+    ...(service.image_url ? { imageUrl: service.image_url } : {}),
   }));
 }
 

@@ -3,6 +3,7 @@ import { AggregateRoot, DomainError } from "../../shared-kernel";
 export type CategoryProps = Readonly<{
   name: string;
   slug: string;
+  imageUrl?: string;
   active: boolean;
   createdAt: string;
   updatedAt: string;
@@ -15,6 +16,7 @@ const CATEGORY_LIMITS = {
 
 const CONTROL_CHARS = /[\u0000-\u001F\u007F]/gu;
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const IMAGE_URL_PATTERN = /^\/api\/media\/category-images\/[a-z0-9-]+\.(?:jpg|png|webp)$/i;
 
 function cleanText(value: unknown): string {
   return typeof value === "string" ? value.normalize("NFC").replace(CONTROL_CHARS, "").replace(/\s+/gu, " ").trim() : "";
@@ -39,9 +41,11 @@ export function validateCategoryProps(props: Omit<CategoryProps, "createdAt" | "
   const slug = normalizeCategorySlug(props.slug);
   if (!name || name.length > CATEGORY_LIMITS.name) throw new DomainError("INVALID_CATEGORY_NAME");
   if (!slug || slug.length > CATEGORY_LIMITS.slug || !SLUG_PATTERN.test(slug)) throw new DomainError("INVALID_CATEGORY_SLUG");
+  const imageUrl = props.imageUrl?.trim() || undefined;
+  if (imageUrl && !IMAGE_URL_PATTERN.test(imageUrl)) throw new DomainError("INVALID_CATEGORY_IMAGE");
   if (typeof props.active !== "boolean") throw new DomainError("INVALID_CATEGORY_ACTIVE");
   const now = new Date().toISOString();
-  return { name, slug, active: props.active, createdAt: props.createdAt ?? now, updatedAt: props.updatedAt ?? now };
+  return { name, slug, ...(imageUrl ? { imageUrl } : {}), active: props.active, createdAt: props.createdAt ?? now, updatedAt: props.updatedAt ?? now };
 }
 
 export class Category extends AggregateRoot<string> {
