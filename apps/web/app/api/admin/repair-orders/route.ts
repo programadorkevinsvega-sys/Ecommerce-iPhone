@@ -46,25 +46,34 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     if (url.searchParams.get("view") === "requests") {
       const requests = await adminServiceQueryApplication(env).list();
-      const items = requests
+      const candidates = requests
         .filter((item) => item.toPrimitives().type === "REPAIR")
         .filter((item) => item.toPrimitives().status !== "COMPLETED")
         .filter((item) => item.toPrimitives().status !== "REJECTED")
-        .filter((item) => item.toPrimitives().status !== "REFUNDED")
-        .map((item) => {
-          const value = item.toPrimitives();
-          return {
-            id: value.id,
-            serviceType: value.type,
-            email: value.email,
-            phone: value.phone ?? null,
-            countryCode: value.countryCode ?? null,
-            device: { brand: value.deviceBrand, model: value.deviceModel },
-            problemDescription: value.problemDescription,
-            status: value.status,
-            createdAt: value.createdAt,
-          };
-        });
+        .filter((item) => item.toPrimitives().status !== "REFUNDED");
+      const items = (
+        await Promise.all(
+          candidates.map(async (item) => {
+            const value = item.toPrimitives();
+            if (await repairOrderRepository(env).findByServiceRequestId(value.id)) return null;
+            return {
+              id: value.id,
+              serviceType: value.type,
+              email: value.email,
+              phone: value.phone ?? null,
+              countryCode: value.countryCode ?? null,
+              device: { brand: value.deviceBrand, model: value.deviceModel },
+              problemDescription: value.problemDescription,
+              status: value.status,
+              createdAt: value.createdAt,
+            };
+          }),
+        )
+      ).filter((item): item is NonNullable<typeof item> => item !== null);
+      /*
+       * The request remains in service_requests after reception. The repair-order
+      * relation is the source of truth that removes it from this intake queue.
+      */
       return NextResponse.json({ items }, { headers: { "cache-control": "no-store" } });
     }
     const rawStatus = url.searchParams.get("status");
