@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { CustomerAccountService } from "../../../../../../../modules/customers/application/CustomerAccountService";
+import { commerceContext } from "../../../../../lib/commerce";
+
+export async function POST(request:Request){try{const input=await request.json() as Record<string,unknown>;const context=await commerceContext();const customer=await new CustomerAccountService(context.customerRepository).authenticate(input);if(!customer)return NextResponse.json({error:"Correo o contraseña incorrectos."},{status:401,headers:{"cache-control":"no-store"}});const session=await context.customerSession.create(customer.id);const response=NextResponse.json({customer},{headers:{"cache-control":"no-store"}});response.cookies.set("customer_session",session.token,{httpOnly:true,sameSite:"lax",secure:true,path:"/",maxAge:60*60*24*30});return response;}catch{ return NextResponse.json({error:"Correo o contraseña incorrectos."},{status:401,headers:{"cache-control":"no-store"}});}}

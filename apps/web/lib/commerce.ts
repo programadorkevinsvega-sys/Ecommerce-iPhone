@@ -9,6 +9,7 @@ import { WebCryptoCustomerSessionTokenGenerator } from "../../../modules/custome
 import { Checkout } from "../../../modules/orders/application/Checkout";
 import { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
 import { D1ReservationRepository } from "../../../modules/orders/infrastructure/D1ReservationRepository";
+import { D1CustomerPortalRepository } from "../../../modules/customers/infrastructure/D1CustomerPortalRepository";
 
 export async function commerceContext() {
   const { env } = getCloudflareContext();
@@ -25,6 +26,7 @@ export async function commerceContext() {
     ),
     cartRepository,
     customerRepository,
+    customerPortal: new D1CustomerPortalRepository(env.DB),
     orderRepository: new D1OrderRepository(env.DB),
   };
 }

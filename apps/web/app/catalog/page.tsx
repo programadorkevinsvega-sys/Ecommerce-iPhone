@@ -83,6 +83,7 @@ export default async function CatalogPage({
           <Link href="/servicios">Servicios</Link>
           <Link href="/contacto">Contacto</Link>
           <Link href="/cart">Carrito</Link>
+          <Link href="/cuenta">Mi cuenta</Link>
         </nav>
       </header>
       <section className="catalog-hero">

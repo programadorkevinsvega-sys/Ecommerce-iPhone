@@ -27,6 +27,7 @@ export default async function HomePage() {
           <Link href="/servicios">Servicios</Link>
           <Link href="/contacto">Contacto</Link>
           <Link href="/cart">Carrito</Link>
+          <Link href="/cuenta">Mi cuenta</Link>
         </nav>
       </header>
       {slides.length > 0 && <HomeCarousel slides={slides} />}

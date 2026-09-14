@@ -1,0 +1,5 @@
+import { NextResponse } from "next/server";
+import { CustomerAccountService } from "../../../../../../../modules/customers/application/CustomerAccountService";
+import { commerceContext } from "../../../../../lib/commerce";
+
+export async function POST(request:Request){try{const input=await request.json() as Record<string,unknown>;const context=await commerceContext();const customer=await new CustomerAccountService(context.customerRepository).register(input);const session=await context.customerSession.create(customer.id);const response=NextResponse.json({customer},{status:201,headers:{"cache-control":"no-store"}});response.cookies.set("customer_session",session.token,{httpOnly:true,sameSite:"lax",secure:true,path:"/",maxAge:60*60*24*30});return response;}catch(error){const code=error instanceof Error?error.message:"";const status=code==="CUSTOMER_ALREADY_EXISTS"?409:422;return NextResponse.json({error:status===409?"La cuenta ya existe.":"Revisa los datos ingresados e inténtalo nuevamente."},{status,headers:{"cache-control":"no-store"}});}}

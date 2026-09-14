@@ -1,0 +1,5 @@
+"use client";
+import { useState } from "react";
+import type { FormEvent } from "react";
+import Link from "next/link";
+export default function RecoverPage(){const [sent,setSent]=useState(false),[busy,setBusy]=useState(false);async function submit(event:FormEvent<HTMLFormElement>){event.preventDefault();setBusy(true);await fetch("/api/customer/auth/recover",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(Object.fromEntries(new FormData(event.currentTarget)))});setSent(true);setBusy(false);}return <main className="store-shell auth-page"><section className="auth-card"><p className="eyebrow">Recuperación segura</p><h1>Recupera tu acceso.</h1>{sent?<p>Si la cuenta existe, recibirás instrucciones para continuar.</p>:<form onSubmit={submit}><label>Correo<input name="email" type="email" required autoComplete="email" /></label><button className="button primary" disabled={busy}>{busy?"Enviando…":"Enviar instrucciones"}</button></form>}<p><Link href="/cuenta/login">Volver a iniciar sesión</Link></p></section></main>}
