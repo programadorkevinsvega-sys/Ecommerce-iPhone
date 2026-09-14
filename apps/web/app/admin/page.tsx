@@ -16,6 +16,10 @@ type Metric = {
   revenueInCents: number;
   pendingPayments: number;
   lowStock: number;
+  sales: { paidOrders: number; unitsSold: number; averageOrderValueInCents: number; refundedOrders: number };
+  operations: { ordersToday: number; cancelledOrders: number; outOfStock: number };
+  customersDetail: { newLast30Days: number; repeatCustomers: number };
+  payments: { paid: number; failed: number; pending: number; refunded: number };
 };
 type Admin = { firstName: string; lastName: string; role: string };
 type Item = Record<string, unknown>;
@@ -160,6 +164,7 @@ export default function AdminPage() {
   const [homeSlidePreview, setHomeSlidePreview] = useState<HomeSlide | null>(null);
   const [homeCmsId, setHomeCmsId] = useState("");
   const [categoryBusy, setCategoryBusy] = useState(false);
+  const [categoryPreview, setCategoryPreview] = useState<Category | null>(null);
   const [serviceAction, setServiceAction] = useState<string | null>(null);
   const query = useMemo(() => normalizeSearchQuery(search) ?? "", [search]);
   const login = useCallback(() => {
@@ -642,6 +647,33 @@ export default function AdminPage() {
             ))}
           </section>
         )}
+        {resource === "dashboard" && metrics && (
+          <section className="admin-dashboard-panels" aria-label="Métricas detalladas">
+            <DashboardPanel title="Ventas">
+              <DashboardMetric label="Pedidos cobrados" value={metrics.sales.paidOrders} />
+              <DashboardMetric label="Unidades vendidas" value={metrics.sales.unitsSold} />
+              <DashboardMetric label="Ticket promedio" value={money(metrics.sales.averageOrderValueInCents)} />
+              <DashboardMetric label="Pedidos reembolsados" value={metrics.sales.refundedOrders} />
+            </DashboardPanel>
+            <DashboardPanel title="Operación">
+              <DashboardMetric label="Pedidos hoy" value={metrics.operations.ordersToday} />
+              <DashboardMetric label="Cancelados / reembolsados" value={metrics.operations.cancelledOrders} />
+              <DashboardMetric label="Productos agotados" value={metrics.operations.outOfStock} />
+              <DashboardMetric label="Stock bajo" value={metrics.lowStock} />
+            </DashboardPanel>
+            <DashboardPanel title="Clientes">
+              <DashboardMetric label="Nuevos · 30 días" value={metrics.customersDetail.newLast30Days} />
+              <DashboardMetric label="Clientes recurrentes" value={metrics.customersDetail.repeatCustomers} />
+              <DashboardMetric label="Clientes totales" value={metrics.customers} />
+            </DashboardPanel>
+            <DashboardPanel title="Pagos">
+              <DashboardMetric label="Pagados" value={metrics.payments.paid} />
+              <DashboardMetric label="Pendientes" value={metrics.payments.pending} />
+              <DashboardMetric label="Fallidos" value={metrics.payments.failed} />
+              <DashboardMetric label="Reembolsados" value={metrics.payments.refunded} />
+            </DashboardPanel>
+          </section>
+        )}
         {resource !== "dashboard" && (
           <div className="admin-workspace">
             <div className="admin-section-heading">
@@ -740,6 +772,7 @@ export default function AdminPage() {
                 onEdit={(category) =>
                   setCategoryForm({ id: category.id, name: category.name, slug: category.slug, imageUrl: category.imageUrl ?? "", imageFile: null })
                 }
+                onView={setCategoryPreview}
                 onDeactivate={(id) => void deactivateCategory(id)}
               />
             ) : resource === "products" ? (
@@ -837,6 +870,7 @@ export default function AdminPage() {
           busy={categoryBusy}
         />
       )}
+      {categoryPreview && <CategoryPreviewModal category={categoryPreview} onClose={() => setCategoryPreview(null)} />}
       {serviceTypeForm && (
         <ServiceTypeModal
           form={serviceTypeForm}
@@ -892,11 +926,13 @@ function TableFrame({ children, empty }: { children: ReactNode; empty: boolean }
 function CategoryTable({
   categories,
   onEdit,
+  onView,
   onDeactivate,
   busy,
 }: {
   categories: Category[];
   onEdit: (category: Category) => void;
+  onView: (category: Category) => void;
   onDeactivate: (id: string) => void;
   busy: boolean;
 }) {
@@ -923,6 +959,9 @@ function CategoryTable({
               </span>
             </td>
             <td className="align-right">
+              <button className="table-action" type="button" onClick={() => onView(category)}>
+                Ver
+              </button>
               <button className="table-action" type="button" onClick={() => onEdit(category)}>
                 Editar
               </button>
@@ -939,6 +978,24 @@ function CategoryTable({
         ))}
       </tbody>
     </TableFrame>
+  );
+}
+function DashboardPanel({ title, children }: { title: string; children: ReactNode }) {
+  return <section className="admin-dashboard-panel"><h2>{title}</h2><div>{children}</div></section>;
+}
+function DashboardMetric({ label, value }: { label: string; value: string | number }) {
+  return <article><span>{label}</span><strong>{value}</strong></article>;
+}
+function CategoryPreviewModal({ category, onClose }: { category: Category; onClose: () => void }) {
+  return (
+    <Modal title="Detalle de categoría" onClose={onClose}>
+      {category.imageUrl ? <img className="admin-detail-image" src={category.imageUrl} alt={`Imagen de ${category.name}`} /> : <div className="admin-detail-placeholder">Sin imagen configurada</div>}
+      <dl className="admin-detail-list">
+        <div><dt>Nombre</dt><dd>{category.name}</dd></div>
+        <div><dt>Slug</dt><dd>/{category.slug}</dd></div>
+        <div><dt>Estado</dt><dd>{category.active ? "Activa" : "Inactiva"}</dd></div>
+      </dl>
+    </Modal>
   );
 }
 function ServiceTypeTable({
