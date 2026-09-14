@@ -639,6 +639,10 @@ export default function AdminPage() {
               {item.label}
             </button>
           ))}
+          <button type="button" onClick={() => router.push("/admin/repair-orders")}>
+            <span>◫</span>
+            Órdenes de reparación
+          </button>
         </nav>
         <div className="admin-sidebar-footer">
           <span className="admin-status-dot" /> Sistema operativo

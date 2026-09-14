@@ -34,6 +34,9 @@ import type { ServiceTypeRepository } from "../../../modules/services/applicatio
 import { CreateRepairOrder } from "../../../modules/repairs/application/CreateRepairOrder";
 import { RepairOrderManagement } from "../../../modules/repairs/application/RepairOrderManagement";
 import { D1RepairOrderRepository } from "../../../modules/repairs/infrastructure/D1RepairOrderRepository";
+import { RepairTracking } from "../../../modules/repairs/application/RepairTracking";
+import { RepairEvidenceService } from "../../../modules/repairs/application/RepairEvidence";
+import { D1RepairEvidenceRepository } from "../../../modules/repairs/infrastructure/D1RepairEvidenceRepository";
 
 export function adminDashboardApplication(env: CloudflareEnv): AdminDashboardService {
   return new AdminDashboardService(new D1AdminDashboardQuery(env.DB), new D1AuditPort(env.DB));
@@ -119,3 +122,5 @@ export function createRepairOrderApplication(env: CloudflareEnv): CreateRepairOr
 export function repairOrderManagementApplication(env: CloudflareEnv): RepairOrderManagement {
   return new RepairOrderManagement(repairOrderRepository(env));
 }
+export function repairTrackingApplication(env: CloudflareEnv): RepairTracking { return new RepairTracking(repairOrderRepository(env)); }
+export function repairEvidenceApplication(env: CloudflareEnv): RepairEvidenceService { return new RepairEvidenceService(new D1RepairEvidenceRepository(env.DB)); }

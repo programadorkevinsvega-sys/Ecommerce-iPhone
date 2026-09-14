@@ -31,6 +31,7 @@ export default function ServicesPage() {
           <Link href="/servicios" aria-current="page">
             Servicios
           </Link>
+          <Link href="/reparaciones">Consultar reparación</Link>
           <Link href="/contacto">Contacto</Link>
           <Link href="/cart">Carrito</Link>
         </nav>

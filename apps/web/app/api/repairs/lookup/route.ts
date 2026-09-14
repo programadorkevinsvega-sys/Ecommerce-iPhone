@@ -1,0 +1,4 @@
+import { NextResponse } from "next/server";
+import { repairTrackingApplication } from "../../../../lib/adminApplication";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+export async function POST(request: Request) { try { const body = await request.json() as Record<string, unknown>; const orderNumber = typeof body.orderNumber === "string" ? body.orderNumber : ""; const token = typeof body.token === "string" ? body.token : ""; if (!/^REP-[0-9]{4}-[A-Z0-9]{8,32}$/i.test(orderNumber) || !/^[A-Za-z0-9]{24,128}$/.test(token)) return NextResponse.json({ error: "Invalid tracking data" }, { status: 400 }); const order = await repairTrackingApplication(getCloudflareContext().env).lookup(orderNumber, token); return NextResponse.json({ order }, { headers: { "cache-control": "no-store" } }); } catch { return NextResponse.json({ error: "Repair order not found" }, { status: 404, headers: { "cache-control": "no-store" } }); } }
