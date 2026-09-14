@@ -1779,6 +1779,13 @@ function HomeSlideModal({
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  useEffect(
+    () => () => {
+      if (previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+    },
+    [previewUrl],
+  );
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
@@ -1827,90 +1834,107 @@ function HomeSlideModal({
       setBusy(false);
     }
   }
+  const preview = previewUrl || form.imageUrl;
   return (
-    <Modal
-      title={
-        form.id && slides.some((slide) => slide.id === form.id)
-          ? "Editar promoción"
-          : "Nueva promoción"
-      }
-      onClose={onClose}
-    >
-      <form className="admin-form" onSubmit={submit}>
-        {error && (
-          <p className="admin-error" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="form-grid">
-          <label>
-            Etiqueta
-            <input
-              required
-              maxLength={80}
-              value={form.eyebrow}
-              onChange={(e) => setForm({ ...form, eyebrow: e.target.value })}
-            />
-          </label>
-          <label>
-            Enlace
-            <input
-              required
-              maxLength={300}
-              value={form.href}
-              onChange={(e) => setForm({ ...form, href: e.target.value })}
-            />
-          </label>
-        </div>
-        <label>
-          Título
-          <input
-            required
-            maxLength={180}
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-          />
-        </label>
-        <label>
-          Descripción
-          <textarea
-            required
-            maxLength={500}
-            rows={3}
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-          />
-        </label>
-        <label>
-          Imagen de la promoción
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-          {form.imageUrl && (
-            <span className="form-help">
-              Imagen actual cargada. Selecciona otra para reemplazarla.
-            </span>
+    <>
+      <Modal
+        title={
+          form.id && slides.some((slide) => slide.id === form.id)
+            ? "Editar promoción"
+            : "Nueva promoción"
+        }
+        onClose={onClose}
+      >
+        <form className="admin-form" onSubmit={submit}>
+          {error && (
+            <p className="admin-error" role="alert">
+              {error}
+            </p>
           )}
-        </label>
-        <label className="checkbox-label">
-          <input
-            type="checkbox"
-            checked={form.active}
-            onChange={(e) => setForm({ ...form, active: e.target.checked })}
-          />{" "}
-          Publicada en el inicio
-        </label>
-        <div className="modal-actions">
-          <button className="admin-button" type="button" onClick={onClose}>
-            Cancelar
-          </button>
-          <button className="admin-button primary" disabled={busy} type="submit">
-            {busy ? "Guardando…" : "Guardar promoción"}
-          </button>
-        </div>
-      </form>
-    </Modal>
+          <div className="form-grid">
+            <label>
+              Etiqueta
+              <input
+                required
+                maxLength={80}
+                value={form.eyebrow}
+                onChange={(e) => setForm({ ...form, eyebrow: e.target.value })}
+              />
+            </label>
+            <label>
+              Enlace
+              <input
+                required
+                maxLength={300}
+                value={form.href}
+                onChange={(e) => setForm({ ...form, href: e.target.value })}
+              />
+            </label>
+          </div>
+          <label>
+            Título
+            <input
+              required
+              maxLength={180}
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+            />
+          </label>
+          <label>
+            Descripción
+            <textarea
+              required
+              maxLength={500}
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </label>
+          <label>
+            Imagen de la promoción
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+            {form.imageUrl && (
+              <span className="form-help">
+                Imagen actual cargada. Selecciona otra para reemplazarla.
+              </span>
+            )}
+          </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={form.active}
+              onChange={(e) => setForm({ ...form, active: e.target.checked })}
+            />{" "}
+            Publicada en el inicio
+          </label>
+          <div className="modal-actions">
+            <button
+              className="admin-button"
+              type="button"
+              disabled={!preview}
+              onClick={() => setPreviewUrl(file ? URL.createObjectURL(file) : form.imageUrl)}
+            >
+              Vista previa
+            </button>
+            <button className="admin-button" type="button" onClick={onClose}>
+              Cancelar
+            </button>
+            <button className="admin-button primary" disabled={busy} type="submit">
+              {busy ? "Guardando…" : "Guardar promoción"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+      {previewUrl && (
+        <HomeSlidePreviewModal
+          slide={{ ...form, imageUrl: previewUrl }}
+          onClose={() => setPreviewUrl("")}
+        />
+      )}
+    </>
   );
 }
