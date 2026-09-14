@@ -48,6 +48,7 @@ type ProductForm = {
   categoryIds: string[];
   imageUrls: string[];
   imageFiles: File[];
+  specs: Array<{ key: string; value: string }>;
 };
 type CustomerForm = { id: string; firstName: string; lastName: string; phone: string };
 type ServiceType = {
@@ -112,6 +113,7 @@ const EMPTY_PRODUCT: ProductForm = {
   categoryIds: [],
   imageUrls: [],
   imageFiles: [],
+  specs: [],
 };
 const money = (cents: number) =>
   new Intl.NumberFormat("es-CO", {
@@ -342,6 +344,11 @@ export default function AdminPage() {
       active: form.active,
       category_ids: form.categoryIds,
       images,
+      specs_json: Object.fromEntries(
+        form.specs
+          .map((spec) => [normalizeSingleLine(spec.key).slice(0, 80), spec.value.trim()] as const)
+          .filter(([key, specValue]) => key && specValue),
+      ),
     };
     const ok = await mutate(
       "/api/admin/resources",
@@ -373,6 +380,19 @@ export default function AdminPage() {
             }
           })(),
           imageFiles: [],
+          specs: (() => {
+            try {
+              const parsed = JSON.parse(value(item, "specs_json"));
+              return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+                ? Object.entries(parsed as Record<string, unknown>).map(([key, specValue]) => ({
+                    key,
+                    value: String(specValue ?? ""),
+                  }))
+                : [];
+            } catch {
+              return [];
+            }
+          })(),
         }
       : { ...EMPTY_PRODUCT };
     const response = await fetch("/api/admin/categories", {
@@ -1487,6 +1507,58 @@ function ProductModal({
             onChange={(e) => set("description", e.target.value)}
           />
         </label>
+        <fieldset className="admin-category-picker">
+          <legend>Especificaciones del producto</legend>
+          <p className="form-help">
+            Añade los atributos que deben aparecer en la ficha pública del producto.
+          </p>
+          <div className="admin-spec-editor">
+            {form.specs.map((spec, index) => (
+              <div className="admin-spec-row" key={`${index}-${spec.key}`}>
+                <input
+                  maxLength={80}
+                  placeholder="Nombre de especificación"
+                  value={spec.key}
+                  onChange={(event) => {
+                    const specs = [...form.specs];
+                    specs[index] = { ...spec, key: event.target.value };
+                    setForm({ ...form, specs });
+                  }}
+                />
+                <input
+                  maxLength={500}
+                  placeholder="Valor"
+                  value={spec.value}
+                  onChange={(event) => {
+                    const specs = [...form.specs];
+                    specs[index] = { ...spec, value: event.target.value };
+                    setForm({ ...form, specs });
+                  }}
+                />
+                <button
+                  className="table-action danger"
+                  type="button"
+                  onClick={() =>
+                    setForm({
+                      ...form,
+                      specs: form.specs.filter((_, specIndex) => specIndex !== index),
+                    })
+                  }
+                  aria-label="Quitar especificación"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            className="admin-button"
+            type="button"
+            onClick={() => setForm({ ...form, specs: [...form.specs, { key: "", value: "" }] })}
+          >
+            + Añadir especificación
+          </button>
+        </fieldset>
         <label className="checkbox-label">
           <input
             type="checkbox"
