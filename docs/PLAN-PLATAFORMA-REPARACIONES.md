@@ -263,6 +263,198 @@ Las transiciones deben validarse en el dominio. No se permitirá cambiar un esta
 - `repair_order_status_history`.
 - `repair_order_assignments`.
 
+## 7.1 Ficha técnica del dispositivo
+
+### Objetivo
+
+Cada orden debe incluir una ficha técnica completa del equipo. Esta ficha será el documento operativo que conecta la recepción, el diagnóstico, el trabajo técnico, las piezas utilizadas, el control de calidad y la garantía.
+
+La ficha debe poder consultarse desde Admin, desde el dashboard del técnico y, con los datos protegidos correspondientes, desde el portal del cliente.
+
+### Identificación del dispositivo
+
+```text
+Modelo: iPhone 15 Pro
+Serial: XXXXX
+IMEI: XXXXX
+Color: Titanio natural
+Capacidad: 256 GB
+```
+
+El serial y el IMEI deben almacenarse de forma protegida. Las vistas públicas no deben mostrar los valores completos y, cuando sea suficiente, deben mostrar únicamente los últimos cuatro caracteres.
+
+### Estado inicial
+
+El estado inicial debe registrarse al recibir el equipo, antes de comenzar cualquier diagnóstico:
+
+```text
+Pantalla: rota
+Marco: rayado
+Cámara: funcional
+Face ID: funcional
+Batería: 81%
+```
+
+Debe permitir:
+
+- Valores configurables por tipo de dispositivo.
+- Resultado `FUNCIONAL`, `NO_FUNCIONAL`, `DANADO`, `NO_PROBADO` o `NO_APLICA`.
+- Observación libre validada.
+- Evidencia fotográfica asociada.
+- Usuario que realizó la inspección.
+- Fecha y hora.
+
+### Diagnóstico
+
+La ficha debe separar claramente el estado inicial del diagnóstico técnico:
+
+```text
+Diagnóstico:
+Pantalla dañada
+```
+
+El diagnóstico debe guardar:
+
+- Pruebas realizadas.
+- Hallazgos.
+- Causa probable.
+- Daños adicionales.
+- Diagnóstico principal.
+- Recomendación técnica.
+- Técnico responsable.
+- Fecha y hora.
+- Evidencias asociadas.
+
+El diagnóstico no debe sobrescribir el estado inicial. Si se corrige un dato, debe quedar una nueva versión o un evento de auditoría.
+
+### Trabajo realizado
+
+La ficha debe registrar el trabajo que realmente se ejecutó, separado del trabajo recomendado:
+
+```text
+Trabajo realizado:
+Cambio de display
+```
+
+Debe incluir:
+
+- Servicio ejecutado.
+- Tareas realizadas.
+- Técnico responsable.
+- Tiempo empleado.
+- Resultado.
+- Observaciones.
+- Fecha de inicio.
+- Fecha de finalización.
+- Evidencia posterior a la reparación.
+
+### Piezas utilizadas
+
+Cada pieza utilizada debe provenir del inventario de repuestos:
+
+```text
+Pieza: DISPLAY-OLED-15PRO
+Cantidad: 1
+Calidad: OEM
+Lote: LOTE-2026-09
+```
+
+La ficha debe guardar una copia histórica de los datos aplicados a la reparación, aunque el repuesto cambie de nombre o se desactive después.
+
+Debe registrar:
+
+- SKU.
+- Nombre del repuesto.
+- Cantidad.
+- Costo.
+- Precio aplicado.
+- Lote.
+- Proveedor.
+- Técnico que lo instaló.
+- Fecha de consumo.
+- Movimiento de inventario asociado.
+
+### Control de calidad
+
+El resultado del QC debe formar parte de la ficha técnica:
+
+```text
+QC: APROBADO
+```
+
+Debe incluir:
+
+- Checklist ejecutado.
+- Resultado de cada prueba.
+- Observaciones.
+- Evidencia fotográfica posterior.
+- Técnico que realizó la revisión.
+- Usuario que aprobó el control.
+- Fecha y hora.
+- Resultado final: `APROBADO`, `RECHAZADO` o `REQUIERE_RETRABAJO`.
+
+No se debe permitir pasar una orden a `READY` si el control de calidad obligatorio está incompleto o rechazado.
+
+### Garantía asociada
+
+La garantía final debe quedar enlazada a la ficha:
+
+```text
+Garantía: 6 meses
+Inicio: 13/09/2026
+Vencimiento: 13/03/2027
+Cobertura: display e instalación
+Estado: ACTIVA
+```
+
+La garantía debe identificar exactamente qué trabajo y qué piezas cubre. Si se presenta una reclamación, el sistema debe consultar la ficha técnica y comprobar si el componente o trabajo reclamado está dentro de cobertura.
+
+### Modelo de datos sugerido
+
+La ficha puede implementarse con entidades separadas para conservar trazabilidad:
+
+- `repair_device_sheets`: encabezado e identificación del equipo.
+- `repair_device_condition_items`: estado inicial por componente.
+- `repair_diagnostics`: diagnósticos y hallazgos.
+- `repair_work_logs`: trabajos realizados y tiempo técnico.
+- `repair_order_parts`: piezas utilizadas en la orden.
+- `repair_quality_checks`: checklist de control de calidad.
+- `repair_warranties`: garantía emitida para el trabajo.
+- `repair_order_media`: fotos asociadas a cada etapa.
+
+Todas deben relacionarse con `repair_orders` y mantener el actor y la fecha de cada cambio.
+
+### Vista operativa de la ficha
+
+En Admin y Técnico, la ficha debe organizarse por etapas:
+
+```text
+1. Identificación del dispositivo
+2. Estado inicial y recepción
+3. Diagnóstico
+4. Presupuesto aprobado
+5. Trabajo realizado
+6. Piezas consumidas
+7. Control de calidad
+8. Garantía
+9. Historial y evidencias
+```
+
+El cliente podrá ver una versión reducida, sin notas internas, costos internos, información de proveedores ni datos sensibles.
+
+### Criterios de aceptación de la ficha
+
+- No se puede crear una orden sin identificar el dispositivo o justificar que la identificación está pendiente.
+- IMEI y serial nunca se muestran completos en vistas públicas.
+- El estado inicial no se puede borrar al comenzar el diagnóstico.
+- El diagnóstico queda asociado a un técnico y a una fecha.
+- El trabajo realizado puede diferir de la recomendación original.
+- Las piezas utilizadas descuentan inventario y quedan asociadas a la orden.
+- El QC debe aprobarse antes de marcar el equipo como listo.
+- La garantía se crea a partir del trabajo y las piezas efectivamente registradas.
+- Toda edición importante queda auditada.
+- La ficha puede consultarse después de entregar el dispositivo.
+
 ## 8. Fase 5: recepción y evidencia fotográfica
 
 ### Objetivo
