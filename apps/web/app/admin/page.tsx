@@ -44,6 +44,9 @@ type ProductForm = {
   priceInCents: string;
   stock: string;
   warrantyMonths: string;
+  batteryHealth: string;
+  storageGb: string;
+  color: string;
   active: boolean;
   categoryIds: string[];
   imageUrls: string[];
@@ -109,6 +112,9 @@ const EMPTY_PRODUCT: ProductForm = {
   priceInCents: "",
   stock: "0",
   warrantyMonths: "12",
+  batteryHealth: "",
+  storageGb: "",
+  color: "",
   active: true,
   categoryIds: [],
   imageUrls: [],
@@ -341,6 +347,9 @@ export default function AdminPage() {
       price_in_cents: Number(form.priceInCents),
       stock: Number(form.stock),
       warranty_months: Number(form.warrantyMonths),
+      battery_health: form.batteryHealth === "" ? null : Number(form.batteryHealth),
+      storage_gb: form.storageGb === "" ? null : Number(form.storageGb),
+      color: form.color.trim() || null,
       active: form.active,
       category_ids: form.categoryIds,
       images,
@@ -370,6 +379,9 @@ export default function AdminPage() {
           priceInCents: String(Number(item.price_in_cents ?? 0)),
           stock: value(item, "stock") || "0",
           warrantyMonths: value(item, "warranty_months") || "12",
+          batteryHealth: value(item, "battery_health"),
+          storageGb: value(item, "storage_gb"),
+          color: value(item, "color"),
           active: item.active === 1 || item.active === true,
           categoryIds: [],
           imageUrls: (() => {
@@ -1427,6 +1439,33 @@ function ProductModal({
               type="number"
               value={form.warrantyMonths}
               onChange={(e) => set("warrantyMonths", e.target.value)}
+            />
+          </label>
+          <label>
+            Salud de batería (%)
+            <input
+              min="0"
+              max="100"
+              type="number"
+              value={form.batteryHealth}
+              onChange={(e) => set("batteryHealth", e.target.value)}
+            />
+          </label>
+          <label>
+            Capacidad (GB)
+            <input
+              min="1"
+              type="number"
+              value={form.storageGb}
+              onChange={(e) => set("storageGb", e.target.value)}
+            />
+          </label>
+          <label>
+            Color
+            <input
+              maxLength={80}
+              value={form.color}
+              onChange={(e) => set("color", e.target.value)}
             />
           </label>
         </div>
