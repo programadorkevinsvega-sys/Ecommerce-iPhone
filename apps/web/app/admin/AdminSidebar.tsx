@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-type AdminSidebarProps = { active: "repair-orders" | "repair-parts" };
+type AdminSidebarProps = { active: "repair-orders" | "repair-parts" | "service-types" };
 
 const items = [
   ["⌂", "Dashboard", "/admin"],
@@ -8,7 +8,7 @@ const items = [
   ["▤", "Productos", "/admin?section=products"],
   ["⌘", "Categorías", "/admin?section=categories"],
   ["♙", "Clientes", "/admin?section=customers"],
-  ["◇", "Servicios ofrecidos", "/admin?section=service-types"],
+  ["◇", "Servicios ofrecidos", "/admin/service-types"],
   ["▧", "Carrusel de inicio", "/admin?section=home-carousel"],
   ["⚙", "Solicitudes", "/admin?section=services"],
 ] as const;
@@ -17,7 +17,7 @@ export default function AdminSidebar({ active }: AdminSidebarProps) {
   return <aside className="admin-sidebar">
     <Link className="admin-brand" href="/admin"><span className="admin-brand-mark">K</span><span><strong>KEVINS</strong><small>Administración</small></span></Link>
     <nav className="admin-nav" aria-label="Secciones administrativas">
-      {items.map(([icon, label, href]) => <Link key={label} href={href}><span>{icon}</span>{label}</Link>)}
+      {items.map(([icon, label, href]) => <Link key={label} className={active === "service-types" && label === "Servicios ofrecidos" ? "active" : ""} href={href}><span>{icon}</span>{label}</Link>)}
       <Link className={active === "repair-orders" ? "active" : ""} href="/admin/repair-orders"><span>◫</span>Órdenes de reparación</Link>
       <Link className={active === "repair-parts" ? "active" : ""} href="/admin/repair-parts"><span>⚙</span>Repuestos de taller</Link>
     </nav>
