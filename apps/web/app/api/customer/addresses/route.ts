@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { CustomerAddressService } from "../../../../../../modules/customers/application/CustomerAddressService";
-import { authenticatedCustomer } from "../../../lib/customerAccount";
-import { recordCustomerSecurityEvent } from "../../../lib/customerSecurity";
+import { authenticatedCustomer } from "../../../../lib/customerAccount";
+import { recordCustomerSecurityEvent } from "../../../../lib/customerSecurity";
 
 export async function GET() {
   const current = await authenticatedCustomer();
