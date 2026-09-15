@@ -46,7 +46,7 @@ export default function CuentaClient() {
 
       <section className="account-grid">
         <article className="contact-card"><p className="eyebrow">Perfil</p><h2>{data.customer.firstName} {data.customer.lastName}</h2><p>{data.customer.phone ?? "Sin teléfono registrado"}</p><p>{data.customer.whatsapp ?? "Sin WhatsApp registrado"}</p><Link className="button secondary" href="/cuenta/perfil">Editar perfil</Link></article>
-        <article className="contact-card"><p className="eyebrow">Direcciones</p><h2>{data.addresses.length}</h2>{data.addresses.slice(0, 2).map(address => <p key={address.id}>{address.label}: {address.city}, {address.state}</p>)}<p>Las direcciones se muestran exclusivamente dentro de tu cuenta.</p></article>
+        <article className="contact-card"><p className="eyebrow">Direcciones</p><h2>{data.addresses.length}</h2>{data.addresses.slice(0, 2).map(address => <p key={address.id}>{address.label}: {address.city}, {address.state}</p>)}<Link className="button secondary" href="/cuenta/direcciones">Gestionar direcciones</Link></article>
         <article className="contact-card"><p className="eyebrow">Mis dispositivos</p><h2>{data.devices.length}</h2>{data.devices.slice(0, 3).map(device => <p key={device.id}>{device.brand} {device.model}{device.imeiLast4 ? ` · IMEI ••••${device.imeiLast4}` : ""}</p>)}<Link className="button secondary" href="/cuenta/dispositivos">Gestionar dispositivos</Link></article>
       </section>
 
