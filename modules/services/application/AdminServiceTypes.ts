@@ -88,6 +88,45 @@ function parseWorkflow(value: unknown) {
   };
 }
 
+function optionalMoney(value: unknown, code: string): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) throw new Error(code);
+  return parsed;
+}
+
+function optionalPositiveInteger(value: unknown, code: string): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) throw new Error(code);
+  return parsed;
+}
+
+function parseCompatibility(value: unknown) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 100) throw new Error("INVALID_SERVICE_COMPATIBILITY");
+  return value.map((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("INVALID_SERVICE_COMPATIBILITY");
+    const row = item as Record<string, unknown>;
+    const brand = String(row.brand ?? "").trim();
+    const model = String(row.model ?? "").trim();
+    if (!brand || brand.length > 80 || model.length > 120) throw new Error("INVALID_SERVICE_COMPATIBILITY");
+    return { brand, ...(model ? { model } : {}) };
+  });
+}
+
+function parseRequirements(value: unknown) {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 50) throw new Error("INVALID_SERVICE_REQUIREMENTS");
+  return value.map((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) throw new Error("INVALID_SERVICE_REQUIREMENTS");
+    const row = item as Record<string, unknown>;
+    const description = String(row.description ?? "").trim();
+    if (!description || description.length > 240) throw new Error("INVALID_SERVICE_REQUIREMENTS");
+    return { description, required: row.required !== false };
+  });
+}
+
 export class AdminServiceTypes {
   constructor(
     private readonly repository: ServiceTypeRepository,
@@ -102,6 +141,10 @@ export class AdminServiceTypes {
   async create(input: Record<string, unknown>, adminUserId: string) {
     const adminId = adminUserId.trim();
     if (!adminId) throw new Error("ADMIN_ID_REQUIRED");
+    const priceFromInCents = optionalMoney(input.priceFromInCents, "INVALID_SERVICE_PRICE");
+    const fixedPriceInCents = optionalMoney(input.fixedPriceInCents, "INVALID_SERVICE_PRICE");
+    const estimatedMinutes = optionalPositiveInteger(input.estimatedMinutes, "INVALID_SERVICE_TIME");
+    const warrantyDays = optionalMoney(input.warrantyDays, "INVALID_SERVICE_WARRANTY");
 
     const definition = ServiceTypeDefinition.create({
       code: String(input.code ?? "").trim().toUpperCase(),
@@ -113,6 +156,14 @@ export class AdminServiceTypes {
       workflow: parseWorkflow(input.workflow),
       enabled: input.enabled !== false,
       metadata: parseMetadata(input.metadata),
+      ...(priceFromInCents !== undefined ? { priceFromInCents } : {}),
+      ...(fixedPriceInCents !== undefined ? { fixedPriceInCents } : {}),
+      ...(estimatedMinutes !== undefined ? { estimatedMinutes } : {}),
+      ...(warrantyDays !== undefined ? { warrantyDays } : {}),
+      requiresDiagnosis: input.requiresDiagnosis === true,
+      requiresApproval: input.requiresApproval === true,
+      compatibility: parseCompatibility(input.compatibility),
+      requirements: parseRequirements(input.requirements),
     });
 
     await this.repository.save(definition);

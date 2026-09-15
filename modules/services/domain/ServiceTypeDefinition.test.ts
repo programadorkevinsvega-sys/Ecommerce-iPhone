@@ -32,4 +32,13 @@ describe("ServiceTypeDefinition",()=>{
     const type=ServiceTypeDefinition.create({...validServiceType,code:"BATTERY_REPLACEMENT",slug:"cambio-bateria",name:"Cambio de batería"});
     expect(type.toPrimitives().code).toBe("BATTERY_REPLACEMENT");
   });
+  it("supports catalog pricing, requirements and compatibility",()=>{
+    const type=ServiceTypeDefinition.create({...validServiceType,priceFromInCents:100000,fixedPriceInCents:150000,estimatedMinutes:90,warrantyDays:180,requiresDiagnosis:true,requiresApproval:true,compatibility:[{brand:"Apple",model:"iPhone 15 Pro"}],requirements:[{description:"Equipo apagado",required:true}]});
+    expect(type.toPrimitives().compatibility?.[0].model).toBe("iPhone 15 Pro");
+    expect(type.toPrimitives().requirements?.[0].description).toBe("Equipo apagado");
+  });
+  it("rejects inconsistent or invalid catalog pricing",()=>{
+    expect(()=>ServiceTypeDefinition.create({...validServiceType,priceFromInCents:200000,fixedPriceInCents:100000})).toThrow();
+    expect(()=>ServiceTypeDefinition.create({...validServiceType,estimatedMinutes:0})).toThrow();
+  });
 });

@@ -68,6 +68,14 @@ type ServiceType = {
     paymentRequired: boolean;
     allowedStatuses: readonly string[];
   };
+  priceFromInCents?: number;
+  fixedPriceInCents?: number;
+  estimatedMinutes?: number;
+  warrantyDays?: number;
+  requiresDiagnosis?: boolean;
+  requiresApproval?: boolean;
+  compatibility?: { brand: string; model?: string }[];
+  requirements?: { description: string; required: boolean }[];
 };
 type ServiceTypeForm = {
   code: string;
@@ -80,6 +88,14 @@ type ServiceTypeForm = {
   enabled: boolean;
   quoteRequired: boolean;
   paymentRequired: boolean;
+  priceFromInCents: string;
+  fixedPriceInCents: string;
+  estimatedMinutes: string;
+  warrantyDays: string;
+  requiresDiagnosis: boolean;
+  requiresApproval: boolean;
+  compatibilityText: string;
+  requirementsText: string;
 };
 type HomeSlide = {
   id: string;
@@ -570,6 +586,14 @@ export default function AdminPage() {
           paymentRequired: form.paymentRequired,
           allowedStatuses: ["PENDING", "COMPLETED", "REJECTED"],
         },
+        priceFromInCents: form.priceFromInCents === "" ? undefined : Number(form.priceFromInCents),
+        fixedPriceInCents: form.fixedPriceInCents === "" ? undefined : Number(form.fixedPriceInCents),
+        estimatedMinutes: form.estimatedMinutes === "" ? undefined : Number(form.estimatedMinutes),
+        warrantyDays: form.warrantyDays === "" ? undefined : Number(form.warrantyDays),
+        requiresDiagnosis: form.requiresDiagnosis,
+        requiresApproval: form.requiresApproval,
+        compatibility: form.compatibilityText.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => { const [brand = "", ...model] = line.split("|"); const modelValue = model.join("|").trim(); return { brand: brand.trim(), ...(modelValue ? { model: modelValue } : {}) }; }),
+        requirements: form.requirementsText.split("\n").map((line) => line.trim()).filter(Boolean).map((description) => ({ description, required: true })),
       }),
     });
     if (!response.ok) {
@@ -594,6 +618,14 @@ export default function AdminPage() {
         category: type.category,
         enabled: !type.enabled,
         workflow: type.workflow,
+        priceFromInCents: type.priceFromInCents,
+        fixedPriceInCents: type.fixedPriceInCents,
+        estimatedMinutes: type.estimatedMinutes,
+        warrantyDays: type.warrantyDays,
+        requiresDiagnosis: type.requiresDiagnosis,
+        requiresApproval: type.requiresApproval,
+        compatibility: type.compatibility ?? [],
+        requirements: type.requirements ?? [],
       }),
     });
     if (!response.ok) setError("No se pudo actualizar el servicio.");
@@ -772,6 +804,14 @@ export default function AdminPage() {
                         enabled: true,
                         quoteRequired: false,
                         paymentRequired: false,
+                        priceFromInCents: "",
+                        fixedPriceInCents: "",
+                        estimatedMinutes: "",
+                        warrantyDays: "",
+                        requiresDiagnosis: false,
+                        requiresApproval: false,
+                        compatibilityText: "",
+                        requirementsText: "",
                       })
                     }
                   >
@@ -860,6 +900,14 @@ export default function AdminPage() {
                     enabled: type.enabled,
                     quoteRequired: type.workflow.quoteRequired,
                     paymentRequired: type.workflow.paymentRequired,
+                    priceFromInCents: type.priceFromInCents === undefined ? "" : String(type.priceFromInCents),
+                    fixedPriceInCents: type.fixedPriceInCents === undefined ? "" : String(type.fixedPriceInCents),
+                    estimatedMinutes: type.estimatedMinutes === undefined ? "" : String(type.estimatedMinutes),
+                    warrantyDays: type.warrantyDays === undefined ? "" : String(type.warrantyDays),
+                    requiresDiagnosis: type.requiresDiagnosis ?? false,
+                    requiresApproval: type.requiresApproval ?? false,
+                    compatibilityText: (type.compatibility ?? []).map((item) => `${item.brand}${item.model ? `|${item.model}` : ""}`).join("\n"),
+                    requirementsText: (type.requirements ?? []).map((item) => item.description).join("\n"),
                   })
                 }
                 onToggle={(type) => void toggleServiceType(type)}
@@ -1060,6 +1108,7 @@ function ServiceTypeTable({
           <th>Código</th>
           <th>Categoría</th>
           <th>Cotización</th>
+          <th>Precio / tiempo</th>
           <th>Estado</th>
           <th className="align-right">Acciones</th>
         </tr>
@@ -1074,6 +1123,7 @@ function ServiceTypeTable({
             <td className="muted">{item.code}</td>
             <td>{item.category}</td>
             <td>{item.workflow.quoteRequired ? "Requerida" : "No requerida"}</td>
+            <td>{item.fixedPriceInCents !== undefined ? money(item.fixedPriceInCents) : item.priceFromInCents !== undefined ? `Desde ${money(item.priceFromInCents)}` : "Por definir"}{item.estimatedMinutes !== undefined ? ` · ${item.estimatedMinutes} min` : ""}</td>
             <td>
               <span className={`status ${item.enabled ? "success" : "muted-status"}`}>
                 {item.enabled ? "Publicado" : "Oculto"}
@@ -1822,6 +1872,12 @@ function ServiceTypeModal({
           {form.imageUrl && <><img className="admin-form-image-preview" src={form.imageUrl} alt="Imagen actual del servicio" /><button className="table-action danger" type="button" onClick={() => setForm({ ...form, imageUrl: "", imageFile: null })}>Quitar imagen</button></>}
         </label>
         <div className="form-grid">
+          <label>Precio desde (centavos COP)<input type="number" min="0" value={form.priceFromInCents} onChange={(e) => set("priceFromInCents", e.target.value)} /></label>
+          <label>Precio fijo (centavos COP)<input type="number" min="0" value={form.fixedPriceInCents} onChange={(e) => set("fixedPriceInCents", e.target.value)} /></label>
+          <label>Tiempo estimado (minutos)<input type="number" min="1" value={form.estimatedMinutes} onChange={(e) => set("estimatedMinutes", e.target.value)} /></label>
+          <label>Garantía (días)<input type="number" min="0" value={form.warrantyDays} onChange={(e) => set("warrantyDays", e.target.value)} /></label>
+        </div>
+        <div className="form-grid">
           <label className="checkbox-label">
             <input
               type="checkbox"
@@ -1838,7 +1894,11 @@ function ServiceTypeModal({
             />{" "}
             Requiere pago
           </label>
+          <label className="checkbox-label"><input type="checkbox" checked={form.requiresDiagnosis} onChange={(e) => set("requiresDiagnosis", e.target.checked)} /> Requiere diagnóstico</label>
+          <label className="checkbox-label"><input type="checkbox" checked={form.requiresApproval} onChange={(e) => set("requiresApproval", e.target.checked)} /> Requiere aprobación del cliente</label>
         </div>
+        <label>Compatibilidad (una por línea: Marca|Modelo)<textarea rows={4} value={form.compatibilityText} onChange={(e) => set("compatibilityText", e.target.value)} placeholder="Apple|iPhone 15 Pro&#10;Samsung|Galaxy S24" /></label>
+        <label>Requisitos de recepción (uno por línea)<textarea rows={4} value={form.requirementsText} onChange={(e) => set("requirementsText", e.target.value)} placeholder="Copia de documento del propietario&#10;Equipo desbloqueado" /></label>
         <label className="checkbox-label">
           <input
             type="checkbox"
