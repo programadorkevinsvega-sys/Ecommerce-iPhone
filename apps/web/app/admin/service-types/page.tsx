@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 
 const emptyForm = {
   code: "", slug: "", name: "", description: "", imageUrl: "", category: "REPAIR",
