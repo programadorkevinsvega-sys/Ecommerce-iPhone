@@ -38,7 +38,7 @@ export default function ServiceTypesPage() {
   function value(key: keyof typeof emptyForm) { return form[key]; }
   function set(key: keyof typeof emptyForm, next: string | boolean) { setForm((current) => ({ ...current, [key]: next })); }
 
-  const compatibility = useMemo(() => form.compatibility.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => { const [brand, model] = line.split("|", 2); return { brand: brand.trim(), ...(model?.trim() ? { model: model.trim() } : {}) }; }), [form.compatibility]);
+  const compatibility = useMemo(() => form.compatibility.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => { const [brand = "", model] = line.split("|", 2); return { brand: brand.trim(), ...(model?.trim() ? { model: model.trim() } : {}) }; }), [form.compatibility]);
   const requirements = useMemo(() => form.requirements.split("\n").map((line) => line.trim()).filter(Boolean).map((line) => ({ description: line.startsWith("*") ? line.slice(1).trim() : line, required: line.startsWith("*") })), [form.requirements]);
 
   async function submit(event: FormEvent) {
