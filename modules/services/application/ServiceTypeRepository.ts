@@ -5,4 +5,5 @@ export interface ServiceTypeRepository {
   listEnabled(): Promise<ServiceTypeDefinition[]>;
   listAll(): Promise<ServiceTypeDefinition[]>;
   save(type: ServiceTypeDefinition): Promise<void>;
+  disable(code: string): Promise<boolean>;
 }
