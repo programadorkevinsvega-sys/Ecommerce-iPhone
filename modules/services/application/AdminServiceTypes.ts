@@ -31,17 +31,23 @@ function parseCategory(value: unknown): ServiceCategory {
 
 function parseMetadata(value: unknown) {
   if (value === undefined) return {};
-  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error("INVALID_SERVICE_METADATA");
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("INVALID_SERVICE_METADATA");
+  }
   const metadata: Record<string, string> = {};
   for (const [key, item] of Object.entries(value)) {
-    if (!key.trim() || key.length > 80 || typeof item !== "string" || item.length > 500) throw new Error("INVALID_SERVICE_METADATA");
+    if (!key.trim() || key.length > 80 || typeof item !== "string" || item.length > 500) {
+      throw new Error("INVALID_SERVICE_METADATA");
+    }
     metadata[key] = item;
   }
   return metadata;
 }
 
 function parseWorkflow(value: unknown) {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error("INVALID_SERVICE_WORKFLOW");
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new Error("INVALID_SERVICE_WORKFLOW");
+  }
   const workflow = value as Record<string, unknown>;
   const allowedStatuses = Array.isArray(workflow.allowedStatuses)
     ? workflow.allowedStatuses.map((status) => {
@@ -118,26 +124,40 @@ export class AdminServiceTypes {
     const estimatedMinutes = optionalPositiveInteger(input.estimatedMinutes, "INVALID_SERVICE_TIME");
     const warrantyDays = optionalPositiveInteger(input.warrantyDays, "INVALID_SERVICE_WARRANTY");
     const workflow = parseWorkflow(input.workflow ?? existing?.workflow);
-    return ServiceTypeDefinition.create({
+    const definitionInput = {
       code: existing?.code ?? String(input.code ?? "").trim().toUpperCase(),
       slug: String(input.slug ?? existing?.slug ?? "").trim().toLowerCase(),
       name: String(input.name ?? existing?.name ?? ""),
       description: String(input.description ?? existing?.description ?? ""),
-      ...(typeof input.imageUrl === "string" ? { imageUrl: input.imageUrl } : existing?.imageUrl ? { imageUrl: existing.imageUrl } : {}),
+      ...(typeof input.imageUrl === "string"
+        ? { imageUrl: input.imageUrl }
+        : existing?.imageUrl
+          ? { imageUrl: existing.imageUrl }
+          : {}),
       category: parseCategory(input.category ?? existing?.category ?? "OTHER"),
       workflow,
       enabled: input.enabled === undefined ? existing?.enabled !== false : input.enabled === true,
       metadata: parseMetadata(input.metadata ?? existing?.metadata),
-      ...(priceFromInCents !== undefined || existing?.priceFromInCents !== undefined ? { priceFromInCents: priceFromInCents ?? existing?.priceFromInCents } : {}),
-      ...(fixedPriceInCents !== undefined || existing?.fixedPriceInCents !== undefined ? { fixedPriceInCents: fixedPriceInCents ?? existing?.fixedPriceInCents } : {}),
-      ...(estimatedMinutes !== undefined || existing?.estimatedMinutes !== undefined ? { estimatedMinutes: estimatedMinutes ?? existing?.estimatedMinutes } : {}),
-      ...(warrantyDays !== undefined || existing?.warrantyDays !== undefined ? { warrantyDays: warrantyDays ?? existing?.warrantyDays } : {}),
       requiresDiagnosis: input.requiresDiagnosis === undefined ? existing?.requiresDiagnosis === true : input.requiresDiagnosis === true,
       requiresApproval: input.requiresApproval === undefined ? existing?.requiresApproval === true : input.requiresApproval === true,
       compatibility: parseCompatibility(input.compatibility ?? existing?.compatibility),
       requirements: parseRequirements(input.requirements ?? existing?.requirements),
       ...(existing ? { createdAt: existing.createdAt } : {}),
-    });
+    };
+
+    if (priceFromInCents !== undefined) definitionInput["priceFromInCents"] = priceFromInCents;
+    else if (existing?.priceFromInCents !== undefined) definitionInput["priceFromInCents"] = existing.priceFromInCents;
+
+    if (fixedPriceInCents !== undefined) definitionInput["fixedPriceInCents"] = fixedPriceInCents;
+    else if (existing?.fixedPriceInCents !== undefined) definitionInput["fixedPriceInCents"] = existing.fixedPriceInCents;
+
+    if (estimatedMinutes !== undefined) definitionInput["estimatedMinutes"] = estimatedMinutes;
+    else if (existing?.estimatedMinutes !== undefined) definitionInput["estimatedMinutes"] = existing.estimatedMinutes;
+
+    if (warrantyDays !== undefined) definitionInput["warrantyDays"] = warrantyDays;
+    else if (existing?.warrantyDays !== undefined) definitionInput["warrantyDays"] = existing.warrantyDays;
+
+    return ServiceTypeDefinition.create(definitionInput);
   }
 
   async create(input: Record<string, unknown>, adminUserId: string) {
