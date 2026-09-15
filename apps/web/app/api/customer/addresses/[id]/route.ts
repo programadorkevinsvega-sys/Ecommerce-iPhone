@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { CustomerAddressService } from "../../../../../../modules/customers/application/CustomerAddressService";
+import { CustomerAddressService } from "../../../../../../../modules/customers/application/CustomerAddressService";
 import { authenticatedCustomer } from "../../../../../lib/customerAccount";
 import { recordCustomerSecurityEvent } from "../../../../../lib/customerSecurity";
 
