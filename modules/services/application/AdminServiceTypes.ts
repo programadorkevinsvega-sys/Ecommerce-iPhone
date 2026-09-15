@@ -22,6 +22,11 @@ const SERVICE_CATEGORIES: readonly ServiceCategory[] = [
   "OTHER",
 ];
 
+type ServiceTypeCreateInput = Parameters<typeof ServiceTypeDefinition.create>[0];
+type MutableServiceTypeCreateInput = {
+  -readonly [K in keyof ServiceTypeCreateInput]: ServiceTypeCreateInput[K];
+};
+
 function parseCategory(value: unknown): ServiceCategory {
   if (typeof value !== "string" || !SERVICE_CATEGORIES.includes(value as ServiceCategory)) {
     throw new Error("INVALID_SERVICE_CATEGORY");
@@ -124,7 +129,7 @@ export class AdminServiceTypes {
     const estimatedMinutes = optionalPositiveInteger(input.estimatedMinutes, "INVALID_SERVICE_TIME");
     const warrantyDays = optionalPositiveInteger(input.warrantyDays, "INVALID_SERVICE_WARRANTY");
     const workflow = parseWorkflow(input.workflow ?? existing?.workflow);
-    const definitionInput: Parameters<typeof ServiceTypeDefinition.create>[0] = {
+    const definitionInput: MutableServiceTypeCreateInput = {
       code: existing?.code ?? String(input.code ?? "").trim().toUpperCase(),
       slug: String(input.slug ?? existing?.slug ?? "").trim().toLowerCase(),
       name: String(input.name ?? existing?.name ?? ""),
