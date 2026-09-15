@@ -5,6 +5,7 @@ import { CustomerManagement } from "../../../modules/customers/application/Custo
 import { CustomerSessionService } from "../../../modules/customers/application/CustomerSession";
 import { D1CustomerRepository } from "../../../modules/customers/infrastructure/D1CustomerRepository";
 import { D1CustomerSessionRepository } from "../../../modules/customers/infrastructure/D1CustomerSessionRepository";
+import { D1CustomerSecurityAuditRepository } from "../../../modules/customers/infrastructure/D1CustomerSecurityAuditRepository";
 import { WebCryptoCustomerSessionTokenGenerator } from "../../../modules/customers/infrastructure/WebCryptoCustomerSessionTokenGenerator";
 import { Checkout } from "../../../modules/orders/application/Checkout";
 import { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
@@ -16,6 +17,7 @@ export async function commerceContext() {
   const cartRepository = new D1CartRepository(env.DB);
   const customerRepository = new D1CustomerRepository(env.DB);
   const customerSessionRepository = new D1CustomerSessionRepository(env.DB);
+  const customerSecurityAudit = new D1CustomerSecurityAuditRepository(env.DB);
   return {
     db: env.DB,
     cart: new CartManagement(cartRepository),
@@ -24,6 +26,7 @@ export async function commerceContext() {
       customerSessionRepository,
       new WebCryptoCustomerSessionTokenGenerator(),
     ),
+    customerSecurityAudit,
     cartRepository,
     customerRepository,
     customerPortal: new D1CustomerPortalRepository(env.DB),
