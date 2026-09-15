@@ -124,7 +124,7 @@ export class AdminServiceTypes {
     const estimatedMinutes = optionalPositiveInteger(input.estimatedMinutes, "INVALID_SERVICE_TIME");
     const warrantyDays = optionalPositiveInteger(input.warrantyDays, "INVALID_SERVICE_WARRANTY");
     const workflow = parseWorkflow(input.workflow ?? existing?.workflow);
-    const definitionInput = {
+    const definitionInput: Parameters<typeof ServiceTypeDefinition.create>[0] = {
       code: existing?.code ?? String(input.code ?? "").trim().toUpperCase(),
       slug: String(input.slug ?? existing?.slug ?? "").trim().toLowerCase(),
       name: String(input.name ?? existing?.name ?? ""),
@@ -145,17 +145,17 @@ export class AdminServiceTypes {
       ...(existing ? { createdAt: existing.createdAt } : {}),
     };
 
-    if (priceFromInCents !== undefined) definitionInput["priceFromInCents"] = priceFromInCents;
-    else if (existing?.priceFromInCents !== undefined) definitionInput["priceFromInCents"] = existing.priceFromInCents;
+    if (priceFromInCents !== undefined) definitionInput.priceFromInCents = priceFromInCents;
+    else if (existing?.priceFromInCents !== undefined) definitionInput.priceFromInCents = existing.priceFromInCents;
 
-    if (fixedPriceInCents !== undefined) definitionInput["fixedPriceInCents"] = fixedPriceInCents;
-    else if (existing?.fixedPriceInCents !== undefined) definitionInput["fixedPriceInCents"] = existing.fixedPriceInCents;
+    if (fixedPriceInCents !== undefined) definitionInput.fixedPriceInCents = fixedPriceInCents;
+    else if (existing?.fixedPriceInCents !== undefined) definitionInput.fixedPriceInCents = existing.fixedPriceInCents;
 
-    if (estimatedMinutes !== undefined) definitionInput["estimatedMinutes"] = estimatedMinutes;
-    else if (existing?.estimatedMinutes !== undefined) definitionInput["estimatedMinutes"] = existing.estimatedMinutes;
+    if (estimatedMinutes !== undefined) definitionInput.estimatedMinutes = estimatedMinutes;
+    else if (existing?.estimatedMinutes !== undefined) definitionInput.estimatedMinutes = existing.estimatedMinutes;
 
-    if (warrantyDays !== undefined) definitionInput["warrantyDays"] = warrantyDays;
-    else if (existing?.warrantyDays !== undefined) definitionInput["warrantyDays"] = existing.warrantyDays;
+    if (warrantyDays !== undefined) definitionInput.warrantyDays = warrantyDays;
+    else if (existing?.warrantyDays !== undefined) definitionInput.warrantyDays = existing.warrantyDays;
 
     return ServiceTypeDefinition.create(definitionInput);
   }
