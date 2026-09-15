@@ -28,6 +28,11 @@ export class D1ServiceTypeRepository implements ServiceTypeRepository {
     await this.db.batch(statements);
   }
 
+  async disable(code: string): Promise<boolean> {
+    const result = await this.db.prepare("UPDATE service_types SET enabled=0, updated_at=CURRENT_TIMESTAMP WHERE code=? AND enabled=1").bind(code).run();
+    return result.meta.changes === 1;
+  }
+
   private async map(row: any): Promise<ServiceTypeDefinition> {
     const [compatibility, requirements] = await Promise.all([
       this.db.prepare("SELECT brand,model FROM service_type_compatibility WHERE service_type_code=? ORDER BY brand,model").bind(row.code).all<any>(),
