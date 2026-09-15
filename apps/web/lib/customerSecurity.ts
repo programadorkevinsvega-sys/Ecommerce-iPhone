@@ -14,5 +14,6 @@ export async function recordCustomerSecurityEvent(
   metadata?: Record<string, unknown>,
 ): Promise<void> {
   const origin = customerRequestOrigin(request);
-  await audit.record({ customerId, eventType, sourceIp: origin.sourceIp, userAgent: origin.userAgent, metadata });
+  const event = { customerId, eventType, sourceIp: origin.sourceIp, userAgent: origin.userAgent };
+  await audit.record(metadata === undefined ? event : { ...event, metadata });
 }
