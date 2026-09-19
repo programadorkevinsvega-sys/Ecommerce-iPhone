@@ -34,12 +34,12 @@ export class D1CustomerDeviceRepository implements CustomerDeviceRepository {
     return row ? this.hydrate(row) : null;
   }
 
-  async create(props: CustomerDeviceProps): Promise<CustomerDevice> {
-    const id = crypto.randomUUID();
+  async create(device: CustomerDevice): Promise<CustomerDevice> {
+    const props = device.toPrimitives();
     await this.db.prepare(
       "INSERT INTO customer_devices(id,customer_id,brand,model,serial_last4,imei_last4,color,notes,device_type,capacity,physical_condition) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-    ).bind(id, props.customerId, props.brand, props.model, props.serialLast4, props.imeiLast4, props.color, props.notes, props.deviceType, props.capacity, props.physicalCondition).run();
-    const created = await this.find(props.customerId, id);
+    ).bind(device.getId(), props.customerId, props.brand, props.model, props.serialLast4, props.imeiLast4, props.color, props.notes, props.deviceType, props.capacity, props.physicalCondition).run();
+    const created = await this.find(props.customerId, device.getId());
     if (!created) throw new Error("DEVICE_CREATE_FAILED");
     return created;
   }
