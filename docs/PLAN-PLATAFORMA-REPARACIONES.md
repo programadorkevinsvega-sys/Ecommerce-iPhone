@@ -214,7 +214,15 @@ La verificación automática de Cloudflare debe ejecutarse con éxito antes de c
 
 ### Objetivo
 
-Relacionar cada cliente con sus dispositivos y reutilizar esos datos en futuras órdenes.
+Registrar y mantener la identidad operativa de los equipos asociados a cada cliente para reutilizarlos en futuras órdenes de reparación.
+
+El cliente puede consultar sus dispositivos, pero la creación, edición y archivado de los datos técnicos de un equipo corresponde al personal autorizado del taller. El dispositivo representa un activo físico recibido o gestionado por la operación, por lo que los datos de identificación y condición no deben quedar bajo edición libre del cliente.
+
+### Roles
+
+- `ADMIN`: puede registrar, consultar, editar y archivar dispositivos de clientes según sus permisos.
+- `TECHNICIAN`: registrará y actualizará los datos técnicos del equipo dentro del flujo operativo de reparación cuando la interfaz de técnico esté habilitada en su fase correspondiente.
+- `CUSTOMER`: puede consultar únicamente sus propios dispositivos y utilizarlos como referencia al solicitar o consultar una reparación.
 
 ### Datos
 
@@ -1113,7 +1121,7 @@ La auditoría debe conservar actor, acción, recurso, recurso afectado, fecha y 
 La plataforma se considerará implementada cuando:
 
 - Un cliente pueda crear una cuenta.
-- El cliente pueda registrar o seleccionar un dispositivo.
+- El cliente pueda consultar sus dispositivos y seleccionar un dispositivo registrado al solicitar una reparación.
 - El cliente pueda solicitar un servicio real.
 - Se genere una orden persistida en D1.
 - El Admin pueda recibir y asignar la orden.
