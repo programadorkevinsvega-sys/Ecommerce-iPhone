@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CustomerDeviceService } from "./CustomerDeviceService";
 import type { CustomerDeviceRepository } from "./CustomerDeviceRepository";
-import type { CustomerDevice, CustomerDeviceProps } from "../domain/CustomerDevice";
+import { CustomerDevice, type CustomerDeviceProps } from "../domain/CustomerDevice";
 
 class Devices implements CustomerDeviceRepository {
   private readonly items = new Map<string, CustomerDevice>();
@@ -13,8 +13,7 @@ class Devices implements CustomerDeviceRepository {
     const item = this.items.get(id);
     return item?.getCustomerId() === customerId ? item : null;
   }
-  async create(props: CustomerDeviceProps): Promise<CustomerDevice> {
-    const device = (await import("../domain/CustomerDevice")).CustomerDevice.create(crypto.randomUUID(), props);
+  async create(device: CustomerDevice): Promise<CustomerDevice> {
     this.items.set(device.getId(), device);
     return device;
   }
