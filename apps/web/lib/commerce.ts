@@ -7,6 +7,8 @@ import { D1CustomerRepository } from "../../../modules/customers/infrastructure/
 import { D1CustomerSessionRepository } from "../../../modules/customers/infrastructure/D1CustomerSessionRepository";
 import { D1CustomerSecurityAuditRepository } from "../../../modules/customers/infrastructure/D1CustomerSecurityAuditRepository";
 import { WebCryptoCustomerSessionTokenGenerator } from "../../../modules/customers/infrastructure/WebCryptoCustomerSessionTokenGenerator";
+import { CustomerDeviceService } from "../../../modules/customers/application/CustomerDeviceService";
+import { D1CustomerDeviceRepository } from "../../../modules/customers/infrastructure/D1CustomerDeviceRepository";
 import { Checkout } from "../../../modules/orders/application/Checkout";
 import { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
 import { D1ReservationRepository } from "../../../modules/orders/infrastructure/D1ReservationRepository";
@@ -22,13 +24,11 @@ export async function commerceContext() {
     db: env.DB,
     cart: new CartManagement(cartRepository),
     customer: new CustomerManagement(customerRepository),
-    customerSession: new CustomerSessionService(
-      customerSessionRepository,
-      new WebCryptoCustomerSessionTokenGenerator(),
-    ),
+    customerSession: new CustomerSessionService(customerSessionRepository, new WebCryptoCustomerSessionTokenGenerator()),
     customerSecurityAudit,
     cartRepository,
     customerRepository,
+    customerDevices: new CustomerDeviceService(new D1CustomerDeviceRepository(env.DB)),
     customerPortal: new D1CustomerPortalRepository(env.DB),
     orderRepository: new D1OrderRepository(env.DB),
   };
