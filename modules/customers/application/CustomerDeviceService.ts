@@ -14,7 +14,7 @@ export class CustomerDeviceService {
 
   async create(customerId: string, input: Omit<CustomerDeviceProps, "customerId">): Promise<CustomerDevice> {
     const device = CustomerDevice.create(crypto.randomUUID(), { customerId, ...input });
-    const created = await this.repository.create(device.toPrimitives());
+    const created = await this.repository.create(device);
     await this.repository.recordEvent(customerId, created.getId(), "CREATED", { deviceType: input.deviceType });
     return created;
   }
