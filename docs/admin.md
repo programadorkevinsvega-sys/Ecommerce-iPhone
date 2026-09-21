@@ -4,7 +4,7 @@
 
 El bounded context de técnicos permanece separado de admin_users. El hardening reciente conserva las capacidades administrativas existentes y mueve la superficie técnica hacia un composition root compartido, manteniendo RBAC administrativo independiente.
 
-La UI de /admin/technicians sigue gestionando identidad operacional TÉCNICO. El portal /technician/** mejora ahora sus estados de operación y no introduce ningún bypass de autorización. La certificación de Fase 06 continúa pendiente hasta completar la matriz RBAC/IDOR/BOLA/concurrencia/auditoría y la evidencia productiva del release.
+El bounded context administrativo mantiene autorización server-side mediante permisos efectivos. Los overrides por usuario se resuelven en sesión y los Application use cases que aplican autorización usan ese conjunto efectivo; no dependen únicamente del rol base. La certificación de Fase 06 continúa pendiente solamente por la ejecución/evidencia de los gates finales.
 
 ## Scope
 
@@ -34,7 +34,7 @@ Only these roles belong to `admin_users`:
 - Passwords use PBKDF2-HMAC-SHA-256 with random salt.
 - Five consecutive failed attempts lock the account for 15 minutes.
 - Unknown-account authentication executes a password-verification path to reduce timing enumeration differences.
-- RBAC is enforced server-side.
+- RBAC is enforced server-side using effective role + per-user permissions.
 - Security-sensitive admin operations are audited.
 - Device identifiers are masked where exposed to admin views.
 
@@ -110,11 +110,11 @@ It is used across dashboard/resource/table views instead of inconsistent full-pa
 - `/api/admin/users`
 - `/api/admin/users/:id/permissions`
 - `/api/admin/technicians`
-- repair-order, inventory, payment, notification, CMS, promotions and audit routes.
+- repair-order, inventory, payment, notification, CMS, promotions, reviews and audit routes.
 
 ## Certification
 
-Implementation is advanced, but Phase 06 remains **not certified 100%** until the complete architecture/RBAC/IDOR/concurrency/audit test matrix and production evidence pass on a release.
+Implementation/hardening is complete for the identified F6 code gaps, but Phase 06 remains **not certified 100%** until the final architecture/security tests, production smoke matrix and release evidence pass.
 
 
 ## Current UI hardening — 2026-09-21
@@ -124,4 +124,8 @@ Implementation is advanced, but Phase 06 remains **not certified 100%** until th
 - The management form provides real create/update and activate/deactivate operations; the capability panel is descriptive and does not create administrative RBAC permissions.
 - Final Phase 06 certification remains pending until the current build, architecture/RBAC gates and production evidence pass.
 - `AdminLoadingState` is the shared loading pattern across the recently hardened resource pages.
-- The technical identity remains separated from `admin_users`; the remaining portal work is visual hardening plus certification.
+- The technical identity remains separated from `admin_users`.
+- Effective permission authorization is now consumed by admin resources and categories.
+- Audit viewer, Promotions and Reviews are composed through `adminApplication`; HTTP routes no longer instantiate those D1 repositories directly.
+- Payment list/detail routes require `payments:read`.
+- `pnpm verify:admin:production` is the repeatable real-production RBAC/session smoke gate.
