@@ -4,7 +4,7 @@ import { PERMISSIONS, requireAdmin } from "../../../../../lib/adminAuth";
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const { env } = await requireAdmin(PERMISSIONS.ordersRead);
+    const { env } = await requireAdmin(PERMISSIONS.paymentsRead);
     const { id } = await context.params;
     if (!id.trim()) return NextResponse.json({ error: "Payment id required" }, { status: 400 });
     const result = await (await adminPaymentsApplication(env)).get(id);
