@@ -61,7 +61,7 @@ describe("AdminResources", () => {
     const granted = [...ROLE_PERMISSIONS.SALES, PERMISSIONS.inventoryRead];
     await expect(service.list({
       actor: { id: "sales-1", email: "sales@example.com", role: "SALES", permissions: granted },
-      resource: "orders",
+      resource: "products",
       query: "",
     })).resolves.toEqual([]);
   });
