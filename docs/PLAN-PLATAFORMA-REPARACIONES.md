@@ -12,7 +12,7 @@ La plataforma de reparaciones ya no está en una etapa puramente de planificaci�
 | Órdenes de reparación | 🟢 Implementado + operaciones Admin |
 | Asignación de técnicos | 🟢 Implementado |
 | Identidad técnica independiente | 🟢 Implementado |
-| Portal técnico | 🟡 Funcional; rediseño visual pendiente |
+| Portal técnico | 🟡 Funcional; `TechnicianHeader` integrado, rediseño visual pendiente |
 | Evidencia fotográfica | 🟢 Implementada |
 | Repuestos | 🟢 Implementado |
 | Seguimiento público | 🟢 Implementado |
@@ -300,7 +300,7 @@ La plataforma parte de una instalación nueva: no existe migración de cuentas t
 
 El portal técnico es funcional y dispone de login, dashboard, órdenes, dispositivos y perfil. Existe `apps/web/app/technician/TechnicianHeader.tsx` como base de navegación, pero el workspace actual todavía requiere una iteración visual para quedar al mismo nivel de diseño del storefront y del backoffice.
 
-La prioridad de UI pendiente es únicamente presentación/UX; no implica cambiar el modelo de autorización ni crear otro sistema de permisos.
+La prioridad de UI pendiente es únicamente presentación/UX; no implica cambiar el modelo de autorización ni crear otro sistema de permisos. Los últimos errores de compilación/tipado detectados en `TechnicianUser`, `TechnicianHeader` y `StoreHeader` fueron corregidos en `main`; la certificación sigue condicionada a build/deploy/verify exitosos.
 
 #### Gestión administrativa
 
