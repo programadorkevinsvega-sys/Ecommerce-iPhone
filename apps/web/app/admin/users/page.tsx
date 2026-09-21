@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import AdminSidebar from "../AdminSidebar";
 
@@ -106,7 +106,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  async function load() {
+  const load = useCallback(async () => {
     const response = await fetch("/api/admin/users", {
       cache: "no-store",
       credentials: "same-origin",
@@ -121,12 +121,12 @@ export default function AdminUsersPage() {
       return;
     }
     setItems(data.items ?? []);
-  }
+  }, []);
 
   useEffect(() => {
     void load();
     void loadRolePermissions(EMPTY.role);
-  }, []);
+  }, [load, loadRolePermissions]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
