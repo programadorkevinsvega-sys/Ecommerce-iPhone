@@ -1,3 +1,5 @@
+import type { AuditPort } from "../../admin/application/AuditPort";
+
 export type PromotionInput = Readonly<{
   code: string;
   name: string;
@@ -15,8 +17,6 @@ export type PromotionRepository = {
   save(input: PromotionInput, id?: string): Promise<string>;
   setActive(id: string, active: boolean): Promise<boolean>;
 };
-
-import type { AuditPort } from "../../admin/application/AuditPort";
 
 export class AdminPromotions {
   constructor(
