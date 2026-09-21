@@ -32,3 +32,16 @@ The same event contract can be used by future order/payment/service state transi
 ## Observability
 
 Administrators with `dashboard:read` can inspect delivery history and outbox status at `/api/admin/notifications`.
+
+
+## Current certification state
+
+The outbox, Queue dispatcher, Resend adapter and delivery ledger are implemented.
+
+Still pending before Fase 07 can be declared complete:
+
+- explicit DLQ strategy;
+- deterministic retry policy and terminal-failure classification;
+- replay tooling;
+- terminal failure audit/evidence;
+- final production certification.
