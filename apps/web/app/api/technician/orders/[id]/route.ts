@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireTechnician } from "../../../../../lib/technicianAuth";
 import { technicianRepairOrderApplication } from "../../../../../lib/technicianApplication";
-import type { RepairOrderStatus, DeviceCondition } from "../../../../../../../modules/repairs/domain/RepairOrder";
 
 const allowed = ["DIAGNOSING", "WAITING_PART", "IN_REPAIR", "QUALITY_CONTROL"];
 
@@ -52,11 +51,7 @@ export async function PATCH(
       if (!allowed.includes(body.status)) {
         return NextResponse.json({ error: "Forbidden transition" }, { status: 403 });
       }
-      const order = await manager.transitionAssigned(
-        id,
-        body.status as RepairOrderStatus,
-        technician.id,
-      );
+      const order = await manager.transitionAssigned(id, body.status, technician.id);
       return NextResponse.json({ order: order.toPrimitives() });
     }
 
@@ -66,7 +61,7 @@ export async function PATCH(
       const value = item as Record<string, unknown>;
       return {
         component: String(value.component ?? ""),
-        condition: String(value.condition ?? "NOT_TESTED") as DeviceCondition,
+        condition: String(value.condition ?? "NOT_TESTED"),
         ...(typeof value.notes === "string" ? { notes: value.notes } : {}),
       };
     });
