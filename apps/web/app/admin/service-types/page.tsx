@@ -59,19 +59,152 @@ export default function ServiceTypesPage() {
     catch (e) { setError(e instanceof Error ? e.message : "No se pudo archivar"); }
   }
 
-  return <main className="admin-shell"><AdminSidebar active="service-types" /><section className="admin-content"><div style={{ padding: 28, maxWidth: 1500, margin: "0 auto" }}>
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "end", marginBottom: 24 }}><div><h1 style={{ marginBottom: 6 }}>Catálogo de servicios</h1><p style={{ opacity: .7 }}>Servicios configurables para reparaciones, mantenimiento, diagnóstico y operaciones técnicas.</p></div><button type="button" onClick={reset}>Nuevo servicio</button></div>
-    {error && <div role="alert" style={{ marginBottom: 18 }}>{error}</div>}
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(360px,1fr)", gap: 24, alignItems: "start" }}>
-      <section><div style={{ display: "grid", gap: 12 }}>{loading ? <p>Cargando catálogo…</p> : items.map((item) => <article key={item.code} style={{ border: "1px solid currentColor", borderRadius: 12, padding: 18, opacity: item.enabled ? 1 : .55 }}><div style={{ display: "flex", justifyContent: "space-between", gap: 14 }}><div><strong>{item.name}</strong><div style={{ fontSize: 13, opacity: .7 }}>{item.code} · {item.slug} · {item.category}</div></div><span>{item.enabled ? "Activo" : "Archivado"}</span></div><p>{item.description}</p><div style={{ display: "flex", gap: 18, flexWrap: "wrap", fontSize: 13 }}><span>Desde: {item.priceFromInCents != null ? `$${Number(item.priceFromInCents).toLocaleString("es-CO")}` : "—"}</span><span>Tiempo: {item.estimatedMinutes ?? "—"} min</span><span>Garantía: {item.warrantyDays ?? "—"} días</span><span>Compatibilidad: {item.compatibility?.length ?? 0}</span></div><div style={{ display: "flex", gap: 8, marginTop: 14 }}><button type="button" onClick={() => edit(item)}>Editar</button>{item.enabled && <button type="button" onClick={() => archive(item.code)}>Archivar</button>}</div></article>)}</div></section>
-      <section style={{ border: "1px solid currentColor", borderRadius: 12, padding: 20 }}><h2>{editing ? "Editar servicio" : "Nuevo servicio"}</h2><form onSubmit={submit} style={{ display: "grid", gap: 10 }}>
-        {(["code","slug","name","description","imageUrl","category","priceFromInCents","fixedPriceInCents","estimatedMinutes","warrantyDays"] as const).map((key) => <label key={key}>{key}<input value={String(value(key))} onChange={(e) => set(key, e.target.value)} required={key === "code" || key === "slug" || key === "name" || key === "description" || key === "category"} disabled={editing !== null && key === "code"} /></label>)}
-        <label>Compatibilidad<div>Una por línea: marca|modelo (modelo opcional)</div><textarea rows={5} value={form.compatibility} onChange={(e) => set("compatibility", e.target.value)} /></label>
-        <label>Requisitos<div>Uno por línea. Prefija con * los obligatorios.</div><textarea rows={5} value={form.requirements} onChange={(e) => set("requirements", e.target.value)} /></label>
-        <fieldset><legend>Flujo</legend>{([["requiresDiagnosis","Requiere diagnóstico"],["requiresApproval","Requiere aprobación"],["quoteRequired","Requiere cotización"],["paymentRequired","Requiere pago"],["technicianApprovalRequired","Requiere aprobación técnica"],["adminApprovalRequired","Requiere aprobación administrativa"],["customerOwnershipProofRequired","Requiere prueba de propiedad"]] as const).map(([key,label]) => <label key={key}><input type="checkbox" checked={Boolean(value(key))} onChange={(e) => set(key, e.target.checked)} /> {label}</label>)}</fieldset>
-        <label><input type="checkbox" checked={form.enabled} onChange={(e) => set("enabled", e.target.checked)} /> Publicado</label>
-        <div style={{ display: "flex", gap: 8 }}><button disabled={saving} type="submit">{saving ? "Guardando…" : editing ? "Guardar cambios" : "Crear servicio"}</button>{editing && <button type="button" onClick={reset}>Cancelar</button>}</div>
-      </form></section>
-    </div>
-    </div></section></main>;
+  return (
+    <main className="admin-shell">
+      <AdminSidebar active="service-types" />
+      <section className="admin-content">
+        <header className="admin-topbar">
+          <div>
+            <p className="admin-kicker">Catálogo</p>
+            <h1>Servicios ofrecidos</h1>
+            <p>Configura servicios reales de reparación, diagnóstico y mantenimiento con sus reglas operativas.</p>
+          </div>
+        </header>
+
+        {error && <p className="admin-error" role="alert">{error}</p>}
+
+        <section className="admin-workspace admin-page-grid service-types-layout">
+          <div className="admin-page-panel admin-page-table-panel">
+            <div className="admin-section-heading">
+              <div>
+                <p className="admin-kicker">Catálogo</p>
+                <h2>Servicios registrados</h2>
+              </div>
+              <div className="admin-toolbar-actions">
+                <span className="muted">{items.length} servicios</span>
+                <button className="admin-button primary" type="button" onClick={reset}>Nuevo servicio</button>
+              </div>
+            </div>
+
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>Servicio</th>
+                    <th>Categoría</th>
+                    <th>Precio / tiempo</th>
+                    <th>Flujo</th>
+                    <th>Estado</th>
+                    <th className="align-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr key={item.code}>
+                      <td>
+                        <strong>{item.name}</strong>
+                        <span className="table-subtext">{item.code} · {item.slug}</span>
+                      </td>
+                      <td>{item.category}</td>
+                      <td>
+                        {item.fixedPriceInCents != null
+                          ? `$${Number(item.fixedPriceInCents / 100).toLocaleString("es-CO")}`
+                          : item.priceFromInCents != null
+                            ? `Desde $${Number(item.priceFromInCents / 100).toLocaleString("es-CO")}`
+                            : "Por definir"}
+                        <span className="table-subtext">{item.estimatedMinutes ?? "—"} min · {item.warrantyDays ?? "—"} días garantía</span>
+                      </td>
+                      <td>
+                        <span className="table-subtext">
+                          {item.workflow?.quoteRequired ? "Cotización" : "Precio directo"} · {item.workflow?.paymentRequired ? "Pago" : "Sin pago previo"}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`status ${item.enabled ? "success" : "muted-status"}`}>
+                          {item.enabled ? "Publicado" : "Archivado"}
+                        </span>
+                      </td>
+                      <td className="align-right">
+                        <button className="table-action" type="button" onClick={() => edit(item)}>Editar</button>
+                        {item.enabled && <button className="table-action danger" type="button" onClick={() => void archive(item.code)}>Archivar</button>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!items.length && !loading && (
+                <div className="admin-empty">
+                  <span>◇</span>
+                  <h3>No hay servicios configurados</h3>
+                  <p>Registra los servicios que ofrecerá el taller para que puedan aparecer en el flujo real.</p>
+                </div>
+              )}
+              {loading && <div className="admin-loading-inline">Cargando catálogo…</div>}
+            </div>
+          </div>
+
+          <div className="admin-page-panel">
+            <div className="admin-section-heading">
+              <div>
+                <p className="admin-kicker">Configuración</p>
+                <h2>{editing ? "Editar servicio" : "Nuevo servicio"}</h2>
+              </div>
+              {editing && <button className="admin-button" type="button" onClick={reset}>Nuevo</button>}
+            </div>
+
+            <form className="admin-form" onSubmit={submit}>
+              <div className="form-grid">
+                <label>Código<input required maxLength={64} value={form.code} onChange={(e) => set("code", e.target.value.toUpperCase())} disabled={editing !== null} /></label>
+                <label>Slug<input required value={form.slug} onChange={(e) => set("slug", e.target.value)} /></label>
+                <label>Nombre<input required maxLength={180} value={form.name} onChange={(e) => set("name", e.target.value)} /></label>
+                <label>Categoría<select value={form.category} onChange={(e) => set("category", e.target.value)}><option>DEVICE</option><option>NETWORK</option><option>SOFTWARE</option><option>REPAIR</option><option>OTHER</option></select></label>
+                <label>Precio desde · centavos COP<input type="number" min="0" value={form.priceFromInCents} onChange={(e) => set("priceFromInCents", e.target.value)} /></label>
+                <label>Precio fijo · centavos COP<input type="number" min="0" value={form.fixedPriceInCents} onChange={(e) => set("fixedPriceInCents", e.target.value)} /></label>
+                <label>Tiempo estimado · minutos<input type="number" min="1" value={form.estimatedMinutes} onChange={(e) => set("estimatedMinutes", e.target.value)} /></label>
+                <label>Garantía · días<input type="number" min="0" value={form.warrantyDays} onChange={(e) => set("warrantyDays", e.target.value)} /></label>
+              </div>
+
+              <label>Descripción<textarea required rows={4} maxLength={5000} value={form.description} onChange={(e) => set("description", e.target.value)} /></label>
+              <label>Imagen · URL<input value={form.imageUrl} onChange={(e) => set("imageUrl", e.target.value)} placeholder="URL pública de imagen" /></label>
+
+              <fieldset className="admin-category-picker">
+                <legend>Flujo del servicio</legend>
+                <div className="admin-check-grid">
+                  {([
+                    ["requiresDiagnosis", "Requiere diagnóstico"],
+                    ["requiresApproval", "Requiere aprobación del cliente"],
+                    ["quoteRequired", "Requiere cotización"],
+                    ["paymentRequired", "Requiere pago"],
+                    ["technicianApprovalRequired", "Requiere aprobación técnica"],
+                    ["adminApprovalRequired", "Requiere aprobación administrativa"],
+                    ["customerOwnershipProofRequired", "Requiere prueba de propiedad"],
+                  ] as const).map(([key, label]) => (
+                    <label className="checkbox-label" key={key}>
+                      <input type="checkbox" checked={Boolean(value(key))} onChange={(e) => set(key, e.target.checked)} />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <label>Compatibilidad <span className="form-help">Una por línea: Marca|Modelo.</span><textarea rows={4} value={form.compatibility} onChange={(e) => set("compatibility", e.target.value)} /></label>
+              <label>Requisitos <span className="form-help">Prefija con * los obligatorios.</span><textarea rows={4} value={form.requirements} onChange={(e) => set("requirements", e.target.value)} /></label>
+
+              <label className="checkbox-label">
+                <input type="checkbox" checked={form.enabled} onChange={(e) => set("enabled", e.target.checked)} />
+                Publicado para clientes
+              </label>
+
+              <div className="modal-actions">
+                {editing && <button className="admin-button" type="button" onClick={reset}>Cancelar</button>}
+                <button className="admin-button primary" disabled={saving} type="submit">
+                  {saving ? "Guardando…" : editing ? "Guardar cambios" : "Crear servicio"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+      </section>
+    </main>
+  );
 }
