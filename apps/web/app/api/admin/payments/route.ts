@@ -4,7 +4,7 @@ import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
 
 export async function GET(request: Request) {
   try {
-    const { env } = await requireAdmin(PERMISSIONS.ordersRead);
+    const { env } = await requireAdmin(PERMISSIONS.paymentsRead);
     const url = new URL(request.url);
     const application = await adminPaymentsApplication(env);
     const result = await application.list({
