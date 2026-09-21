@@ -43,5 +43,10 @@ CREATE INDEX IF NOT EXISTS idx_technician_sessions_active ON technician_sessions
 CREATE INDEX IF NOT EXISTS idx_technician_audit_created ON technician_audit_events(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_technician_audit_resource ON technician_audit_events(resource_type, resource_id, created_at DESC);
 
+INSERT OR IGNORE INTO technician_users (id,email,password_hash,first_name,last_name,active,failed_login_count,locked_until,last_login_at,created_at,updated_at)
+SELECT id,email,password_hash,first_name,last_name,active,failed_login_count,locked_until,last_login_at,created_at,updated_at
+FROM admin_users
+WHERE role='TECHNICIAN';
+
 ALTER TABLE repair_orders ADD COLUMN customer_device_id TEXT REFERENCES customer_devices(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_repair_orders_customer_device ON repair_orders(customer_device_id);
