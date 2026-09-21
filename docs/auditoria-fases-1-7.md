@@ -4,8 +4,8 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD auditado:** `87d684119875e57bb12a2818da1804c440206325`  
-**Última actualización:** 2026-09-13 UTC  
+**HEAD auditado:** `4c7feecdfcd9a97986fdc0a062b6d7e49c0ef03c`  
+**Última actualización:** 2026-09-21 UTC  
 **Entorno remoto operativo:** producción únicamente.
 
 > Una fase no se declara 100% por compilar. El cierre exige código, pruebas, seguridad, reproducibilidad, deploy y evidencia operativa.
@@ -16,13 +16,13 @@
 
 | Fase | Estado | Certificación |
 |---|---|---|
-| 01 Foundation | 🟡 Implementada + frontend data hardening | Pendiente gate/certificación final |
-| 02 Storefront | 🟢 Implementada | Pendiente E2E/performance/accessibility |
+| 01 Foundation | 🟡 Implementada + hardening | Pendiente certificación final |
+| 02 Storefront | 🟢 Implementada + navegación pública estandarizada | Pendiente E2E/performance/accessibility/SEO final |
 | 03 Commerce Core | 🟢 Implementación cerrada | Pendiente certificación exhaustiva en producción |
 | 04 Payments | 🟡 Implementada + hardening | Pendiente certificación real de proveedores |
 | 05 Services | 🟢 Implementación + hardening | Pendiente gates/certificación |
-| 06 Admin + RBAC | 🟡 Application consolidada + hardening | Pendiente build/tests/gates |
-| 07 Notifications + Queues | 🟡 Parcial | DLQ/retry/replay pendiente |
+| 06 Admin + RBAC | 🟡 Application consolidada + hardening UI/RBAC | Pendiente gates de seguridad y certificación |
+| 07 Notifications + Queues | 🟡 Implementación funcional | DLQ/retry/replay pendiente |
 
 El trabajo reciente corresponde al hardening de **Fase 01 — eliminación de datos/mock de negocio en frontend** y al cierre arquitectónico/hardening de **Fase 06**.
 
@@ -67,7 +67,7 @@ Implementado: monorepo modular, DDD + Clean Architecture, bounded contexts, D1/R
 ## Reproducibilidad
 
 - Node `24.18.0`.
-- pnpm `10.15.0`.
+- pnpm `12.4.1`.
 - `pnpm install --frozen-lockfile`.
 - lockfile versionado.
 - `.node-version` / `.nvmrc` fijados.
@@ -409,6 +409,58 @@ F6 será 🟢 100% solamente cuando todos los módulos administrativos relevante
 **Estado actual: 🟡 NO CERTIFICADA.**
 
 ---
+
+# 8.14 Technical Identity / Technician Bounded Context
+
+El contexto de técnicos ya está implementado en código y separado de `admin_users`.
+
+### Persistencia
+
+- `technician_users`
+- `technician_sessions`
+- `technician_audit_events`
+- migración `0030_technician_accounts.sql`
+
+### Aplicación y dominio
+
+- `TechnicianUser`
+- `TechnicianAuthService`
+- `TechnicianManagement`
+- `TechnicianDeviceService`
+- password/token hashing
+- repositorio de usuarios y sesiones.
+
+### Superficie web
+
+- `/technician/login`
+- `/technician`
+- `/technician/orders`
+- `/technician/devices`
+- `/technician/profile`
+
+### Seguridad operacional
+
+- cuenta creada únicamente por Administración;
+- sin auto-registro público;
+- sesión independiente `technician_session`;
+- lifetime de 12 horas;
+- revocación de sesiones anteriores al login exitoso;
+- lockout tras 5 fallos durante 15 minutos;
+- auditoría de login/logout;
+- acceso limitado a órdenes asignadas;
+- sin acceso al backoffice administrativo.
+
+**Estado:** 🟡 implementado; pendiente build Cloudflare exitoso y certificación funcional/visual del workspace técnico.
+
+## 8.15 Recent storefront/admin consistency work
+
+Se consolidó la navegación pública en `apps/web/app/components/StoreHeader.tsx` con:
+
+`Inicio · Catálogo · Servicios · Consultar reparación · Contacto · Carrito · Mi cuenta`
+
+También se estandarizó el loading administrativo mediante `AdminLoadingState`.
+
+Estos cambios están en `main` pero todavía no deben marcarse como certificados en producción hasta completar un build/deploy Cloudflare posterior.
 
 # 9. Notifications + Queues — FASE 07
 
