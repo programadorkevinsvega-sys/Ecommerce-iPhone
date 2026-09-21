@@ -4,8 +4,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 type StoreNavigationProps = {
-  activeHref?: string;
-  children?: ReactNode;
+  activeHref?: string | undefined;
+  children?: ReactNode | undefined;
 };
 
 type StoreHeaderProps = StoreNavigationProps;
