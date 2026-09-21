@@ -154,3 +154,109 @@
     width:100%;
   }
 }
+
+
+/* Customer account dashboard */
+.account-page{min-height:100vh;background:#f4f5f1;color:#171715;padding-bottom:80px}
+.account-topbar{width:min(1240px,calc(100% - 40px));min-height:76px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:24px}
+.account-topbar nav{display:flex;align-items:center;gap:22px;color:#666660;font-size:.88rem}
+.account-topbar nav a:hover,.account-topbar nav a:focus-visible{color:#171715}
+.account-hero{width:min(1240px,calc(100% - 40px));margin:10px auto 18px;min-height:360px;padding:42px;border-radius:30px;display:flex;align-items:flex-end;justify-content:space-between;gap:50px;background:linear-gradient(135deg,#171715 0%,#252521 58%,#32332c 100%);color:#fff;overflow:hidden;position:relative;isolation:isolate}
+.account-hero:after{content:"";position:absolute;width:420px;height:420px;right:-120px;top:-150px;border-radius:50%;background:radial-gradient(circle,rgba(215,255,95,.25),rgba(215,255,95,0) 68%);z-index:-1}
+.account-hero-copy{max-width:760px}
+.account-hero .eyebrow{color:#aeadA5;margin-top:22px;margin-bottom:12px}
+.account-hero h1{margin:0;font-size:clamp(3rem,7vw,6.4rem);line-height:.9;letter-spacing:-.065em}
+.account-hero-copy>p:not(.eyebrow){max-width:650px;margin:22px 0 28px;color:#c9c9c2;line-height:1.65;font-size:1.02rem}
+.account-badge{display:inline-flex;padding:7px 10px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.06);color:#e7e8e1;font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+.account-identity{display:flex;align-items:center;gap:12px}
+.account-avatar{display:grid;place-items:center;width:48px;height:48px;flex:0 0 48px;border-radius:50%;background:#d7ff5f;color:#171715;font-weight:900}
+.account-identity div{display:grid;gap:3px}
+.account-identity strong{font-size:.92rem}
+.account-identity span{color:#aeadA5;font-size:.8rem}
+.account-hero-actions{display:flex;gap:10px;flex-wrap:wrap}
+.button.light{border-color:#fff;background:#fff;color:#171715}
+.button.dark-outline{border-color:rgba(255,255,255,.28);background:transparent;color:#fff}
+.account-stats{width:min(1240px,calc(100% - 40px));margin:0 auto 18px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.account-stats article{min-height:92px;display:flex;align-items:center;gap:13px;padding:18px;border:1px solid #dddcd6;border-radius:18px;background:#fff}
+.account-stat-icon{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:#eef3dc;color:#536516;font-weight:900}
+.account-stats div{display:grid;gap:5px}
+.account-stats small{color:#7d7d74;font-size:.75rem}
+.account-stats strong{font-size:1.5rem;line-height:1}
+.account-layout{width:min(1240px,calc(100% - 40px));margin:0 auto;display:grid;grid-template-columns:285px minmax(0,1fr);gap:18px;align-items:start}
+.account-sidebar{display:grid;gap:12px}
+.account-side-card{display:grid;gap:0;padding:22px;border:1px solid #dddcd6;border-radius:18px;background:#fff}
+.account-side-card .eyebrow{margin-bottom:14px}
+.account-side-card>a{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid #eeeDE7;font-size:.87rem}
+.account-side-card>a:first-of-type{border-top:0}
+.account-side-card>a b{font-size:1rem;color:#88887f}
+.account-side-card>a:hover span{text-decoration:underline}
+.account-contact-card strong{font-size:.95rem}
+.account-contact-card span,.account-contact-card small,.account-address-card span,.account-address-card small{color:#74746d;font-size:.8rem;line-height:1.5}
+.account-contact-card span{margin-top:5px}
+.account-contact-card small{margin-top:12px}
+.account-address-card{gap:7px}
+.account-address-card strong{font-size:.9rem}
+.account-main{display:grid;gap:18px;min-width:0}
+.account-panel{min-width:0;padding:24px;border:1px solid #dddcd6;border-radius:18px;background:#fff}
+.account-panel-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;padding-bottom:18px;border-bottom:1px solid #ecebe5}
+.account-panel-heading .eyebrow{margin-bottom:8px}
+.account-panel-heading h2{margin:0;font-size:clamp(1.45rem,2.5vw,2rem);letter-spacing:-.04em}
+.account-panel-heading>a{color:#171715;font-size:.82rem;font-weight:800;text-decoration:underline;white-space:nowrap}
+.account-record-list{display:grid;gap:0}
+.account-record{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:13px;align-items:center;padding:16px 0;border-bottom:1px solid #efeee8}
+.account-record:last-child{border-bottom:0}
+.account-record-mark{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:#f1f2ec;color:#536516;font-weight:900}
+.account-record-mark.success{background:#e9f8ee;color:#277243}
+.account-record-main{display:grid;gap:4px;min-width:0}
+.account-record-main strong{font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-record-main span{color:#77766f;font-size:.79rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-status{padding:6px 9px;border-radius:999px;background:#eef1f3;color:#59666e;font-size:.67rem;font-weight:800;white-space:nowrap;text-transform:uppercase}
+.account-two-column{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.account-two-column .account-panel{min-width:0}
+.account-compact-list{display:grid}
+.account-compact-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:15px 0;border-bottom:1px solid #efeee8}
+.account-compact-row:last-child{border-bottom:0}
+.account-compact-row>div{display:grid;gap:4px;min-width:0}
+.account-compact-row strong{font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-compact-row span{color:#77766f;font-size:.74rem}
+.account-compact-row>b{flex-shrink:0;font-size:.8rem;color:#36362f;text-align:right}
+.account-empty{display:grid;gap:7px;padding:28px 0 4px}
+.account-empty strong{font-size:.88rem}
+.account-empty span{color:#77766f;font-size:.82rem;line-height:1.55}
+.account-loading{width:min(560px,calc(100% - 40px));min-height:60vh;margin:auto;display:grid;place-items:center;align-content:center;gap:12px;color:#77766f}
+.account-spinner{width:30px;height:30px;border:3px solid #dddcd6;border-top-color:#171715;border-radius:50%;animation:spin .7s linear infinite}
+.account-loading p{margin:0;font-size:.9rem}
+.account-gate{width:min(700px,calc(100% - 40px));min-height:62vh;margin:auto;display:grid;align-content:center}
+.account-gate-icon{display:grid;place-items:center;width:52px;height:52px;margin-bottom:22px;border-radius:14px;background:#eef3dc;color:#536516;font-size:1.25rem;font-weight:900}
+.account-gate h1{max-width:660px;margin:0;font-size:clamp(2.8rem,7vw,5.6rem);line-height:.94;letter-spacing:-.06em}
+.account-gate>p:not(.eyebrow){max-width:580px;margin:22px 0 28px;color:#666660;line-height:1.65}
+@media(max-width:980px){
+  .account-layout{grid-template-columns:1fr}
+  .account-sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .account-contact-card,.account-address-card{align-content:start}
+  .account-hero{min-height:330px}
+}
+@media(max-width:760px){
+  .account-topbar{align-items:flex-start;padding:20px 0;flex-direction:column}
+  .account-topbar nav{width:100%;gap:12px 16px;flex-wrap:wrap}
+  .account-hero{display:grid;align-items:start;padding:28px 24px;gap:28px}
+  .account-hero h1{font-size:3.4rem}
+  .account-hero-actions{width:100%}
+  .account-hero-actions .button{flex:1}
+  .account-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .account-two-column{grid-template-columns:1fr}
+  .account-panel{padding:20px}
+}
+@media(max-width:560px){
+  .account-topbar,.account-hero,.account-stats,.account-layout{width:min(100% - 24px,1240px)}
+  .account-hero{margin-top:0;border-radius:22px}
+  .account-hero h1{font-size:3rem}
+  .account-sidebar{grid-template-columns:1fr}
+  .account-stats{gap:9px}
+  .account-stats article{padding:14px}
+  .account-record{grid-template-columns:38px minmax(0,1fr)}
+  .account-status{grid-column:2;justify-self:start}
+  .account-record-mark{width:36px;height:36px}
+  .account-panel-heading{align-items:flex-start;flex-direction:column}
+  .account-compact-row>b{font-size:.72rem}
+}
