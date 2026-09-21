@@ -45,7 +45,7 @@ con:
 
 Los commits posteriores están en `main` y requieren una ejecución de build/deploy exitosa antes de considerarse certificados en producción.
 
-HEAD actual documentado:
+Código funcional baseline documentado:
 
 `4c7feecdfcd9a97986fdc0a062b6d7e49c0ef03c`
 
