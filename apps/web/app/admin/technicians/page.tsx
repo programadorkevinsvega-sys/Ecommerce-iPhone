@@ -175,6 +175,25 @@ export default function AdminTechniciansPage() {
                 </label>
               </div>
 
+              <section className="technician-role-panel">
+                <div>
+                  <p className="admin-kicker">Autorización</p>
+                  <h3>Rol operativo: TÉCNICO</h3>
+                  <p>
+                    El rol es automático para toda cuenta técnica. No es un rol administrativo y no tiene acceso al backoffice.
+                    Las capacidades se aplican sobre las órdenes asignadas al técnico.
+                  </p>
+                </div>
+                <div className="technician-permission-list">
+                  <span>✓ Consultar órdenes asignadas</span>
+                  <span>✓ Actualizar diagnóstico y registro técnico</span>
+                  <span>✓ Cambiar estados técnicos permitidos</span>
+                  <span>✓ Registrar y actualizar dispositivos recibidos</span>
+                  <span>✓ Subir evidencia fotográfica de la reparación</span>
+                  <span>✓ Editar su propio perfil</span>
+                </div>
+              </section>
+
               <div className="modal-actions">
                 {editing && <button type="button" className="admin-button" onClick={reset}>Cancelar</button>}
                 <button className="admin-button primary" disabled={loading} type="submit">
