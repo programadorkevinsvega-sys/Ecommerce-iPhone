@@ -49,7 +49,11 @@ export default function StoreHeader({ activeHref }: StoreHeaderProps) {
       <Link href="/" className="brand-mark">
         Ecommerce iPhone
       </Link>
-      <StoreNavigation activeHref={activeHref} />
+      {activeHref === undefined ? (
+        <StoreNavigation />
+      ) : (
+        <StoreNavigation activeHref={activeHref} />
+      )}
     </header>
   );
 }
