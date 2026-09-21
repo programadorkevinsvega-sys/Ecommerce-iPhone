@@ -30,6 +30,7 @@ export const PERMISSIONS = {
   promotionsWrite: "promotions:write",
   cmsWrite: "cms:write",
   settingsWrite: "settings:write",
+  techniciansManage: "technicians:manage",
 } as const satisfies Record<string, Permission>;
 
 const all = Object.values(PERMISSIONS);
@@ -58,6 +59,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     PERMISSIONS.promotionsWrite,
     PERMISSIONS.cmsWrite,
     PERMISSIONS.auditRead,
+    PERMISSIONS.techniciansManage,
   ],
   SALES: [
     PERMISSIONS.dashboardRead,
@@ -104,13 +106,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     PERMISSIONS.promotionsWrite,
     PERMISSIONS.cmsWrite,
   ],
-  TECHNICIAN: [
-    PERMISSIONS.dashboardRead,
-    PERMISSIONS.servicesRead,
-    PERMISSIONS.servicesWrite,
-    PERMISSIONS.repairOrdersRead,
-    PERMISSIONS.repairOrdersWrite,
-  ],
+  TECHNICIAN: [],
 };
 
 export interface AuthorizationPolicy {
