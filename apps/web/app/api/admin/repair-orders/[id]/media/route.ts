@@ -10,7 +10,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const id = (await params).id;
     const order = await repairOrderRepository(env).findById(id);
     if (!order) return NextResponse.json({ error: "Repair order not found" }, { status: 404 });
-    if (admin.role === "TECHNICIAN" && order.toPrimitives().assignedTechnicianId !== admin.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const stage = new URL(request.url).searchParams.get("stage");
     if (!stage || !["RECEPTION", "DIAGNOSIS", "REPAIR", "QUALITY_CONTROL"].includes(stage)) return NextResponse.json({ error: "Invalid evidence stage" }, { status: 400 });
     const file = (await request.formData()).get("file");
