@@ -41,10 +41,15 @@ function setup(existing: ReturnType<typeof user> | null) {
     verifyUnknownAccount: vi.fn().mockResolvedValue(undefined),
   };
 
+  const tokens = {
+    hash: vi.fn().mockImplementation(async (value: string) => `hash:${value}`),
+  };
+
   const service = new TechnicianAuthService(
     users,
     sessions,
     passwords,
+    tokens,
     () => new Date("2026-09-20T00:00:00.000Z"),
   );
 
@@ -59,6 +64,7 @@ describe("TechnicianAuthService", () => {
     expect(result.principal).toMatchObject({ id: "tech-1", email: "tech@example.com" });
     expect(context.sessions.revokeAll).toHaveBeenCalledWith("tech-1");
     expect(context.sessions.create).toHaveBeenCalledOnce();
+    expect(context.sessions.create.mock.calls[0][1]).toMatch(/^hash:/);
     expect(context.users.audit).toHaveBeenCalledWith(
       "tech-1",
       "LOGIN_SUCCEEDED",
