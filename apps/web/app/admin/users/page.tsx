@@ -76,19 +76,30 @@ export default function AdminUsersPage() {
     setLoading(true);
     setMessage("");
 
-    const body = {
-      ...form,
-      ...(editing ? { id: editing } : {}),
-      ...(form.password ? { password: form.password } : {}),
-    };
-    delete (body as Record<string, unknown>).active;
+    const body = editing
+      ? {
+          id: editing,
+          email: form.email,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          role: form.role,
+          active: form.active,
+          ...(form.password ? { password: form.password } : {}),
+        }
+      : {
+          email: form.email,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          role: form.role,
+          password: form.password,
+        };
 
     const response = await fetch("/api/admin/users", {
       method: editing ? "PATCH" : "POST",
       headers: { "content-type": "application/json" },
       credentials: "same-origin",
       cache: "no-store",
-      body: JSON.stringify(editing ? { ...body, active: form.active } : body),
+      body: JSON.stringify(body),
     });
 
     const data = (await response.json()) as { error?: string };
