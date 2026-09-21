@@ -63,4 +63,17 @@ describe("RepairOrderManagement technician assignment", () => {
 
     expect(context.repository.save).toHaveBeenCalledWith(context.order, "tech-1");
   });
+  it("omits undefined optional technical fields under exactOptionalPropertyTypes", async () => {
+    const context = setup();
+
+    await context.manager.updateTechnicalRecordAssigned(
+      "order-1",
+      { diagnosisSummary: undefined, workSummary: undefined, conditions: [] },
+      "tech-1",
+    );
+
+    expect(context.order.toPrimitives().diagnosisSummary).toBeUndefined();
+    expect(context.order.toPrimitives().workSummary).toBeUndefined();
+  });
+
 });
