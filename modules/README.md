@@ -1,5 +1,11 @@
 # Domain Modules
 
+## Boundary técnico — 2026-09-21
+
+El bounded context technicians mantiene su estructura DDD/Clean Architecture y evita importar adapters de infraestructura de otros bounded contexts desde su composición interna. La composición transversal requerida por la aplicación se realiza desde el composition root de apps/web.
+
+Las rutas técnicas no ejecutan SQL, no acceden directamente a R2 y no importan runtime adapters; delegan en Application y sus ports.
+
 Each business capability is isolated as a bounded context inside the modular monolith. A module owns its domain model and exposes application-level contracts instead of leaking infrastructure concerns.
 
 ## Bounded contexts
