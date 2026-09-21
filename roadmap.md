@@ -583,7 +583,7 @@ Ejemplo para la Fase 01:
 | Services | 🟢 Implementación + hardening; certificación pendiente |
 | Admin/RBAC | 🟡 Implementación avanzada; certificación pendiente |
 | Notifications | 🟡 Outbox/Queue/Resend funcional; arquitectura realtime definida; Durable Objects/WebSocket + inbox + DLQ/replay pendientes |
-| Technicians | 🟡 Identidad independiente implementada; portal funcional con rediseño visual pendiente y certificación productiva pendiente |
+| Technicians | 🟡 Identidad independiente implementada; portal funcional + hardening visual/UX implementado; certificación productiva pendiente |
 
 ### Última producción certificada
 
@@ -595,7 +595,7 @@ Los commits posteriores están en `main`, pero no se consideran certificados has
 
 Las actualizaciones documentales posteriores permanecen en `main` como commits separados.
 
-**Último ciclo de build observado:** la aplicación completó la compilación de producción y falló en el typecheck por `exactOptionalPropertyTypes` en `apps/web/app/components/StoreHeader.tsx`; el ciclo actual requiere corrección, build, deploy y `verify:production` antes de certificarse.
+**Histórico de build:** un ciclo anterior terminó la compilación y falló en typecheck por `exactOptionalPropertyTypes` en `apps/web/app/components/StoreHeader.tsx`. La fuente actual ya contiene la corrección; ese fallo no representa el estado actual del archivo.
 
 # Definition of Done Global
 
