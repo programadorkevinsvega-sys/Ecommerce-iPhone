@@ -238,42 +238,95 @@ Los permisos deberán validarse server-side por recurso y acción. Ocultar boton
 
 ---
 
-## Fase 07 — Email + Notifications + Queues
+## Fase 07 — Notifications realtime + Email + Queues
 
-**Issue:** #7 — Email y notificaciones: Resend + eventos + Queues
+**Issue:** #7 — Plataforma de notificaciones durable, realtime y multicanal
 
 ### Objetivo
-Crear un sistema de notificaciones desacoplado y asíncrono.
 
-### Arquitectura
+Implementar una plataforma de notificaciones profesional, desacoplada y escalable que entregue eventos de negocio por varios canales sin bloquear las operaciones transaccionales.
+
+### Arquitectura objetivo
 
 ```text
-Domain Event
-    ↓
-Queue
-    ↓
-Notification Worker
-    ↓
-EmailService
-    ↓
-Resend
+Business transaction
+        ↓
+D1 business state + notification_outbox
+        ↓
+Immediate Queue publish
+        ↓
+Cloudflare Queue
+        ↓
+Notification Processor
+   ┌────┴─────────────┐
+   ↓                  ↓
+D1 notification inbox   Resend
+   ↓
+NotificationHub Durable Object
+   ↓
+WebSocket Hibernation
+   ↓
+Authenticated client
 ```
+
+D1 es la fuente durable de verdad. Durable Objects coordinan conexiones realtime y no sustituyen el historial persistente.
 
 ### Alcance
 
+- Outbox transaccional.
+- Publicación inmediata a Queue después de confirmar la transacción.
+- Cron de reconciliación.
+- Inbox persistente por destinatario.
+- Durable Object `NotificationHub`.
+- WebSocket Hibernation.
+- API de listado/catch-up.
+- Cursor de reconexión.
+- Read/unread y unread count.
+- Preferencias de canal.
 - Resend mediante adapter.
-- Templates versionados.
-- Variables tipadas.
-- Emails transaccionales.
-- Notificaciones internas.
-- Reintentos.
-- Idempotencia.
-- Dead-letter strategy.
-- Logs de entrega.
-- Manejo de fallos.
-- No bloquear checkout por envío de correo.
+- Payloads tipados y versionados.
+- Idempotencia por evento/destinatario/canal.
+- Retry transitorio y clasificación terminal.
+- Dead-letter queue.
+- Replay seguro y auditado.
+- Observabilidad de queue lag y realtime latency.
+- Sin bloquear checkout, pagos, servicios o cambios de estado.
 
----
+### Semántica obligatoria
+
+El sistema no prometerá `exactly once`.
+
+- Queue: at-least-once.
+- Procesamiento: idempotente.
+- D1: fuente durable.
+- WebSocket: entrega de baja latencia.
+- Reconexión: catch-up desde D1.
+- Orden global de Queue: no asumido.
+
+### Eventos iniciales
+
+- `OrderCreated`
+- `OrderPaid`
+- `OrderStatusChanged`
+- `ServiceRequestCreated`
+- `ServiceStatusChanged`
+- `RepairDeviceReceived`
+- `RepairDiagnosisReady`
+- `RepairQuoteIssued`
+- `RepairApprovalRequired`
+- `RepairApproved`
+- `RepairStarted`
+- `RepairWaitingPart`
+- `RepairQualityControlStarted`
+- `RepairReady`
+- `RepairDelivered`
+- `WarrantyCreated`
+- asignación de técnico;
+- alertas operativas.
+
+### Criterio de salida
+
+Fase 07 solo podrá declararse completa cuando la notificación sea durable, el realtime esté autenticado, exista recuperación tras desconexión, DLQ/replay funcionen, la autorización esté probada y pasen tests, build, deploy, smoke y `verify:production`.
 
 ## Fase 08 — CMS + Marketing + Reviews
 
@@ -523,7 +576,7 @@ Ejemplo para la Fase 01:
 | Payments | 🟡 Cinco adapters implementados; certificación real pendiente |
 | Services | 🟢 Implementación + hardening; certificación pendiente |
 | Admin/RBAC | 🟡 Implementación avanzada; certificación pendiente |
-| Notifications | 🟡 Outbox/Queue/Resend funcional; DLQ/retry/replay pendiente |
+| Notifications | 🟡 Outbox/Queue/Resend funcional; arquitectura realtime definida; Durable Objects/WebSocket + inbox + DLQ/replay pendientes |
 | Technicians | 🟡 Identidad independiente implementada; portal funcional con rediseño visual pendiente y certificación productiva pendiente |
 
 ### Última producción certificada
@@ -532,9 +585,9 @@ Worker: `f7d67832-8598-4f59-8db9-b538f543b3ef`
 
 Los commits posteriores están en `main`, pero no se consideran certificados hasta un nuevo build, deploy y `verify:production`.
 
-**Código actual en `main`:** `6a462a44d6869765f6542a5f7287aed136642ec3`.
+**Código actual en `main`:** `d6962439e434d5064a339648b5ed32174c7b602b`.
 
-**Último ciclo de build observado:** la aplicación compiló correctamente y el typecheck detectó incompatibilidades de `exactOptionalPropertyTypes` en navegación compartida; `StoreHeader` y `TechnicianHeader` ya fueron ajustados para aceptar explícitamente `undefined`. El commit actual todavía requiere un nuevo build/deploy/verify para certificarse.
+**Último ciclo de build observado:** la aplicación completó la compilación de producción y falló en el typecheck por `exactOptionalPropertyTypes` en `apps/web/app/components/StoreHeader.tsx`; el ciclo actual requiere corrección, build, deploy y `verify:production` antes de certificarse.
 
 # Definition of Done Global
 
@@ -562,7 +615,7 @@ Una fase se considera terminada únicamente cuando:
 | 04 — Payments | #4 | 🟡 Implementado, certificación real pendiente |
 | 05 — Services | #5 | 🟢 Implementado + hardening, certificación pendiente |
 | 06 — Admin + RBAC | #6 | 🟡 Implementación avanzada, certificación pendiente |
-| 07 — Notifications | #7 | 🟡 Implementación funcional, DLQ/retry/replay pendiente |
+| 07 — Notifications realtime + Email | #7 | 🟡 Base Outbox/Queue/Resend implementada; realtime/Durable Objects/inbox/DLQ/replay pendientes |
 | 08 — CMS + Marketing + Reviews | #8 | ⬜ Pendiente |
 | 09 — SEO | #9 | ⬜ Pendiente |
 | 10 — Production Readiness | #10 | ⬜ Pendiente |
@@ -579,3 +632,4 @@ Una fase se considera terminada únicamente cuando:
 - El rediseño visual completo de `/technician/**` sigue pendiente.
 - `/technician/**` ya utiliza una cabecera operativa compartida (`TechnicianHeader`) para la navegación técnica.
 - La última versión directamente verificada en producción continúa siendo el Worker `f7d67832-8598-4f59-8db9-b538f543b3ef`; los cambios posteriores requieren un nuevo ciclo build/deploy/verify.
+- El diseño realtime de notificaciones queda especificado en `docs/notifications.md` y `docs/realtime-notifications.md`.
