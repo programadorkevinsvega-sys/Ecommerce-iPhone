@@ -70,3 +70,10 @@ Technician:
 - `/technician/profile`
 
 The technician is a separate operational identity and is never represented as an administrative RBAC role.
+
+
+## Technician UI status — 2026-09-21
+
+The technician bounded context is functionally implemented as an independent operational identity. The current surfaces are `/technician/login`, `/technician`, `/technician/orders`, `/technician/devices` and `/technician/profile`.
+
+The current iteration still requires a full visual redesign of those screens so they align with the established storefront visual language. This is a UI hardening item and is not considered complete or production-certified yet.
