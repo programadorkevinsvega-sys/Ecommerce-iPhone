@@ -1,9 +1,9 @@
 import type { AuditPort } from "../../admin/application/AuditPort";
-import { DEFAULT_AUTHORIZATION_POLICY, type AdminRole, type AuthorizationPolicy, type Permission } from "../../admin/application/Rbac";
+import type { AdminRole, Permission } from "../../admin/application/Rbac";
 import { Category, categorySlugFromName, normalizeCategorySlug } from "../domain/Category";
 import type { CategoryPrimitives, CategoryRepository } from "./CategoryRepository";
 
-export type CategoryActor = { id: string; email: string; role: AdminRole };
+export type CategoryActor = { id: string; email: string; role: AdminRole; permissions: readonly Permission[] };
 export const CATEGORIES_CACHE_TAG = "catalog-categories";
 
 const CATEGORY_WRITE_PERMISSION = "categories:write" as Permission;
@@ -48,15 +48,10 @@ export class PublicCategories {
 }
 
 export class AdminCategories {
-  private readonly authorizationPolicy: AuthorizationPolicy;
-
   constructor(
     private readonly repository: CategoryRepository,
     private readonly audit: AuditPort,
-    authorizationPolicy?: AuthorizationPolicy,
-  ) {
-    this.authorizationPolicy = authorizationPolicy ?? DEFAULT_AUTHORIZATION_POLICY;
-  }
+  ) {}
 
   async list(input: { actor: CategoryActor; query?: unknown }): Promise<readonly CategoryPrimitives[]> {
     this.authorize(input.actor, CATEGORY_READ_PERMISSION);
@@ -106,7 +101,7 @@ export class AdminCategories {
   }
 
   private authorize(actor: CategoryActor, permission: Permission): void {
-    if (!this.authorizationPolicy.can(actor.role, permission)) throw new Error("FORBIDDEN");
+    if (!actor.permissions.includes(permission)) throw new Error("FORBIDDEN");
   }
 
   private async ensureUniqueSlug(slug: string, currentId?: string): Promise<void> {
