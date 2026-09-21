@@ -45,13 +45,15 @@ con:
 
 Los commits posteriores están en `main` y requieren una ejecución de build/deploy exitosa antes de considerarse certificados en producción.
 
-Código actual en `main` al momento de esta documentación:
+Commit funcional de referencia para el estado documentado:
 
-`9164de383b24f326c24d5da7da0edf823ee01b57`
+`6a462a44d6869765f6542a5f7287aed136642ec3`
+
+Los commits de documentación posteriores no cambian este código funcional de referencia.
 
 Este commit y los sucesores permanecen sin certificación productiva hasta un nuevo build/deploy/verify exitoso.
 
-Un build remoto reciente falló por una sintaxis inválida en `modules/technicians/domain/TechnicianUser.ts` causada por secuencias `\\n` literales dentro del código fuente; esa fuente ya fue corregida. También se corrigió la frontera Server/Client del componente de navegación compartido. Los cambios actuales continúan sin certificación productiva hasta una nueva verificación directa de Cloudflare.
+Un build remoto reciente falló por secuencias `\\n` literales inválidas en `modules/technicians/domain/TechnicianUser.ts`; esa fuente ya fue corregida. Posteriormente el build alcanzó `Compiled successfully` y detectó incompatibilidades de `exactOptionalPropertyTypes` en las cabeceras compartidas; `StoreHeader` y `TechnicianHeader` ya fueron ajustados. El estado actual continúa sin certificación productiva hasta un nuevo build/deploy/verify exitoso.
 
 ## Toolchain actual
 
