@@ -106,7 +106,6 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     PERMISSIONS.promotionsWrite,
     PERMISSIONS.cmsWrite,
   ],
-  TECHNICIAN: [],
 };
 
 export interface AuthorizationPolicy {
