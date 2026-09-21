@@ -161,16 +161,17 @@ async function json<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-function AdminPageContent() {
+export function AdminPageContent({ fixedResource }: { fixedResource?: Resource } = {}) {
   const router = useRouter();
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [metrics, setMetrics] = useState<Metric | null>(null);
   const searchParams = useSearchParams();
   const requestedSection = searchParams.get("section");
   const resource: Resource =
-    requestedSection && NAV.some((item) => item.key === requestedSection)
+    fixedResource ??
+    (requestedSection && NAV.some((item) => item.key === requestedSection)
       ? (requestedSection as Resource)
-      : "dashboard";
+      : "dashboard");
   useEffect(() => {
     setSearch("");
     setError("");
