@@ -35,7 +35,7 @@ export class TechnicianDeviceService {
       const device = await this.devices.find(value.customerId, value.customerDeviceId);
       if (device) {
         result.push({
-          orderId: order.getId(),
+          orderId: value.id,
           orderNumber: value.orderNumber,
           customerEmail: value.email,
           device: device.toPrimitives(),
@@ -104,7 +104,7 @@ export class TechnicianDeviceService {
       "DEVICE_UPDATED",
       "customer_device",
       device.getId(),
-      { orderId: order.getId() },
+      { orderId: value.id },
     );
     return device;
   }
@@ -124,7 +124,7 @@ export class TechnicianDeviceService {
       "DEVICE_CREATED",
       "customer_device",
       device.getId(),
-      { orderId: order.getId(), customerId: value.customerId },
+      { orderId: value.id, customerId: value.customerId },
     );
     return device;
   }
