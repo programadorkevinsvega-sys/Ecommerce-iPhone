@@ -940,7 +940,11 @@ Cliente
 - Ver órdenes repetidas.
 - Ver últimas interacciones.
 
-## 18. Fase 15: notificaciones
+## 18. Fase 15: notificaciones realtime
+
+### Objetivo
+
+Notificar al cliente, técnico y administración los cambios relevantes de una reparación con baja latencia, sin perder eventos cuando una sesión esté desconectada.
 
 ### Eventos
 
@@ -955,17 +959,83 @@ Cliente
 - Equipo listo para recoger.
 - Equipo entregado.
 - Garantía registrada.
+- Cambio de técnico asignado.
+- Alertas operativas.
+
+### Arquitectura
+
+```text
+Repair Domain Event
+       ↓
+Notification Outbox (D1)
+       ↓
+Queue
+       ↓
+Notification Processor
+    ┌──┴─────────────┐
+    ↓                ↓
+D1 Inbox        Realtime Publisher
+    │                ↓
+    │       NotificationHub Durable Object
+    │                ↓
+    │           WebSocket
+    │
+    └────────→ Email / otros canales
+```
+
+D1 conserva la notificación durable. WebSocket es únicamente el canal de baja latencia. Si el cliente está desconectado, la notificación sigue disponible para recuperación por API.
+
+### Seguridad
+
+- El destinatario se deriva de la sesión autenticada.
+- Nunca se acepta un `recipientId` arbitrario.
+- Cliente, técnico y administración tienen scopes separados.
+- No se publican IMEI, seriales completos, secretos ni notas internas.
+- Lecturas, replay y envíos manuales quedan auditados.
+- El WebSocket valida origen, sesión y rate limits.
+
+### Recuperación
+
+- Cursor de última notificación procesada.
+- Catch-up desde D1 después de reconexión.
+- Reapertura de WebSocket después de reconciliar el hueco.
+- Deduplicación por `notificationId`.
+- No se promete `exactly-once`.
 
 ### Canales
 
-Implementar inicialmente el canal que ya sea compatible con la infraestructura del proyecto. Posteriormente se podrán agregar:
-
+Primera implementación:
+- In-app realtime.
 - Email.
+
+Posteriores:
 - WhatsApp mediante proveedor oficial.
 - SMS.
 - Push.
 
-Las notificaciones deben ser eventos idempotentes, con reintentos y auditoría de entrega.
+### Retry y DLQ
+
+Errores transitorios usan backoff exponencial con jitter.
+
+Errores terminales quedan auditados y pasan al flujo DLQ/replay.
+
+### No bloquear operaciones
+
+Crear orden, aprobar presupuesto, cambiar estado, entregar equipo y demás comandos de negocio nunca deben esperar a WebSocket o Resend.
+
+### Pruebas
+
+- sesión conectada;
+- evento mientras está desconectado;
+- reconexión y catch-up;
+- deduplicación;
+- aislamiento cliente/técnico/admin;
+- retry, DLQ y replay;
+- múltiples sesiones;
+- carga de conexiones;
+- latencia p50/p95/p99.
+
+Detalle contractual: `docs/realtime-notifications.md`.
 
 ## 19. Fase 16: dashboard administrativo
 
