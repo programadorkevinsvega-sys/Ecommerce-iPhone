@@ -1,6 +1,6 @@
 "use client";
 
-import StoreHeader, { StoreNavigation } from "../components/StoreHeader";
+import { StoreNavigation } from "../components/StoreHeader";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
