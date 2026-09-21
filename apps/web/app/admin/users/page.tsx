@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import AdminSidebar from "../AdminSidebar";
+import AdminLoadingState from "../AdminLoadingState";
 
 const ROLES = [
   ["SUPER_ADMIN", "Super administrador"],
@@ -85,6 +86,7 @@ export default function AdminUsersPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [permissions, setPermissions] = useState<PermissionItem[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
 
@@ -107,20 +109,27 @@ export default function AdminUsersPage() {
   };
 
   const load = useCallback(async () => {
-    const response = await fetch("/api/admin/users", {
-      cache: "no-store",
-      credentials: "same-origin",
-    });
-    if (response.status === 401 || response.status === 403) {
-      window.location.href = "/admin/login";
-      return;
+    setDataLoading(true);
+    try {
+      const response = await fetch("/api/admin/users", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      if (response.status === 401 || response.status === 403) {
+        window.location.href = "/admin/login";
+        return;
+      }
+      const data = (await response.json()) as { items?: AdminUser[]; error?: string };
+      if (!response.ok) {
+        setMessage(data.error ?? "No se pudieron cargar los administradores.");
+        return;
+      }
+      setItems(data.items ?? []);
+    } catch {
+      setMessage("No se pudieron cargar los administradores.");
+    } finally {
+      setDataLoading(false);
     }
-    const data = (await response.json()) as { items?: AdminUser[]; error?: string };
-    if (!response.ok) {
-      setMessage(data.error ?? "No se pudieron cargar los administradores.");
-      return;
-    }
-    setItems(data.items ?? []);
   }, []);
 
   useEffect(() => {
@@ -407,6 +416,10 @@ export default function AdminUsersPage() {
               <span className="muted">{items.length} cuentas</span>
             </div>
           <div className="admin-table-wrap">
+            {dataLoading ? (
+              <AdminLoadingState label="Cargando administradores…" />
+            ) : (
+              <>
             <table className="admin-table">
               <thead>
                 <tr><th>Administrador</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th>Acciones</th></tr>
@@ -430,6 +443,8 @@ export default function AdminUsersPage() {
               </tbody>
             </table>
             {!items.length && <div className="admin-empty"><span>♛</span><h3>No hay cuentas administrativas adicionales</h3><p>La primera cuenta SUPER_ADMIN se crea mediante el bootstrap seguro del sistema.</p></div>}
+              </>
+            )}
           </div>
           </div>
         </section>
