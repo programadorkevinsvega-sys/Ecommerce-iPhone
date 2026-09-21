@@ -63,8 +63,13 @@ describe("TechnicianAuthService", () => {
 
     expect(result.principal).toMatchObject({ id: "tech-1", email: "tech@example.com" });
     expect(context.sessions.revokeAll).toHaveBeenCalledWith("tech-1");
-    expect(context.sessions.create).toHaveBeenCalledOnce();
-    expect(context.sessions.create.mock.calls[0][1]).toMatch(/^hash:/);
+    expect(context.sessions.create).toHaveBeenCalledWith(
+      "tech-1",
+      expect.stringMatching(/^hash:/),
+      expect.any(String),
+      "ip",
+      "ua",
+    );
     expect(context.users.audit).toHaveBeenCalledWith(
       "tech-1",
       "LOGIN_SUCCEEDED",
