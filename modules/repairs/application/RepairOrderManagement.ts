@@ -1,6 +1,27 @@
 import { DomainError } from "../../shared-kernel";
-import type { RepairOrderStatus, DeviceCondition } from "../domain/RepairOrder";
+import type { DeviceCondition, RepairOrderStatus } from "../domain/RepairOrder";
 import type { RepairOrderRepository } from "./RepairOrderRepository";
+
+const TECHNICIAN_STATUSES = [
+  "DIAGNOSING",
+  "WAITING_PART",
+  "IN_REPAIR",
+  "QUALITY_CONTROL",
+] as const;
+
+const DEVICE_CONDITIONS = [
+  "FUNCTIONAL",
+  "NOT_FUNCTIONAL",
+  "DAMAGED",
+  "NOT_TESTED",
+  "NOT_APPLICABLE",
+] as const;
+
+const isTechnicianStatus = (value: string): value is (typeof TECHNICIAN_STATUSES)[number] =>
+  TECHNICIAN_STATUSES.includes(value as (typeof TECHNICIAN_STATUSES)[number]);
+
+const isDeviceCondition = (value: string): value is DeviceCondition =>
+  DEVICE_CONDITIONS.includes(value as DeviceCondition);
 
 export class RepairOrderManagement {
   constructor(private readonly orders: RepairOrderRepository) {}
@@ -30,9 +51,13 @@ export class RepairOrderManagement {
     return order;
   }
 
-  async transitionAssigned(id: string, status: RepairOrderStatus, technicianId: string) {
+  async transitionAssigned(id: string, statusInput: string, technicianId: string) {
+    if (!isTechnicianStatus(statusInput)) {
+      throw new DomainError("FORBIDDEN");
+    }
+
     const order = await this.getAssigned(id, technicianId);
-    order.transitionTo(status);
+    order.transitionTo(statusInput);
     await this.orders.save(order, technicianId);
     return order;
   }
@@ -57,12 +82,28 @@ export class RepairOrderManagement {
     input: {
       diagnosisSummary?: string | null;
       workSummary?: string | null;
-      conditions: readonly { component: string; condition: DeviceCondition; notes?: string }[];
+      conditions: readonly { component: string; condition: string; notes?: string }[];
     },
     technicianId: string,
   ) {
+    const conditions = input.conditions.map((item) => {
+      const component = item.component.trim();
+      if (!component || !isDeviceCondition(item.condition)) {
+        throw new DomainError("INVALID_CONDITIONS");
+      }
+      return {
+        component,
+        condition: item.condition,
+        ...(item.notes !== undefined ? { notes: item.notes } : {}),
+      };
+    });
+
     const order = await this.getAssigned(id, technicianId);
-    order.updateTechnicalRecord(input);
+    order.updateTechnicalRecord({
+      diagnosisSummary: input.diagnosisSummary,
+      workSummary: input.workSummary,
+      conditions,
+    });
     await this.orders.save(order, technicianId);
     return order;
   }
