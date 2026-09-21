@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import AdminSidebar from "./AdminSidebar";
 import {
   normalizeSearchQuery,
   normalizeSingleLine,
@@ -161,15 +161,21 @@ async function json<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-export default function AdminPage() {
+function AdminPageContent() {
   const router = useRouter();
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [metrics, setMetrics] = useState<Metric | null>(null);
-  const [resource, setResource] = useState<Resource>("dashboard");
+  const searchParams = useSearchParams();
+  const requestedSection = searchParams.get("section");
+  const resource: Resource =
+    requestedSection && NAV.some((item) => item.key === requestedSection)
+      ? (requestedSection as Resource)
+      : "dashboard";
   useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("section") as Resource | null;
-    if (requested && NAV.some((item) => item.key === requested)) setResource(requested);
-  }, []);
+    setSearch("");
+    setError("");
+    setNotice("");
+  }, [resource]);
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
@@ -651,44 +657,7 @@ export default function AdminPage() {
     : [];
   return (
     <main className="admin-shell">
-      <aside className="admin-sidebar">
-        <div className="admin-brand">
-          <span className="admin-brand-mark">K</span>
-          <div>
-            <strong>KEVINS</strong>
-            <small>Administración</small>
-          </div>
-        </div>
-        <nav className="admin-nav" aria-label="Secciones administrativas">
-          {NAV.map((item) => (
-            <button
-              key={item.key}
-              className={resource === item.key ? "active" : ""}
-              type="button"
-              onClick={() => {
-                setResource(item.key);
-                setSearch("");
-                setError("");
-                setNotice("");
-              }}
-            >
-              <span>{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-          <Link className="admin-nav-link" href="/admin/repair-orders">
-            <span>◫</span>
-            Órdenes de reparación
-          </Link>
-          <Link className="admin-nav-link" href="/admin/repair-parts">
-            <span>⚙</span>
-            Repuestos de taller
-          </Link>
-        </nav>
-        <div className="admin-sidebar-footer">
-          <span className="admin-status-dot" /> Sistema operativo
-        </div>
-      </aside>
+      <AdminSidebar active={resource} />
       <section className="admin-content">
         <header className="admin-topbar">
           <div>
@@ -998,6 +967,20 @@ export default function AdminPage() {
         />
       )}
     </main>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="admin-loading">
+          <span className="admin-spinner" /> Cargando panel…
+        </main>
+      }
+    >
+      <AdminPageContent />
+    </Suspense>
   );
 }
 
