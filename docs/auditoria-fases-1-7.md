@@ -6,7 +6,7 @@
 **Rama:** `main`  
 **Base de código de aplicación revisada:** `d6962439e434d5064a339648b5ed32174c7b602b`  
 **Última actualización:** 2026-09-21 UTC
-**Último commit documental observado:** `cb391fa5a5a1e117d6cc47fd1e4b4477035477f8`  
+La documentación ha sido actualizada en `main` mediante commits separados de la base de código.  
 **Entorno remoto operativo:** producción únicamente.
 
 > Una fase no se declara 100% por compilar. El cierre exige código, pruebas, seguridad, reproducibilidad, deploy y evidencia operativa.
