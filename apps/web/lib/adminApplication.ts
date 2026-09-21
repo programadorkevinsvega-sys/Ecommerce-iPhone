@@ -1,6 +1,5 @@
 import { AdminAuditViewer } from "../../../modules/admin/application/AdminAuditViewer";
 import { AdminDashboardService } from "../../../modules/admin/application/AdminDashboardService";
-import type { AuditPort } from "../../../modules/admin/application/AuditPort";
 import { AdminNotificationsService } from "../../../modules/admin/application/AdminNotificationsService";
 import { AdminUserManagement } from "../../../modules/admin/application/AdminUserManagement";
 import { D1AdminAuditRepository } from "../../../modules/admin/infrastructure/D1AdminAuditRepository";
