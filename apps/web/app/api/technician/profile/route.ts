@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
-import { technicianManagementApplication } from "../../../../../../modules/technicians/infrastructure/D1TechnicianComposition";
+import { technicianManagementApplication } from "../../../../../../lib/technicianApplication";
 import { requireTechnician } from "../../../../lib/technicianAuth";
 
 export async function GET() {
   try {
     const { technician } = await requireTechnician();
-    return NextResponse.json({ technician }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json(
+      { technician },
+      { headers: { "cache-control": "no-store" } },
+    );
   } catch (error) {
     const status = error instanceof Error && error.message === "UNAUTHORIZED" ? 401 : 400;
-    return NextResponse.json({ error: status === 401 ? "Authentication required" : "Unable to load profile" }, { status });
+    return NextResponse.json(
+      { error: status === 401 ? "Authentication required" : "Unable to load profile" },
+      { status },
+    );
   }
 }
 
@@ -16,10 +22,19 @@ export async function PATCH(request: Request) {
   try {
     const { technician, env } = await requireTechnician();
     const body = await request.json() as Record<string, unknown>;
-    const result = await technicianManagementApplication(env).updateProfile(technician.id, body);
-    return NextResponse.json({ technician: result }, { headers: { "cache-control": "no-store" } });
+    const result = await technicianManagementApplication(env).updateProfile(
+      technician.id,
+      body,
+    );
+    return NextResponse.json(
+      { technician: result },
+      { headers: { "cache-control": "no-store" } },
+    );
   } catch (error) {
     const status = error instanceof Error && error.message === "UNAUTHORIZED" ? 401 : 400;
-    return NextResponse.json({ error: status === 401 ? "Authentication required" : "Invalid profile data" }, { status });
+    return NextResponse.json(
+      { error: status === 401 ? "Authentication required" : "Invalid profile data" },
+      { status },
+    );
   }
 }
