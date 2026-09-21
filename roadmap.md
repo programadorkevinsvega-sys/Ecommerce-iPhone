@@ -524,13 +524,17 @@ Ejemplo para la Fase 01:
 | Services | 🟢 Implementación + hardening; certificación pendiente |
 | Admin/RBAC | 🟡 Implementación avanzada; certificación pendiente |
 | Notifications | 🟡 Outbox/Queue/Resend funcional; DLQ/retry/replay pendiente |
-| Technicians | 🟡 Identidad independiente implementada; rediseño visual y certificación pendiente |
+| Technicians | 🟡 Identidad independiente implementada; portal funcional con rediseño visual pendiente y certificación productiva pendiente |
 
 ### Última producción certificada
 
 Worker: `f7d67832-8598-4f59-8db9-b538f543b3ef`
 
 Los commits posteriores están en `main`, pero no se consideran certificados hasta un nuevo build, deploy y `verify:production`.
+
+**Código actual en `main`:** `6a462a44d6869765f6542a5f7287aed136642ec3`.
+
+**Último ciclo de build observado:** la aplicación compiló correctamente y el typecheck detectó incompatibilidades de `exactOptionalPropertyTypes` en navegación compartida; `StoreHeader` y `TechnicianHeader` ya fueron ajustados para aceptar explícitamente `undefined`. El commit actual todavía requiere un nuevo build/deploy/verify para certificarse.
 
 # Definition of Done Global
 
@@ -573,4 +577,5 @@ Una fase se considera terminada únicamente cuando:
 - El bounded context `technicians` mantiene identidad, autenticación, sesiones, autorización por asignación, dispositivos, evidencia y perfil propios.
 - `/admin/technicians` trata TÉCNICO como identidad operativa y no como rol de `admin_users`.
 - El rediseño visual completo de `/technician/**` sigue pendiente.
+- `/technician/**` ya utiliza una cabecera operativa compartida (`TechnicianHeader`) para la navegación técnica.
 - La última versión directamente verificada en producción continúa siendo el Worker `f7d67832-8598-4f59-8db9-b538f543b3ef`; los cambios posteriores requieren un nuevo ciclo build/deploy/verify.
