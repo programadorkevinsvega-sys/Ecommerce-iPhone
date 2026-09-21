@@ -274,6 +274,10 @@ La plataforma parte de una instalación nueva: no existe migración de cuentas t
 
 Administración dispone de /admin/technicians y las APIs correspondientes para crear, actualizar, activar/desactivar y restablecer el acceso de técnicos.
 
+La cuenta técnica tiene identidad y sesión independientes y su rol operativo es Técnico. El alta es administrativa: Administración introduce el correo, nombre, apellido y contraseña inicial del técnico. No existe registro público ni endpoint de auto-registro para técnicos.
+
+La gestión de cuentas administrativas está separada en /admin/users, donde una cuenta con permiso de gestión de administradores puede crear usuarios administrativos, activar/desactivar cuentas y asignar/cambiar sus roles RBAC (SUPER_ADMIN, ADMIN, MANAGER, SALES, SUPPORT, INVENTORY, FINANCE y CONTENT_EDITOR). El rol administrativo no se reutiliza como identidad del técnico.
+
 Las cuentas técnicas no obtienen permisos del panel administrativo.
 
 #### Aislamiento operativo
