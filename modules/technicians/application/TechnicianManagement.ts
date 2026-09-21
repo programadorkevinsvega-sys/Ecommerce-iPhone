@@ -68,7 +68,7 @@ export class TechnicianManagement {
     const current = await this.users.findById(id);
     if (!current) throw new Error("TECHNICIAN_NOT_FOUND");
     const old = current.toPrimitives();
-    const next = TechnicianUser.create(id, {
+    const next = TechnicianUser.rehydrate(id, {
       ...old,
       firstName: required(input.firstName, "INVALID_PROFILE"),
       lastName: required(input.lastName, "INVALID_PROFILE"),
