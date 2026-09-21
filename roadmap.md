@@ -647,3 +647,7 @@ Una fase se considera terminada únicamente cuando:
 El commit actual de `main` no está certificado en producción. Los runs de `Cloudflare Production Deploy` 1074–1080 terminaron en `failure`; los runs 1079 y 1080 fallaron casi inmediatamente y el conector disponible no expone los pasos/logs internos del job. Por esa limitación no se atribuye el fallo a typecheck, tests o build sin evidencia. Además, un `Workers Builds: ecommerce-iphone` asociado al commit `0ee4522` también terminó en `failure`.
 
 Por lo tanto, el estado oficial sigue siendo **implementado/hardening, certificación pendiente** para las fases afectadas. No se marca ningún release como productivo certificado mientras no exista evidencia de build + deploy + `verify:production` sobre `https://iphone.jnmtortas.com`.
+
+### Build Cloudflare — hallazgo 2026-09-21 22:58 UTC
+
+Un build de producción con Node.js 24.18.0, pnpm 12.4.1, Next.js 15.5.25 y OpenNext Cloudflare 1.20.6 compiló Next.js correctamente y falló durante typecheck por `exactOptionalPropertyTypes` en `modules/repairs/application/RepairOrderManagement.ts:102`. La causa fue pasar `diagnosisSummary` y `workSummary` opcionales como propiedades explícitas con valor `undefined`. La corrección aplicada usa propagación condicional para omitir las propiedades cuando son `undefined` y se añadió una regresión específica. `exactOptionalPropertyTypes` permanece habilitado.
