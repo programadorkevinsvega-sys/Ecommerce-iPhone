@@ -156,6 +156,7 @@ export default async function CatalogPage({
                         width={640}
                         height={640}
                         sizes="(max-width: 520px) 100vw, (max-width: 800px) 50vw, 33vw"
+                        unoptimized={product.images[0].startsWith("/api/media/")}
                       />
                     ) : (
                       <span aria-hidden="true">{product.brand}</span>
