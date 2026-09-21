@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**Código funcional auditado:** `4c7feecdfcd9a97986fdc0a062b6d7e49c0ef03c`  
+**Código revisado actual:** `2295b7539ff9cabc635ab1bc51e45a1b4804d07e`  
 **Última actualización:** 2026-09-21 UTC  
 **Entorno remoto operativo:** producción únicamente.
 
@@ -17,11 +17,11 @@
 | Fase | Estado | Certificación |
 |---|---|---|
 | 01 Foundation | 🟡 Implementada + hardening | Pendiente certificación final |
-| 02 Storefront | 🟢 Implementada + navegación pública estandarizada | Pendiente E2E/performance/accessibility/SEO final |
+| 02 Storefront | 🟡 Implementada + navegación pública estandarizada | Pendiente E2E/performance/accessibility/SEO final y certificación productiva |
 | 03 Commerce Core | 🟢 Implementación cerrada | Pendiente certificación exhaustiva en producción |
 | 04 Payments | 🟡 Implementada + hardening | Pendiente certificación real de proveedores |
 | 05 Services | 🟢 Implementación + hardening | Pendiente gates/certificación |
-| 06 Admin + RBAC | 🟡 Application consolidada + hardening UI/RBAC | Pendiente gates de seguridad y certificación |
+| 06 Admin + RBAC | 🟡 Application consolidada + hardening UI/RBAC | Pendiente gates de seguridad, certificación y validación final de técnicos |
 | 07 Notifications + Queues | 🟡 Implementación funcional | DLQ/retry/replay pendiente |
 
 El trabajo reciente corresponde al hardening de **Fase 01 — eliminación de datos/mock de negocio en frontend** y al cierre arquitectónico/hardening de **Fase 06**.
@@ -520,3 +520,18 @@ No se usa `compila = 100%`, `CI verde = 100%` ni `documentado = 100%`.
 10. certificación F6 y F1 con evidencia exacta.
 
 **Regla permanente:** este documento debe actualizarse en la misma iteración de cada cambio relevante de código.
+
+
+## Actualización — navegación y técnicos — 2026-09-21
+
+### Navegación pública
+
+La navegación pública quedó centralizada en `apps/web/app/components/StoreHeader.tsx`. El conjunto estándar es: Inicio, Catálogo, Servicios, Consultar reparación, Contacto, Carrito y Mi cuenta. El componente es client-compatible porque también se consume desde el portal de cliente.
+
+### Técnicos
+
+El bounded context `technicians` sigue siendo una identidad operativa independiente de Admin/RBAC. La gestión administrativa permanece en `/admin/technicians` y la operación en `/technician/**`.
+
+Ya implementado: autenticación, sesiones, lockout, revocación de sesiones previas, autorización por asignación, diagnóstico, estados técnicos permitidos, dispositivos recibidos, evidencia fotográfica, perfil propio y auditoría.
+
+Pendiente: rediseño visual completo de `/technician/login`, `/technician`, `/technician/orders`, `/technician/devices` y `/technician/profile`, más build/deploy/verify y certificación final.
