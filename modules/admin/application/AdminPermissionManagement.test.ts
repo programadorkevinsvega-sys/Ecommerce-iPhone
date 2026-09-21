@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { AdminUser } from "../domain/AdminUser";
-import { PERMISSIONS, ROLE_PERMISSIONS } from "./Rbac";
+import { PERMISSIONS, ROLE_PERMISSIONS, type Permission } from "./Rbac";
 import { AdminPermissionManagement } from "./AdminPermissionManagement";
 import type { AdminPermissionRepository } from "./AdminPermissionRepository";
 import type { AdminUserRepository, AuditPort } from "./AdminUserManagement";
@@ -17,10 +17,13 @@ function admin(id: string, role: "SUPER_ADMIN" | "ADMIN" | "SALES" = "ADMIN") {
   });
 }
 
-function setup(targetRole: "SUPER_ADMIN" | "ADMIN" | "SALES" = "SALES") {
-  const actor = admin("actor", "ADMIN");
+function setup(actorRole: "SUPER_ADMIN" | "ADMIN" | "SALES" = "SALES", targetRole: "SUPER_ADMIN" | "ADMIN" | "SALES" = "SALES") {
+  const actor = admin("actor", actorRole);
   const target = admin("target", targetRole);
-  const overrides = new Map<string, { permission: keyof typeof PERMISSIONS extends never ? never : (typeof PERMISSIONS)[keyof typeof PERMISSIONS]; granted: boolean }[]>();
+  const overrides = new Map<string, { permission: Permission; granted: boolean }[]>();
+  if (actorRole !== "SUPER_ADMIN") {
+    overrides.set(actor.getId(), [{ permission: PERMISSIONS.adminsManage, granted: true }]);
+  }
   const users: AdminUserRepository = {
     findByEmail: vi.fn(),
     findById: vi.fn(async (id: string) => id === actor.getId() ? actor : id === target.getId() ? target : null),
@@ -38,37 +41,37 @@ function setup(targetRole: "SUPER_ADMIN" | "ADMIN" | "SALES" = "SALES") {
 }
 
 describe("AdminPermissionManagement", () => {
-  it("allows an actor to grant only permissions they effectively possess", async () => {
-    const context = setup();
+  it("allows an effective permission manager to grant only permissions they possess", async () => {
+    const context = setup("SALES");
     await context.service.update("target", [{ permission: PERMISSIONS.ordersRead, granted: true }], "actor");
     expect(context.permissions.replaceOverrides).toHaveBeenCalledWith("target", [{ permission: PERMISSIONS.ordersRead, granted: true }]);
   });
 
   it("rejects vertical privilege escalation", async () => {
-    const context = setup();
-    await expect(context.service.update("target", [{ permission: PERMISSIONS.adminsManage, granted: true }], "actor"))
+    const context = setup("SALES");
+    await expect(context.service.update("target", [{ permission: PERMISSIONS.inventoryWrite, granted: true }], "actor"))
       .rejects.toThrow("PERMISSION_ESCALATION_FORBIDDEN");
   });
 
   it("forbids self permission changes", async () => {
-    const context = setup();
+    const context = setup("SALES");
     await expect(context.service.update("actor", [{ permission: PERMISSIONS.ordersRead, granted: false }], "actor"))
       .rejects.toThrow("ADMIN_SELF_PERMISSIONS_CHANGE_FORBIDDEN");
   });
 
   it("protects SUPER_ADMIN permission overrides from non-super administrators", async () => {
-    const context = setup("SUPER_ADMIN");
+    const context = setup("SALES", "SUPER_ADMIN");
     await expect(context.service.update("target", [{ permission: PERMISSIONS.ordersRead, granted: false }], "actor"))
       .rejects.toThrow("SUPER_ADMIN_PERMISSIONS_PROTECTED");
   });
 
   it("keeps SUPER_ADMIN permissions fixed even when a super administrator updates them", async () => {
-    const context = setup("SUPER_ADMIN");
-    const superActor = admin("actor", "SUPER_ADMIN");
-    (context.users.findById as ReturnType<typeof vi.fn>).mockImplementation(async (id: string) =>
-      id === superActor.getId() || id === context.target.getId() ? (id === superActor.getId() ? superActor : context.target) : null,
-    );
+    const context = setup("SUPER_ADMIN", "SUPER_ADMIN");
     await context.service.update("target", [{ permission: PERMISSIONS.productsRead, granted: false }], "actor");
     expect(context.permissions.replaceOverrides).toHaveBeenCalledWith("target", []);
+  });
+
+  it("does not remove base role permissions from the role catalog", () => {
+    expect(ROLE_PERMISSIONS.ADMIN).toContain(PERMISSIONS.productsWrite);
   });
 });
