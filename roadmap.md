@@ -585,7 +585,9 @@ Worker: `f7d67832-8598-4f59-8db9-b538f543b3ef`
 
 Los commits posteriores están en `main`, pero no se consideran certificados hasta un nuevo build, deploy y `verify:production`.
 
-**Código actual en `main`:** `d6962439e434d5064a339648b5ed32174c7b602b`.
+**Base de código de aplicación revisada:** `d6962439e434d5064a339648b5ed32174c7b602b`.
+
+Las actualizaciones documentales posteriores permanecen en `main` como commits separados.
 
 **Último ciclo de build observado:** la aplicación completó la compilación de producción y falló en el typecheck por `exactOptionalPropertyTypes` en `apps/web/app/components/StoreHeader.tsx`; el ciclo actual requiere corrección, build, deploy y `verify:production` antes de certificarse.
 
