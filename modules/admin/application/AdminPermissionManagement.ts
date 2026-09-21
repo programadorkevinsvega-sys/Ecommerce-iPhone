@@ -1,7 +1,7 @@
 import type { AdminUserRepository } from "./AdminUserManagement";
 import type { AuditPort } from "./AuditPort";
 import type { AdminPermissionRepository, PermissionOverride } from "./AdminPermissionRepository";
-import { ADMIN_ROLES } from "../domain/AdminRole";
+import type { AdminRole } from "../domain/AdminRole";
 import { PERMISSIONS, type Permission, resolvePermissions } from "./Rbac";
 
 export type PermissionState = "inherit" | "grant" | "deny";
@@ -44,9 +44,6 @@ export class AdminPermissionManagement {
   async get(targetIdInput: string, actorIdInput: string): Promise<ReadonlyArray<AdminPermissionItem>> {
     const targetId = requireId(targetIdInput);
     const actor = await this.requireUser(actorIdInput);
-    await this.requireUser(targetId);
-    if (!this.canManage(actor, actor.role)) throw new Error("FORBIDDEN");
-
     const target = await this.requireUser(targetId);
     const overrides = await this.permissions.getOverrides(targetId);
     return this.catalog(target.role, overrides);
@@ -60,13 +57,13 @@ export class AdminPermissionManagement {
     const overrides = validateOverrides(rawOverrides);
 
     if (targetId === actorId) throw new Error("ADMIN_SELF_PERMISSIONS_CHANGE_FORBIDDEN");
-    if (!this.canManage(actor, actor.role)) throw new Error("FORBIDDEN");
+    const actorOverrides = await this.permissions.getOverrides(actorId);
+    const actorEffective = new Set(resolvePermissions(actor.role, actorOverrides));
+    if (!actorEffective.has(PERMISSIONS.adminsManage)) throw new Error("FORBIDDEN");
     if (target.role === "SUPER_ADMIN" && actor.role !== "SUPER_ADMIN") {
       throw new Error("SUPER_ADMIN_PERMISSIONS_PROTECTED");
     }
 
-    const actorOverrides = await this.permissions.getOverrides(actorId);
-    const actorEffective = new Set(resolvePermissions(actor.role, actorOverrides));
     if (actor.role !== "SUPER_ADMIN") {
       for (const override of overrides) {
         if (!actorEffective.has(override.permission)) {
@@ -83,7 +80,7 @@ export class AdminPermissionManagement {
     });
   }
 
-  private catalog(role: keyof typeof ADMIN_ROLES extends never ? never : typeof ADMIN_ROLES[number], overrides: ReadonlyArray<PermissionOverride>): AdminPermissionItem[] {
+  private catalog(role: AdminRole, overrides: ReadonlyArray<PermissionOverride>): AdminPermissionItem[] {
     const map = new Map(overrides.map((override) => [override.permission, override.granted]));
     const effective = new Set(resolvePermissions(role, overrides));
     return Object.values(PERMISSIONS).map((permission) => {
@@ -94,10 +91,6 @@ export class AdminPermissionManagement {
         effective: effective.has(permission),
       };
     });
-  }
-
-  private canManage(actor: Awaited<ReturnType<AdminUserRepository["findById"]>> & object, role: string): boolean {
-    return role === "SUPER_ADMIN" || actor.role === "SUPER_ADMIN";
   }
 
   private async requireUser(idInput: string) {
