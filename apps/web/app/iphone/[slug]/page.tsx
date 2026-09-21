@@ -1,7 +1,6 @@
 import StoreHeader from "../../components/StoreHeader";
 import type { Metadata } from "next";
-import NextImage from "next/image";
-import type { ComponentProps } from "react";
+import Image from "next/image";
 import Script from "next/script";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,11 +9,6 @@ import { ProductReviews } from "../../../components/ProductReviews";
 import { getProductBySlug, getProductVariants, searchCatalog } from "../../../lib/catalog";
 import { serializeJsonLd } from "../../../lib/jsonLd";
 import { listProductReviews } from "../../../lib/storefrontReviews";
-
-type ProductImageProps = ComponentProps<typeof NextImage>;
-function Image({ src, alt }: ProductImageProps) {
-  return <img src={typeof src === "string" ? src : ""} alt={alt} />;
-}
 
 export const revalidate = 30;
 const money = (cents: number, currency: string) => new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(cents / 100);

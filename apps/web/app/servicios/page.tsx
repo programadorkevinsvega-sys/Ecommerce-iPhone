@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import StoreHeader from "../components/StoreHeader";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -45,7 +46,16 @@ export default function ServicesPage() {
         <div className="services-grid">
           {services.map((service) => (
             <article className="service-card" key={service.code}>
-              {service.imageUrl && <img className="service-card-image" src={service.imageUrl} alt="" />}
+              {service.imageUrl && (
+                <Image
+                  className="service-card-image"
+                  src={service.imageUrl}
+                  alt=""
+                  width={640}
+                  height={260}
+                  sizes="(max-width: 620px) 100vw, (max-width: 1050px) 50vw, 25vw"
+                />
+              )}
               <div className="service-card-content">
                 <p className="service-category">{service.category}</p>
                 <h2>{service.name}</h2>

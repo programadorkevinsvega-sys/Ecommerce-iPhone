@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import { useEffect, useState } from "react";
 import AdminSidebar from "../AdminSidebar";
 import AdminLoadingState from "../AdminLoadingState";
@@ -666,7 +668,13 @@ export default function RepairOrdersAdmin() {
               <div className="repair-media-grid">
                 {details?.media.map((item) => (
                   <a key={item.id} href={item.url} target="_blank" rel="noreferrer">
-                    <img src={item.url} alt={`Evidencia ${item.stage}`} />
+                    <Image
+                      src={item.url}
+                      alt={`Evidencia ${item.stage}`}
+                      width={640}
+                      height={480}
+                      sizes="(max-width: 760px) 50vw, 220px"
+                    />
                     <small>{item.stage}</small>
                   </a>
                 ))}

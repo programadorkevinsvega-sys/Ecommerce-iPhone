@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { HomeCollectionItem } from "../../lib/homeCarousel";
@@ -32,7 +33,13 @@ export default function HomeCollectionCarousel({
           <Link className="home-collection-card" href={item.href} key={item.id}>
             <div className="home-collection-media">
               {item.imageUrl ? (
-                <img src={item.imageUrl} alt={item.title} />
+                <Image
+                  src={item.imageUrl}
+                  alt={item.title}
+                  width={640}
+                  height={440}
+                  sizes="(max-width: 520px) 100vw, (max-width: 800px) 50vw, 25vw"
+                />
               ) : (
                 <span aria-hidden="true">{item.eyebrow}</span>
               )}

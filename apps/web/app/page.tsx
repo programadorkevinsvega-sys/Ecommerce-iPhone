@@ -1,3 +1,4 @@
+import Image from "next/image";
 import StoreHeader from "./components/StoreHeader";
 import Link from "next/link";
 import { listPublicCategories } from "../lib/catalog";
@@ -51,7 +52,17 @@ export default async function HomePage() {
                 href={`/catalog?category=${encodeURIComponent(category.slug)}`}
                 key={category.id}
               >
-                {category.imageUrl ? <img src={category.imageUrl} alt="" /> : <span className="category-card-placeholder" aria-hidden="true" />}
+                {category.imageUrl ? (
+                  <Image
+                    src={category.imageUrl}
+                    alt=""
+                    width={640}
+                    height={360}
+                    sizes="(max-width: 520px) 100vw, (max-width: 800px) 50vw, 20vw"
+                  />
+                ) : (
+                  <span className="category-card-placeholder" aria-hidden="true" />
+                )}
                 <span>{category.name}</span>
                 <span aria-hidden="true">↗</span>
               </Link>

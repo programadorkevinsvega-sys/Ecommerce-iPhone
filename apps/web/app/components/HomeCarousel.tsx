@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { HomeSlide } from "../../lib/homeCarousel";
@@ -41,7 +43,15 @@ export default function HomeCarousel({ slides }: { slides: HomeSlide[] }) {
           </div>
         )}
       </div>
-      <img src={slide.imageUrl} alt={slide.title} className="home-carousel-image" />
+      <Image
+        src={slide.imageUrl}
+        alt={slide.title}
+        className="home-carousel-image"
+        width={1600}
+        height={900}
+        sizes="(max-width: 800px) 100vw, 55vw"
+        priority
+      />
     </section>
   );
 }

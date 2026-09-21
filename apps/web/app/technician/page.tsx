@@ -38,7 +38,7 @@ export default function TechnicianHome() {
 
   return (
     <main className="technician-shell">
-      <TechnicianHeader firstName={technician?.firstName} email={technician?.email} />
+      <TechnicianHeader firstName={technician?.firstName ?? ""} email={technician?.email ?? ""} />
       <section className="technician-page-head"><div><p className="eyebrow">Espacio de trabajo</p><h1>Hola{technician ? ", " + technician.firstName : ""}.</h1><p>Gestiona tus órdenes, registra equipos y documenta cada etapa técnica desde un solo lugar.</p></div><Link href="/technician/orders" className="button primary">Abrir órdenes</Link></section>
       {error && <div className="technician-alert" role="alert">{error}</div>}
       <section className="technician-stats" aria-label="Resumen operativo">

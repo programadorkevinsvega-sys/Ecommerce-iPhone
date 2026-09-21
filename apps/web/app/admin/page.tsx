@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "./AdminSidebar";
@@ -9,6 +10,11 @@ import {
   normalizeSingleLine,
   safeFormError,
 } from "../../lib/inputValidation";
+
+function adminImageSrc(url: string) {
+  if (!url || url.startsWith("/") || url.startsWith("blob:")) return url;
+  return `/api/media/proxy?url=${encodeURIComponent(url)}`;
+}
 
 type Metric = {
   orders: number;
@@ -1113,7 +1119,14 @@ function DashboardMetric({ label, value }: { label: string; value: string | numb
 function CategoryPreviewModal({ category, onClose }: { category: Category; onClose: () => void }) {
   return (
     <Modal title="Detalle de categoría" onClose={onClose}>
-      {category.imageUrl ? <img className="admin-detail-image" src={category.imageUrl} alt={`Imagen de ${category.name}`} /> : <div className="admin-detail-placeholder">Sin imagen configurada</div>}
+      {category.imageUrl ? <Image
+        className="admin-detail-image"
+        src={adminImageSrc(category.imageUrl)}
+        alt={`Imagen de ${category.name}`}
+        width={900}
+        height={600}
+        sizes="(max-width: 760px) 100vw, 680px"
+      /> : <div className="admin-detail-placeholder">Sin imagen configurada</div>}
       <dl className="admin-detail-list">
         <div><dt>Nombre</dt><dd>{category.name}</dd></div>
         <div><dt>Slug</dt><dd>/{category.slug}</dd></div>
@@ -1622,7 +1635,13 @@ function ProductModal({
             <div className="product-image-list">
               {form.imageUrls.map((url, index) => (
                 <div className="product-image-item" key={url}>
-                  <img src={url} alt={`Imagen ${index + 1} del producto`} />
+                  <Image
+                    src={adminImageSrc(url)}
+                    alt={`Imagen ${index + 1} del producto`}
+                    width={144}
+                    height={144}
+                    sizes="144px"
+                  />
                   <button
                     type="button"
                     onClick={() =>
@@ -1822,7 +1841,14 @@ function CategoryModal({
           Imagen de la categoría
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setForm({ ...form, imageFile: event.target.files?.[0] ?? null })} />
           <span className="form-help">JPG, PNG o WebP. Se almacena en Cloudflare R2.</span>
-          {form.imageUrl && <><img className="admin-form-image-preview" src={form.imageUrl} alt="Imagen actual de la categoría" /><button className="table-action danger" type="button" onClick={() => setForm({ ...form, imageUrl: "", imageFile: null })}>Quitar imagen</button></>}
+          {form.imageUrl && <><Image
+                  className="admin-form-image-preview"
+                  src={adminImageSrc(form.imageUrl)}
+                  alt="Imagen actual de la categoría"
+                  width={640}
+                  height={360}
+                  sizes="(max-width: 760px) 100vw, 240px"
+                /><button className="table-action danger" type="button" onClick={() => setForm({ ...form, imageUrl: "", imageFile: null })}>Quitar imagen</button></>}
         </label>
         <div className="modal-actions">
           <button className="admin-button" type="button" onClick={onClose}>
@@ -1910,7 +1936,14 @@ function ServiceTypeModal({
           Imagen del servicio
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => setForm({ ...form, imageFile: event.target.files?.[0] ?? null })} />
           <span className="form-help">JPG, PNG o WebP. Se almacena en Cloudflare R2.</span>
-          {form.imageUrl && <><img className="admin-form-image-preview" src={form.imageUrl} alt="Imagen actual del servicio" /><button className="table-action danger" type="button" onClick={() => setForm({ ...form, imageUrl: "", imageFile: null })}>Quitar imagen</button></>}
+          {form.imageUrl && <><Image
+                  className="admin-form-image-preview"
+                  src={adminImageSrc(form.imageUrl)}
+                  alt="Imagen actual del servicio"
+                  width={640}
+                  height={360}
+                  sizes="(max-width: 760px) 100vw, 240px"
+                /><button className="table-action danger" type="button" onClick={() => setForm({ ...form, imageUrl: "", imageFile: null })}>Quitar imagen</button></>}
         </label>
         <div className="form-grid">
           <label>Precio desde (centavos COP)<input type="number" min="0" value={form.priceFromInCents} onChange={(e) => set("priceFromInCents", e.target.value)} /></label>
@@ -2084,7 +2117,14 @@ function HomeSlidePreviewModal({ slide, onClose }: { slide: HomeSlide; onClose: 
   return (
     <Modal title="Vista previa de promoción" onClose={onClose}>
       <article className="home-slide-preview">
-        <img src={slide.imageUrl} alt={slide.title} />
+        <Image
+          src={adminImageSrc(slide.imageUrl)}
+          alt={slide.title}
+          width={1280}
+          height={720}
+          sizes="(max-width: 760px) 100vw, 620px"
+          unoptimized={slide.imageUrl.startsWith("blob:")}
+        />
         <div>
           <p className="eyebrow">{slide.eyebrow}</p>
           <h3>{slide.title}</h3>
