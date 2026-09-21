@@ -4,6 +4,7 @@ import { AdminCategories, PublicCategories } from "./Categories";
 import type { AuditPort } from "../../admin/application/AuditPort";
 import type { CategoryListCriteria, CategoryRepository } from "./CategoryRepository";
 import { Category } from "../domain/Category";
+import { PERMISSIONS, ROLE_PERMISSIONS } from "../../admin/application/Rbac";
 
 class MemoryCategoryRepository implements CategoryRepository {
   readonly items = new Map<string, Category>();
@@ -40,7 +41,7 @@ class MemoryCategoryRepository implements CategoryRepository {
   }
 }
 
-const actor = { id: "admin-1", email: "admin@example.com", role: "ADMIN" as const };
+const actor = { id: "admin-1", email: "admin@example.com", role: "ADMIN" as const, permissions: ROLE_PERMISSIONS.ADMIN };
 const audit = (): AuditPort => ({ audit: vi.fn().mockResolvedValue(undefined) });
 
 describe("AdminCategories", () => {
@@ -86,7 +87,30 @@ describe("AdminCategories", () => {
 
   it("returns 403 for admins without write permission", async () => {
     const service = new AdminCategories(new MemoryCategoryRepository(), audit());
-    await expect(service.create({ actor: { id: "sales-1", email: "sales@example.com", role: "SALES" }, body: { name: "Smartphones", slug: "smartphones" } })).rejects.toThrow("FORBIDDEN");
+    await expect(service.create({
+      actor: { id: "sales-1", email: "sales@example.com", role: "SALES", permissions: ROLE_PERMISSIONS.SALES },
+      body: { name: "Smartphones", slug: "smartphones" },
+    })).rejects.toThrow("FORBIDDEN");
+  });
+
+  it("honors an explicit permission grant outside the base role", async () => {
+    const repo = new MemoryCategoryRepository();
+    const service = new AdminCategories(repo, audit());
+    const permissions = [...ROLE_PERMISSIONS.SALES, PERMISSIONS.categoriesWrite];
+    const category = await service.create({
+      actor: { id: "sales-1", email: "sales@example.com", role: "SALES", permissions },
+      body: { name: "Accesorios", slug: "accesorios" },
+    });
+    expect(category.slug).toBe("accesorios");
+  });
+
+  it("honors an explicit permission deny over a role grant", async () => {
+    const service = new AdminCategories(new MemoryCategoryRepository(), audit());
+    const permissions = ROLE_PERMISSIONS.ADMIN.filter((permission) => permission !== PERMISSIONS.categoriesWrite);
+    await expect(service.create({
+      actor: { id: "admin-1", email: "admin@example.com", role: "ADMIN", permissions },
+      body: { name: "Accesorios", slug: "accesorios" },
+    })).rejects.toThrow("FORBIDDEN");
   });
 });
 
