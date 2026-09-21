@@ -38,7 +38,10 @@ export class TechnicianUser extends Entity<string> {
   }
 
   get active() { return this.props.active; }
-  recordSuccessfulLogin(now = new Date()) { this.props = { ...this.props, failedLoginCount: 0, lockedUntil: undefined, lastLoginAt: now.toISOString(), updatedAt: now.toISOString() }; }
+  recordSuccessfulLogin(now = new Date()) {
+    const { lockedUntil: _lockedUntil, ...withoutLock } = this.props;
+    this.props = { ...withoutLock, failedLoginCount: 0, lastLoginAt: now.toISOString(), updatedAt: now.toISOString() };
+  }
   recordFailedLogin(now = new Date(), maxAttempts = 5, lockMinutes = 15) {
     const failed = this.props.failedLoginCount + 1;
     this.props = { ...this.props, failedLoginCount: failed, ...(failed >= maxAttempts ? { lockedUntil: new Date(now.getTime() + lockMinutes * 60000).toISOString() } : {}), updatedAt: now.toISOString() };
