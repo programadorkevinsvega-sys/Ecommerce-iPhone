@@ -1,29 +1,68 @@
 import Link from "next/link";
 
-type AdminSidebarProps = { active: "repair-orders" | "repair-parts" | "service-types" | "customer-devices" | "technicians" | "users" };
+export type AdminSidebarSection =
+  | "dashboard"
+  | "orders"
+  | "products"
+  | "categories"
+  | "customers"
+  | "services"
+  | "home-carousel"
+  | "customer-devices"
+  | "service-types"
+  | "technicians"
+  | "users"
+  | "repair-orders"
+  | "repair-parts";
 
-const items = [
-  ["⌂", "Dashboard", "/admin"],
-  ["▣", "Pedidos", "/admin?section=orders"],
-  ["▤", "Productos", "/admin?section=products"],
-  ["⌘", "Categorías", "/admin?section=categories"],
-  ["♙", "Clientes", "/admin?section=customers"],
-  ["▱", "Dispositivos de clientes", "/admin/customer-devices"],
-  ["◇", "Servicios ofrecidos", "/admin/service-types"],
-  ["▧", "Carrusel de inicio", "/admin?section=home-carousel"],
-  ["⚙", "Solicitudes", "/admin?section=services"],
-] as const;
+type AdminSidebarProps = { active: AdminSidebarSection };
+
+const items: ReadonlyArray<{
+  key: AdminSidebarSection;
+  icon: string;
+  label: string;
+  href: string;
+}> = [
+  { key: "dashboard", icon: "⌂", label: "Dashboard", href: "/admin" },
+  { key: "orders", icon: "▣", label: "Pedidos", href: "/admin?section=orders" },
+  { key: "products", icon: "▤", label: "Productos", href: "/admin?section=products" },
+  { key: "categories", icon: "⌘", label: "Categorías", href: "/admin?section=categories" },
+  { key: "customers", icon: "♙", label: "Clientes", href: "/admin?section=customers" },
+  { key: "customer-devices", icon: "▱", label: "Dispositivos de clientes", href: "/admin/customer-devices" },
+  { key: "service-types", icon: "◇", label: "Servicios ofrecidos", href: "/admin/service-types" },
+  { key: "home-carousel", icon: "▧", label: "Carrusel de inicio", href: "/admin?section=home-carousel" },
+  { key: "services", icon: "⚙", label: "Solicitudes", href: "/admin?section=services" },
+  { key: "technicians", icon: "♟", label: "Técnicos", href: "/admin/technicians" },
+  { key: "users", icon: "♛", label: "Administradores y roles", href: "/admin/users" },
+  { key: "repair-orders", icon: "◫", label: "Órdenes de reparación", href: "/admin/repair-orders" },
+  { key: "repair-parts", icon: "⚙", label: "Repuestos de taller", href: "/admin/repair-parts" },
+];
 
 export default function AdminSidebar({ active }: AdminSidebarProps) {
-  return <aside className="admin-sidebar">
-    <Link className="admin-brand" href="/admin"><span className="admin-brand-mark">K</span><span><strong>KEVINS</strong><small>Administración</small></span></Link>
-    <nav className="admin-nav" aria-label="Secciones administrativas">
-      {items.map(([icon, label, href]) => <Link key={label} className={active === "customer-devices" && label === "Dispositivos de clientes" ? "active" : ""} href={href}><span>{icon}</span>{label}</Link>)}
-      <Link className={active === "technicians" ? "active" : ""} href="/admin/technicians"><span>♟</span>Técnicos</Link>
-      <Link className={active === "users" ? "active" : ""} href="/admin/users"><span>♛</span>Administradores y roles</Link>
-      <Link className={active === "repair-orders" ? "active" : ""} href="/admin/repair-orders"><span>◫</span>Órdenes de reparación</Link>
-      <Link className={active === "repair-parts" ? "active" : ""} href="/admin/repair-parts"><span>⚙</span>Repuestos de taller</Link>
-    </nav>
-    <div className="admin-sidebar-footer"><span className="admin-status-dot" /> Sistema operativo</div>
-  </aside>;
+  return (
+    <aside className="admin-sidebar">
+      <Link className="admin-brand" href="/admin">
+        <span className="admin-brand-mark">K</span>
+        <span>
+          <strong>KEVINS</strong>
+          <small>Administración</small>
+        </span>
+      </Link>
+      <nav className="admin-nav" aria-label="Secciones administrativas">
+        {items.map((item) => (
+          <Link
+            key={item.key}
+            className={active === item.key ? "active" : ""}
+            href={item.href}
+          >
+            <span>{item.icon}</span>
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+      <div className="admin-sidebar-footer">
+        <span className="admin-status-dot" /> Sistema operativo
+      </div>
+    </aside>
+  );
 }
