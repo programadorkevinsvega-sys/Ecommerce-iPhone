@@ -115,4 +115,7 @@ Implementation is advanced, but Phase 06 remains **not certified 100%** until th
 
 - Admin resource loading has been standardized with `AdminLoadingState` across the recently hardened resource pages.
 - `/admin/technicians` exposes the operational TÉCNICO identity and capabilities without introducing a TECHNICIAN role into `admin_users`.
+- The management form provides real create/update and activate/deactivate operations; the capability panel is descriptive and does not create administrative RBAC permissions.
 - Final Phase 06 certification remains pending until the current build, architecture/RBAC gates and production evidence pass.
+- `AdminLoadingState` is the shared loading pattern across the recently hardened resource pages.
+- The technical identity remains separated from `admin_users`; the remaining portal work is visual hardening plus certification.
