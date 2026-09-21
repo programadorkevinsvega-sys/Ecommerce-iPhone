@@ -115,3 +115,8 @@ Required final regression matrix:
 - [ ] webhook verification
 - [ ] secrets/dependencies
 - [ ] production smoke/security verification
+
+
+## Technician security surface — current state
+
+The technician identity remains isolated from Admin/RBAC. Technician APIs enforce technician session authentication and assignment ownership for technician order operations. Remaining work is regression evidence, production certification and visual hardening around the existing security model; no second authorization model should be introduced in the UI.
