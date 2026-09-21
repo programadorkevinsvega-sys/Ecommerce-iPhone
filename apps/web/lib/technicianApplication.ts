@@ -1,11 +1,29 @@
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { RepairEvidenceService } from "../../../modules/repairs/application/RepairEvidence";
 import { RepairOrderManagement } from "../../../modules/repairs/application/RepairOrderManagement";
 import { TechnicianDeviceService } from "../../../modules/technicians/application/TechnicianDeviceService";
+import {
+  technicianAuthApplication as createTechnicianAuthApplication,
+  technicianManagementApplication as createTechnicianManagementApplication,
+} from "../../../modules/technicians/infrastructure/D1TechnicianComposition";
 import { D1CustomerDeviceRepository } from "../../../modules/customers/infrastructure/D1CustomerDeviceRepository";
 import { D1RepairEvidenceRepository } from "../../../modules/repairs/infrastructure/D1RepairEvidenceRepository";
 import { D1RepairOrderRepository } from "../../../modules/repairs/infrastructure/D1RepairOrderRepository";
 import { R2RepairEvidenceStorage } from "../../../modules/repairs/infrastructure/R2RepairEvidenceStorage";
 import { D1TechnicianRepository } from "../../../modules/technicians/infrastructure/D1TechnicianRepository";
+
+export function technicianAuthApplication(env: CloudflareEnv) {
+  return createTechnicianAuthApplication(env);
+}
+
+export function technicianAuthApplicationForRequest() {
+  const { env } = getCloudflareContext();
+  return createTechnicianAuthApplication(env);
+}
+
+export function technicianManagementApplication(env: CloudflareEnv) {
+  return createTechnicianManagementApplication(env);
+}
 
 export function technicianDeviceApplication(env: CloudflareEnv) {
   return new TechnicianDeviceService(
