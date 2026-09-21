@@ -44,3 +44,29 @@ A service request can carry a provider-agnostic `paymentId`. Payment orchestrati
 ## Security boundary
 
 The catalog is intentionally configurable so each buyer/business can define its own operational policies and service offerings. Configurability does not grant unauthorized access, credential collection, or security-bypass capabilities; those remain outside the implementation boundary.
+
+
+## Current operational surfaces
+
+Administrative:
+- `/admin/services`
+- `/admin/service-types`
+- `/admin/repair-orders`
+- `/admin/repair-parts`
+- `/admin/customer-devices`
+- `/admin/technicians`
+
+Customer:
+- `/servicios`
+- `/servicios/solicitar`
+- `/reparaciones`
+- `/cuenta`
+
+Technician:
+- `/technician/login`
+- `/technician`
+- `/technician/orders`
+- `/technician/devices`
+- `/technician/profile`
+
+The technician is a separate operational identity and is never represented as an administrative RBAC role.
