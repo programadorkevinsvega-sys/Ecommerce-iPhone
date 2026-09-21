@@ -384,13 +384,6 @@ export default function AdminUsersPage() {
                 </>
               )}
             </section>
-                {form.role !== "SUPER_ADMIN" && permissions.length > 0 && (
-                  <button className="admin-button" type="button" onClick={() => void savePermissions()}>
-                    Guardar permisos
-                  </button>
-                )}
-              </section>
-            )}
             {message && <p role="status">{message}</p>}
             <div className="modal-actions">
               <button className="admin-button primary" disabled={loading} type="submit">
