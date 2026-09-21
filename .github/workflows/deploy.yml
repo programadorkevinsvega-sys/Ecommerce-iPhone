@@ -15,8 +15,8 @@ concurrency:
 
 env:
   DB_NAME: ecommerce-iphone
-  PRODUCTION_URL: https://ecommerce-iphone.programadorkevinsvega-sys.workers.dev
-  PERF_BASE_URL: https://ecommerce-iphone.programadorkevinsvega-sys.workers.dev
+  PRODUCTION_URL: https://iphone.jnmtortas.com
+  PERF_BASE_URL: https://iphone.jnmtortas.com
 
 jobs:
   deploy:
@@ -76,19 +76,23 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
       - name: Deploy Worker and assets
-        run: pnpm exec wrangler deploy
+        run: pnpm exec wrangler deploy --env=""
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
       - name: Verify production health and protection
         run: pnpm verify:production
+        env:
+          PRODUCTION_URL: ${{ env.PRODUCTION_URL }}
 
       - name: Install Playwright browser
         run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
 
       - name: Production performance gate
         run: pnpm performance:production
+        env:
+          PERF_BASE_URL: ${{ env.PERF_BASE_URL }}
 
       - name: Deployment gate passed
         run: echo "Production deploy, health verification, smoke checks and performance gate passed."
