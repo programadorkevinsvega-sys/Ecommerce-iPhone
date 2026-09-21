@@ -1,5 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { technicianManagementApplication } from "../../../../../../modules/technicians/infrastructure/D1TechnicianComposition";
+import { technicianManagementApplication } from "../../../../modules/technicians/infrastructure/D1TechnicianComposition";
 import { PERMISSIONS, requireAdmin } from "../adminAuth";
 
 export async function listTechnicians() {
