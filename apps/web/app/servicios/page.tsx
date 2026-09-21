@@ -1,4 +1,5 @@
 "use client";
+import StoreHeader from "../components/StoreHeader";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -31,22 +32,7 @@ export default function ServicesPage() {
   }, []);
   return (
     <main className="store-shell services-page">
-      <header className="store-header">
-        <Link className="brand" href="/">
-          Ecommerce iPhone
-        </Link>
-        <nav>
-          <Link href="/">Inicio</Link>
-          <Link href="/catalog">Catálogo</Link>
-          <Link href="/servicios" aria-current="page">
-            Servicios
-          </Link>
-          <Link href="/reparaciones">Consultar reparación</Link>
-          <Link href="/contacto">Contacto</Link>
-          <Link href="/cart">Carrito</Link>
-          <Link href="/cuenta">Mi cuenta</Link>
-        </nav>
-      </header>
+      <StoreHeader activeHref="/servicios" />
       <section className="catalog-hero services-hero">
         <p className="eyebrow">Servicios</p>
         <h1>Soporte técnico configurable.</h1>

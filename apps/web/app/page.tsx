@@ -1,3 +1,4 @@
+import StoreHeader from "./components/StoreHeader";
 import Link from "next/link";
 import { listPublicCategories } from "../lib/catalog";
 import HomeCarousel from "./components/HomeCarousel";
@@ -17,19 +18,7 @@ export default async function HomePage() {
   const services = await listHomeServiceItems();
   return (
     <main className="store-shell">
-      <header className="store-header">
-        <span className="brand">Ecommerce iPhone</span>
-        <nav aria-label="Principal">
-          <Link href="/" aria-current="page">
-            Inicio
-          </Link>
-          <Link href="/catalog">Catálogo</Link>
-          <Link href="/servicios">Servicios</Link>
-          <Link href="/contacto">Contacto</Link>
-          <Link href="/cart">Carrito</Link>
-          <Link href="/cuenta">Mi cuenta</Link>
-        </nav>
-      </header>
+      <StoreHeader activeHref="/" />
       {slides.length > 0 && <HomeCarousel slides={slides} />}
       <section className="home-intro">
         <div>

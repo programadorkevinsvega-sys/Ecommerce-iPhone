@@ -1,4 +1,5 @@
 "use client";
+import StoreHeader from "../components/StoreHeader";
 
 import Link from "next/link";
 import { useState } from "react";
@@ -84,7 +85,7 @@ export default function CheckoutPage() {
 
   return (
     <main className="store-shell">
-      <header className="store-header"><Link href="/" className="brand-mark">Ecommerce iPhone</Link><nav aria-label="Principal"><Link href="/cart">Carrito</Link><Link href="/catalog">Catálogo</Link></nav></header>
+      <StoreHeader activeHref="/cart" />
       <section className="catalog-hero"><p className="eyebrow">Checkout seguro</p><h1>Datos de entrega y pago.</h1><p>El pedido se crea con precio y stock validados en servidor. Puedes elegir cualquiera de los proveedores de pago habilitados.</p></section>
       <form className="checkout-form" onSubmit={submit} aria-describedby={error ? "checkout-error" : undefined}>
         <fieldset><legend>Contacto</legend>

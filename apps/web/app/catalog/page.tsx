@@ -1,3 +1,4 @@
+import StoreHeader from "../components/StoreHeader";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -71,21 +72,7 @@ export default async function CatalogPage({
 
   return (
     <main className="store-shell">
-      <header className="store-header">
-        <Link href="/" className="brand-mark">
-          Ecommerce iPhone
-        </Link>
-        <nav aria-label="Principal">
-          <Link href="/">Inicio</Link>
-          <Link href="/catalog" aria-current="page">
-            Catálogo
-          </Link>
-          <Link href="/servicios">Servicios</Link>
-          <Link href="/contacto">Contacto</Link>
-          <Link href="/cart">Carrito</Link>
-          <Link href="/cuenta">Mi cuenta</Link>
-        </nav>
-      </header>
+      <StoreHeader activeHref="/catalog" />
       <section className="catalog-hero">
         <p className="eyebrow">Catálogo</p>
         <h1>Encuentra tu próximo smartphone.</h1>

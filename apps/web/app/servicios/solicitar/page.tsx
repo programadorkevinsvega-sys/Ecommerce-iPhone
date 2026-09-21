@@ -1,4 +1,5 @@
 "use client";
+import StoreHeader from "../../components/StoreHeader";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -136,15 +137,7 @@ export default function RequestServicePage() {
 
   return (
     <main className="store-shell">
-      <header className="store-header">
-        <Link className="brand" href="/">
-          Ecommerce iPhone
-        </Link>
-        <nav aria-label="Principal">
-          <Link href="/servicios">Servicios</Link>
-          <Link href="/catalog">Catálogo</Link>
-        </nav>
-      </header>
+      <StoreHeader activeHref="/servicios" />
       <section className="catalog-hero">
         <p className="eyebrow">Solicitud técnica</p>
         <h1>Cuéntanos qué necesita tu dispositivo.</h1>
