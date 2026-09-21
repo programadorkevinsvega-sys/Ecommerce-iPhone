@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import AdminSidebar from "../AdminSidebar";
+import AdminLoadingState from "../AdminLoadingState";
 
 type Device = {
   id: string;
@@ -63,8 +64,10 @@ export default function AdminCustomerDevicesPage() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    setLoading(true);
     setError("");
     try {
       const [devicesResponse, customersResponse] = await Promise.all([
@@ -102,6 +105,8 @@ export default function AdminCustomerDevicesPage() {
       }
     } catch {
       setError("No se pudieron cargar los datos del inventario de dispositivos.");
+    } finally {
+      setLoading(false);
     }
   }, [query]);
 
@@ -308,6 +313,10 @@ export default function AdminCustomerDevicesPage() {
             </div>
 
             <div className="admin-table-wrap">
+              {loading ? (
+                <AdminLoadingState label="Cargando dispositivos…" />
+              ) : (
+                <>
               <table className="admin-table">
                 <thead>
                   <tr>
@@ -358,6 +367,8 @@ export default function AdminCustomerDevicesPage() {
                   <h3>No hay dispositivos registrados</h3>
                   <p>Los equipos que reciba el taller aparecerán aquí.</p>
                 </div>
+              )}
+                </>
               )}
             </div>
           </div>
