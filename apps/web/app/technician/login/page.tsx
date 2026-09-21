@@ -1,3 +1,64 @@
 "use client";
-import { useState,type FormEvent } from "react";
-export default function TechnicianLoginPage(){const[email,setEmail]=useState(""),[password,setPassword]=useState(""),[error,setError]=useState(""),[busy,setBusy]=useState(false);async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();if(busy)return;setBusy(true);setError("");const r=await fetch("/api/technician/auth/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({email,password}),credentials:"same-origin",cache:"no-store"});const d=await r.json() as{error?:string};if(!r.ok){setError(d.error??"No se pudo iniciar sesión.");setBusy(false);return}window.location.href="/technician";}return <main className="store-shell auth-page"><section className="auth-card"><p className="eyebrow">Área técnica</p><h1>Acceso de técnicos</h1><p>Cuenta independiente creada por Administración.</p><form onSubmit={submit}><label>Correo<input type="email"required value={email}autoComplete="username"onChange={e=>setEmail(e.target.value)}/></label><label>Contraseña<input type="password"required value={password}autoComplete="current-password"onChange={e=>setPassword(e.target.value)}/></label>{error&&<p className="form-error"role="alert">{error}</p>}<button className="button primary"disabled={busy}>{busy?"Entrando…":"Iniciar sesión"}</button></form></section></main>;}
+import Link from "next/link";
+import { useState, type FormEvent } from "react";
+
+export default function TechnicianLoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    const response = await fetch("/api/technician/auth/login", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    const data = await response.json() as { error?: string };
+    if (!response.ok) {
+      setError(data.error ?? "No se pudo iniciar sesión.");
+      setBusy(false);
+      return;
+    }
+    window.location.href = "/technician";
+  }
+
+  return (
+    <main className="technician-auth-shell">
+      <section className="technician-auth-brand">
+        <Link href="/" className="technician-brand technician-brand-light">
+          <span className="technician-brand-mark">E</span>
+          <span><strong>Ecommerce iPhone</strong><small>Área técnica</small></span>
+        </Link>
+        <div>
+          <p className="eyebrow">Acceso operativo</p>
+          <h1>Un espacio para reparar mejor.</h1>
+          <p>Consulta únicamente las órdenes asignadas a tu identidad técnica y deja trazabilidad de cada intervención.</p>
+        </div>
+        <div className="technician-auth-points">
+          <span>01 · Órdenes asignadas</span><span>02 · Diagnóstico y reparación</span><span>03 · Evidencia y control de calidad</span>
+        </div>
+      </section>
+      <section className="technician-auth-panel">
+        <div className="technician-auth-card">
+          <p className="eyebrow">Área técnica</p>
+          <h2>Iniciar sesión</h2>
+          <p>Usa las credenciales creadas por Administración.</p>
+          <form onSubmit={submit} className="technician-form">
+            <label>Correo<input type="email" required value={email} autoComplete="username" onChange={(event) => setEmail(event.target.value)} /></label>
+            <label>Contraseña<input type="password" required value={password} autoComplete="current-password" onChange={(event) => setPassword(event.target.value)} /></label>
+            {error && <p className="technician-form-error" role="alert">{error}</p>}
+            <button className="button primary" disabled={busy}>{busy ? "Entrando…" : "Iniciar sesión"}</button>
+          </form>
+          <p className="technician-login-note">Las cuentas técnicas no se registran públicamente. Si no puedes acceder, contacta a Administración.</p>
+        </div>
+      </section>
+    </main>
+  );
+}

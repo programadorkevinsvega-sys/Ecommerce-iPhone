@@ -17,7 +17,7 @@ export type TechnicianUserProps = Readonly<{
 export class TechnicianUser extends Entity<string> {
   private constructor(id: string, private props: TechnicianUserProps) { super(id); }
 
-  static create(id: string, props: Omit<TechnicianUserProps, "createdAt" | "updatedAt"> & Partial<Pick<TechnicianUserProps, "createdAt" | "updatedAt">>) {
+  static rehydrate(id: string, props: TechnicianUserProps) {\n    return new TechnicianUser(id, props);\n  }\n\n  static create(id: string, props: Omit<TechnicianUserProps, "createdAt" | "updatedAt"> & Partial<Pick<TechnicianUserProps, "createdAt" | "updatedAt">>) {
     const email = props.email.trim().toLowerCase();
     const firstName = props.firstName.trim();
     const lastName = props.lastName.trim();
