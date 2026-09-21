@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import AdminSidebar from "../AdminSidebar";
+import AdminLoadingState from "../AdminLoadingState";
 
 const emptyForm = {
   code: "", slug: "", name: "", description: "", imageUrl: "", category: "REPAIR",
@@ -139,7 +140,7 @@ export default function ServiceTypesPage() {
                   <p>Registra los servicios que ofrecerá el taller para que puedan aparecer en el flujo real.</p>
                 </div>
               )}
-              {loading && <div className="admin-loading-inline">Cargando catálogo…</div>}
+              {loading && <AdminLoadingState label="Cargando catálogo…" />}
             </div>
           </div>
 
