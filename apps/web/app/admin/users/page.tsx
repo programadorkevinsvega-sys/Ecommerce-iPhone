@@ -242,9 +242,16 @@ export default function AdminUsersPage() {
           <Link href="/admin" className="admin-button">Volver</Link>
         </header>
 
-        <section className="admin-workspace">
+        <section className="admin-workspace admin-users-grid">
+          <div className="admin-page-panel">
           <form className="admin-form" onSubmit={save}>
-            <h2>{editing ? "Editar cuenta administrativa" : "Crear cuenta administrativa"}</h2>
+            <div className="admin-section-heading">
+              <div>
+                <p className="admin-kicker">Cuenta</p>
+                <h2>{editing ? "Editar administrador" : "Crear administrador"}</h2>
+              </div>
+              {editing && <button className="admin-button" type="button" onClick={() => { setEditing(null); setForm(EMPTY); setPermissions([]); }}>Nuevo</button>}
+            </div>
             <div className="form-grid">
               <label>
                 Correo
@@ -335,7 +342,16 @@ export default function AdminUsersPage() {
               )}
             </div>
           </form>
+          </div>
 
+          <div className="admin-page-panel admin-page-table-panel">
+            <div className="admin-section-heading">
+              <div>
+                <p className="admin-kicker">Cuentas</p>
+                <h2>Administradores registrados</h2>
+              </div>
+              <span className="muted">{items.length} cuentas</span>
+            </div>
           <div className="admin-table-wrap">
             <table className="admin-table">
               <thead>
@@ -359,7 +375,8 @@ export default function AdminUsersPage() {
                 ))}
               </tbody>
             </table>
-            {!items.length && <div className="admin-empty"><h3>No hay cuentas administrativas adicionales</h3><p>La primera cuenta SUPER_ADMIN se crea mediante el bootstrap seguro del sistema.</p></div>}
+            {!items.length && <div className="admin-empty"><span>♛</span><h3>No hay cuentas administrativas adicionales</h3><p>La primera cuenta SUPER_ADMIN se crea mediante el bootstrap seguro del sistema.</p></div>}
+          </div>
           </div>
         </section>
       </section>
