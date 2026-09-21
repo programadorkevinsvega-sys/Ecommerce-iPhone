@@ -641,3 +641,9 @@ Una fase se considera terminada únicamente cuando:
 - `/technician/**` ya utiliza una cabecera operativa compartida (`TechnicianHeader`) para la navegación técnica.
 - La última versión directamente verificada en producción continúa siendo el Worker `f7d67832-8598-4f59-8db9-b538f543b3ef`; los cambios posteriores requieren un nuevo ciclo build/deploy/verify.
 - El diseño realtime de notificaciones queda especificado en `docs/notifications.md` y `docs/realtime-notifications.md`.
+
+### Evidencia de release actual — 2026-09-21
+
+El commit actual de `main` no está certificado en producción. Los runs de `Cloudflare Production Deploy` 1074–1080 terminaron en `failure`; los runs 1079 y 1080 fallaron casi inmediatamente y el conector disponible no expone los pasos/logs internos del job. Por esa limitación no se atribuye el fallo a typecheck, tests o build sin evidencia. Además, un `Workers Builds: ecommerce-iphone` asociado al commit `0ee4522` también terminó en `failure`.
+
+Por lo tanto, el estado oficial sigue siendo **implementado/hardening, certificación pendiente** para las fases afectadas. No se marca ningún release como productivo certificado mientras no exista evidencia de build + deploy + `verify:production` sobre `https://iphone.jnmtortas.com`.
