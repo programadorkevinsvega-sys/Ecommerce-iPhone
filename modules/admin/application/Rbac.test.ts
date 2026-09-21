@@ -20,4 +20,9 @@ describe("admin RBAC", () => {
   it("keeps SUPER_ADMIN on the complete base permission set", () => {
     expect(resolvePermissions("SUPER_ADMIN", [])).toEqual(ROLE_PERMISSIONS.SUPER_ADMIN);
   });
+
+  it("keeps payment access granular to payment permissions", () => {
+    expect(resolvePermissions("FINANCE", [])).toContain(PERMISSIONS.paymentsRead);
+    expect(resolvePermissions("SALES", [])).not.toContain(PERMISSIONS.paymentsRead);
+  });
 });

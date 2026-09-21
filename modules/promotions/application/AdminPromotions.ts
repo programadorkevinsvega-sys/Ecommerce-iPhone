@@ -1,3 +1,5 @@
+import type { AuditPort } from "../../admin/application/AuditPort";
+
 export type PromotionInput = Readonly<{
   code: string;
   name: string;
@@ -17,13 +19,16 @@ export type PromotionRepository = {
 };
 
 export class AdminPromotions {
-  constructor(private readonly repository: PromotionRepository) {}
+  constructor(
+    private readonly repository: PromotionRepository,
+    private readonly audit: AuditPort,
+  ) {}
 
   list() {
     return this.repository.list();
   }
 
-  save(input: PromotionInput, id?: string) {
+  async save(input: PromotionInput, id: string | undefined, adminUserId: string): Promise<string> {
     if (!input || typeof input !== "object") throw new Error("INVALID_PROMOTION");
 
     const code = input.code.trim().toUpperCase();
@@ -64,7 +69,7 @@ export class AdminPromotions {
       throw new Error("INVALID_MAX_USES");
     }
 
-    return this.repository.save(
+    const promotionId = await this.repository.save(
       {
         ...input,
         code,
@@ -75,10 +80,15 @@ export class AdminPromotions {
       },
       id,
     );
+    await this.audit.audit(adminUserId, "ADMIN_PROMOTION_SAVED", "promotion", promotionId, { code });
+    return promotionId;
   }
 
-  setActive(id: string, active: boolean) {
+  async setActive(id: string, active: boolean, adminUserId: string): Promise<boolean> {
     if (!id.trim()) throw new Error("PROMOTION_ID_REQUIRED");
-    return this.repository.setActive(id.trim(), active);
+    const promotionId = id.trim();
+    const updated = await this.repository.setActive(promotionId, active);
+    await this.audit.audit(adminUserId, "ADMIN_PROMOTION_ACTIVATED", "promotion", promotionId, { active });
+    return updated;
   }
 }

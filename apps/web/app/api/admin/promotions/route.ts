@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
-import { AdminPromotions } from "../../../../../../modules/promotions/application/AdminPromotions";
-import { D1PromotionRepository } from "../../../../../../modules/promotions/infrastructure/D1PromotionRepository";
-import { adminAuditApplication } from "../../../../lib/adminApplication";
+import { adminPromotionsApplication } from "../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
 
 export async function GET() {
   try {
     const { env } = await requireAdmin(PERMISSIONS.promotionsWrite);
     return NextResponse.json(
-      { items: await new AdminPromotions(new D1PromotionRepository(env.DB)).list() },
+      { items: await adminPromotionsApplication(env).list() },
       { headers: { "cache-control": "no-store" } },
     );
   } catch (e) { return error(e); }
@@ -18,8 +16,7 @@ export async function POST(request: Request) {
   try {
     const { env, admin } = await requireAdmin(PERMISSIONS.promotionsWrite);
     const body = await request.json() as any;
-    const id = await new AdminPromotions(new D1PromotionRepository(env.DB)).save(body, typeof body.id === "string" ? body.id : undefined);
-    await adminAuditApplication(env).audit(admin.id, "ADMIN_PROMOTION_SAVED", "promotion", id, { code: String(body.code ?? "").toUpperCase() });
+    const id = await adminPromotionsApplication(env).save(body, typeof body.id === "string" ? body.id : undefined, admin.id);
     return NextResponse.json({ id }, { status: 201 });
   } catch (e) { return error(e); }
 }
@@ -30,8 +27,7 @@ export async function PATCH(request: Request) {
     const body = await request.json() as any;
     const id = String(body.id ?? "");
     const active = body.active === true;
-    const ok = await new AdminPromotions(new D1PromotionRepository(env.DB)).setActive(id, active);
-    await adminAuditApplication(env).audit(admin.id, "ADMIN_PROMOTION_ACTIVATED", "promotion", id, { active });
+    const ok = await adminPromotionsApplication(env).setActive(id, active, admin.id);
     return NextResponse.json({ updated: ok });
   } catch (e) { return error(e); }
 }
