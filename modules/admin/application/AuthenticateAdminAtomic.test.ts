@@ -66,6 +66,17 @@ describe("AuthenticateAdminAtomic", () => {
     expect(context.audit.audit).toHaveBeenCalledWith(null, "ADMIN_LOGIN_FAILED", "admin_user", null, expect.any(Object));
   });
 
+  it("locks the account when the atomic failure state reaches the threshold", async () => {
+    const context = setup(user());
+    context.passwords.verify.mockResolvedValue(false);
+    context.admins.recordFailedLogin.mockResolvedValue({
+      failedLoginCount: 5,
+      lockedUntil: "2026-01-01T00:15:00.000Z",
+    });
+    await expect(context.service.execute("admin@example.com", "wrong-password")).rejects.toThrow("ACCOUNT_LOCKED");
+    expect(context.createSession.execute).not.toHaveBeenCalled();
+  });
+
   it("records a blocked login without creating a session", async () => {
     const context = setup(user({ lockedUntil: "2026-01-01T00:15:00.000Z" }));
     await expect(context.service.execute("admin@example.com", "password")).rejects.toThrow("ACCOUNT_LOCKED");
