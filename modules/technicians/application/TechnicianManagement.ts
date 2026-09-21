@@ -50,7 +50,7 @@ export class TechnicianManagement {
       const duplicate = await this.users.findByEmail(email);
       if (duplicate && duplicate.getId() !== id) throw new Error("TECHNICIAN_ALREADY_EXISTS");
     }
-    const next = TechnicianUser.create(id, {
+    const next = TechnicianUser.rehydrate(id, {
       ...old,
       email,
       firstName: input.firstName === undefined ? old.firstName : required(input.firstName),
