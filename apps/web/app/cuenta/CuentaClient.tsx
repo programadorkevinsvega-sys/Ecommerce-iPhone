@@ -77,12 +77,9 @@ export default function CuentaClient() {
     <main className="account-page">
       <header className="account-topbar">
         <Link className="brand-mark" href="/">Ecommerce iPhone</Link>
-        <nav>
-          <Link href="/catalog">Catálogo</Link>
-          <Link href="/servicios">Servicios</Link>
-          <Link href="/reparaciones">Reparaciones</Link>
+        <StoreNavigation activeHref="/cuenta">
           <button className="link-button" onClick={() => void logout()}>Salir</button>
-        </nav>
+        </StoreNavigation>
       </header>
 
       <section className="account-hero">
