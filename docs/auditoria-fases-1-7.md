@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**HEAD auditado:** `4c7feecdfcd9a97986fdc0a062b6d7e49c0ef03c`  
+**Código funcional auditado:** `4c7feecdfcd9a97986fdc0a062b6d7e49c0ef03c`  
 **Última actualización:** 2026-09-21 UTC  
 **Entorno remoto operativo:** producción únicamente.
 
@@ -477,7 +477,7 @@ Pendiente: DLQ explícita, retry definitivo, replay y auditoría de fallos termi
 - [x] lockfile versionado;
 - [x] frozen install;
 - [x] Node `24.18.0`;
-- [x] pnpm `10.15.0`;
+- [x] pnpm `12.4.1`;
 - [x] build limpio;
 - [x] producción desplegada y verificada.
 
