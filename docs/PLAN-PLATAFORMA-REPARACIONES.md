@@ -1,5 +1,30 @@
 # Plan de implementación: plataforma de reparaciones
 
+# Estado consolidado — 2026-09-21
+
+La plataforma de reparaciones ya no está en una etapa puramente de planificación. Existe implementación real para cliente, Admin, órdenes, repuestos y técnicos.
+
+| Área | Estado |
+|---|---|
+| Catálogo configurable de servicios | 🟢 Implementado |
+| Portal de cliente | 🟢 Implementado |
+| Dispositivos de cliente | 🟢 Implementado |
+| Órdenes de reparación | 🟢 Implementado + operaciones Admin |
+| Asignación de técnicos | 🟢 Implementado |
+| Identidad técnica independiente | 🟢 Implementado |
+| Portal técnico | 🟡 Funcional; rediseño visual pendiente |
+| Evidencia fotográfica | 🟢 Implementada |
+| Repuestos | 🟢 Implementado |
+| Seguimiento público | 🟢 Implementado |
+| Auditoría | 🟢 Implementada |
+| Notificaciones | 🟡 Implementadas; DLQ/retry/replay pendientes |
+| Certificación productiva final | 🟡 Pendiente |
+
+## Regla de estado
+
+Una funcionalidad implementada no se marca como certificada hasta pasar tests, gates de arquitectura/seguridad, build Cloudflare, deploy y verificación de producción.
+
+
 ## 1. Objetivo
 
 Extender el ecommerce actual para convertirlo en una plataforma operativa de reparación y mantenimiento de dispositivos.
@@ -69,6 +94,7 @@ Las reglas de negocio no deben quedar únicamente en React ni en las rutas HTTP.
 ### 2.4 Estado de implementación
 
 Cada fase debe terminar con:
+
 
 1. Migración D1.
 2. Dominio y casos de uso.
@@ -156,7 +182,7 @@ El sistema no debe asumirlos como datos hardcodeados. El administrador podrá cr
 
 ### Estado de implementación
 
-**Código completo de Fase 2 implementado e integrado en `main`.** No se inicia ni se implementa la Fase 3 hasta cerrar la verificación de esta fase.
+**Implementación de Fase 2 integrada en `main`.** La verificación automática final de producción sigue pendiente; no se debe interpretar la implementación como certificación.
 
 La implementación incluye:
 
@@ -208,7 +234,7 @@ Permitir que el cliente registre una cuenta, inicie sesión y consulte su histor
 
 ### Verificación pendiente de cierre
 
-La verificación automática de Cloudflare debe ejecutarse con éxito antes de considerar la Fase 2 certificada al 100%. En los últimos pushes de `main`, GitHub Actions está creando el job pero terminándolo antes de ejecutar cualquier step, sin pasos ni logs disponibles; por ello la validación de `pnpm test`, `pnpm typecheck`, `pnpm build:cloudflare`, migraciones remotas y smoke/performance de producción no puede marcarse como aprobada todavía.
+La implementación está integrada, pero la certificación final requiere evidencia directa de Cloudflare/producción para el release correspondiente. GitHub Actions no se utiliza como sustituto cuando no ejecuta steps ni produce logs.
 
 ## 6. Fase 3: dispositivos del cliente
 
@@ -221,7 +247,7 @@ El cliente puede consultar sus dispositivos, pero la creación, edición y archi
 ### Roles
 
 - `ADMIN`: puede registrar, consultar, editar y archivar dispositivos de clientes según sus permisos.
-- `TECHNICIAN`: registrará y actualizará los datos técnicos del equipo dentro del flujo operativo de reparación cuando la interfaz de técnico esté habilitada en su fase correspondiente.
+- `TECHNICIAN`: ya registra y actualiza los datos técnicos del equipo dentro del flujo operativo de reparación, limitado a órdenes asignadas.
 - `CUSTOMER`: puede consultar únicamente sus propios dispositivos y utilizarlos como referencia al solicitar o consultar una reparación.
 
 ### Datos
@@ -269,6 +295,12 @@ La cookie de sesión es technician_session. La sesión se persiste en D1, se alm
 - technician_audit_events.
 
 La plataforma parte de una instalación nueva: no existe migración de cuentas técnicas desde Admin. Las identidades técnicas se crean exclusivamente en technician_users y nunca se almacenan como usuarios administrativos.
+
+### Estado actual del portal técnico
+
+El portal técnico es funcional y dispone de login, dashboard, órdenes, dispositivos y perfil. Existe `apps/web/app/technician/TechnicianHeader.tsx` como base de navegación, pero el workspace actual todavía requiere una iteración visual para quedar al mismo nivel de diseño del storefront y del backoffice.
+
+La prioridad de UI pendiente es únicamente presentación/UX; no implica cambiar el modelo de autorización ni crear otro sistema de permisos.
 
 #### Gestión administrativa
 
