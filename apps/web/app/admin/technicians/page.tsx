@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import AdminSidebar from "../AdminSidebar";
+import AdminLoadingState from "../AdminLoadingState";
 
 type Technician = {
   id: string;
@@ -34,23 +35,31 @@ export default function AdminTechniciansPage() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [editing, setEditing] = useState<string | null>(null);
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    const response = await fetch("/api/admin/technicians", {
-      cache: "no-store",
-      credentials: "same-origin",
-    });
-    if (response.status === 401 || response.status === 403) {
-      window.location.href = "/admin/login";
-      return;
+    setLoading(true);
+    try {
+      const response = await fetch("/api/admin/technicians", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      if (response.status === 401 || response.status === 403) {
+        window.location.href = "/admin/login";
+        return;
+      }
+      const data = (await response.json()) as { items?: Technician[]; error?: string };
+      if (!response.ok) {
+        setMessage(data.error ?? "No se pudieron cargar los técnicos.");
+        return;
+      }
+      setItems(data.items ?? []);
+    } catch {
+      setMessage("No se pudieron cargar los técnicos.");
+    } finally {
+      setLoading(false);
     }
-    const data = (await response.json()) as { items?: Technician[]; error?: string };
-    if (!response.ok) {
-      setMessage(data.error ?? "No se pudieron cargar los técnicos.");
-      return;
-    }
-    setItems(data.items ?? []);
   }, []);
 
   useEffect(() => {
@@ -64,7 +73,7 @@ export default function AdminTechniciansPage() {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
+    setSaving(true);
     setMessage("");
 
     try {
@@ -87,7 +96,7 @@ export default function AdminTechniciansPage() {
     } catch {
       setMessage("No se pudo completar la operación.");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   }
 
@@ -196,8 +205,8 @@ export default function AdminTechniciansPage() {
 
               <div className="modal-actions">
                 {editing && <button type="button" className="admin-button" onClick={reset}>Cancelar</button>}
-                <button className="admin-button primary" disabled={loading} type="submit">
-                  {loading ? "Guardando…" : editing ? "Guardar cambios" : "Crear técnico"}
+                <button className="admin-button primary" disabled={saving} type="submit">
+                  {saving ? "Guardando…" : editing ? "Guardar cambios" : "Crear técnico"}
                 </button>
               </div>
             </form>
@@ -213,6 +222,10 @@ export default function AdminTechniciansPage() {
             </div>
 
             <div className="admin-table-wrap">
+              {loading ? (
+                <AdminLoadingState label="Cargando técnicos…" />
+              ) : (
+                <>
               <table className="admin-table">
                 <thead>
                   <tr>
@@ -255,6 +268,8 @@ export default function AdminTechniciansPage() {
                   <h3>No hay técnicos registrados</h3>
                   <p>Crea la primera cuenta técnica para comenzar a asignar órdenes.</p>
                 </div>
+              )}
+                </>
               )}
             </div>
           </div>
