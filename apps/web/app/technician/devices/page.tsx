@@ -1,13 +1,13 @@
 "use client";
 import Link from "next/link";
-import {useEffect,useState} from "react";
+import {useCallback,useEffect,useState} from "react";
 type Device={id:string;deviceType:string;brand:string;model:string;serialLast4?:string|null;imeiLast4?:string|null;color?:string|null;capacity?:string|null;physicalCondition?:string|null;notes?:string|null};
 type Row={orderId:string;orderNumber:string;customerEmail:string;device:Device};
 const empty={deviceType:"PHONE",brand:"",model:"",serialLast4:"",imeiLast4:"",color:"",capacity:"",physicalCondition:"",notes:""};
 export default function TechnicianDevices(){
   const[rows,setRows]=useState<Row[]>([]),[orders,setOrders]=useState<{id:string;orderNumber:string;customerDeviceId?:string;device:{brand:string;model:string}}[]>([]),[orderId,setOrderId]=useState(""),[form,setForm]=useState(empty),[editing,setEditing]=useState<string|null>(null),[message,setMessage]=useState("");
-  async function load(){const r=await fetch("/api/technician/devices",{cache:"no-store"});if(r.status===401){window.location.href="/technician/login";return;}if(r.ok){const d=await r.json() as{items?:Row[]};setRows(d.items??[]);}const o=await fetch("/api/technician/orders",{cache:"no-store"});if(o.ok){const d=await o.json() as{items?:typeof orders};setOrders((d.items??[]).filter(x=>!x.customerDeviceId));}}
-  useEffect(()=>{void load()},[]);
+  const load=useCallback(async()=>{const r=await fetch("/api/technician/devices",{cache:"no-store"});if(r.status===401){window.location.href="/technician/login";return;}if(r.ok){const d=await r.json() as{items?:Row[]};setRows(d.items??[]);}const o=await fetch("/api/technician/orders",{cache:"no-store"});if(o.ok){const d=await o.json() as{items?:typeof orders};setOrders((d.items??[]).filter(x=>!x.customerDeviceId));}},[]);
+  useEffect(()=>{void load()},[load]);
   function selectRow(row:Row){setEditing(row.orderId);setOrderId(row.orderId);setForm({deviceType:row.device.deviceType,brand:row.device.brand,model:row.device.model,serialLast4:row.device.serialLast4??"",imeiLast4:row.device.imeiLast4??"",color:row.device.color??"",capacity:row.device.capacity??"",physicalCondition:row.device.physicalCondition??"",notes:row.device.notes??""});setMessage("");}
   const set=(k:keyof typeof empty,v:string)=>setForm(s=>({...s,[k]:v}));
   async function save(e:React.FormEvent){e.preventDefault();if(!orderId){setMessage("Selecciona una orden.");return;}const endpoint=editing?"/api/technician/devices/"+encodeURIComponent(orderId):"/api/technician/devices";const r=await fetch(endpoint,{method:editing?"PATCH":"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...form,orderId}),cache:"no-store"});const d=await r.json() as{error?:string};setMessage(r.ok?(editing?"Dispositivo actualizado.":"Dispositivo registrado y enlazado a la orden."):d.error??"No se pudo guardar.");if(r.ok){setForm(empty);setOrderId("");setEditing(null);await load();}}
