@@ -1,7 +1,9 @@
+import { AdminAuditViewer } from "../../../modules/admin/application/AdminAuditViewer";
 import { AdminDashboardService } from "../../../modules/admin/application/AdminDashboardService";
 import type { AuditPort } from "../../../modules/admin/application/AuditPort";
 import { AdminNotificationsService } from "../../../modules/admin/application/AdminNotificationsService";
 import { AdminUserManagement } from "../../../modules/admin/application/AdminUserManagement";
+import { D1AdminAuditRepository } from "../../../modules/admin/infrastructure/D1AdminAuditRepository";
 import { D1AdminDashboardQuery } from "../../../modules/admin/infrastructure/D1AdminDashboardQuery";
 import { D1AdminNotificationsQuery } from "../../../modules/admin/infrastructure/D1AdminNotificationsQuery";
 import { D1AdminPasswordHasher } from "../../../modules/admin/infrastructure/D1AdminPasswordHasher";
@@ -46,8 +48,8 @@ export function adminDashboardApplication(env: CloudflareEnv): AdminDashboardSer
   return new AdminDashboardService(new D1AdminDashboardQuery(env.DB), new D1AuditPort(env.DB));
 }
 
-export function adminAuditApplication(env: CloudflareEnv): AuditPort {
-  return new D1AuditPort(env.DB);
+export function adminAuditApplication(env: CloudflareEnv): AdminAuditViewer {
+  return new AdminAuditViewer(new D1AdminAuditRepository(env.DB));
 }
 
 export function adminNotificationsApplication(env: CloudflareEnv): AdminNotificationsService {
