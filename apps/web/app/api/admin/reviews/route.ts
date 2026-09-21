@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { AdminReviews } from "../../../../../../modules/reviews/application/AdminReviews";
-import { D1AdminReviewRepository } from "../../../../../../modules/reviews/infrastructure/D1AdminReviewRepository";
+
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
-import { adminAuditApplication } from "../../../../lib/adminApplication";
+import { adminReviewsApplication } from "../../../../lib/adminApplication";
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +12,7 @@ export async function GET(request: Request) {
     if (!Number.isInteger(limit) || !Number.isInteger(offset) || limit < 1 || limit > 100 || offset < 0) {
       return NextResponse.json({ error: "Invalid pagination" }, { status: 400 });
     }
-    const items = await new AdminReviews(new D1AdminReviewRepository(env.DB)).list(
+    const items = await adminReviewsApplication(env).list(
       url.searchParams.get("status") ?? undefined,
       url.searchParams.get("productId") ?? undefined,
       limit,
@@ -32,8 +31,7 @@ export async function PATCH(request: Request) {
     const id = String(body.id ?? "");
     const status = String(body.status ?? "") as "APPROVED" | "REJECTED";
     const response = body.adminResponse === undefined ? undefined : String(body.adminResponse ?? "");
-    const result = await new AdminReviews(new D1AdminReviewRepository(env.DB)).moderate(id, status, response);
-    await adminAuditApplication(env).audit(admin.id, "ADMIN_REVIEW_MODERATED", "product_review", id, { status });
+    const result = await adminReviewsApplication(env).moderate(id, status, response, admin.id);
     return NextResponse.json({ updated: result });
   } catch (error) {
     return errorResponse(error);
