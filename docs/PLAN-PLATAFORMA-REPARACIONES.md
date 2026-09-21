@@ -1011,6 +1011,8 @@ GET    /api/admin/repair-parts
 POST   /api/admin/repair-parts
 PATCH  /api/admin/repair-parts/:id
 GET    /api/admin/repair-metrics
+GET    /api/admin/users/:id/permissions
+PATCH  /api/admin/users/:id/permissions
 ```
 
 ### Técnico
@@ -1029,26 +1031,78 @@ Las rutas deben adaptarse a las convenciones existentes antes de implementarse.
 
 ## 21. Fase 18: permisos y roles
 
-Roles previstos:
+La autorización administrativa combina RBAC con overrides por cuenta.
 
-- `SUPER_ADMIN`: acceso completo.
-- `ADMIN`: operación y gestión permitida.
-- `TECHNICIAN`: órdenes asignadas, diagnóstico, reparación y QC.
-- `CUSTOMER`: recursos propios.
+Roles administrativos actuales:
 
-Permisos sugeridos:
+- `SUPER_ADMIN`: acceso completo y permisos protegidos.
+- `ADMIN`: permisos administrativos definidos por la política RBAC, excepto `admins:manage` por defecto.
+- `MANAGER`: permisos operativos definidos por la política RBAC.
+- `SALES`: ventas y consulta comercial.
+- `SUPPORT`: atención y solicitudes.
+- `INVENTORY`: productos e inventario.
+- `FINANCE`: pagos, reembolsos y auditoría.
+- `CONTENT_EDITOR`: catálogo, contenido, promociones y servicios ofrecidos.
 
+Los técnicos tienen identidad independiente en `technician_users` y no son un rol de `admin_users`.
+
+### Permisos efectivos
+
+Los permisos base provienen del rol mediante `ROLE_PERMISSIONS`.
+
+Cada cuenta administrativa puede tener overrides persistidos en `admin_user_permissions`:
+
+- `inherit`: conserva el permiso definido por el rol.
+- `grant`: permite el permiso aunque el rol no lo conceda.
+- `deny`: bloquea el permiso aunque el rol lo conceda.
+
+El backend autoriza contra el conjunto efectivo resultante, no únicamente contra el rol.
+
+### Gestión administrativa
+
+En `/admin/users`, al editar una cuenta se puede:
+
+- asignar o cambiar el rol;
+- activar o desactivar la cuenta;
+- cambiar la contraseña;
+- consultar el estado efectivo de cada permiso;
+- permitir o denegar permisos individuales;
+- restaurar un permiso a la herencia del rol.
+
+`SUPER_ADMIN` conserva todos los permisos y sus permisos individuales están protegidos.
+
+No se permite modificar los permisos de la propia cuenta. Un administrador tampoco puede conceder a otra cuenta un permiso que no posea efectivamente.
+
+Los cambios se registran en `admin_audit_log`.
+
+Permisos administrativos actuales:
+
+- `dashboard:read`.
+- `products:read`.
+- `products:write`.
+- `categories:read`.
+- `categories:write`.
+- `orders:read`.
+- `orders:write`.
+- `customers:read`.
+- `customers:write`.
+- `services:read`.
+- `services:write`.
 - `repair_orders:read`.
 - `repair_orders:write`.
-- `repair_orders:assign`.
-- `repair_diagnostics:write`.
-- `repair_quotes:approve`.
-- `repair_parts:read`.
-- `repair_parts:write`.
-- `quality_control:write`.
-- `warranties:read`.
-- `warranties:write`.
-- `repair_metrics:read`.
+- `refunds:create`.
+- `payments:void`.
+- `payments:read`.
+- `service_types:write`.
+- `admins:manage`.
+- `audit:read`.
+- `inventory:read`.
+- `inventory:write`.
+- `reviews:write`.
+- `promotions:write`.
+- `cms:write`.
+- `settings:write`.
+- `technicians:manage`.
 
 ## 22. Fase 19: caching y rendimiento
 
