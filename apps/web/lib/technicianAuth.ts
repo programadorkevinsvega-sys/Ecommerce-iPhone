@@ -54,7 +54,6 @@ export async function logoutTechnician() {
   const token = (await cookies()).get(TECHNICIAN_COOKIE)?.value;
 
   if (technician) {
-    const { env } = getCloudflareContext();
     const fingerprint = await technicianRequestFingerprint();
     await technicianAuthApplicationForRequest().logout(
       technician.id,
