@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { technicianDeviceApplication } from "../../../../../../../lib/technicianApplication";
+import { technicianDeviceApplication } from "../../../../../lib/technicianApplication";
 import { requireTechnician } from "../../../../../lib/technicianAuth";
 
 export async function PATCH(
