@@ -153,6 +153,9 @@ export default function AdminUsersPage() {
       await load();
       if (editing) {
         await loadPermissions(editing);
+      } else {
+        setForm(EMPTY);
+        setPermissions([]);
       }
     }
     setLoading(false);
