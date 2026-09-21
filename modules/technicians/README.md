@@ -89,4 +89,4 @@ Current tests include:
 - `TechnicianAuthService.test.ts`
 - `TechnicianDeviceService.test.ts`
 
-The context is implemented but requires a successful build/deploy/verify cycle, visual consistency hardening of `/technician/**`, and final production certification. The invalid source encoding issue previously found in `TechnicianUser.ts` has been corrected.
+The context is implemented but requires a successful build/deploy/verify cycle, visual consistency hardening of `/technician/**`, and final production certification. The invalid source encoding issue previously found in `TechnicianUser.ts` has been corrected. `StoreHeader` and `TechnicianHeader` were also hardened for `exactOptionalPropertyTypes` after the latest production build exposed those type errors.
