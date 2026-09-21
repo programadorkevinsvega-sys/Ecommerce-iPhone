@@ -100,8 +100,12 @@ export class RepairOrderManagement {
 
     const order = await this.getAssigned(id, technicianId);
     order.updateTechnicalRecord({
-      diagnosisSummary: input.diagnosisSummary,
-      workSummary: input.workSummary,
+      ...(input.diagnosisSummary !== undefined
+        ? { diagnosisSummary: input.diagnosisSummary }
+        : {}),
+      ...(input.workSummary !== undefined
+        ? { workSummary: input.workSummary }
+        : {}),
       conditions,
     });
     await this.orders.save(order, technicianId);
