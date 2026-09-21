@@ -15,3 +15,8 @@ export async function updateAdminUserPermissions(
   const { admin, env } = await requireAdmin(PERMISSIONS.adminsManage);
   return adminPermissionManagementApplication(env).update(targetId, overrides, admin.id);
 }
+
+export async function getAdminPermissionCatalog(role: string) {
+  const { env } = await requireAdmin(PERMISSIONS.adminsManage);
+  return adminPermissionManagementApplication(env).catalogForRole(role);
+}
