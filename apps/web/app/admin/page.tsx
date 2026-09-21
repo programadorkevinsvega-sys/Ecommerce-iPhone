@@ -999,8 +999,17 @@ export default function AdminPage() {
   return (
     <Suspense
       fallback={
-        <main className="admin-loading">
-          <span className="admin-spinner" /> Cargando panel…
+        <main className="admin-shell">
+          <AdminSidebar active="dashboard" />
+          <section className="admin-content">
+            <header className="admin-topbar">
+              <div>
+                <p className="admin-kicker">Panel de control</p>
+                <h1>Operaciones</h1>
+              </div>
+            </header>
+            <AdminLoadingState label="Cargando panel…" />
+          </section>
         </main>
       }
     >
@@ -1042,6 +1051,7 @@ function CategoryTable({
   onView,
   onDeactivate,
   busy,
+  loading,
 }: {
   categories: Category[];
   onEdit: (category: Category) => void;
@@ -1116,6 +1126,7 @@ function ServiceTypeTable({
   items,
   onEdit,
   onToggle,
+  loading,
 }: {
   items: ServiceType[];
   onEdit: (item: ServiceType) => void;
@@ -1169,6 +1180,7 @@ function ProductTable({
   items,
   onEdit,
   onDeactivate,
+  loading,
 }: {
   items: Item[];
   onEdit: (item: Item) => void;
@@ -1236,6 +1248,7 @@ function CustomerTable({
   items,
   onEdit,
   onDelete,
+  loading,
 }: {
   items: Item[];
   onEdit: (item: Item) => void;
@@ -1285,6 +1298,7 @@ function CustomerTable({
 function OrderTable({
   items,
   onStatus,
+  loading,
 }: {
   items: Item[];
   onStatus: (id: string, status: string) => void;
@@ -1340,6 +1354,7 @@ function OrderTable({
 function ServiceTable({
   items,
   onAction,
+  loading,
 }: {
   items: Item[];
   onAction: (id: string, action: string) => void;
@@ -2014,6 +2029,7 @@ function HomeCarouselManager({
   onEdit,
   onView,
   onToggle,
+  loading,
 }: {
   slides: HomeSlide[];
   onEdit: (slide: HomeSlideForm) => void;
