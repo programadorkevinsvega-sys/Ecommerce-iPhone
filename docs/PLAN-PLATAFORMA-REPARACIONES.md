@@ -58,7 +58,7 @@ Las reglas de negocio no deben quedar únicamente en React ni en las rutas HTTP.
 ### 2.3 Seguridad
 
 - Las rutas administrativas requieren sesión y permiso explícito.
-- Las rutas de técnico requieren rol y permiso de técnico.
+- Las rutas de técnico requieren una sesión `technician_session` válida; la autorización operativa se limita al técnico autenticado y a las órdenes asignadas.
 - Las rutas del cliente solo muestran sus propias órdenes.
 - Las consultas públicas de seguimiento deben utilizar un identificador no predecible o un token de consulta.
 - No se exponen errores internos de D1, stack traces, secretos ni nombres internos.
@@ -241,6 +241,51 @@ El cliente puede consultar sus dispositivos, pero la creación, edición y archi
 ### Seguridad
 
 El IMEI y el serial no deben mostrarse públicamente completos. Las vistas públicas solo deben mostrar los últimos cuatro caracteres cuando sea necesario.
+
+### Módulo de identidad y acceso del técnico
+
+El técnico es una identidad de empleado independiente de admin_users y de las cuentas de cliente.
+
+#### Rutas web
+
+- /technician/login
+- /technician
+- /technician/orders
+- /technician/devices
+- /technician/profile
+
+#### API de autenticación
+
+- /api/technician/auth/login
+- /api/technician/auth/logout
+- /api/technician/auth/session
+
+La cookie de sesión es technician_session. La sesión se persiste en D1, se almacena mediante hash del token, expira y puede revocarse.
+
+#### Persistencia
+
+- technician_users.
+- technician_sessions.
+- technician_audit_events.
+
+La migración de la identidad técnica copia las cuentas existentes con rol administrativo TECHNICIAN a technician_users y desactiva las identidades antiguas en admin_users para impedir que continúen entrando por /admin.
+
+#### Gestión administrativa
+
+Administración dispone de /admin/technicians y las APIs correspondientes para crear, actualizar, activar/desactivar y restablecer el acceso de técnicos.
+
+Las cuentas técnicas no obtienen permisos del panel administrativo.
+
+#### Aislamiento operativo
+
+Un técnico autenticado:
+
+- Solo puede consultar órdenes cuyo assigned_technician_id coincide con su identidad.
+- Solo puede modificar fichas técnicas de sus órdenes.
+- Solo puede registrar o actualizar el dispositivo del cliente vinculado a una orden que tenga asignada.
+- Puede registrar evidencias en R2 para sus propias órdenes.
+- Solo puede ejecutar las transiciones de estado permitidas para el flujo técnico.
+- No puede acceder a operaciones protegidas de /admin.
 
 ## 7. Fase 4: órdenes de reparación
 
