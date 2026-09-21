@@ -106,7 +106,7 @@ export default function AdminUsersPage() {
     } finally {
       setPermissionsLoading(false);
     }
-  };
+  }, []);
 
   const load = useCallback(async () => {
     setDataLoading(true);
