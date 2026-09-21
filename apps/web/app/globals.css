@@ -29,6 +29,28 @@
 .permission-row select{min-width:155px}
 
 
+.admin-loading-state{
+  display:grid;
+  place-items:center;
+  min-height:220px;
+  padding:32px;
+  gap:12px;
+  color:#697781;
+  font-size:13px;
+  text-align:center;
+}
+.admin-loading-state.compact{
+  min-height:140px;
+}
+.admin-loading-state .admin-spinner{
+  width:20px;
+  height:20px;
+  border:2px solid #dce2e6;
+  border-top-color:#101820;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+
 /* Shared backoffice visual system for dedicated admin pages */
 .admin-page-grid{
   display:grid;
