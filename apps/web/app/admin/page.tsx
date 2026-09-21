@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import AdminSidebar from "./AdminSidebar";
+import AdminLoadingState from "./AdminLoadingState";
 import {
   normalizeSearchQuery,
   normalizeSingleLine,
@@ -176,6 +177,7 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [resourceLoading, setResourceLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -204,6 +206,7 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
   const load = useCallback(
     async (signal?: AbortSignal) => {
       setBusy(true);
+      setResourceLoading(true);
       setError("");
       try {
         const endpoint =
@@ -244,7 +247,10 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
         if (!signal?.aborted)
           setError(caught instanceof Error ? caught.message : "No se pudo cargar la información.");
       } finally {
-        if (!signal?.aborted) setBusy(false);
+        if (!signal?.aborted) {
+          setBusy(false);
+          setResourceLoading(false);
+        }
       }
     },
     [login, query, resource],
@@ -632,13 +638,21 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
     if (!response.ok) setError("No se pudo actualizar el servicio.");
     else await load();
   }
-  if (loading)
+  if (!admin)
     return (
-      <main className="admin-loading">
-        <span className="admin-spinner" /> Cargando panel…
+      <main className="admin-shell">
+        <AdminSidebar active={resource} />
+        <section className="admin-content">
+          <header className="admin-topbar">
+            <div>
+              <p className="admin-kicker">Panel de control</p>
+              <h1>Operaciones</h1>
+            </div>
+          </header>
+          <AdminLoadingState label="Verificando sesión…" />
+        </section>
       </main>
     );
-  if (!admin) return null;
   const cards = metrics
     ? ([
         ["Pedidos", metrics.orders, "▣"],
@@ -675,8 +689,12 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
             </button>
           </div>
         </header>
-        {resource === "dashboard" && (
-          <section className="admin-metrics" aria-label="Resumen operativo">
+        {resource === "dashboard" && loading ? (
+          <AdminLoadingState label="Cargando panel…" />
+        ) : (
+          <>
+            {resource === "dashboard" && (
+              <section className="admin-metrics" aria-label="Resumen operativo">
             {cards.map(([label, amount, icon]) => (
               <article key={label} className="admin-metric">
                 <span className="admin-metric-icon">{icon}</span>
@@ -686,10 +704,13 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
                 </div>
               </article>
             ))}
-          </section>
-        )}
-        {resource === "dashboard" && metrics && (
-          <section className="admin-dashboard-panels" aria-label="Métricas detalladas">
+              </section>
+            )}
+            {error && resource === "dashboard" && (
+              <p className="admin-error" role="alert">{error}</p>
+            )}
+            {resource === "dashboard" && metrics && (
+              <section className="admin-dashboard-panels" aria-label="Métricas detalladas">
             <DashboardPanel title="Ventas">
               <DashboardMetric label="Pedidos cobrados" value={metrics.sales.paidOrders} />
               <DashboardMetric label="Unidades vendidas" value={metrics.sales.unitsSold} />
@@ -714,6 +735,8 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
               <DashboardMetric label="Reembolsados" value={metrics.payments.refunded} />
             </DashboardPanel>
           </section>
+        )}
+          </>
         )}
         {resource !== "dashboard" && (
           <div className="admin-workspace">
@@ -816,6 +839,7 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
             {busy && <div className="admin-progress" aria-label="Actualizando" />}
             {resource === "categories" ? (
               <CategoryTable
+                loading={resourceLoading}
                 categories={categories}
                 busy={categoryBusy}
                 onEdit={(category) =>
@@ -826,6 +850,7 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
               />
             ) : resource === "products" ? (
               <ProductTable
+                loading={resourceLoading}
                 items={items}
                 onEdit={(item) => void openProduct(item)}
                 onDeactivate={(item) =>
@@ -838,6 +863,7 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
               />
             ) : resource === "customers" ? (
               <CustomerTable
+                loading={resourceLoading}
                 items={items}
                 onEdit={(item) =>
                   setCustomerForm({
@@ -851,6 +877,7 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
               />
             ) : resource === "service-types" ? (
               <ServiceTypeTable
+                loading={resourceLoading}
                 items={serviceTypes}
                 onEdit={(type) =>
                   setServiceTypeForm({
@@ -878,6 +905,7 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
               />
             ) : resource === "home-carousel" ? (
               <HomeCarouselManager
+                loading={resourceLoading}
                 slides={homeSlides}
                 onEdit={setHomeSlideForm}
                 onView={setHomeSlidePreview}
@@ -885,11 +913,13 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
               />
             ) : resource === "services" ? (
               <ServiceTable
+                loading={resourceLoading}
                 items={items}
                 onAction={(id, action) => setServiceAction(id + ":" + action)}
               />
             ) : (
               <OrderTable
+                loading={resourceLoading}
                 items={items}
                 onStatus={(id, status) =>
                   void mutate("/api/admin/resources", "PATCH", { resource: "orders", id, status })
@@ -979,10 +1009,22 @@ export default function AdminPage() {
   );
 }
 
-function TableFrame({ children, empty }: { children: ReactNode; empty: boolean }) {
+function TableFrame({
+  children,
+  empty,
+  loading = false,
+  label = "Cargando información…",
+}: {
+  children: ReactNode;
+  empty: boolean;
+  loading?: boolean;
+  label?: string;
+}) {
   return (
     <div className="admin-table-wrap">
-      {empty ? (
+      {loading ? (
+        <AdminLoadingState label={label} />
+      ) : empty ? (
         <div className="admin-empty">
           <span>○</span>
           <h3>Sin registros todavía</h3>
@@ -1006,9 +1048,10 @@ function CategoryTable({
   onView: (category: Category) => void;
   onDeactivate: (id: string) => void;
   busy: boolean;
-}) {
+
+  loading: boolean;}) {
   return (
-    <TableFrame empty={!categories.length}>
+    <TableFrame empty={!categories.length} loading={loading} label="Cargando categorías…">
       <thead>
         <tr>
           <th>Nombre</th>
@@ -1077,9 +1120,10 @@ function ServiceTypeTable({
   items: ServiceType[];
   onEdit: (item: ServiceType) => void;
   onToggle: (item: ServiceType) => void;
-}) {
+
+  loading: boolean;}) {
   return (
-    <TableFrame empty={!items.length}>
+    <TableFrame empty={!items.length} loading={loading} label="Cargando servicios…">
       <thead>
         <tr>
           <th>Servicio</th>
@@ -1129,9 +1173,10 @@ function ProductTable({
   items: Item[];
   onEdit: (item: Item) => void;
   onDeactivate: (item: Item) => void;
-}) {
+
+  loading: boolean;}) {
   return (
-    <TableFrame empty={!items.length}>
+    <TableFrame empty={!items.length} loading={loading} label="Cargando productos…">
       <thead>
         <tr>
           <th>Producto</th>
@@ -1195,9 +1240,10 @@ function CustomerTable({
   items: Item[];
   onEdit: (item: Item) => void;
   onDelete: (id: string) => void;
-}) {
+
+  loading: boolean;}) {
   return (
-    <TableFrame empty={!items.length}>
+    <TableFrame empty={!items.length} loading={loading} label="Cargando clientes…">
       <thead>
         <tr>
           <th>Cliente</th>
@@ -1242,7 +1288,8 @@ function OrderTable({
 }: {
   items: Item[];
   onStatus: (id: string, status: string) => void;
-}) {
+
+  loading: boolean;}) {
   const statuses = [
     "PENDING_PAYMENT",
     "PAID",
@@ -1254,7 +1301,7 @@ function OrderTable({
     "REFUNDED",
   ];
   return (
-    <TableFrame empty={!items.length}>
+    <TableFrame empty={!items.length} loading={loading} label="Cargando pedidos…">
       <thead>
         <tr>
           <th>Pedido</th>
@@ -1296,7 +1343,8 @@ function ServiceTable({
 }: {
   items: Item[];
   onAction: (id: string, action: string) => void;
-}) {
+
+  loading: boolean;}) {
   const statuses = [
     "PENDING",
     "QUOTED",
@@ -1309,7 +1357,7 @@ function ServiceTable({
     "REFUNDED",
   ];
   return (
-    <TableFrame empty={!items.length}>
+    <TableFrame empty={!items.length} loading={loading} label="Cargando solicitudes…">
       <thead>
         <tr>
           <th>Solicitud</th>
@@ -1971,9 +2019,10 @@ function HomeCarouselManager({
   onEdit: (slide: HomeSlideForm) => void;
   onView: (slide: HomeSlide) => void;
   onToggle: (id: string) => void;
-}) {
+
+  loading: boolean;}) {
   return (
-    <TableFrame empty={!slides.length}>
+    <TableFrame empty={!slides.length} loading={loading} label="Cargando promociones…">
       <table className="admin-table">
         <thead>
           <tr>
