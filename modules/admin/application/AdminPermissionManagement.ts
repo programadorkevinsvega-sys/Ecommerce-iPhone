@@ -10,6 +10,7 @@ export type AdminPermissionItem = Readonly<{
   permission: Permission;
   state: PermissionState;
   effective: boolean;
+  roleGranted: boolean;
 }>;
 
 function requireId(value: string): string {
@@ -86,12 +87,14 @@ export class AdminPermissionManagement {
   private catalog(role: AdminRole, overrides: ReadonlyArray<PermissionOverride>): AdminPermissionItem[] {
     const map = new Map(overrides.map((override) => [override.permission, override.granted]));
     const effective = new Set(resolvePermissions(role, overrides));
+    const rolePermissions = new Set(resolvePermissions(role, []));
     return Object.values(PERMISSIONS).map((permission) => {
       const granted = map.get(permission);
       return {
         permission,
         state: granted === undefined ? "inherit" : granted ? "grant" : "deny",
         effective: effective.has(permission),
+        roleGranted: rolePermissions.has(permission),
       };
     });
   }
