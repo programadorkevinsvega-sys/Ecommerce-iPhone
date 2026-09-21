@@ -35,7 +35,7 @@ La documentación ha sido actualizada en `main` mediante commits separados de la
 
 El trabajo reciente corresponde al hardening de **Fase 01 — eliminación de datos/mock de negocio en frontend**, al hardening de **Fase 06** y a la consolidación de navegación pública y del bounded context `technicians`.
 
-El portal técnico dispone actualmente de login, dashboard, órdenes, dispositivos y perfil funcionales. Su rediseño visual completo sigue pendiente y no se considera certificado. En el último build observado la compilación terminó correctamente, pero el typecheck falló por `exactOptionalPropertyTypes` en `apps/web/app/components/StoreHeader.tsx`; el ciclo de typecheck/deploy/verify continúa pendiente.
+El portal técnico dispone actualmente de login, dashboard, órdenes, dispositivos y perfil funcionales. Su rediseño visual/UX está implementado en código y no se considera certificado hasta verificarlo en producción. Un fallo histórico de typecheck por `exactOptionalPropertyTypes` en `StoreHeader.tsx` ya fue corregido en fuente; el ciclo de build/deploy/verify continúa pendiente.
 
 ---
 
@@ -553,4 +553,4 @@ El bounded context `technicians` sigue siendo una identidad operativa independie
 
 Ya implementado: autenticación, sesiones, lockout, revocación de sesiones previas, autorización por asignación, diagnóstico, estados técnicos permitidos, dispositivos recibidos, evidencia fotográfica, perfil propio y auditoría.
 
-Pendiente: rediseño visual completo de `/technician/login`, `/technician`, `/technician/orders`, `/technician/devices` y `/technician/profile`, más build/deploy/verify y certificación final.
+Pendiente: build/deploy/verify, validación visual y funcional en producción y certificación final de `/technician/login`, `/technician`, `/technician/orders`, `/technician/devices` y `/technician/profile`.
