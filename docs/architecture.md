@@ -17,7 +17,7 @@ Ports
     ↑
 Infrastructure
     ↓
-D1 / R2 / Queue / external providers
+D1 / R2 / Queue / Durable Objects / external providers
 ```
 
 Domain code never imports Next.js, React, Cloudflare bindings, D1 clients, payment SDKs, email SDKs or HTTP clients.
@@ -49,6 +49,14 @@ Current contexts include:
 - support
 - admin
 - **technicians**
+
+### Notifications
+
+`notifications` is the cross-cutting bounded context for user-facing delivery of business events.
+
+It owns notification persistence, delivery orchestration, deduplication, retries, replay and channel adapters. It does not own business state.
+
+Realtime delivery uses a Cloudflare Durable Object `NotificationHub` to coordinate authenticated WebSocket sessions. D1 remains the canonical notification history.
 
 ### Technicians
 
@@ -87,6 +95,43 @@ A future Queue/microservice extraction should replace transport/infrastructure b
 D1 is an infrastructure detail. SQL migrations live at the repository root and are versioned with code.
 
 R2 is used for media and protected repair evidence according to the access policy.
+
+Durable Objects are used for realtime coordination, not canonical business history. Important notification state remains in D1.
+
+## Realtime notification flow
+
+```text
+Domain event
+    ↓
+Application notification port
+    ↓
+D1 notification_outbox
+    ↓
+Queue
+    ↓
+Notification Processor
+    ├── D1 notification inbox
+    ├── EmailProvider -> Resend
+    └── RealtimeNotificationPublisher
+             ↓
+      NotificationHub Durable Object
+             ↓
+        WebSocket Hibernation
+             ↓
+      authenticated browser
+```
+
+Immediate Queue publication is the latency path. Cron reconciliation repairs outbox records that could not be published immediately.
+
+Consistency model:
+
+- D1 business state is durable.
+- Outbox publication is durable.
+- Queue delivery is at-least-once.
+- Processing is idempotent.
+- Notification inbox is durable.
+- WebSocket delivery is low-latency and reconnectable.
+- Global Queue ordering is not assumed.
 
 ## Presentation rules
 
