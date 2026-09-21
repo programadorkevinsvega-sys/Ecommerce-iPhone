@@ -554,3 +554,11 @@ El bounded context `technicians` sigue siendo una identidad operativa independie
 Ya implementado: autenticación, sesiones, lockout, revocación de sesiones previas, autorización por asignación, diagnóstico, estados técnicos permitidos, dispositivos recibidos, evidencia fotográfica, perfil propio y auditoría.
 
 Pendiente: build/deploy/verify, validación visual y funcional en producción y certificación final de `/technician/login`, `/technician`, `/technician/orders`, `/technician/devices` y `/technician/profile`.
+
+## Evidencia operativa actual — 2026-09-21
+
+El commit actual de `main` todavía no está certificado en producción. Los runs 1074–1080 de `Cloudflare Production Deploy` terminaron en `failure`; los intentos más recientes fallaron casi inmediatamente y el conector disponible no expone los pasos/logs internos del job. No se infiere que hayan fallado TypeScript, tests o build sin esa evidencia.
+
+El chequeo estático actual de las 9 rutas HTTP del bounded context `technicians` no encuentra imports directos de infraestructura, dominio interno, runtime adapters Cloudflare ni SQL. Esto confirma el boundary arquitectónico del código, pero no sustituye el gate de CI/build/deploy.
+
+El Worker publicado tampoco se considera verificado desde este entorno porque el endpoint productivo no es accesible al mecanismo externo disponible. En consecuencia, Fase 06 y las certificaciones de Fase 01/02/03/04/05 siguen sin cierre productivo.
