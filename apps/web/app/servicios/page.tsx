@@ -54,6 +54,7 @@ export default function ServicesPage() {
                   width={640}
                   height={260}
                   sizes="(max-width: 620px) 100vw, (max-width: 1050px) 50vw, 25vw"
+                  unoptimized={service.imageUrl.startsWith("/api/media/")}
                 />
               )}
               <div className="service-card-content">
