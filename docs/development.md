@@ -1,5 +1,11 @@
 # Development
 
+## Actualización de reproducibilidad — 2026-09-21
+
+El contrato de release mantiene pnpm 12.4.1 y Node 24.18.0 tanto para el despliegue como para los workflows de verificación y performance. El endpoint canónico de producción es https://iphone.jnmtortas.com.
+
+La corrección del typecheck de StoreHeader/TechnicianHeader está en fuente y no se desactiva exactOptionalPropertyTypes. El release queda certificado únicamente después de ejecutar los gates estructurales, tests, build Cloudflare, deploy y verify contra producción.
+
 ## Política de entornos
 
 El proyecto mantiene **un único entorno remoto/operativo: producción**.
