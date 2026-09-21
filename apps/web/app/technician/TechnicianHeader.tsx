@@ -9,7 +9,7 @@ const ITEMS = [
   { href: "/technician/profile", label: "Mi perfil" },
 ] as const;
 
-export default function TechnicianHeader({ firstName, email }: { firstName?: string; email?: string }) {
+export default function TechnicianHeader({ firstName, email }: { firstName?: string | undefined; email?: string | undefined }) {
   const pathname = usePathname();
 
   async function logout() {
