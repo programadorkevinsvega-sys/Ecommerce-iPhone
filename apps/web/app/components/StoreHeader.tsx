@@ -1,8 +1,12 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
-type StoreHeaderProps = {
+type StoreNavigationProps = {
   activeHref?: string;
+  children?: ReactNode;
 };
+
+type StoreHeaderProps = StoreNavigationProps;
 
 const NAV_ITEMS = [
   { href: "/", label: "Inicio" },
@@ -20,23 +24,30 @@ function isActive(href: string, activeHref?: string) {
   return activeHref === href || activeHref.startsWith(`${href}/`);
 }
 
+export function StoreNavigation({ activeHref, children }: StoreNavigationProps) {
+  return (
+    <nav aria-label="Principal">
+      {NAV_ITEMS.map((item) => (
+        <Link
+          href={item.href}
+          key={item.href}
+          aria-current={isActive(item.href, activeHref) ? "page" : undefined}
+        >
+          {item.label}
+        </Link>
+      ))}
+      {children}
+    </nav>
+  );
+}
+
 export default function StoreHeader({ activeHref }: StoreHeaderProps) {
   return (
     <header className="store-header">
       <Link href="/" className="brand-mark">
         Ecommerce iPhone
       </Link>
-      <nav aria-label="Principal">
-        {NAV_ITEMS.map((item) => (
-          <Link
-            href={item.href}
-            key={item.href}
-            aria-current={isActive(item.href, activeHref) ? "page" : undefined}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </nav>
+      <StoreNavigation activeHref={activeHref} />
     </header>
   );
 }

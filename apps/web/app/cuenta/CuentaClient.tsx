@@ -1,3 +1,4 @@
+import StoreHeader, { StoreNavigation } from "../components/StoreHeader";
 "use client";
 
 import Link from "next/link";
