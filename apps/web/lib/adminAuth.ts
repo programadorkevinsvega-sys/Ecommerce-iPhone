@@ -1,14 +1,14 @@
 import { cookies, headers } from "next/headers";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { PERMISSIONS } from "../../../modules/admin/application/Rbac";
-import type { AdminPrincipal } from "../../../modules/admin/application/AuthenticateAdmin";
+import type { CurrentAdmin } from "../../../modules/admin/application/ResolveCurrentAdmin";
 import { buildRequestFingerprint } from "./adminFingerprintComposition";
 import { buildBootstrapAdmin, buildLogoutAdmin, buildRequireAdmin } from "./adminAuthCompositionV2";
 
 export { PERMISSIONS };
 export const ADMIN_COOKIE = "admin_session";
 
-export async function currentAdmin(): Promise<AdminPrincipal | null> {
+export async function currentAdmin(): Promise<CurrentAdmin | null> {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   const { env } = getCloudflareContext();
   return buildRequireAdmin(env).execute(token).catch((error: unknown) => {
@@ -17,7 +17,7 @@ export async function currentAdmin(): Promise<AdminPrincipal | null> {
   });
 }
 
-export async function requireAdmin(permission?: string): Promise<{ admin: AdminPrincipal; env: CloudflareEnv }> {
+export async function requireAdmin(permission?: string): Promise<{ admin: CurrentAdmin; env: CloudflareEnv }> {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   const { env } = getCloudflareContext();
   const admin = await buildRequireAdmin(env).execute(token, permission);
