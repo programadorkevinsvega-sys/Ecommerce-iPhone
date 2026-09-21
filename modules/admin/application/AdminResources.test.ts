@@ -80,11 +80,11 @@ describe("AdminResources", () => {
   it("rejects a role with neither base nor effective grant", async () => {
     const repo = repository();
     const service = new AdminResources({ repository: repo, audit: audit(), publishNotification: vi.fn().mockResolvedValue(undefined) });
-    await expect(service.list({
+    await expect(service.create({
       actor: { id: "sales-1", email: "sales@example.com", role: "SALES", permissions: ROLE_PERMISSIONS.SALES },
-      resource: "inventory",
-      query: "",
-    } as never)).rejects.toThrow();
+      resource: "products",
+      body: {},
+    })).rejects.toThrow("FORBIDDEN");
   });
 
   it("publishes a notification after an order status change", async () => {
