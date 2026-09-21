@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**Código revisado actual:** `6a462a44d6869765f6542a5f7287aed136642ec3`  
+**Código revisado actual:** `d6962439e434d5064a339648b5ed32174c7b602b`  
 **Última actualización:** 2026-09-21 UTC  
 **Entorno remoto operativo:** producción únicamente.
 
@@ -22,11 +22,19 @@
 | 04 Payments | 🟡 Implementada + hardening | Pendiente certificación real de proveedores |
 | 05 Services | 🟢 Implementación + hardening | Pendiente gates/certificación |
 | 06 Admin + RBAC | 🟡 Application consolidada + hardening UI/RBAC/loading/técnicos | Pendiente gates de seguridad, certificación y validación final del portal técnico |
-| 07 Notifications + Queues | 🟡 Implementación funcional | DLQ/retry/replay pendiente |
+| 07 Notifications + Queues | 🟡 Base Outbox/Queue/Resend + diseño realtime | Inbox durable, Durable Objects/WebSocket, DLQ/retry/replay, E2E/load y certificación pendientes |
 
 El trabajo reciente corresponde al hardening de **Fase 01 — eliminación de datos/mock de negocio en frontend**, al hardening de **Fase 06** y a la consolidación de navegación pública y del bounded context `technicians`.
 
-El portal técnico dispone actualmente de login, dashboard, órdenes, dispositivos y perfil funcionales. Su rediseño visual completo sigue pendiente y no se considera certificado. El último build ya supera la compilación, pero el ciclo de typecheck/deploy/verify todavía está pendiente.
+El portal técnico dispone actualmente de login, dashboard, órdenes, dispositivos y perfil funcionales. Su rediseño visual completo sigue pendiente y no se considera certificado. En el último build observado la compilación terminó correctamente, pero el typecheck falló por `exactOptionalPropertyTypes` en `apps/web/app/components/StoreHeader.tsx`; el ciclo de typecheck/deploy/verify continúa pendiente.
+
+---
+
+## 1.1 Notifications realtime
+
+La Fase 07 mantiene el Outbox/Queue/Resend existente y define como objetivo el inbox durable en D1, `NotificationHub` con Durable Object/WebSocket Hibernation, catch-up por API, idempotencia at-least-once, DLQ, replay y observabilidad.
+
+Detalle: `docs/notifications.md` y `docs/realtime-notifications.md`.
 
 ---
 
