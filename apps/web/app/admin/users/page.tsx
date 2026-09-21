@@ -237,7 +237,7 @@ export default function AdminUsersPage() {
           <div>
             <p className="admin-kicker">Seguridad y acceso</p>
             <h1>Administradores y roles</h1>
-            <p>Crea cuentas administrativas y asigna el rol que determina sus permisos.</p>
+            <p>Crea cuentas administrativas, asigna un rol base y configura permisos específicos por cuenta.</p>
           </div>
           <Link href="/admin" className="admin-button">Volver</Link>
         </header>
