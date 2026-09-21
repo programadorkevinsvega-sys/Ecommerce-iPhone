@@ -268,7 +268,7 @@ La cookie de sesión es technician_session. La sesión se persiste en D1, se alm
 - technician_sessions.
 - technician_audit_events.
 
-La migración de la identidad técnica copia las cuentas existentes con rol administrativo TECHNICIAN a technician_users y desactiva las identidades antiguas en admin_users para impedir que continúen entrando por /admin.
+La plataforma parte de una instalación nueva: no existe migración de cuentas técnicas desde Admin. Las identidades técnicas se crean exclusivamente en technician_users y nunca se almacenan como usuarios administrativos.
 
 #### Gestión administrativa
 
