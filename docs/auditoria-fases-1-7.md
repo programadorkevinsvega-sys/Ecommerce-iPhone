@@ -4,7 +4,7 @@
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
 **Rama:** `main`  
-**Código revisado actual:** `2295b7539ff9cabc635ab1bc51e45a1b4804d07e`  
+**Código revisado actual:** `6a462a44d6869765f6542a5f7287aed136642ec3`  
 **Última actualización:** 2026-09-21 UTC  
 **Entorno remoto operativo:** producción únicamente.
 
@@ -17,14 +17,16 @@
 | Fase | Estado | Certificación |
 |---|---|---|
 | 01 Foundation | 🟡 Implementada + hardening | Pendiente certificación final |
-| 02 Storefront | 🟡 Implementada + navegación pública estandarizada | Pendiente E2E/performance/accessibility/SEO final y certificación productiva |
+| 02 Storefront | 🟡 Implementada + navegación pública centralizada | Pendiente E2E/performance/accessibility/SEO final y certificación productiva |
 | 03 Commerce Core | 🟢 Implementación cerrada | Pendiente certificación exhaustiva en producción |
 | 04 Payments | 🟡 Implementada + hardening | Pendiente certificación real de proveedores |
 | 05 Services | 🟢 Implementación + hardening | Pendiente gates/certificación |
-| 06 Admin + RBAC | 🟡 Application consolidada + hardening UI/RBAC | Pendiente gates de seguridad, certificación y validación final de técnicos |
+| 06 Admin + RBAC | 🟡 Application consolidada + hardening UI/RBAC/loading/técnicos | Pendiente gates de seguridad, certificación y validación final del portal técnico |
 | 07 Notifications + Queues | 🟡 Implementación funcional | DLQ/retry/replay pendiente |
 
-El trabajo reciente corresponde al hardening de **Fase 01 — eliminación de datos/mock de negocio en frontend** y al cierre arquitectónico/hardening de **Fase 06**.
+El trabajo reciente corresponde al hardening de **Fase 01 — eliminación de datos/mock de negocio en frontend**, al hardening de **Fase 06** y a la consolidación de navegación pública y del bounded context `technicians`.
+
+El portal técnico dispone actualmente de login, dashboard, órdenes, dispositivos y perfil funcionales. Su rediseño visual completo sigue pendiente y no se considera certificado. El último build ya supera la compilación, pero el ciclo de typecheck/deploy/verify todavía está pendiente.
 
 ---
 
