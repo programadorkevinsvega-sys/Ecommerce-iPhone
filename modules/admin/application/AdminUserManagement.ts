@@ -30,7 +30,6 @@ export class AdminUserManagement {
   }
   async update(input:Record<string,unknown>,actorId:string){
     const actor=await this.requireActor(actorId); const id=requireString(input.id,"ID_REQUIRED"); const user=await this.requireTarget(id); const current=user.toPrimitives();
-    if(current.role==="TECHNICIAN") throw new Error("LEGACY_TECHNICIAN_ACCOUNT");
     const role=input.role===undefined?current.role:parseRole(input.role); const active=input.active===undefined?current.active:input.active===true;
     if(id===actor.getId()&&!active) throw new Error("SELF_DEACTIVATION_FORBIDDEN"); if(id===actor.getId()&&role!==actor.role) throw new Error("ADMIN_SELF_ROLE_CHANGE_FORBIDDEN");
     let passwordHash=current.passwordHash; if(typeof input.password==="string"&&input.password.length>0) passwordHash=await this.passwords.hash(input.password);
@@ -41,7 +40,7 @@ export class AdminUserManagement {
     if(passwordHash!==current.passwordHash||role!==current.role||active!==current.active) await this.sessions.revokeAllSessions(id);
     await this.audit.audit(actor.getId(),"ADMIN_USER_UPDATED","admin_user",id,{fields:Object.keys(input).filter(f=>f!=="password")});
   }
-  async activate(targetId:string,actorId:string){const actor=await this.requireActor(actorId);const target=await this.requireTarget(targetId);if(target.role==="TECHNICIAN") throw new Error("LEGACY_TECHNICIAN_ACCOUNT");target.activate();await this.users.save(target);await this.audit.audit(actor.getId(),"ADMIN_ACTIVATED","admin_user",target.getId(),{role:target.role});}
+  async activate(targetId:string,actorId:string){const actor=await this.requireActor(actorId);const target=await this.requireTarget(targetId);target.activate();await this.users.save(target);await this.audit.audit(actor.getId(),"ADMIN_ACTIVATED","admin_user",target.getId(),{role:target.role});}
   async deactivate(targetId:string,actorId:string){
     const actor=await this.requireActor(actorId);const target=await this.requireTarget(targetId);if(target.getId()===actor.getId()) throw new Error("SELF_DEACTIVATION_FORBIDDEN");
     const current=target.toPrimitives();target.deactivate();
@@ -49,12 +48,12 @@ export class AdminUserManagement {
     await this.sessions.revokeAllSessions(target.getId()); await this.audit.audit(actor.getId(),"ADMIN_DEACTIVATED","admin_user",target.getId(),{role:target.role});
   }
   async changeRole(targetId:string,roleInput:unknown,actorId:string){
-    const actor=await this.requireActor(actorId);const target=await this.requireTarget(targetId);if(target.role==="TECHNICIAN") throw new Error("LEGACY_TECHNICIAN_ACCOUNT");const role=parseRole(roleInput,target.role);if(target.getId()===actor.getId()) throw new Error("ADMIN_SELF_ROLE_CHANGE_FORBIDDEN");if(target.role===role)return;
+    const actor=await this.requireActor(actorId);const target=await this.requireTarget(targetId);const role=parseRole(roleInput,target.role);if(target.getId()===actor.getId()) throw new Error("ADMIN_SELF_ROLE_CHANGE_FORBIDDEN");if(target.role===role)return;
     const previousRole=target.role;const wasActive=target.active;target.changeRole(role);
     if(previousRole==="SUPER_ADMIN"&&wasActive&&role!=="SUPER_ADMIN"){if(!await this.users.saveSuperAdminTransition(target,true)) throw new Error("LAST_SUPER_ADMIN_PROTECTED");} else await this.users.save(target);
     await this.sessions.revokeAllSessions(target.getId());await this.audit.audit(actor.getId(),"ADMIN_ROLE_CHANGED","admin_user",target.getId(),{previousRole,role});
   }
-  async resetPassword(targetId:string,password:string,actorId:string){const actor=await this.requireActor(actorId);const target=await this.requireTarget(targetId);if(target.role==="TECHNICIAN") throw new Error("LEGACY_TECHNICIAN_ACCOUNT");const value=requireString(password,"INVALID_PASSWORD");const current=target.toPrimitives();const passwordHash=await this.passwords.hash(value);await this.users.save(AdminUser.create(current.id,{...current,passwordHash}));await this.sessions.revokeAllSessions(target.getId());await this.audit.audit(actor.getId(),"ADMIN_PASSWORD_RESET","admin_user",target.getId(),{});}
+  async resetPassword(targetId:string,password:string,actorId:string){const actor=await this.requireActor(actorId);const target=await this.requireTarget(targetId);const value=requireString(password,"INVALID_PASSWORD");const current=target.toPrimitives();const passwordHash=await this.passwords.hash(value);await this.users.save(AdminUser.create(current.id,{...current,passwordHash}));await this.sessions.revokeAllSessions(target.getId());await this.audit.audit(actor.getId(),"ADMIN_PASSWORD_RESET","admin_user",target.getId(),{});}
   private async requireActor(id:string){const actorId=id.trim();if(!actorId)throw new Error("ADMIN_NOT_FOUND");const actor=await this.users.findById(actorId);if(!actor||!actor.active)throw new Error("ADMIN_NOT_FOUND");return actor;}
   private async requireTarget(id:string){const target=await this.users.findById(id.trim());if(!target)throw new Error("ADMIN_NOT_FOUND");return target;}
 }
