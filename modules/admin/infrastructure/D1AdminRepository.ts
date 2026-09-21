@@ -51,7 +51,7 @@ export class D1AdminRepository {
     return id;
   }
   async findSession(tokenHash: string): Promise<{ sessionId: string; user: AdminUser } | null> {
-    const row = await this.db.prepare(`SELECT s.id AS session_id, u.* FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at > CURRENT_TIMESTAMP AND u.active=1 LIMIT 1`).bind(tokenHash).first<Record<string, unknown>>();
+    const row = await this.db.prepare(`SELECT s.id AS session_id, u.* FROM admin_sessions s JOIN admin_users u ON u.id=s.admin_user_id WHERE s.token_hash=? AND s.revoked_at IS NULL AND datetime(s.expires_at) > CURRENT_TIMESTAMP AND u.active=1 LIMIT 1`).bind(tokenHash).first<Record<string, unknown>>();
     return row ? { sessionId: String(row.session_id), user: this.mapUser(row) } : null;
   }
   async revokeSession(sessionId: string): Promise<void> { await this.db.prepare("UPDATE admin_sessions SET revoked_at=CURRENT_TIMESTAMP WHERE id=? AND revoked_at IS NULL").bind(sessionId).run(); }
