@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import AdminSidebar from "../AdminSidebar";
+import AdminLoadingState from "../AdminLoadingState";
 
 type Condition = { component: string; condition: string; notes?: string };
 type Order = {
@@ -81,7 +82,8 @@ export default function RepairOrdersAdmin() {
     [warrantyMonths, setWarrantyMonths] = useState(6),
     [quoteStatus, setQuoteStatus] = useState("DRAFT"),
     [message, setMessage] = useState(""),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [loading, setLoading] = useState(true);
   async function load() {
     const response = await fetch("/api/admin/repair-orders", {
       cache: "no-store",
@@ -110,11 +112,25 @@ export default function RepairOrdersAdmin() {
     setParts(data.parts);
   }
   useEffect(() => {
-    void load();
-    void loadRequests();
-    void fetch("/api/admin/repair-orders/technicians", { cache: "no-store" })
-      .then((response) => response.json() as Promise<{ items?: Technician[] }>)
-      .then((data) => setTechnicians(data.items ?? []));
+    let mounted = true;
+    setLoading(true);
+    void Promise.all([
+      load(),
+      loadRequests(),
+      fetch("/api/admin/repair-orders/technicians", {
+        cache: "no-store",
+        credentials: "same-origin",
+      })
+        .then((response) => response.json() as Promise<{ items?: Technician[] }>)
+        .then((data) => {
+          if (mounted) setTechnicians(data.items ?? []);
+        }),
+    ]).finally(() => {
+      if (mounted) setLoading(false);
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
   function open(order: Order) {
     setSelected(order);
@@ -215,6 +231,18 @@ export default function RepairOrdersAdmin() {
         </div>
       </header>
       <section className="admin-workspace">
+        {loading ? (
+          <>
+            <div className="admin-section-heading">
+              <div>
+                <p className="admin-kicker">Recepción</p>
+                <h2>Órdenes de reparación</h2>
+              </div>
+            </div>
+            <AdminLoadingState label="Cargando órdenes de reparación…" />
+          </>
+        ) : (
+          <>
         <div className="admin-section-heading">
           <div>
             <p className="admin-kicker">Recepción</p>
@@ -274,6 +302,8 @@ export default function RepairOrdersAdmin() {
             </div>
           )}
         </div>
+          </>
+        )}
       </section>
       {selected && (
         <div className="admin-modal-backdrop">
