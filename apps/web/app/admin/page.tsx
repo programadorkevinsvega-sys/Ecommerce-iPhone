@@ -177,7 +177,7 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [resourceLoading, setResourceLoading] = useState(false);
+  const [resourceLoading, setResourceLoading] = useState(resource !== "dashboard");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
