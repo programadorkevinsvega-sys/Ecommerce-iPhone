@@ -105,11 +105,9 @@ Public storefront navigation is centralized in:
 apps/web/app/components/StoreHeader.tsx
 ```
 
-Technician navigation is centralized in:
+The shared storefront navigation is client-compatible because it is reused by server-rendered storefront pages and the client-side customer account surface.
 
-```text
-apps/web/app/technician/TechnicianHeader.tsx
-```
+Technician pages currently keep their operational navigation locally. A visual/navigation consolidation for `/technician/**` is part of the pending technician UI hardening and is not marked complete.
 
 Administrative navigation/loading patterns are centralized through the existing Admin components.
 
