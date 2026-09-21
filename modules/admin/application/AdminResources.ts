@@ -1,18 +1,13 @@
 import type { AdminResourceAuditPort } from "./AdminResourceAuditPort";
 import type { AdminResourceRepository } from "./AdminResourceRepository";
-import {
-  DEFAULT_AUTHORIZATION_POLICY,
-  type AdminRole,
-  type AuthorizationPolicy,
-  type Permission,
-} from "./Rbac";
+import type { AdminRole, Permission } from "./Rbac";
 import {
   validateProductPatch,
   validateProductProps,
   type ProductCondition,
 } from "../../catalog/domain/Product";
 
-export type AdminActor = { id: string; email: string; role: AdminRole };
+export type AdminActor = { id: string; email: string; role: AdminRole; permissions: readonly Permission[] };
 export type ResourceName = "products" | "customers" | "services" | "orders";
 export type AdminNotificationPublisher = (event: {
   eventType: string;
@@ -23,7 +18,6 @@ export type AdminResourcesDeps = {
   repository: AdminResourceRepository;
   audit: AdminResourceAuditPort;
   publishNotification: AdminNotificationPublisher;
-  authorizationPolicy?: AuthorizationPolicy;
 };
 const MAX_QUERY_LENGTH = 100;
 const MAX_PRODUCT_CATEGORIES = 50;
@@ -95,10 +89,7 @@ function parseProductImages(value: unknown): string[] {
 }
 
 export class AdminResources {
-  private readonly authorizationPolicy: AuthorizationPolicy;
-  constructor(private readonly deps: AdminResourcesDeps) {
-    this.authorizationPolicy = deps.authorizationPolicy ?? DEFAULT_AUTHORIZATION_POLICY;
-  }
+  constructor(private readonly deps: AdminResourcesDeps) {}
 
   async list(input: { actor: AdminActor; resource: unknown; query: unknown }): Promise<unknown[]> {
     const resource = normalizeResource(input.resource);
@@ -153,7 +144,7 @@ export class AdminResources {
     );
   }
   private authorize(actor: AdminActor, permission: Permission): void {
-    if (!this.authorizationPolicy.can(actor.role, permission)) throw new Error("FORBIDDEN");
+    if (!actor.permissions.includes(permission)) throw new Error("FORBIDDEN");
   }
 
   private async createProduct(

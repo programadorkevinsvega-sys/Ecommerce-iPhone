@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { AdminAuditViewer } from "../../../../../../modules/admin/application/AdminAuditViewer";
-import { D1AdminAuditRepository } from "../../../../../../modules/admin/infrastructure/D1AdminAuditRepository";
+import { adminAuditApplication } from "../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
 
 const optional = (value: string | null) => value?.trim() || undefined;
@@ -33,7 +32,7 @@ export async function GET(request: Request) {
     if (offset < 0 || limit < 1 || limit > 100 || !validDate(from) || !validDate(to)) {
       return NextResponse.json({ error: "Invalid audit filters" }, { status: 400 });
     }
-    const result = await new AdminAuditViewer(new D1AdminAuditRepository(env.DB)).execute(filter);
+    const result = await adminAuditApplication(env).execute(filter);
     return NextResponse.json(result, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
