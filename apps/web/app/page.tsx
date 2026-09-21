@@ -59,6 +59,7 @@ export default async function HomePage() {
                     width={640}
                     height={360}
                     sizes="(max-width: 520px) 100vw, (max-width: 800px) 50vw, 20vw"
+                    unoptimized={category.imageUrl.startsWith("/api/media/")}
                   />
                 ) : (
                   <span className="category-card-placeholder" aria-hidden="true" />

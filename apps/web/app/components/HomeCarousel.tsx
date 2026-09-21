@@ -51,6 +51,7 @@ export default function HomeCarousel({ slides }: { slides: HomeSlide[] }) {
         height={900}
         sizes="(max-width: 800px) 100vw, 55vw"
         priority
+        unoptimized={slide.imageUrl.startsWith("/api/media/")}
       />
     </section>
   );

@@ -39,6 +39,7 @@ export default function HomeCollectionCarousel({
                   width={640}
                   height={440}
                   sizes="(max-width: 520px) 100vw, (max-width: 800px) 50vw, 25vw"
+                  unoptimized={item.imageUrl.startsWith("/api/media/")}
                 />
               ) : (
                 <span aria-hidden="true">{item.eyebrow}</span>
