@@ -19,13 +19,23 @@ export class TechnicianManagement {
   async list() {
     return (await this.users.list()).map((user) => {
       const p = user.toPrimitives();
-      return { id: p.id, email: p.email, firstName: p.firstName, lastName: p.lastName, phone: p.phone ?? null, active: p.active, lastLoginAt: p.lastLoginAt ?? null, createdAt: p.createdAt };
+      return {
+        id: p.id,
+        email: p.email,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        phone: p.phone ?? null,
+        active: p.active,
+        lastLoginAt: p.lastLoginAt ?? null,
+        createdAt: p.createdAt,
+      };
     });
   }
 
   async create(input: Record<string, unknown>, actorId: string) {
     const email = required(input.email).toLowerCase();
     if (await this.users.findByEmail(email)) throw new Error("TECHNICIAN_ALREADY_EXISTS");
+
     const user = TechnicianUser.create(crypto.randomUUID(), {
       email,
       passwordHash: await this.passwords.hash(required(input.password)),
@@ -35,6 +45,7 @@ export class TechnicianManagement {
       active: true,
       failedLoginCount: 0,
     });
+
     await this.users.save(user);
     await this.users.audit(actorId, "TECHNICIAN_CREATED", "technician_user", user.getId(), { email });
     return user.getId();
@@ -44,39 +55,74 @@ export class TechnicianManagement {
     const id = required(input.id, "ID_REQUIRED");
     const current = await this.users.findById(id);
     if (!current) throw new Error("TECHNICIAN_NOT_FOUND");
+
     const old = current.toPrimitives();
     const email = input.email === undefined ? old.email : required(input.email).toLowerCase();
+
     if (email !== old.email) {
       const duplicate = await this.users.findByEmail(email);
       if (duplicate && duplicate.getId() !== id) throw new Error("TECHNICIAN_ALREADY_EXISTS");
     }
+
+    const { phone: oldPhone, ...withoutPhone } = old;
     const next = TechnicianUser.rehydrate(id, {
-      ...old,
+      ...withoutPhone,
       email,
       firstName: input.firstName === undefined ? old.firstName : required(input.firstName),
       lastName: input.lastName === undefined ? old.lastName : required(input.lastName),
-      ...(input.phone === undefined ? {} : typeof input.phone === "string" && input.phone.trim() ? { phone: input.phone.trim() } : {}),
-      passwordHash: typeof input.password === "string" && input.password ? await this.passwords.hash(input.password) : old.passwordHash,
+      ...(input.phone === undefined
+        ? oldPhone
+          ? { phone: oldPhone }
+          : {}
+        : typeof input.phone === "string" && input.phone.trim()
+          ? { phone: input.phone.trim() }
+          : {}),
+      passwordHash:
+        typeof input.password === "string" && input.password
+          ? await this.passwords.hash(input.password)
+          : old.passwordHash,
       active: input.active === undefined ? old.active : input.active === true,
     });
+
     await this.users.save(next);
-    if (next.toPrimitives().passwordHash !== old.passwordHash || next.toPrimitives().active !== old.active) await this.sessions.revokeAll(id);
-    await this.users.audit(actorId, "TECHNICIAN_UPDATED", "technician_user", id, { fields: Object.keys(input).filter((key) => key !== "password") });
+    if (
+      next.toPrimitives().passwordHash !== old.passwordHash ||
+      next.toPrimitives().active !== old.active
+    ) {
+      await this.sessions.revokeAll(id);
+    }
+    await this.users.audit(actorId, "TECHNICIAN_UPDATED", "technician_user", id, {
+      fields: Object.keys(input).filter((key) => key !== "password"),
+    });
   }
 
   async updateProfile(id: string, input: Record<string, unknown>) {
     const current = await this.users.findById(id);
     if (!current) throw new Error("TECHNICIAN_NOT_FOUND");
+
     const old = current.toPrimitives();
+    const { phone: oldPhone, ...withoutPhone } = old;
     const next = TechnicianUser.rehydrate(id, {
-      ...old,
+      ...withoutPhone,
       firstName: required(input.firstName, "INVALID_PROFILE"),
       lastName: required(input.lastName, "INVALID_PROFILE"),
-      ...(typeof input.phone === "string" && input.phone.trim() ? { phone: input.phone.trim() } : {}),
+      ...(typeof input.phone === "string" && input.phone.trim()
+        ? { phone: input.phone.trim() }
+        : input.phone === undefined && oldPhone
+          ? { phone: oldPhone }
+          : {}),
       passwordHash: old.passwordHash,
     });
+
     await this.users.save(next);
     await this.users.audit(id, "PROFILE_UPDATED", "technician_user", id, {});
-    return { id, email: next.toPrimitives().email, firstName: next.toPrimitives().firstName, lastName: next.toPrimitives().lastName, phone: next.toPrimitives().phone ?? null };
+
+    return {
+      id,
+      email: next.toPrimitives().email,
+      firstName: next.toPrimitives().firstName,
+      lastName: next.toPrimitives().lastName,
+      phone: next.toPrimitives().phone ?? null,
+    };
   }
 }
