@@ -80,7 +80,6 @@ export async function GET(request: Request) {
     const status = rawStatus ? (rawStatus as RepairOrderStatus) : undefined;
     const items = await repairOrderRepository(env).list({
       ...(status ? { status } : {}),
-      ...(admin.role === "TECHNICIAN" ? { technicianId: admin.id } : {}),
       limit: Number(url.searchParams.get("limit") ?? 50),
     });
     return NextResponse.json({ items }, { headers: { "cache-control": "no-store" } });
@@ -92,7 +91,6 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const { env, admin } = await requireAdmin(PERMISSIONS.repairOrdersWrite);
-    if (admin.role === "TECHNICIAN") return responseFor(new Error("FORBIDDEN"));
     const body = bodyRecord(await request.json());
     const serviceRequestId = typeof body.serviceRequestId === "string" ? body.serviceRequestId : "";
     const order = await createRepairOrderApplication(env).execute(serviceRequestId, admin.id);
