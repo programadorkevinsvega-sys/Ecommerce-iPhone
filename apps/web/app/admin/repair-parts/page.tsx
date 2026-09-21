@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import AdminSidebar from "../AdminSidebar";
+import AdminLoadingState from "../AdminLoadingState";
 
 type Part = { id: string; sku: string; name: string; quality: string; supplier?: string; lot?: string; unitCostInCents: number; salePriceInCents: number; stock: number; minimumStock: number };
 type FormState = { sku: string; name: string; quality: string; unitCostInCents: string; salePriceInCents: string; stock: string; minimumStock: string; supplier: string; lot: string };
@@ -13,14 +14,35 @@ export default function RepairPartsPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  async function load() { const response = await fetch("/api/admin/repair-parts", { cache: "no-store", credentials: "same-origin" }); if (response.status === 401 || response.status === 403) { window.location.href = "/admin/login"; return; } const data = await response.json() as { items?: Part[]; error?: string }; if (!response.ok) { setError(data.error ?? "No se pudo cargar el inventario."); return; } setItems(data.items ?? []); }
+  const [loading, setLoading] = useState(true);
+  async function load() {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/admin/repair-parts", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      if (response.status === 401 || response.status === 403) {
+        window.location.href = "/admin/login";
+        return;
+      }
+      const data = (await response.json()) as { items?: Part[]; error?: string };
+      if (!response.ok) {
+        setError(data.error ?? "No se pudo cargar el inventario.");
+        return;
+      }
+      setItems(data.items ?? []);
+    } finally {
+      setLoading(false);
+    }
+  }
   useEffect(() => { void load(); }, []);
   async function save(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setBusy(true); setMessage(""); setError(""); const response = await fetch("/api/admin/repair-parts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...form, unitCostInCents: Number(form.unitCostInCents), salePriceInCents: Number(form.salePriceInCents), stock: Number(form.stock), minimumStock: Number(form.minimumStock) }) }); const data = await response.json() as { error?: string }; if (!response.ok) setError(data.error ?? "No se pudo guardar el repuesto."); else { setMessage("Repuesto guardado correctamente."); setForm(emptyForm); await load(); } setBusy(false); }
   return <main className="admin-shell">
     <AdminSidebar active="repair-parts" />
     <section className="admin-content"><header className="admin-topbar"><div><p className="admin-kicker">Taller</p><h1>Repuestos de taller</h1></div></header>{error && <p className="admin-error" role="alert">{error}</p>}{message && <p className="admin-notice" role="status">{message}</p>}
       <section className="admin-workspace repair-parts-workspace"><div className="admin-section-heading"><div><p className="admin-kicker">Inventario</p><h2>Registrar repuesto</h2></div><span className="muted">Los datos se guardan en D1.</span></div><form className="admin-form repair-parts-form" onSubmit={save}><label>SKU<input required maxLength={80} value={form.sku} onChange={(event) => setForm({ ...form, sku: event.target.value })} /></label><label>Nombre<input required maxLength={160} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} /></label><label>Calidad<select value={form.quality} onChange={(event) => setForm({ ...form, quality: event.target.value })}><option>ORIGINAL</option><option>OEM</option><option>AFTERMARKET</option></select></label><label>Proveedor<input maxLength={160} value={form.supplier} onChange={(event) => setForm({ ...form, supplier: event.target.value })} /></label><label>Lote<input maxLength={100} value={form.lot} onChange={(event) => setForm({ ...form, lot: event.target.value })} /></label><label>Costo en centavos<input type="number" min="0" value={form.unitCostInCents} onChange={(event) => setForm({ ...form, unitCostInCents: event.target.value })} /></label><label>Precio al cliente en centavos<input type="number" min="0" value={form.salePriceInCents} onChange={(event) => setForm({ ...form, salePriceInCents: event.target.value })} /></label><label>Stock inicial<input type="number" min="0" value={form.stock} onChange={(event) => setForm({ ...form, stock: event.target.value })} /></label><label>Stock mínimo<input type="number" min="0" value={form.minimumStock} onChange={(event) => setForm({ ...form, minimumStock: event.target.value })} /></label><div className="modal-actions"><button className="admin-button primary" disabled={busy}>{busy ? "Guardando…" : "Guardar repuesto"}</button></div></form></section>
-      <section className="admin-workspace repair-parts-table-section"><div className="admin-section-heading"><div><p className="admin-kicker">Existencias</p><h2>Inventario registrado</h2></div><span className="muted">{items.length} repuestos</span></div><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>SKU</th><th>Repuesto</th><th>Calidad</th><th>Proveedor</th><th>Stock</th><th>Mínimo</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td><strong>{item.sku}</strong><span className="table-subtext">{item.lot ?? "Sin lote"}</span></td><td>{item.name}</td><td>{item.quality}</td><td>{item.supplier ?? "Sin proveedor"}</td><td className={item.stock <= item.minimumStock ? "stock-low" : ""}>{item.stock}</td><td>{item.minimumStock}</td></tr>)}</tbody></table>{!items.length && <div className="admin-empty"><h3>No hay repuestos registrados</h3><p>Agrega inventario real del taller para reservarlo en una orden.</p></div>}</div></section>
+      <section className="admin-workspace repair-parts-table-section"><div className="admin-section-heading"><div><p className="admin-kicker">Existencias</p><h2>Inventario registrado</h2></div><span className="muted">{items.length} repuestos</span></div><div className="admin-table-wrap">{loading ? <AdminLoadingState label="Cargando repuestos…" /> : <><table className="admin-table"><thead><tr><th>SKU</th><th>Repuesto</th><th>Calidad</th><th>Proveedor</th><th>Stock</th><th>Mínimo</th></tr></thead><tbody>{items.map((item) => <tr key={item.id}><td><strong>{item.sku}</strong><span className="table-subtext">{item.lot ?? "Sin lote"}</span></td><td>{item.name}</td><td>{item.quality}</td><td>{item.supplier ?? "Sin proveedor"}</td><td className={item.stock <= item.minimumStock ? "stock-low" : ""}>{item.stock}</td><td>{item.minimumStock}</td></tr>)}</tbody></table>{!items.length && <div className="admin-empty"><h3>No hay repuestos registrados</h3><p>Agrega inventario real del taller para reservarlo en una orden.</p></div>}</>}</div></section>
     </section>
   </main>;
 }
