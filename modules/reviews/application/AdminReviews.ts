@@ -1,9 +1,9 @@
+import type { AuditPort } from "../../admin/application/AuditPort";
+
 export type ReviewRepository = {
   list(status?: string, productId?: string, limit?: number, offset?: number): Promise<unknown[]>;
   moderate(id: string, status: "APPROVED" | "REJECTED", response?: string): Promise<boolean>;
 };
-
-import type { AuditPort } from "../../admin/application/AuditPort";
 
 export class AdminReviews {
   constructor(
