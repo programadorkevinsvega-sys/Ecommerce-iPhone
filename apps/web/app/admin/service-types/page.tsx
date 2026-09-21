@@ -72,5 +72,6 @@ export default function ServiceTypesPage() {
         <label><input type="checkbox" checked={form.enabled} onChange={(e) => set("enabled", e.target.checked)} /> Publicado</label>
         <div style={{ display: "flex", gap: 8 }}><button disabled={saving} type="submit">{saving ? "Guardando…" : editing ? "Guardar cambios" : "Crear servicio"}</button>{editing && <button type="button" onClick={reset}>Cancelar</button>}</div>
       </form></section>
+    </div>
     </div></section></main>;
 }
