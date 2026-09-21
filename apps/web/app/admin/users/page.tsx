@@ -88,7 +88,7 @@ export default function AdminUsersPage() {
   const [permissions, setPermissions] = useState<PermissionItem[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
 
-  const loadRolePermissions = async (role: AdminUser["role"]) => {
+  const loadRolePermissions = useCallback(async (role: AdminUser["role"]) => {
     setPermissionsLoading(true);
     try {
       const response = await fetch(`/api/admin/permissions/catalog?role=${encodeURIComponent(role)}`, {
