@@ -45,6 +45,9 @@ export class AdminPermissionManagement {
     const targetId = requireId(targetIdInput);
     const actor = await this.requireUser(actorIdInput);
     const target = await this.requireUser(targetId);
+    const actorOverrides = await this.permissions.getOverrides(actor.id);
+    const actorEffective = new Set(resolvePermissions(actor.role, actorOverrides));
+    if (!actorEffective.has(PERMISSIONS.adminsManage)) throw new Error("FORBIDDEN");
     const overrides = await this.permissions.getOverrides(targetId);
     return this.catalog(target.role, overrides);
   }
