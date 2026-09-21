@@ -37,3 +37,14 @@ infrastructure -----------^ (implements ports)
 - Direct imports into another module's `domain`, `application`, `infrastructure` or `presentation` internals are forbidden.
 
 The repository contains an automated architecture check in `scripts/check-architecture.mjs` and CI executes it before build/test stages.
+
+
+## technicians
+
+Operational technician identities and their assigned-work capabilities. This is separate from the Admin RBAC context.
+
+- Domain: `TechnicianUser`
+- Authentication/session: `technician_session`
+- Persistence: D1
+- Repair evidence: R2 through protected application routes
+- UI: `apps/web/app/technician/**`
