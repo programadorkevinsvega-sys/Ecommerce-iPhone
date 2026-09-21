@@ -1049,17 +1049,26 @@ PATCH  /api/admin/users/:id/permissions
 
 ### Técnico
 
+Implementación actual:
+
 ```text
-GET    /api/technician/repair-orders
-GET    /api/technician/repair-orders/:id
-POST   /api/technician/repair-orders/:id/diagnosis
-POST   /api/technician/repair-orders/:id/media
-POST   /api/technician/repair-orders/:id/work
-POST   /api/technician/repair-orders/:id/finish
-POST   /api/technician/repair-orders/:id/quality-control
+POST   /api/technician/auth/login
+POST   /api/technician/auth/logout
+GET    /api/technician/auth/session
+
+GET    /api/technician/orders
+PATCH  /api/technician/orders/:id
+POST   /api/technician/orders/:id/media
+
+GET    /api/technician/devices
+POST   /api/technician/devices
+PATCH  /api/technician/devices/:orderId
+
+GET    /api/technician/profile
+PATCH  /api/technician/profile
 ```
 
-Las rutas deben adaptarse a las convenciones existentes antes de implementarse.
+Estas rutas utilizan la identidad independiente `technician_session` y aplican autorización por técnico autenticado y asignación de la orden.
 
 ## 21. Fase 18: permisos y roles
 
