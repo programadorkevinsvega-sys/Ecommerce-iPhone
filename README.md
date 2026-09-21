@@ -1,121 +1,221 @@
 # Ecommerce iPhone
 
-Production-oriented e-commerce platform for smartphones and legitimate device services.
+Plataforma e-commerce orientada a producción para smartphones y servicios legítimos de dispositivos.
 
-## Architecture
+## Arquitectura
 
-- Modular monolith
-- Domain-Driven Design (DDD)
-- Clean Architecture
-- Next.js + TypeScript
-- Cloudflare Workers + OpenNext
-- Cloudflare D1
-- Cloudflare R2
-- Cloudflare Queues
-- Explicit application ports/adapters
-- Bounded contexts prepared for future service extraction
+- Monolito modular.
+- Domain-Driven Design (DDD).
+- Clean Architecture.
+- Next.js 15 + TypeScript.
+- Cloudflare Workers + OpenNext.
+- Cloudflare D1.
+- Cloudflare R2.
+- Cloudflare Queues.
+- Puertos/adapters explícitos.
+- Bounded contexts preparados para extracción futura como servicios independientes.
+- Entorno remoto operativo único: **producción**.
 
-## Phase status
+## Estado de las fases
 
-### FASE 01 — Foundation
-Foundation is implemented as the platform baseline: modular boundaries, shared domain kernel, catalog vertical slice, Cloudflare/OpenNext runtime, D1/R2/Queues bindings, HTTP security baseline, request tracing, CI quality gates and production deployment. Final closure still requires lockfile-based reproducibility and the remaining certification gates.
+| Fase | Estado actual | Cierre |
+|---|---|---|
+| 01 — Foundation | 🟡 Implementada + hardening | Falta certificación final de gates/evidencia |
+| 02 — Storefront Premium | 🟢 Implementada | Falta E2E/accessibility/performance/SEO final |
+| 03 — Commerce Core | 🟢 Implementación cerrada | Falta certificación exhaustiva en producción |
+| 04 — Payments | 🟡 Multi-provider implementado | Falta certificación real de los 5 providers |
+| 05 — Services | 🟢 Implementación + hardening | Falta certificación final |
+| 06 — Admin + RBAC | 🟡 Implementación avanzada | Falta certificación de seguridad/gates |
+| 07 — Notifications + Queues | 🟡 Implementación funcional | Falta DLQ/retry/replay final |
+| Reparaciones / Técnico | 🟡 Implementación operativa | Falta cierre funcional, visual y certificación |
 
-### FASE 02 — Storefront + Catalog
-Implemented: responsive storefront, D1-backed catalog, product domain model, search/filter/pagination, inventory visibility, product detail pages, iPhone SEO URLs, redirects, dynamic metadata, canonical URLs, Product structured data and sitemap. Final certification still requires complete E2E/accessibility/performance evidence.
+Una fase no se considera 100% terminada solo porque compile. El cierre exige implementación, integración, tests, seguridad, reproducibilidad, despliegue y evidencia operativa.
 
-### FASE 03 — Commerce Core
-Implemented: customer aggregate and addresses, guest/customer session cookies, persistent D1 cart, quantity validation, server-side price/stock validation, checkout flow, order aggregate/state machine, order snapshots, stock allocation, inventory reservations, expired-reservation release, order events, protected order lookup/listing and commerce UI/tests.
+## Estado de producción
 
-### FASE 04 — Payments
-**Real production integration implemented in code.** The current provider adapter is Wompi Colombia and uses the real Web Checkout, server-generated integrity signatures, authenticated payment intents, D1 payment persistence/idempotency, signed production webhooks, provider transaction reconciliation, payment ledger/audit records, concurrency-safe order/payment transitions and inventory reservation consume/release integration. No fake provider, mock payment response or simulated transaction is used by the runtime.
+La última versión de Cloudflare que quedó **verificada directamente en producción** antes de los cambios recientes de navegación, técnicos y documentación corresponde al Worker:
 
-Production activation requires only the real Wompi production credentials/secrets to be configured outside Git and the real Wompi webhook URL to be registered in the merchant dashboard. The final phase certification additionally requires real production evidence and provider capability validation for refund/void operations.
+`f7d67832-8598-4f59-8db9-b538f543b3ef`
 
-### FASE 05 — Device Services
-Implemented: configurable legitimate device-service catalog; service-request aggregate and workflow; D1 persistence; audit ledger; customer API/form; quote/assignment/status/completion application ports; identifier privacy controls retaining only IMEI/serial suffixes.
+con:
 
-### FASE 06 — Admin + Backoffice + RBAC
-Implemented: secure admin sessions, password hashing, login lockout, RBAC/permissions, administrator management, dashboard metrics, product/order/customer/service backoffice APIs, service-type administration, audit trail and admin observability.
+- `/api/health/live` → `200`
+- `/api/health/ready` → `200`
+- `verify:production` → PASS.
 
-### FASE 07 — Email + Notifications
-Implemented: transactional notification outbox, D1 delivery ledger, Cloudflare Queue consumer, one-minute outbox dispatcher, Resend adapter, idempotent email delivery, order/service events, admin delivery observability and production configuration documentation.
+Los commits posteriores están en `main` y requieren una ejecución de build/deploy exitosa antes de considerarse certificados en producción.
 
-## Data model boundary
+HEAD actual documentado:
 
-D1 contains tables for the bounded contexts. Code boundaries remain independent through repositories and application contracts. A module can be extracted to its own service/database later without redesigning the domain model.
+`4c7feecdfcd9a97986fdc0a062b6d7e49c0ef03c`
 
-## Cloudflare provisioning boundary
+El último build remoto observado antes de la corrección del dominio técnico falló por una sintaxis inválida en `modules/technicians/domain/TechnicianUser.ts`; esa fuente ya fue corregida. El workflow automático posterior no aporta evidencia útil de build porque termina sin ejecutar steps, por lo que no sustituye la verificación directa de Cloudflare.
 
-Cloudflare resources are external account resources. The repository contains their bindings and migrations; runtime secrets stay outside Git. Workers Builds should use the repository's pnpm workspace explicitly because the monorepo is standardized on pnpm.
+## Toolchain actual
 
-Production is the only remote operational environment. Local Next.js/Vitest/Playwright/D1 emulation is development tooling, not a second deployed environment.
+- Node.js `24.18.0`
+- pnpm `12.4.1`
+- Next.js `15.5.25`
+- `@opennextjs/cloudflare` `1.20.6`
+- Wrangler `4.131.1` en la última build Cloudflare verificada
+- workerd compatibility date `2026-09-09`
 
-Recommended production build configuration:
-
-```text
-Build command:
-pnpm install --frozen-lockfile && pnpm build:cloudflare
-
-Deploy command:
-pnpm deploy:production
-
-Root directory:
-/
-```
-
-Production deployment applies pending remote D1 migrations before deploying the Worker:
-
-```text
-pnpm db:migrate:production
-pnpm build:cloudflare
-pnpm exec wrangler deploy
-```
-
-Do not use `npm run build` + `npx wrangler deploy` for the production Worker, because the first command runs the regular Next.js build rather than the OpenNext Cloudflare build.
-
-## Commands
+Build:
 
 ```bash
 pnpm install --frozen-lockfile
-pnpm foundation:check
-pnpm architecture:check
-pnpm lint
-pnpm typecheck
-pnpm test
-pnpm build
 pnpm build:cloudflare
-pnpm test:e2e
+```
+
+Deploy:
+
+```bash
 pnpm deploy:production
 ```
 
-## Commerce API
+## Storefront
 
-- `GET /api/cart` — read the current guest cart
-- `POST /api/cart` — add/update a cart item
-- `DELETE /api/cart` — remove a cart item
-- `POST /api/checkout` — validate cart, create customer/address, allocate stock and create a pending-payment order
-- `POST /api/payments/intent` — create/reuse a real Wompi payment intent for the authenticated order
-- `POST /api/payments/webhooks/wompi` — receive and verify signed Wompi production transaction events
-- `GET /api/customer` — read the current customer session
-- `POST /api/customer` — create/reuse a customer and optionally save an address
-- `GET /api/orders/:id` — read an order only for its customer session
-- `GET /api/services` — service catalog and current customer's requests
-- `POST /api/services` — create a service request
-- `GET /api/services/:id` — read a service request only for its customer session
-- `GET /api/admin/notifications` — admin-only notification delivery/outbox observability
+La navegación pública utiliza un único componente compartido:
 
-## Documentation
+`apps/web/app/components/StoreHeader.tsx`
 
-- `docs/architecture.md` — architecture and bounded-context rules
-- `docs/development.md` — local and Cloudflare workflow
-- `docs/foundation.md` — Fase 1 Foundation implementation and closure checklist
-- `docs/security.md` — security baseline
-- `docs/payments.md` — real Wompi payment integration, lifecycle, webhooks and production activation
-- `docs/services.md` — service workflow and device-data privacy
-- `docs/notifications.md` — Resend, outbox and Queue architecture
-- `modules/README.md` — module boundary overview
-- `docs/auditoria-fases-1-7.md` — deep audit and master implementation plan
+Las rutas públicas mantienen:
 
-## Security
+- Inicio
+- Catálogo
+- Servicios
+- Consultar reparación
+- Contacto
+- Carrito
+- Mi cuenta
 
-No credentials, payment secrets, email provider secrets or Cloudflare secrets belong in Git. Use local environment files and Cloudflare/GitHub secret stores. Browser redirects are never payment confirmation. Device identifiers are private and never exposed in full.
+La navegación contextual usa `aria-current`.
+
+## Clientes
+
+Implementado:
+
+- registro;
+- login/logout;
+- recuperación;
+- perfil;
+- direcciones;
+- dispositivos;
+- portal de cliente;
+- reparaciones;
+- pedidos;
+- garantías;
+- comunicaciones.
+
+Los recursos protegidos se resuelven server-side contra la identidad del cliente.
+
+## Servicios y reparaciones
+
+Implementado:
+
+- catálogo configurable de servicios;
+- solicitudes;
+- workflow;
+- presupuestos;
+- seguimiento público;
+- órdenes de reparación;
+- asignación de técnico;
+- dispositivos recibidos;
+- evidencia fotográfica;
+- repuestos;
+- auditoría;
+- RBAC administrativo.
+
+## Técnicos
+
+El técnico es una **identidad operativa independiente**, no un rol administrativo.
+
+Persistencia:
+
+- `technician_users`
+- `technician_sessions`
+- `technician_audit_events`
+
+Rutas:
+
+- `/technician/login`
+- `/technician`
+- `/technician/orders`
+- `/technician/devices`
+- `/technician/profile`
+
+Las cuentas técnicas se crean exclusivamente desde `/admin/technicians`. No existe auto-registro público.
+
+## Admin + RBAC
+
+Roles administrativos:
+
+- `SUPER_ADMIN`
+- `ADMIN`
+- `MANAGER`
+- `SALES`
+- `SUPPORT`
+- `INVENTORY`
+- `FINANCE`
+- `CONTENT_EDITOR`
+
+**`TECHNICIAN` no es un rol de `admin_users`.** El técnico pertenece al bounded context `technicians`.
+
+## Payments
+
+Existe implementación multi-provider con adapters independientes para Wompi, Stripe, Mercado Pago, PayPal y Binance Pay.
+
+Los webhooks se verifican server-side y convergen en la misma máquina de estados. La certificación final de Fase 04 aún requiere evidencia real por provider.
+
+## Notifications
+
+```text
+Business operation
+    ↓
+notification_outbox
+    ↓
+Cloudflare Queue
+    ↓
+Resend
+    ↓
+notification_deliveries
+```
+
+## Seguridad
+
+Existe:
+
+- CSP.
+- HSTS.
+- security headers.
+- COOP/CORP.
+- request-id.
+- rate limiting.
+- sesiones HttpOnly/Secure/SameSite.
+- validación server-side.
+- idempotencia.
+- RBAC server-side.
+- auditoría.
+- ownership checks.
+- hardening de imágenes y URLs.
+
+La certificación global permanece pendiente hasta completar regresiones y evidencia productiva.
+
+## Documentación canónica
+
+- `roadmap.md`
+- `docs/auditoria-fases-1-7.md`
+- `docs/PLAN-PLATAFORMA-REPARACIONES.md`
+- `docs/architecture.md`
+- `docs/foundation.md`
+- `docs/security.md`
+- `docs/admin.md`
+- `docs/payments.md`
+- `docs/payment-providers.md`
+- `docs/services.md`
+- `docs/notifications.md`
+- `docs/cloudflare-deployment.md`
+- `modules/README.md`
+- `modules/technicians/README.md`
+
+**Regla:** cualquier cambio funcional importante debe actualizar la documentación en la misma iteración.
