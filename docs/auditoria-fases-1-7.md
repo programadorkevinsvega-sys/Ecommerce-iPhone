@@ -562,3 +562,7 @@ El commit actual de `main` todavía no está certificado en producción. Los run
 El chequeo estático actual de las 9 rutas HTTP del bounded context `technicians` no encuentra imports directos de infraestructura, dominio interno, runtime adapters Cloudflare ni SQL. Esto confirma el boundary arquitectónico del código, pero no sustituye el gate de CI/build/deploy.
 
 El Worker publicado tampoco se considera verificado desde este entorno porque el endpoint productivo no es accesible al mecanismo externo disponible. En consecuencia, Fase 06 y las certificaciones de Fase 01/02/03/04/05 siguen sin cierre productivo.
+
+### Evidencia adicional de build — 2026-09-21 22:58 UTC
+
+El build Cloudflare más reciente proporcionado durante la auditoría compiló Next.js correctamente y falló posteriormente en typecheck en `modules/repairs/application/RepairOrderManagement.ts:102`. El error fue exactamente `exactOptionalPropertyTypes`: el use case construía un objeto con propiedades opcionales presentes como `undefined`. Se corrigió en Application mediante propagación condicional y se añadió un test de regresión. Este hallazgo reemplaza como bloqueo técnico activo al antiguo fallo de `StoreHeader`; el fallo de `StoreHeader` permanece únicamente como histórico ya corregido.
