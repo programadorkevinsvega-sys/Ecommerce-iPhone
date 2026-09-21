@@ -25,6 +25,41 @@ type AdminUser = {
   lastLoginAt?: string;
 };
 
+type PermissionItem = {
+  permission: string;
+  state: "inherit" | "grant" | "deny";
+  effective: boolean;
+};
+
+const PERMISSION_LABELS: Record<string, string> = {
+  "dashboard:read": "Ver dashboard",
+  "products:read": "Ver productos",
+  "products:write": "Gestionar productos",
+  "categories:read": "Ver categorías",
+  "categories:write": "Gestionar categorías",
+  "orders:read": "Ver pedidos",
+  "orders:write": "Gestionar pedidos",
+  "customers:read": "Ver clientes",
+  "customers:write": "Gestionar clientes",
+  "services:read": "Ver solicitudes",
+  "services:write": "Gestionar solicitudes",
+  "repair_orders:read": "Ver órdenes de reparación",
+  "repair_orders:write": "Gestionar órdenes de reparación",
+  "refunds:create": "Crear reembolsos",
+  "payments:void": "Anular pagos",
+  "payments:read": "Ver pagos",
+  "service_types:write": "Gestionar servicios ofrecidos",
+  "admins:manage": "Gestionar administradores",
+  "audit:read": "Ver auditoría",
+  "inventory:read": "Ver inventario",
+  "inventory:write": "Gestionar inventario",
+  "reviews:write": "Gestionar reseñas",
+  "promotions:write": "Gestionar promociones",
+  "cms:write": "Gestionar contenido",
+  "settings:write": "Gestionar configuración",
+  "technicians:manage": "Gestionar técnicos",
+};
+
 type FormState = {
   email: string;
   firstName: string;
@@ -49,6 +84,8 @@ export default function AdminUsersPage() {
   const [editing, setEditing] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [permissions, setPermissions] = useState<PermissionItem[]>([]);
+  const [permissionsLoading, setPermissionsLoading] = useState(false);
 
   async function load() {
     const response = await fetch("/api/admin/users", {
@@ -112,9 +149,10 @@ export default function AdminUsersPage() {
     );
 
     if (response.ok) {
-      setForm(EMPTY);
-      setEditing(null);
       await load();
+      if (editing) {
+        await loadPermissions(editing);
+      }
     }
     setLoading(false);
   }
@@ -132,8 +170,28 @@ export default function AdminUsersPage() {
     if (response.ok) await load();
   }
 
+  async function loadPermissions(id: string) {
+    setPermissionsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/users/${encodeURIComponent(id)}/permissions`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const data = (await response.json()) as { items?: PermissionItem[]; error?: string };
+      if (!response.ok) {
+        setMessage(data.error ?? "No se pudieron cargar los permisos.");
+        setPermissions([]);
+        return;
+      }
+      setPermissions(data.items ?? []);
+    } finally {
+      setPermissionsLoading(false);
+    }
+  }
+
   function edit(item: AdminUser) {
     setEditing(item.id);
+    setPermissions([]);
     setForm({
       email: item.email,
       firstName: item.firstName,
@@ -142,6 +200,29 @@ export default function AdminUsersPage() {
       password: "",
       active: item.active,
     });
+    void loadPermissions(item.id);
+  }
+
+  async function savePermissions() {
+    if (!editing) return;
+    const overrides = permissions
+      .filter((item) => item.state !== "inherit")
+      .map((item) => ({ permission: item.permission, granted: item.state === "grant" }));
+    const response = await fetch(`/api/admin/users/${encodeURIComponent(editing)}/permissions`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      cache: "no-store",
+      body: JSON.stringify({ overrides }),
+    });
+    const data = (await response.json()) as { error?: string };
+    if (!response.ok) {
+      setMessage(data.error ?? "No se pudieron guardar los permisos.");
+      return false;
+    }
+    setMessage("Permisos actualizados.");
+    await loadPermissions(editing);
+    return true;
   }
 
   return (
@@ -190,13 +271,61 @@ export default function AdminUsersPage() {
                 </label>
               )}
             </div>
+            {editing && (
+              <section className="admin-permissions-panel">
+                <div className="admin-section-heading">
+                  <div>
+                    <p className="admin-kicker">Autorización</p>
+                    <h2>Permisos de la cuenta</h2>
+                  </div>
+                  <span className="muted">El rol define la base; los cambios aquí son específicos de esta cuenta.</span>
+                </div>
+                {permissionsLoading ? (
+                  <p>Cargando permisos…</p>
+                ) : form.role === "SUPER_ADMIN" ? (
+                  <p className="form-help">SUPER_ADMIN dispone de todos los permisos y sus permisos individuales están protegidos.</p>
+                ) : (
+                  <div className="permission-grid">
+                    {permissions.map((item) => (
+                      <label className="permission-row" key={item.permission}>
+                        <span>
+                          <strong>{PERMISSION_LABELS[item.permission] ?? item.permission}</strong>
+                          <small>{item.permission} · {item.effective ? "Activo" : "Denegado"}</small>
+                        </span>
+                        <select
+                          value={item.state}
+                          onChange={(event) =>
+                            setPermissions((current) =>
+                              current.map((permission) =>
+                                permission.permission === item.permission
+                                  ? { ...permission, state: event.target.value as PermissionItem["state"], effective: event.target.value === "grant" || (event.target.value === "inherit" && permission.effective) }
+                                  : permission,
+                              ),
+                            )
+                          }
+                        >
+                          <option value="inherit">Heredar del rol</option>
+                          <option value="grant">Permitir</option>
+                          <option value="deny">Denegar</option>
+                        </select>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {form.role !== "SUPER_ADMIN" && permissions.length > 0 && (
+                  <button className="admin-button" type="button" onClick={() => void savePermissions()}>
+                    Guardar permisos
+                  </button>
+                )}
+              </section>
+            )}
             {message && <p role="status">{message}</p>}
             <div className="modal-actions">
               <button className="admin-button primary" disabled={loading} type="submit">
                 {editing ? "Guardar cambios" : "Crear cuenta"}
               </button>
               {editing && (
-                <button type="button" className="admin-button" onClick={() => { setEditing(null); setForm(EMPTY); }}>
+                <button type="button" className="admin-button" onClick={() => { setEditing(null); setForm(EMPTY); setPermissions([]); }}>
                   Cancelar
                 </button>
               )}
