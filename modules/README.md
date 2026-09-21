@@ -4,7 +4,7 @@ Each business capability is isolated as a bounded context inside the modular mon
 
 ## Bounded contexts
 
-`auth`, `users`, `customers`, `catalog`, `inventory`, `cart`, `checkout`, `orders`, `payments`, `shipping`, `unlock`, `services`, `reviews`, `coupons`, `promotions`, `notifications`, `email`, `seo`, `analytics`, `cms`, `support`, and `admin`.
+`auth`, `users`, `customers`, `catalog`, `inventory`, `cart`, `checkout`, `orders`, `payments`, `shipping`, `unlock`, `services`, `reviews`, `coupons`, `promotions`, `notifications`, `email`, `seo`, `analytics`, `cms`, `support`, `admin`, and `technicians`.
 
 ## Internal structure
 
