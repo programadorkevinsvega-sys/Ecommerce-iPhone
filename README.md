@@ -21,7 +21,7 @@ Plataforma e-commerce orientada a producción para smartphones y servicios legí
 | Fase | Estado actual | Cierre |
 |---|---|---|
 | 01 — Foundation | 🟡 Implementada + hardening | Falta certificación final de gates/evidencia |
-| 02 — Storefront Premium | 🟢 Implementada | Falta E2E/accessibility/performance/SEO final |
+| 02 — Storefront Premium | 🟡 Implementada + hardening | Falta E2E/accessibility/performance/SEO final |
 | 03 — Commerce Core | 🟢 Implementación cerrada | Falta certificación exhaustiva en producción |
 | 04 — Payments | 🟡 Multi-provider implementado | Falta certificación real de los 5 providers |
 | 05 — Services | 🟢 Implementación + hardening | Falta certificación final |
@@ -45,11 +45,13 @@ con:
 
 Los commits posteriores están en `main` y requieren una ejecución de build/deploy exitosa antes de considerarse certificados en producción.
 
-Código funcional baseline documentado:
+Código actual en `main` al momento de esta documentación:
 
-`4c7feecdfcd9a97986fdc0a062b6d7e49c0ef03c`
+`9164de383b24f326c24d5da7da0edf823ee01b57`
 
-El último build remoto observado antes de la corrección del dominio técnico falló por una sintaxis inválida en `modules/technicians/domain/TechnicianUser.ts`; esa fuente ya fue corregida. El workflow automático posterior no aporta evidencia útil de build porque termina sin ejecutar steps, por lo que no sustituye la verificación directa de Cloudflare.
+Este commit y los sucesores permanecen sin certificación productiva hasta un nuevo build/deploy/verify exitoso.
+
+Un build remoto reciente falló por una sintaxis inválida en `modules/technicians/domain/TechnicianUser.ts` causada por secuencias `\\n` literales dentro del código fuente; esa fuente ya fue corregida. También se corrigió la frontera Server/Client del componente de navegación compartido. Los cambios actuales continúan sin certificación productiva hasta una nueva verificación directa de Cloudflare.
 
 ## Toolchain actual
 
@@ -75,7 +77,7 @@ pnpm deploy:production
 
 ## Storefront
 
-La navegación pública utiliza un único componente compartido:
+La navegación pública utiliza un único componente compartido y compatible con las superficies Server/Client:
 
 `apps/web/app/components/StoreHeader.tsx`
 
@@ -89,7 +91,7 @@ Las rutas públicas mantienen:
 - Carrito
 - Mi cuenta
 
-La navegación contextual usa `aria-current`.
+La navegación contextual usa `aria-current` y mantiene el conjunto estándar Inicio, Catálogo, Servicios, Consultar reparación, Contacto, Carrito y Mi cuenta.
 
 ## Clientes
 
@@ -144,7 +146,7 @@ Rutas:
 - `/technician/devices`
 - `/technician/profile`
 
-Las cuentas técnicas se crean exclusivamente desde `/admin/technicians`. No existe auto-registro público.
+Las cuentas técnicas se crean exclusivamente desde `/admin/technicians`. No existe auto-registro público. El rediseño visual completo de `/technician/**` permanece pendiente.
 
 ## Admin + RBAC
 
