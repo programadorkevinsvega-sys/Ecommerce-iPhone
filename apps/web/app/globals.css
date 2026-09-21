@@ -27,3 +27,130 @@
 .permission-row strong{font-size:14px}
 .permission-row small{font-size:12px;opacity:.62}
 .permission-row select{min-width:155px}
+
+
+/* Shared backoffice visual system for dedicated admin pages */
+.admin-page-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.18fr);
+  gap:16px;
+  align-items:start;
+}
+.admin-users-grid{
+  grid-template-columns:minmax(360px,.82fr) minmax(0,1.18fr);
+}
+.service-types-layout{
+  grid-template-columns:minmax(0,1.22fr) minmax(360px,.78fr);
+}
+.admin-page-panel{
+  min-width:0;
+  overflow:hidden;
+  border:1px solid #e1e6eb;
+  border-radius:10px;
+  background:#fff;
+}
+.admin-page-panel>.admin-section-heading{
+  padding:20px 22px;
+  border-bottom:1px solid #e8ecef;
+}
+.admin-page-panel>.admin-form{
+  padding:22px;
+}
+.admin-page-table-panel .admin-toolbar{
+  padding:14px 18px;
+  border-bottom:1px solid #e8ecef;
+  background:#fbfcfd;
+}
+.admin-search-wide{
+  width:100%;
+  max-width:none;
+}
+.admin-toolbar-actions{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+.admin-toolbar-actions .muted{
+  white-space:nowrap;
+}
+.admin-page-panel .admin-table-wrap{
+  border:0;
+  border-radius:0;
+}
+.admin-page-panel .admin-table th{
+  background:#fbfcfd;
+}
+.admin-page-panel .admin-table td,
+.admin-page-panel .admin-table th{
+  vertical-align:middle;
+}
+.admin-page-panel .admin-empty{
+  min-height:220px;
+}
+.admin-loading-inline{
+  display:grid;
+  place-items:center;
+  min-height:220px;
+  padding:30px;
+  color:#788691;
+  font-size:13px;
+}
+.admin-check-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px 18px;
+}
+.admin-check-grid .checkbox-label{
+  margin:0;
+  min-height:34px;
+  padding:8px 10px;
+  border:1px solid #e1e6eb;
+  border-radius:7px;
+  background:#fbfcfd;
+  color:#43515b;
+}
+.admin-permissions-panel{
+  background:#fbfcfd;
+}
+.permission-row{
+  background:#fff;
+}
+.admin-page-panel .modal-actions{
+  margin-top:4px;
+}
+.admin-page-panel .admin-section-description{
+  padding:0 22px;
+}
+.admin-page-grid .admin-error,
+.admin-page-grid .admin-notice{
+  grid-column:1/-1;
+}
+@media(max-width:1050px){
+  .admin-page-grid,
+  .admin-users-grid,
+  .service-types-layout{
+    grid-template-columns:1fr;
+  }
+}
+@media(max-width:760px){
+  .admin-page-panel>.admin-section-heading{
+    padding:18px 16px;
+  }
+  .admin-page-panel>.admin-form{
+    padding:18px 16px;
+  }
+  .admin-check-grid{
+    grid-template-columns:1fr;
+  }
+  .admin-toolbar-actions{
+    width:100%;
+    justify-content:space-between;
+  }
+  .admin-toolbar-actions .admin-button{
+    width:100%;
+  }
+  .admin-toolbar-actions .muted{
+    width:100%;
+  }
+}
