@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-type AdminSidebarProps = { active: "repair-orders" | "repair-parts" | "service-types" | "customer-devices" | "technicians" };
+type AdminSidebarProps = { active: "repair-orders" | "repair-parts" | "service-types" | "customer-devices" | "technicians" | "users" };
 
 const items = [
   ["⌂", "Dashboard", "/admin"],
@@ -20,6 +20,7 @@ export default function AdminSidebar({ active }: AdminSidebarProps) {
     <nav className="admin-nav" aria-label="Secciones administrativas">
       {items.map(([icon, label, href]) => <Link key={label} className={active === "customer-devices" && label === "Dispositivos de clientes" ? "active" : ""} href={href}><span>{icon}</span>{label}</Link>)}
       <Link className={active === "technicians" ? "active" : ""} href="/admin/technicians"><span>♟</span>Técnicos</Link>
+      <Link className={active === "users" ? "active" : ""} href="/admin/users"><span>♛</span>Administradores y roles</Link>
       <Link className={active === "repair-orders" ? "active" : ""} href="/admin/repair-orders"><span>◫</span>Órdenes de reparación</Link>
       <Link className={active === "repair-parts" ? "active" : ""} href="/admin/repair-parts"><span>⚙</span>Repuestos de taller</Link>
     </nav>
