@@ -11,9 +11,19 @@ import { D1RepairEvidenceRepository } from "../../../modules/repairs/infrastruct
 import { D1RepairOrderRepository } from "../../../modules/repairs/infrastructure/D1RepairOrderRepository";
 import { R2RepairEvidenceStorage } from "../../../modules/repairs/infrastructure/R2RepairEvidenceStorage";
 import { D1TechnicianRepository } from "../../../modules/technicians/infrastructure/D1TechnicianRepository";
+import { sha256Technician } from "../../../modules/technicians/infrastructure/TechnicianSecurity";
 
 export function technicianAuthApplication(env: CloudflareEnv) {
   return createTechnicianAuthApplication(env);
+}
+
+export function technicianAuthApplicationForRequest() {
+  const { env } = getCloudflareContext();
+  return createTechnicianAuthApplication(env);
+}
+
+export function hashTechnicianFingerprint(value: string) {
+  return sha256Technician(value);
 }
 
 export function technicianAuthApplicationForRequest() {
