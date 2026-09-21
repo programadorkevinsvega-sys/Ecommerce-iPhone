@@ -1,51 +1,111 @@
 # Admin / Backoffice
 
-Phase 06 implements the administrative bounded context and its server-side integration.
+## Scope
+
+Phase 06 provides the protected administrative backoffice for commerce, services, repairs, inventory, payments and administration.
+
+## Administrative roles
+
+Only these roles belong to `admin_users`:
+
+- `SUPER_ADMIN`
+- `ADMIN`
+- `MANAGER`
+- `SALES`
+- `SUPPORT`
+- `INVENTORY`
+- `FINANCE`
+- `CONTENT_EDITOR`
+
+**TECHNICIAN is not an administrative role.** Technical identities live in `technician_users` under the `technicians` bounded context.
 
 ## Security
 
 - HttpOnly + Secure + SameSite=Strict admin session cookie.
-- Sessions are stored in D1 as SHA-256 token hashes and expire after 8 days.
-- Successful login revokes previous sessions for the user.
-- Passwords use PBKDF2-HMAC-SHA-256 with a per-password random salt and 100,000 iterations, the maximum supported by Cloudflare Workers Web Crypto. Plaintext passwords are never persisted.
-- Five consecutive failed attempts temporarily lock an account for 15 minutes.
-- RBAC is enforced in the server-side application boundary; UI visibility is not a security control.
-- Admin actions are written to `admin_audit_log`.
-- IMEI/serial values remain masked to last four characters in service records exposed to the admin API.
+- Session tokens are stored only as SHA-256 hashes.
+- Sessions expire and can be revoked.
+- Successful login revokes previous sessions.
+- Passwords use PBKDF2-HMAC-SHA-256 with random salt.
+- Five consecutive failed attempts lock the account for 15 minutes.
+- Unknown-account authentication executes a password-verification path to reduce timing enumeration differences.
+- RBAC is enforced server-side.
+- Security-sensitive admin operations are audited.
+- Device identifiers are masked where exposed to admin views.
 
-## Roles
+## Current permissions
 
-`SUPER_ADMIN`, `ADMIN`, `MANAGER`, `SALES`, `SUPPORT`, `INVENTORY`, `FINANCE`, `CONTENT_EDITOR`, `TECHNICIAN`.
-
-Permissions cover dashboard, products, orders, customers, services, refunds, inventory, configurable service types, admin users and audit visibility.
-
-## Implemented endpoints
-
-- `POST /api/admin/auth/login`
-- `GET /api/admin/auth`
-- `DELETE /api/admin/auth`
-- `POST /api/admin/auth/bootstrap`
-- `GET /api/admin/dashboard`
-- `GET/POST/PATCH /api/admin/resources`
-- `GET/POST /api/admin/service-types`
-- `GET/POST/PATCH /api/admin/users`
-
-## First administrator
-
-Set `ADMIN_EMAIL` as a Cloudflare runtime variable and `ADMIN_PASSWORD` plus `ADMIN_BOOTSTRAP_TOKEN` as Worker secrets. Call the bootstrap endpoint once with the token in `X-Admin-Bootstrap-Token`, then rotate/remove the bootstrap secrets. The endpoint does not accept credentials from the request body. Never commit these values.
-
-```sh
-curl -X POST \
-  "https://iphone.jnmtortas.com/api/admin/auth/bootstrap" \
-  -H "X-Admin-Bootstrap-Token: TU_TOKEN"
+```text
+dashboard:read
+products:read
+products:write
+categories:read
+categories:write
+orders:read
+orders:write
+customers:read
+customers:write
+services:read
+services:write
+repair_orders:read
+repair_orders:write
+refunds:create
+payments:void
+payments:read
+service_types:write
+admins:manage
+audit:read
+inventory:read
+inventory:write
+reviews:write
+promotions:write
+cms:write
+settings:write
+technicians:manage
 ```
 
-The endpoint stores only the PBKDF2-SHA256 password hash in D1. After a successful bootstrap, sign in at `/admin/login` and remove or rotate the bootstrap secrets.
+Per-user permission overrides are supported. A user cannot change their own permissions, and non-`SUPER_ADMIN` users cannot grant permissions they do not effectively possess.
 
-## Backoffice
+## Technician administration
 
-`/admin/login` is the administrative login. `/admin` provides operational metrics and protected views for orders, products, customers and services.
+Administration manages technical identities at:
 
-## Production validation
+```text
+/admin/technicians
+/api/admin/technicians
+```
 
-The code and migration are committed, but the first real production login/bootstrap requires the D1 migration to be applied and the runtime secret to exist. GitHub Actions/Cloudflare execution is the final external validation step.
+The form creates an operational `TÉCNICO` account. It does not assign an admin RBAC role.
+
+Technical capabilities are limited to:
+
+- assigned orders;
+- diagnosis/technical record;
+- allowed technical status transitions;
+- received-device registration/update for assigned orders;
+- repair evidence;
+- own profile.
+
+## Backoffice loading UI
+
+The recent admin hardening standardized resource loading through:
+
+`apps/web/app/admin/AdminLoadingState.tsx`
+
+It is used across dashboard/resource/table views instead of inconsistent full-page or ad-hoc loading patterns.
+
+## Main endpoints
+
+- `/api/admin/auth/login`
+- `/api/admin/auth`
+- `/api/admin/auth/bootstrap`
+- `/api/admin/dashboard`
+- `/api/admin/resources`
+- `/api/admin/service-types`
+- `/api/admin/users`
+- `/api/admin/users/:id/permissions`
+- `/api/admin/technicians`
+- repair-order, inventory, payment, notification, CMS, promotions and audit routes.
+
+## Certification
+
+Implementation is advanced, but Phase 06 remains **not certified 100%** until the complete architecture/RBAC/IDOR/concurrency/audit test matrix and production evidence pass on a release.
