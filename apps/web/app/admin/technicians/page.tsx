@@ -47,7 +47,7 @@ export default function AdminTechniciansPage(){
   return <main className="admin-shell">
     <AdminSidebar active="technicians"/>
     <section className="admin-content">
-      <header className="admin-topbar"><div><p className="admin-kicker">Personal técnico</p><h1>Técnicos</h1><p>Cuentas de empleados técnicas independientes del panel administrativo.</p></div><Link href="/admin" className="admin-button">Volver</Link></header>
+      <header className="admin-topbar"><div><p className="admin-kicker">Personal técnico</p><h1>Técnicos</h1><p>Cuentas de empleados con rol técnico independiente. Solo Administración crea sus credenciales; no existe registro público.</p></div><Link href="/admin" className="admin-button">Volver</Link></header>
       <section className="admin-workspace">
         <form className="admin-form" onSubmit={save}>
           <div className="form-grid">
@@ -61,8 +61,8 @@ export default function AdminTechniciansPage(){
           <div className="modal-actions"><button className="admin-button primary" disabled={loading}>{editing?"Actualizar técnico":"Crear técnico"}</button>{editing&&<button type="button" className="admin-button" onClick={()=>{setEditing(null);setForm(empty)}}>Cancelar</button>}</div>
         </form>
         <div className="admin-table-wrap">
-          <table className="admin-table"><thead><tr><th>Técnico</th><th>Contacto</th><th>Estado</th><th>Último acceso</th><th>Acciones</th></tr></thead><tbody>
-            {items.map(item=><tr key={item.id}><td><strong>{item.firstName} {item.lastName}</strong><span className="table-subtext">{item.email}</span></td><td>{item.phone??"—"}</td><td>{item.active?"Activo":"Inactivo"}</td><td>{item.lastLoginAt?new Date(item.lastLoginAt).toLocaleString("es-CO"):"Nunca"}</td><td><button className="table-action" onClick={()=>edit(item)}>Editar</button><button className="table-action" onClick={()=>void toggle(item)}>{item.active?"Desactivar":"Activar"}</button></td></tr>)}
+          <table className="admin-table"><thead><tr><th>Técnico</th><th>Rol</th><th>Contacto</th><th>Estado</th><th>Último acceso</th><th>Acciones</th></tr></thead><tbody>
+            {items.map(item=><tr key={item.id}><td><strong>{item.firstName} {item.lastName}</strong><span className="table-subtext">{item.email}</span></td><td>Técnico</td><td>{item.phone??"—"}</td><td>{item.active?"Activo":"Inactivo"}</td><td>{item.lastLoginAt?new Date(item.lastLoginAt).toLocaleString("es-CO"):"Nunca"}</td><td><button className="table-action" onClick={()=>edit(item)}>Editar</button><button className="table-action" onClick={()=>void toggle(item)}>{item.active?"Desactivar":"Activar"}</button></td></tr>)}
           </tbody></table>
           {!items.length&&<div className="admin-empty"><h3>No hay técnicos</h3><p>Crea la primera cuenta técnica para poder asignar órdenes.</p></div>}
         </div>
