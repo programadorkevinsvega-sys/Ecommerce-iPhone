@@ -348,7 +348,7 @@ export default function AdminUsersPage() {
                 </span>
               </div>
               {permissionsLoading ? (
-                <p>Cargando permisos…</p>
+                <AdminLoadingState label="Cargando permisos…" compact />
               ) : form.role === "SUPER_ADMIN" ? (
                 <p className="form-help">SUPER_ADMIN dispone de todos los permisos y sus permisos individuales están protegidos.</p>
               ) : (
