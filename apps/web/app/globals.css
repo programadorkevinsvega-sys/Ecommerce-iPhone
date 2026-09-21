@@ -260,3 +260,5 @@
   .account-panel-heading{align-items:flex-start;flex-direction:column}
   .account-compact-row>b{font-size:.72rem}
 }
+
+.technician-role-panel{display:grid;gap:16px;padding:18px;border:1px solid #dce6c5;border-radius:10px;background:#f8faef}.technician-role-panel h3{margin:5px 0 7px;color:#243000;font-size:16px}.technician-role-panel p:not(.admin-kicker){margin:0;max-width:720px;color:#66704f;font-size:12px;line-height:1.55}.technician-permission-list{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px}.technician-permission-list span{padding:9px 11px;border:1px solid #e0e7d0;border-radius:7px;background:#fff;color:#43515b;font-size:12px}@media(max-width:760px){.technician-permission-list{grid-template-columns:1fr}}
