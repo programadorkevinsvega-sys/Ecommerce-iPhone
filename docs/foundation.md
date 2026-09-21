@@ -4,7 +4,7 @@
 
 El proyecto opera con **un único entorno remoto permanente: producción**.
 
-Los tests pueden usar D1 local/emulado, fixtures o mocks. Eso no crea un entorno operativo adicional. No se usa staging remoto para aceptar releases.
+Los tests locales pueden usar D1 local/emulado, fixtures o mocks. Eso no crea un entorno operativo remoto adicional.
 
 ## Arquitectura
 
@@ -24,44 +24,41 @@ Infrastructure
 D1 / R2 / Queues / providers
 ```
 
-Reglas obligatorias:
+Reglas:
 
 - Domain no depende de Next.js, React, Cloudflare, D1, R2 ni SDKs externos.
-- Application depende de Domain y ports, no de implementaciones concretas.
+- Application depende de Domain y ports.
 - Infrastructure implementa adapters y acceso externo.
 - Presentation transforma HTTP en comandos/queries y mapea resultados.
 - Las rutas no ejecutan SQL/D1 directamente.
-- La composición de infraestructura ocurre en composition roots.
-- `scripts/check-architecture.mjs` es el enforcement automático de estos límites.
+- La composición ocurre en composition roots.
+- `architecture:check` mantiene el enforcement.
+- `frontend:data:check` bloquea datasets de negocio falsos en producción.
 
-## Build
+## Toolchain actual
 
-Versiones base conocidas del build productivo del 2026-09-11:
-
-- pnpm `10.15.0`;
-- Node.js `24.18.0`;
-- Next.js `15.5.25`;
-- `@opennextjs/cloudflare 1.20.6`.
-
-El build produjo correctamente el bundle OpenNext, completó lint/typecheck, generó 25/25 páginas estáticas y publicó el Worker.
+- Node.js `24.18.0`
+- pnpm `12.4.1`
+- Next.js `15.5.25`
+- `@opennextjs/cloudflare 1.20.6`
+- Wrangler `4.131.1` en la última build Cloudflare confirmada
+- workerd compatibility date `2026-09-09`
 
 ## Producción
 
-El Worker usa únicamente la configuración principal de `wrangler.jsonc`:
+Worker:
+
+`ecommerce-iphone`
+
+Bindings:
 
 ```text
-Worker: ecommerce-iphone
-D1: ecommerce-iphone
-R2: ecommerce-iphone-media
-Queue: ecommerce-iphone-events
-APP_ENV=production
-```
-
-Rate limiting:
-
-```text
-API_RATE_LIMITER       120 requests / 60s
-SENSITIVE_RATE_LIMITER  20 requests / 60s
+DB               -> ecommerce-iphone
+MEDIA_BUCKET     -> ecommerce-iphone-media
+EVENTS_QUEUE     -> ecommerce-iphone-events
+API_RATE_LIMITER -> 120 requests / 60s
+SENSITIVE_RATE_LIMITER -> 20 requests / 60s
+APP_ENV          -> production
 ```
 
 Health:
@@ -71,48 +68,49 @@ GET /api/health/live  -> proceso disponible
 GET /api/health/ready -> proceso + D1 disponible
 ```
 
-## Migraciones
+Último Worker directamente verificado antes de los cambios recientes:
 
-Las migraciones son versionadas y nunca se reescriben después de aplicarse en producción.
+`f7d67832-8598-4f59-8db9-b538f543b3ef`
 
-Aplicación remota:
-
-```bash
-pnpm db:migrate:production
-```
-
-Durante el deploy del 2026-09-11 quedaron aplicadas `0012_inventory_reservation_cleanup.sql` y `0013_inventory_reservation_order_link.sql`. La migración `0014_order_item_variant_link.sql` está versionada y debe quedar aplicada en el siguiente deploy que contenga esta línea de código.
+Los commits posteriores requieren un nuevo build/deploy directo de Cloudflare para certificarse.
 
 ## Reproducibilidad
 
-`package.json` fija pnpm `10.15.0`, pero **no se declara reproducibilidad total mientras `pnpm-lock.yaml` no esté versionado y el build no use `pnpm install --frozen-lockfile`**.
+```text
+packageManager = pnpm@12.4.1
+engine node     = 24.18.0
+```
 
-Este es un gate real de cierre, no una condición que pueda marcarse como completada solo por documentación.
+Contrato:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build:cloudflare
+```
 
 ## Seguridad base
 
 - secrets fuera de Git;
-- cookies de sesión seguras en producción;
-- validación de `Origin` para mutaciones;
-- `Cache-Control: no-store` en APIs;
-- headers de seguridad;
+- cookies seguras;
+- validación de Origin;
+- no-store en APIs sensibles;
+- CSP y security headers;
 - request-id;
 - rate limiting;
-- autorización server-side;
-- protección de recursos por propietario;
-- idempotencia para checkout;
-- health checks separados.
+- server-side authorization;
+- ownership checks;
+- idempotencia;
+- health checks.
 
-## Criterio de aceptación
-
-La aceptación final del proyecto se basa en:
+## Aceptación
 
 1. código en `main`;
-2. checks locales reproducibles;
-3. build Cloudflare real;
-4. migraciones D1 remotas correctas;
-5. deploy real;
-6. verificación de producción;
-7. pruebas funcionales y de seguridad correspondientes.
+2. instalación reproducible;
+3. foundation/architecture checks;
+4. tests;
+5. build Cloudflare;
+6. migraciones D1 remotas;
+7. deploy;
+8. verificación de producción.
 
-**GitHub Actions no es el criterio de aceptación del proyecto.**
+La documentación no convierte un gate pendiente en PASS.
