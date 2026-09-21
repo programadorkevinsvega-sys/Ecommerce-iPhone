@@ -29,6 +29,7 @@ type PermissionItem = {
   permission: string;
   state: "inherit" | "grant" | "deny";
   effective: boolean;
+  roleGranted: boolean;
 };
 
 const PERMISSION_LABELS: Record<string, string> = {
@@ -298,7 +299,7 @@ export default function AdminUsersPage() {
                             setPermissions((current) =>
                               current.map((permission) =>
                                 permission.permission === item.permission
-                                  ? { ...permission, state: event.target.value as PermissionItem["state"], effective: event.target.value === "grant" || (event.target.value === "inherit" && permission.effective) }
+                                  ? { ...permission, state: event.target.value as PermissionItem["state"], effective: event.target.value === "grant" ? true : event.target.value === "deny" ? false : permission.roleGranted }
                                   : permission,
                               ),
                             )
