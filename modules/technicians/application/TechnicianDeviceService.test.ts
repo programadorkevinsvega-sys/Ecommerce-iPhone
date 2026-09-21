@@ -38,7 +38,7 @@ function setup() {
       devices.set(device.getId(), device);
       return device;
     }),
-    update: vi.fn(async (_customerId: string, id: string, props) => {
+    update: vi.fn(async (_customerId: string, id: string, props: ReturnType<CustomerDevice["toPrimitives"]>) => {
       const next = CustomerDevice.create(id, props);
       devices.set(id, next);
       return next;
