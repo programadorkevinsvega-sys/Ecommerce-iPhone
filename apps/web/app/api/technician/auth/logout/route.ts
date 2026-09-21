@@ -1,0 +1,1 @@
+import { NextResponse } from "next/server";import { logoutTechnician } from "../../../../../lib/technicianAuth";export async function POST(){await logoutTechnician();return NextResponse.json({ok:true},{headers:{"cache-control":"no-store"}});}
