@@ -1,5 +1,11 @@
 # Ecommerce iPhone — Roadmap
 
+## Actualización viva — 2026-09-21
+
+El hardening actual del bounded context technicians incluye: aislamiento de identidad respecto de admin_users, ownership server-side de órdenes, sesiones persistidas con token hash, lockout y auditoría, composición limpia de Application/Infrastructure y un portal técnico con navegación, formularios, loading/error/empty/success states y responsive coherentes con el lenguaje visual existente.
+
+La corrección de exactOptionalPropertyTypes en StoreHeader y TechnicianHeader ya está presente en fuente. El estado de estas mejoras sigue siendo implementado/hardened, no certificado, hasta que el release pase todos los gates y exista evidencia directa de deploy/verificación productiva. La prueba autenticada del portal no se sustituye con una cuenta o dataset ficticio.
+
 > Roadmap oficial de desarrollo. El proyecto se ejecutará por fases, manteniendo una arquitectura de monolito modular preparada para extraer bounded contexts como servicios independientes en el futuro.
 
 ## Principios de arquitectura

@@ -1,5 +1,11 @@
 # Cloudflare deployment
 
+## Actualización operativa — 2026-09-21
+
+El dominio canónico de producción es https://iphone.jnmtortas.com. Los workflows de despliegue, verificación, performance y rollback quedan alineados con ese dominio y con pnpm 12.4.1 + Node 24.18.0, evitando que los gates consulten workers.dev distintos al Worker publicado.
+
+El cambio solo corrige la fuente de verdad operativa y reproducibilidad del pipeline. La versión actual de main seguirá sin certificación hasta completar un ciclo íntegro de build, deploy y verify.
+
 The repository uses a **single remote production environment** on Cloudflare Workers with OpenNext.
 
 ## Production resources

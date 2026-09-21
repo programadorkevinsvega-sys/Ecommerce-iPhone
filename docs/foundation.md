@@ -1,5 +1,11 @@
 # Foundation — Fase 1
 
+## Actualización de foundation — 2026-09-21
+
+La base mantiene strict TypeScript, exactOptionalPropertyTypes, DDD/Clean Architecture, frontend:data:check, foundation:check y architecture:check. El portal técnico fue ajustado para respetar los boundaries también en sus rutas de órdenes, dispositivos, perfil y evidencia.
+
+El estado sigue siendo implementación + hardening. Ningún gate pendiente se convierte en PASS por el mero hecho de que una fuente compile; la evidencia de CI/CD y producción sigue siendo necesaria.
+
 ## Política de entornos
 
 El proyecto opera con **un único entorno remoto permanente: producción**.

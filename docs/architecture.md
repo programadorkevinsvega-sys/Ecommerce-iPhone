@@ -1,5 +1,11 @@
 # Architecture
 
+## Actualización de boundary técnico — 2026-09-21
+
+Las rutas HTTP de técnicos ya no consultan repositorios de reparación ni acceden directamente a R2/runtime adapters. Ownership, transiciones, ficha técnica y evidencia pasan por Application, ports y adapters compuestos desde apps/web/lib/technicianApplication.ts.
+
+La identidad técnica continúa aislada de admin_users y no se introduce un segundo RBAC administrativo. Esta corrección refuerza el mismo contrato de Clean Architecture utilizado por los demás bounded contexts.
+
 ## Style
 
 Ecommerce iPhone is a modular monolith using Domain-Driven Design and Clean Architecture.

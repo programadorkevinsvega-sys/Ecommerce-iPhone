@@ -1,5 +1,11 @@
 # Fase 0: auditoría y preparación
 
+## Nota de estado posterior — 2026-09-21
+
+Los hallazgos de la auditoría inicial siguen siendo históricos y no se eliminan. La implementación posterior del contexto technicians respeta la decisión de mantener el portal técnico separado del backoffice: la identidad técnica vive fuera de admin_users y la composición actual evita acoplamientos directos entre adapters de infraestructura de bounded contexts.
+
+La auditoría de arquitectura no equivale a certificación de producto; los gates de implementación, seguridad, tests, deploy y verificación productiva se controlan en la auditoría viva de Fases 1 a 7.
+
 ## Estado
 
 **Completada como auditoría técnica.** Esta fase no crea todavía tablas de reparaciones. Su objetivo es establecer qué existe, qué se reutiliza y qué debe extenderse sin romper el ecommerce actual.

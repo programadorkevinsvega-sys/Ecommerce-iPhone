@@ -1,5 +1,11 @@
 # FASE 05 — Services
 
+## Actualización de técnicos — 2026-09-21
+
+El flujo de servicios y reparaciones conserva asignación de técnico y ownership server-side. La superficie técnica ahora aplica loading/error/empty/success states, navegación operativa propia y formularios con protección contra operaciones concurrentes de interfaz, sin cambiar las reglas de negocio ni autorización.
+
+La certificación de producción del bounded context sigue pendiente.
+
 The services bounded context is a configurable service-management platform for device support, with DDD/Clean Architecture boundaries and a D1-backed catalog.
 
 ## Configurable service catalog

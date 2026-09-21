@@ -1,5 +1,11 @@
 # Admin / Backoffice
 
+## Actualización técnica — 2026-09-21
+
+El bounded context de técnicos permanece separado de admin_users. El hardening reciente conserva las capacidades administrativas existentes y mueve la superficie técnica hacia un composition root compartido, manteniendo RBAC administrativo independiente.
+
+La UI de /admin/technicians sigue gestionando identidad operacional TÉCNICO. El portal /technician/** mejora ahora sus estados de operación y no introduce ningún bypass de autorización. La certificación de Fase 06 continúa pendiente hasta completar la matriz RBAC/IDOR/BOLA/concurrencia/auditoría y la evidencia productiva del release.
+
 ## Scope
 
 Phase 06 provides the protected administrative backoffice for commerce, services, repairs, inventory, payments and administration.

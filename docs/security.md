@@ -1,5 +1,11 @@
 # Security foundation
 
+## Actualización de hardening — 2026-09-21
+
+La superficie de técnicos conserva sesión independiente, token hash, lockout, auditoría y ownership server-side. Se eliminó el acceso directo de las rutas técnicas a repositorios, R2 y runtime adapters; las operaciones pasan por Application y el composition root.
+
+Se añadieron regresiones de lockout activo, ownership de órdenes y limpieza del teléfono opcional del perfil. La certificación global de seguridad continúa pendiente de la matriz completa de RBAC privilege escalation, IDOR/BOLA, concurrencia, rate limiting, regresiones y evidencia productiva.
+
 ## Browser hardening
 
 Security response headers are configured in `apps/web/next.config.ts`.

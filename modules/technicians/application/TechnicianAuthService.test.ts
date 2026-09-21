@@ -115,4 +115,14 @@ describe("TechnicianAuthService", () => {
     await expect(context.service.authenticate("tech@example.com", "password")).rejects.toThrow("ACCOUNT_DISABLED");
     expect(context.sessions.create).not.toHaveBeenCalled();
   });
+  it("rejects a technician whose lockout window is still active", async () => {
+    const context = setup(user({ lockedUntil: "2026-09-20T00:15:00.000Z" }));
+
+    await expect(
+      context.service.authenticate("tech@example.com", "password"),
+    ).rejects.toThrow("ACCOUNT_LOCKED");
+    expect(context.passwords.verify).not.toHaveBeenCalled();
+    expect(context.sessions.create).not.toHaveBeenCalled();
+  });
+
 });

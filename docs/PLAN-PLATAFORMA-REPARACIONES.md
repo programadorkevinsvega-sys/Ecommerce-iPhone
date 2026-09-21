@@ -1,5 +1,13 @@
 # Plan de implementación: plataforma de reparaciones
 
+## Actualización de implementación — 2026-09-21
+
+El portal técnico ya no tiene el rediseño visual pendiente a nivel de código: /technician/login, /technician, /technician/orders, /technician/devices y /technician/profile comparten el lenguaje visual del storefront/backoffice, navegación técnica propia, estados de carga/vacío/error/éxito y controles para evitar operaciones duplicadas mientras se guardan o suben evidencias.
+
+En paralelo, las rutas HTTP del bounded context fueron endurecidas para que ownership, transiciones, actualización de ficha y evidencia pasen por Application/Ports/Infrastructure. No se cambia la identidad técnica ni se convierte TECHNICIAN en un rol administrativo.
+
+Estado de certificación: pendiente hasta completar el pipeline del release y verificar producción con una identidad técnica real. No se usa una cuenta, orden, imagen o proveedor ficticio para marcar este gate como PASS.
+
 # Estado consolidado — 2026-09-21
 
 La plataforma de reparaciones ya no está en una etapa puramente de planificación. Existe implementación real para cliente, Admin, órdenes, repuestos y técnicos.

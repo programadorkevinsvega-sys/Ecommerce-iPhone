@@ -1,3 +1,66 @@
-import { NextResponse } from "next/server";import { getCloudflareContext } from "@opennextjs/cloudflare";import { requireTechnician } from "../../../../../../lib/technicianAuth";import { repairEvidenceApplication,repairOrderRepository } from "../../../../../../lib/adminApplication";
-const types=new Map([["image/jpeg","jpg"],["image/png","png"],["image/webp","webp"]]);
-export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){try{const {env,technician}=await requireTechnician();const id=(await params).id;const order=await repairOrderRepository(env).findById(id);if(!order)return NextResponse.json({error:"Repair order not found"},{status:404});if(order.toPrimitives().assignedTechnicianId!==technician.id)return NextResponse.json({error:"Forbidden"},{status:403});const stage=new URL(request.url).searchParams.get("stage");if(!stage||!["RECEPTION","DIAGNOSIS","REPAIR","QUALITY_CONTROL"].includes(stage))return NextResponse.json({error:"Invalid evidence stage"},{status:400});const file=(await request.formData()).get("file");const extension=file instanceof File?types.get(file.type):undefined;if(!(file instanceof File)||!extension||file.size<1||file.size>5*1024*1024)return NextResponse.json({error:"Invalid image"},{status:400});const key="repair-evidence/"+id+"/"+crypto.randomUUID()+"."+extension;await env.MEDIA_BUCKET.put(key,await file.arrayBuffer(),{httpMetadata:{contentType:file.type}});const media=await repairEvidenceApplication(env).add({repairOrderId:id,stage:stage as "RECEPTION"|"DIAGNOSIS"|"REPAIR"|"QUALITY_CONTROL",url:"/api/media/"+key,mimeType:file.type,sizeBytes:file.size,uploadedBy:technician.id});return NextResponse.json({media},{status:201,headers:{"cache-control":"no-store"}});}catch(error){const code=error instanceof Error?error.message:"UNKNOWN";const status=code==="UNAUTHORIZED"?401:code==="FORBIDDEN"?403:400;return NextResponse.json({error:status===401?"Authentication required":status===403?"Forbidden":"Unable to save evidence"},{status});}}
+import { NextResponse } from "next/server";
+import { requireTechnician } from "../../../../../../lib/technicianAuth";
+import {
+  technicianRepairEvidenceApplication,
+  technicianRepairOrderApplication,
+} from "../../../../../../lib/technicianApplication";
+
+const stages = ["RECEPTION", "DIAGNOSIS", "REPAIR", "QUALITY_CONTROL"] as const;
+const imageTypes = ["image/jpeg", "image/png", "image/webp"] as const;
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { env, technician } = await requireTechnician();
+    const id = (await params).id;
+    await technicianRepairOrderApplication(env).getAssigned(id, technician.id);
+
+    const stage = new URL(request.url).searchParams.get("stage");
+    if (!stage || !stages.includes(stage as typeof stages[number])) {
+      return NextResponse.json({ error: "Invalid evidence stage" }, { status: 400 });
+    }
+
+    const file = (await request.formData()).get("file");
+    const mimeType = file instanceof File ? file.type : "";
+    if (
+      !(file instanceof File) ||
+      !imageTypes.includes(mimeType as typeof imageTypes[number]) ||
+      file.size < 1 ||
+      file.size > 5 * 1024 * 1024
+    ) {
+      return NextResponse.json({ error: "Invalid image" }, { status: 400 });
+    }
+
+    const media = await technicianRepairEvidenceApplication(env).upload({
+      repairOrderId: id,
+      stage: stage as typeof stages[number],
+      mimeType,
+      sizeBytes: file.size,
+      uploadedBy: technician.id,
+      data: await file.arrayBuffer(),
+    });
+
+    return NextResponse.json(
+      { media },
+      { status: 201, headers: { "cache-control": "no-store" } },
+    );
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "UNKNOWN";
+    const status =
+      code === "UNAUTHORIZED" ? 401 :
+      code === "FORBIDDEN" ? 403 :
+      code === "REPAIR_ORDER_NOT_FOUND" ? 404 : 400;
+    return NextResponse.json(
+      {
+        error:
+          status === 401 ? "Authentication required" :
+          status === 403 ? "Forbidden" :
+          status === 404 ? "Repair order not found" :
+          "Unable to save evidence",
+      },
+      { status },
+    );
+  }
+}
