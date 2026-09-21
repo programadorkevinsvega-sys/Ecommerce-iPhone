@@ -17,11 +17,6 @@ export function technicianAuthApplication(env: CloudflareEnv) {
   return createTechnicianAuthApplication(env);
 }
 
-export function technicianAuthApplicationForRequest() {
-  const { env } = getCloudflareContext();
-  return createTechnicianAuthApplication(env);
-}
-
 export function hashTechnicianFingerprint(value: string) {
   return sha256Technician(value);
 }
