@@ -1,5 +1,13 @@
 # Auditoría viva — Fases 1 a 7
 
+## Actualización viva — 2026-09-21
+
+La fuente actual ya contiene la corrección de exactOptionalPropertyTypes para StoreHeader/TechnicianHeader; el fallo histórico de typecheck queda documentado como antecedente, no como estado actual del código. El contexto technicians mantiene identidad, sesión, lockout, auditoría y ownership por orden, y las rutas técnicas fueron ajustadas para pasar por Application/Composition Root en lugar de acceder directamente a repositorios, R2 o runtime adapters.
+
+El portal técnico /technician/** quedó con hardening visual/UX de navegación, formularios, loading, empty/error/success states, control de concurrencia de acciones de interfaz y responsive existente. Esto es implementación/hardening, no certificación productiva. La certificación autenticada continúa pendiente hasta completar los gates del release y la verificación con una identidad técnica real.
+
+StoreHeader continúa siendo la fuente única de navegación pública y mantiene Inicio, Catálogo, Servicios, Consultar reparación, Contacto, Carrito y Mi cuenta.
+
 ## Ecommerce-iPhone
 
 **Repositorio:** `programadorkevinsvega-sys/Ecommerce-iPhone`  
