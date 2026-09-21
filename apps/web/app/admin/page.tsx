@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import AdminSidebar from "./AdminSidebar";
 import {
   normalizeSearchQuery,
@@ -165,13 +165,7 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
   const router = useRouter();
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [metrics, setMetrics] = useState<Metric | null>(null);
-  const searchParams = useSearchParams();
-  const requestedSection = searchParams.get("section");
-  const resource: Resource =
-    fixedResource ??
-    (requestedSection && NAV.some((item) => item.key === requestedSection)
-      ? (requestedSection as Resource)
-      : "dashboard");
+  const resource: Resource = fixedResource ?? "dashboard";
   useEffect(() => {
     setSearch("");
     setError("");
