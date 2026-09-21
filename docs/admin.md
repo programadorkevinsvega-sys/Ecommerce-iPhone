@@ -74,7 +74,7 @@ Administration manages technical identities at:
 /api/admin/technicians
 ```
 
-The form creates an operational `TÉCNICO` account. It does not assign an admin RBAC role.
+The form creates an operational `TÉCNICO` account. It does not assign an admin RBAC role. The interface explicitly communicates that the technician identity is operational and separate from administrative RBAC.
 
 Technical capabilities are limited to:
 
@@ -109,3 +109,10 @@ It is used across dashboard/resource/table views instead of inconsistent full-pa
 ## Certification
 
 Implementation is advanced, but Phase 06 remains **not certified 100%** until the complete architecture/RBAC/IDOR/concurrency/audit test matrix and production evidence pass on a release.
+
+
+## Current UI hardening — 2026-09-21
+
+- Admin resource loading has been standardized with `AdminLoadingState` across the recently hardened resource pages.
+- `/admin/technicians` exposes the operational TÉCNICO identity and capabilities without introducing a TECHNICIAN role into `admin_users`.
+- Final Phase 06 certification remains pending until the current build, architecture/RBAC gates and production evidence pass.
