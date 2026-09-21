@@ -30,10 +30,10 @@ La documentación ha sido actualizada en `main` mediante commits separados de la
 | 03 Commerce Core | 🟢 Implementación cerrada | Pendiente certificación exhaustiva en producción |
 | 04 Payments | 🟡 Implementada + hardening | Pendiente certificación real de proveedores |
 | 05 Services | 🟢 Implementación + hardening | Pendiente gates/certificación |
-| 06 Admin + RBAC | 🟡 Application consolidada + hardening UI/RBAC/loading/técnicos | Pendiente gates de seguridad, certificación y validación final del portal técnico |
+| 06 Admin + RBAC | 🟡 Application consolidada + hardening final de RBAC, auth, auditoría y boundaries | Pendiente ejecución de gates, smoke productivo y evidencia final |
 | 07 Notifications + Queues | 🟡 Base Outbox/Queue/Resend + diseño realtime | Inbox durable, Durable Objects/WebSocket, DLQ/retry/replay, E2E/load y certificación pendientes |
 
-El trabajo reciente corresponde al hardening de **Fase 01 — eliminación de datos/mock de negocio en frontend**, al hardening de **Fase 06** y a la consolidación de navegación pública y del bounded context `technicians`.
+El trabajo reciente corresponde al hardening de **Fase 01 — eliminación de datos/mock de negocio en frontend**, al cierre de código de **Fase 06** y a la consolidación de navegación pública y del bounded context `technicians`.
 
 El portal técnico dispone actualmente de login, dashboard, órdenes, dispositivos y perfil funcionales. Su rediseño visual/UX está implementado en código y no se considera certificado hasta verificarlo en producción. Un fallo histórico de typecheck por `exactOptionalPropertyTypes` en `StoreHeader.tsx` ya fue corregido en fuente; el ciclo de build/deploy/verify continúa pendiente.
 
@@ -229,7 +229,9 @@ Implementado: ownership server-side, workflow, quote, technician, completion, RB
 
 ## 8.1 Estado
 
-**🟡 Arquitectura Application consolidada + hardening avanzado. F6 no certificada todavía.**
+**🟡 Implementación y hardening de código F6 completados; certificación productiva aún pendiente.**
+
+La auditoría de cierre detectó y corrigió en `main` los bypasses de autorización efectiva, composition-root, auditoría y granularidad de permisos que impedían considerar el código F6 terminado.
 
 ## 8.2 Admin Users
 
@@ -372,8 +374,8 @@ La búsqueda del repositorio no mantiene referencias al port ni a la tabla exper
 - Settings: 🟢 + AuditPort
 - Audit viewer: 🟢
 - Admin Auth: 🟢 Application + adapter + hardening de timing/lockout
-- Inventory / Products / Customers / Orders: 🟡 revisión/certificación final pendiente
-- Promotions / Reviews: 🟡 implementación existente, certificación pendiente
+- Inventory / Products / Customers / Orders: 🟡 certificación funcional y seguridad pendiente
+- Promotions / Reviews: 🟢 Application + AuditPort; certificación productiva pendiente
 
 ## 8.10 Anti-bypass permanente
 
@@ -390,36 +392,54 @@ Application → Next.js / Cloudflare / Infrastructure
 
 ## 8.11 Pendientes para cerrar F6
 
-1. build de producción posterior a toda la refactorización;
-2. `foundation:check`;
-3. `architecture:check`;
-4. unit/integration tests de Application + Domain;
-5. matriz RBAC completa;
-6. privilege escalation vertical/horizontal;
-7. IDOR/BOLA;
-8. auth/session/lockout/rate limiting administrativo: **hardening implementado; falta evidencia de pruebas/certificación**;
-9. audit + ausencia de secretos en payloads;
-10. concurrencia/idempotencia de operaciones críticas;
-11. refund/void regression;
-12. regresión Services/Inventory/Commerce/Payments;
-13. deploy production + health + `verify:production`;
-14. evidencia final y certificación.
+1. `foundation:check`, `architecture:check`, format, lint, typecheck y suite completa después de los últimos cambios;
+2. matriz API 401/403/2xx con identidades administrativas reales;
+3. IDOR/BOLA y privilege escalation vertical/horizontal con requests reales;
+4. auditoría sin secretos y regresiones de operaciones sensibles;
+5. concurrencia/idempotencia final de operaciones administrativas críticas;
+6. `pnpm verify:admin:production` con dos identidades reales: autorizada y restringida;
+7. nuevo build/deploy Cloudflare de `main`;
+8. health + `verify:production`;
+9. evidencia final y certificación.
 
 ## 8.12 Gates F6
 
+### Código ya cerrado en `main`
+- [x] RBAC efectivo role + overrides en sesiones;
+- [x] autorización efectiva en AdminResources/Categories;
+- [x] protección de privilege escalation en gestión de permisos;
+- [x] auth/session/lockout/timing hardening;
+- [x] expiración de sesión comparada con `datetime()` en D1;
+- [x] audit viewer detrás de composition root;
+- [x] Promotions/Reviews detrás de Application + AuditPort;
+- [x] payment list/detail con `payments:read`;
+- [x] smoke gate reproducible `pnpm verify:admin:production`.
+
+### Gates aún sin evidencia del nuevo release
 - [ ] foundation:check
 - [ ] architecture:check
 - [ ] format
 - [ ] lint
-- [ ] typecheck posterior a la refactorización
+- [ ] typecheck
 - [ ] unit tests
-- [ ] integration tests
-- [x] build Cloudflare reproducible
-- [x] build limpio
-- [x] production migrations
-- [x] production deploy
-- [x] health live/ready
-- [x] verify:production
+- [ ] integration/API tests
+- [ ] build Cloudflare posterior a PR #14
+- [ ] production deploy posterior a PR #14
+- [ ] health live/ready del nuevo release
+- [ ] verify:production
+- [ ] verify:admin:production con credenciales reales
+
+## 8.13 Correcciones de cierre de código — 2026-09-21
+
+Se corrigieron y se integraron en `main` los hallazgos concretos detectados en la auditoría:
+
+- `AdminResources` y `AdminCategories` autorizan con el conjunto efectivo de permisos de la sesión, respetando grants/denies por usuario.
+- `AdminAuditViewer` se compone desde `adminApplication`; la route ya no instancia `D1AdminAuditRepository`.
+- Promotions y Reviews se componen desde `adminApplication` y registran sus mutaciones mediante `AuditPort`.
+- `/api/admin/payments` y `/api/admin/payments/:id` requieren `payments:read`.
+- La resolución de sesión compara `datetime(expires_at)` con `CURRENT_TIMESTAMP`.
+- Se añadieron regresiones para grants, denies, lockout, escalamiento de permisos y auditoría.
+- Se añadió `pnpm verify:admin:production` para validar en producción 401, 200, 403 y revocación real de sesión.
 
 ## 8.13 Criterio de cierre F6
 
@@ -557,11 +577,13 @@ Pendiente: build/deploy/verify, validación visual y funcional en producción y 
 
 ## Evidencia operativa actual — 2026-09-21
 
-El commit actual de `main` todavía no está certificado en producción. Los runs 1074–1080 de `Cloudflare Production Deploy` terminaron en `failure`; los intentos más recientes fallaron casi inmediatamente y el conector disponible no expone los pasos/logs internos del job. No se infiere que hayan fallado TypeScript, tests o build sin esa evidencia.
+`main` contiene ahora los cierres de código de Fase 06 integrados por PR #13 y PR #14. La certificación productiva del nuevo estado todavía no se infiere automáticamente: debe existir un build/deploy Cloudflare posterior al commit `79f1d7afd63d6ebcdd3a49a2176d576caf16be02`, seguido de los health checks, `verify:production` y `verify:admin:production`.
+
+Los runs 1074–1080 de `Cloudflare Production Deploy` corresponden a evidencia histórica anterior a estos cambios y no deben usarse como prueba del estado actual ni como prueba de fallo del código nuevo.
 
 El chequeo estático actual de las 9 rutas HTTP del bounded context `technicians` no encuentra imports directos de infraestructura, dominio interno, runtime adapters Cloudflare ni SQL. Esto confirma el boundary arquitectónico del código, pero no sustituye el gate de CI/build/deploy.
 
-El Worker publicado tampoco se considera verificado desde este entorno porque el endpoint productivo no es accesible al mecanismo externo disponible. En consecuencia, Fase 06 y las certificaciones de Fase 01/02/03/04/05 siguen sin cierre productivo.
+El Worker publicado tampoco se considera verificado desde este entorno porque el endpoint productivo no es accesible al mecanismo externo disponible. En consecuencia, Fase 06 sigue en 🟡 hasta obtener evidencia productiva del nuevo release; las certificaciones de Fase 01/02/03/04/05 tampoco se derivan de estos cambios.
 
 ### Evidencia adicional de build — 2026-09-21 22:58 UTC
 
