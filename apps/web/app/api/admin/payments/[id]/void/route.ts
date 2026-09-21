@@ -5,7 +5,6 @@ import { PERMISSIONS, requireAdmin } from "../../../../../../lib/adminAuth";
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { env, admin } = await requireAdmin(PERMISSIONS.paymentsVoid);
-    const { env, admin } = await requireAdmin(PERMISSIONS.paymentsVoid);
     const { id } = await context.params;
     const key = request.headers.get("Idempotency-Key")?.trim();
     if (!key || key.length > 255) return NextResponse.json({ error: "Revisa los datos ingresados e inténtalo nuevamente." }, { status: 422 });
