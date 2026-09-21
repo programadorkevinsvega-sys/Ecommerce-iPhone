@@ -48,5 +48,9 @@ SELECT id,email,password_hash,first_name,last_name,active,failed_login_count,loc
 FROM admin_users
 WHERE role='TECHNICIAN';
 
+UPDATE admin_users
+SET active=0, updated_at=CURRENT_TIMESTAMP
+WHERE role='TECHNICIAN';
+
 ALTER TABLE repair_orders ADD COLUMN customer_device_id TEXT REFERENCES customer_devices(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_repair_orders_customer_device ON repair_orders(customer_device_id);
