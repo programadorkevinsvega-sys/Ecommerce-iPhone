@@ -88,6 +88,24 @@ export default function AdminUsersPage() {
   const [permissions, setPermissions] = useState<PermissionItem[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
 
+  const loadRolePermissions = async (role: AdminUser["role"]) => {
+    setPermissionsLoading(true);
+    try {
+      const response = await fetch(`/api/admin/permissions/catalog?role=${encodeURIComponent(role)}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const data = (await response.json()) as { items?: PermissionItem[]; error?: string };
+      if (!response.ok) {
+        setMessage(data.error ?? "No se pudieron cargar los permisos del rol.");
+        return;
+      }
+      setPermissions(data.items ?? []);
+    } finally {
+      setPermissionsLoading(false);
+    }
+  };
+
   async function load() {
     const response = await fetch("/api/admin/users", {
       cache: "no-store",
@@ -107,6 +125,7 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     void load();
+    void loadRolePermissions(EMPTY.role);
   }, []);
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -140,23 +159,43 @@ export default function AdminUsersPage() {
       body: JSON.stringify(body),
     });
 
-    const data = (await response.json()) as { error?: string };
-    setMessage(
-      response.ok
-        ? editing
-          ? "Usuario administrativo actualizado."
-          : "Usuario administrativo creado con sus credenciales."
-        : data.error ?? "No se pudo guardar el usuario administrativo.",
-    );
+    const data = (await response.json()) as { error?: string; id?: string };
+    if (!response.ok) {
+      setMessage(data.error ?? "No se pudo guardar el usuario administrativo.");
+      setLoading(false);
+      return;
+    }
 
-    if (response.ok) {
-      await load();
-      if (editing) {
-        await loadPermissions(editing);
+    if (!editing && data.id) {
+      const overrides = permissions
+        .filter((item) => item.state !== "inherit")
+        .map((item) => ({ permission: item.permission, granted: item.state === "grant" }));
+      if (overrides.length) {
+        const permissionResponse = await fetch(`/api/admin/users/${encodeURIComponent(data.id)}/permissions`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          credentials: "same-origin",
+          cache: "no-store",
+          body: JSON.stringify({ overrides }),
+        });
+        if (!permissionResponse.ok) {
+          const permissionData = (await permissionResponse.json()) as { error?: string };
+          setMessage(`Administrador creado con el rol base. No se pudieron aplicar los permisos individuales: ${permissionData.error ?? "error de autorización"}.`);
+        } else {
+          setMessage("Administrador creado con sus credenciales y permisos configurados.");
+        }
       } else {
-        setForm(EMPTY);
-        setPermissions([]);
+        setMessage("Administrador creado con sus credenciales y los permisos base del rol.");
       }
+    } else {
+      setMessage("Usuario administrativo actualizado.");
+      await loadPermissions(editing!);
+    }
+
+    await load();
+    if (!editing) {
+      setForm(EMPTY);
+      await loadRolePermissions(EMPTY.role);
     }
     setLoading(false);
   }
@@ -267,7 +306,14 @@ export default function AdminUsersPage() {
               </label>
               <label>
                 Rol
-                <select value={form.role} onChange={(e) => setForm((v) => ({ ...v, role: e.target.value as AdminUser["role"] }))}>
+                <select
+                  value={form.role}
+                  onChange={(e) => {
+                    const role = e.target.value as AdminUser["role"];
+                    setForm((v) => ({ ...v, role }));
+                    if (!editing) void loadRolePermissions(role);
+                  }}
+                >
                   {ROLES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
               </label>
@@ -282,26 +328,29 @@ export default function AdminUsersPage() {
                 </label>
               )}
             </div>
-            {editing && (
-              <section className="admin-permissions-panel">
-                <div className="admin-section-heading">
-                  <div>
-                    <p className="admin-kicker">Autorización</p>
-                    <h2>Permisos de la cuenta</h2>
-                  </div>
-                  <span className="muted">El rol define la base; los cambios aquí son específicos de esta cuenta.</span>
+            <section className="admin-permissions-panel">
+              <div className="admin-section-heading">
+                <div>
+                  <p className="admin-kicker">Autorización</p>
+                  <h2>Permisos de la cuenta</h2>
                 </div>
-                {permissionsLoading ? (
-                  <p>Cargando permisos…</p>
-                ) : form.role === "SUPER_ADMIN" ? (
-                  <p className="form-help">SUPER_ADMIN dispone de todos los permisos y sus permisos individuales están protegidos.</p>
-                ) : (
+                <span className="muted">
+                  {editing ? "Rol base + ajustes individuales." : "Se aplican al crear la cuenta."}
+                </span>
+              </div>
+              {permissionsLoading ? (
+                <p>Cargando permisos…</p>
+              ) : form.role === "SUPER_ADMIN" ? (
+                <p className="form-help">SUPER_ADMIN dispone de todos los permisos y sus permisos individuales están protegidos.</p>
+              ) : (
+                <>
+                  <p className="form-help">Heredar usa el permiso definido por el rol. Permitir o Denegar crea un ajuste específico para esta cuenta.</p>
                   <div className="permission-grid">
                     {permissions.map((item) => (
                       <label className="permission-row" key={item.permission}>
                         <span>
                           <strong>{PERMISSION_LABELS[item.permission] ?? item.permission}</strong>
-                          <small>{item.permission} · {item.effective ? "Activo" : "Denegado"}</small>
+                          <small>{item.permission} · base: {item.roleGranted ? "Activo" : "Denegado"} · efectivo: {item.effective ? "Activo" : "Denegado"}</small>
                         </span>
                         <select
                           value={item.state}
@@ -309,7 +358,16 @@ export default function AdminUsersPage() {
                             setPermissions((current) =>
                               current.map((permission) =>
                                 permission.permission === item.permission
-                                  ? { ...permission, state: event.target.value as PermissionItem["state"], effective: event.target.value === "grant" ? true : event.target.value === "deny" ? false : permission.roleGranted }
+                                  ? {
+                                      ...permission,
+                                      state: event.target.value as PermissionItem["state"],
+                                      effective:
+                                        event.target.value === "grant"
+                                          ? true
+                                          : event.target.value === "deny"
+                                            ? false
+                                            : permission.roleGranted,
+                                    }
                                   : permission,
                               ),
                             )
@@ -322,7 +380,10 @@ export default function AdminUsersPage() {
                       </label>
                     ))}
                   </div>
-                )}
+                  {editing && <div className="modal-actions"><button type="button" className="admin-button primary" onClick={() => void savePermissions()}>Guardar permisos</button></div>}
+                </>
+              )}
+            </section>
                 {form.role !== "SUPER_ADMIN" && permissions.length > 0 && (
                   <button className="admin-button" type="button" onClick={() => void savePermissions()}>
                     Guardar permisos
