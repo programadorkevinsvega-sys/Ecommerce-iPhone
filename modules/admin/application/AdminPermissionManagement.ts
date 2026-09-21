@@ -1,7 +1,7 @@
 import type { AdminUserRepository } from "./AdminUserManagement";
 import type { AuditPort } from "./AuditPort";
 import type { AdminPermissionRepository, PermissionOverride } from "./AdminPermissionRepository";
-import type { AdminRole } from "../domain/AdminRole";
+import { ADMIN_ROLES, type AdminRole } from "../domain/AdminRole";
 import { PERMISSIONS, type Permission, resolvePermissions } from "./Rbac";
 
 export type PermissionState = "inherit" | "grant" | "deny";
@@ -41,6 +41,12 @@ export class AdminPermissionManagement {
     private readonly permissions: AdminPermissionRepository,
     private readonly audit: AuditPort,
   ) {}
+
+  catalogForRole(roleInput: string): ReadonlyArray<AdminPermissionItem> {
+    const role = roleInput.trim() as AdminRole;
+    if (!ADMIN_ROLES.includes(role)) throw new Error("INVALID_ROLE");
+    return this.catalog(role, []);
+  }
 
   async get(targetIdInput: string, actorIdInput: string): Promise<ReadonlyArray<AdminPermissionItem>> {
     const targetId = requireId(targetIdInput);
