@@ -518,13 +518,13 @@ Ejemplo para la Fase 01:
 | Área | Estado |
 |---|---|
 | Foundation | 🟡 Implementada + hardening; certificación final pendiente |
-| Storefront | 🟢 Implementada; certificación E2E/accessibility/performance/SEO pendiente |
+| Storefront | 🟡 Implementada + hardening de navegación pública; certificación E2E/accessibility/performance/SEO pendiente |
 | Commerce Core | 🟢 Implementación cerrada; certificación productiva pendiente |
 | Payments | 🟡 Cinco adapters implementados; certificación real pendiente |
-| Services | 🟢 Implementación + hardening |
+| Services | 🟢 Implementación + hardening; certificación pendiente |
 | Admin/RBAC | 🟡 Implementación avanzada; certificación pendiente |
 | Notifications | 🟡 Outbox/Queue/Resend funcional; DLQ/retry/replay pendiente |
-| Technicians | 🟡 Identidad independiente implementada; UI/certificación pendiente |
+| Technicians | 🟡 Identidad independiente implementada; rediseño visual y certificación pendiente |
 
 ### Última producción certificada
 
@@ -553,10 +553,10 @@ Una fase se considera terminada únicamente cuando:
 | Fase | Issue | Estado |
 |---|---:|---|
 | 01 — Foundation | #1 | 🟡 Implementada, certificación pendiente |
-| 02 — Storefront Premium | #2 | 🟢 Implementada, certificación pendiente |
+| 02 — Storefront Premium | #2 | 🟡 Implementada + hardening de navegación, certificación pendiente |
 | 03 — Commerce Core | #3 | 🟢 Implementación cerrada, certificación pendiente |
 | 04 — Payments | #4 | 🟡 Implementado, certificación real pendiente |
-| 05 — Services | #5 | 🟢 Implementado, certificación pendiente |
+| 05 — Services | #5 | 🟢 Implementado + hardening, certificación pendiente |
 | 06 — Admin + RBAC | #6 | 🟡 Implementación avanzada, certificación pendiente |
 | 07 — Notifications | #7 | 🟡 Implementación funcional, DLQ/retry/replay pendiente |
 | 08 — CMS + Marketing + Reviews | #8 | ⬜ Pendiente |
@@ -564,3 +564,13 @@ Una fase se considera terminada únicamente cuando:
 | 10 — Production Readiness | #10 | ⬜ Pendiente |
 
 > Este archivo es la referencia central del roadmap. El detalle operativo de cada fase vive en su Issue correspondiente y posteriormente en sus sub-Issues técnicos.
+
+
+## Actualización viva — 2026-09-21
+
+- La navegación pública fue centralizada en `apps/web/app/components/StoreHeader.tsx` con Inicio, Catálogo, Servicios, Consultar reparación, Contacto, Carrito y Mi cuenta.
+- El componente de navegación compartido es compatible con las superficies Server/Client porque también se utiliza desde el portal de cliente.
+- El bounded context `technicians` mantiene identidad, autenticación, sesiones, autorización por asignación, dispositivos, evidencia y perfil propios.
+- `/admin/technicians` trata TÉCNICO como identidad operativa y no como rol de `admin_users`.
+- El rediseño visual completo de `/technician/**` sigue pendiente.
+- La última versión directamente verificada en producción continúa siendo el Worker `f7d67832-8598-4f59-8db9-b538f543b3ef`; los cambios posteriores requieren un nuevo ciclo build/deploy/verify.
