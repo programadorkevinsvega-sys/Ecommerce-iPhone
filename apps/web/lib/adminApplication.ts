@@ -8,6 +8,8 @@ import { D1AdminPasswordHasher } from "../../../modules/admin/infrastructure/D1A
 import { D1AdminSessionRepository } from "../../../modules/admin/infrastructure/D1AdminSessionRepository";
 import { D1AdminUserAuditPort } from "../../../modules/admin/infrastructure/D1AdminUserAuditPort";
 import { D1AdminUserRepository } from "../../../modules/admin/infrastructure/D1AdminUserRepository";
+import { AdminPermissionManagement } from "../../../modules/admin/application/AdminPermissionManagement";
+import { D1AdminPermissionRepository } from "../../../modules/admin/infrastructure/D1AdminPermissionRepository";
 import { D1AdminSettingsRepository } from "../../../modules/admin/infrastructure/D1AdminSettingsRepository";
 import { D1AuditPort } from "../../../modules/admin/infrastructure/D1AuditPort";
 import { AdminSettings } from "../../../modules/admin/application/AdminSettings";
@@ -110,6 +112,14 @@ export function adminUserManagementApplication(env: CloudflareEnv): AdminUserMan
     new D1AdminPasswordHasher(),
     new D1AdminSessionRepository(env.DB),
     new D1AdminUserAuditPort(env.DB),
+  );
+}
+
+export function adminPermissionManagementApplication(env: CloudflareEnv): AdminPermissionManagement {
+  return new AdminPermissionManagement(
+    new D1AdminUserRepository(env.DB),
+    new D1AdminPermissionRepository(env.DB),
+    new D1AuditPort(env.DB),
   );
 }
 
