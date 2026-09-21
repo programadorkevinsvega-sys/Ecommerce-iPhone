@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import AdminSidebar from "../AdminSidebar";
 
 const emptyForm = {
   code: "", slug: "", name: "", description: "", imageUrl: "", category: "REPAIR",
@@ -58,7 +59,7 @@ export default function ServiceTypesPage() {
     catch (e) { setError(e instanceof Error ? e.message : "No se pudo archivar"); }
   }
 
-  return <main style={{ padding: 28, maxWidth: 1500, margin: "0 auto" }}>
+  return <main className="admin-shell"><AdminSidebar active="service-types" /><section className="admin-content"><div style={{ padding: 28, maxWidth: 1500, margin: "0 auto" }}>
     <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "end", marginBottom: 24 }}><div><h1 style={{ marginBottom: 6 }}>Catálogo de servicios</h1><p style={{ opacity: .7 }}>Servicios configurables para reparaciones, mantenimiento, diagnóstico y operaciones técnicas.</p></div><button type="button" onClick={reset}>Nuevo servicio</button></div>
     {error && <div role="alert" style={{ marginBottom: 18 }}>{error}</div>}
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.6fr) minmax(360px,1fr)", gap: 24, alignItems: "start" }}>
@@ -71,6 +72,5 @@ export default function ServiceTypesPage() {
         <label><input type="checkbox" checked={form.enabled} onChange={(e) => set("enabled", e.target.checked)} /> Publicado</label>
         <div style={{ display: "flex", gap: 8 }}><button disabled={saving} type="submit">{saving ? "Guardando…" : editing ? "Guardar cambios" : "Crear servicio"}</button>{editing && <button type="button" onClick={reset}>Cancelar</button>}</div>
       </form></section>
-    </div>
-  </main>;
+    </div></section></main>;
 }
