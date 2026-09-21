@@ -58,7 +58,7 @@ Verified:
 - `/api/health/ready` → 200
 - `verify:production` → PASS
 
-Subsequent commits require a new successful Cloudflare build/deploy/verify cycle.
+Subsequent commits require a new successful Cloudflare build/deploy/verify cycle. The current `main` contains technician-domain and shared-navigation fixes that are not yet production-certified.
 
 ## Runtime secrets
 
