@@ -1,12 +1,104 @@
 "use client";
+
 import Link from "next/link";
 import { useEffect, useState } from "react";
-type Order={id:string;orderNumber:string;status:string;problemReported:string;device:{brand:string;model:string;conditions:{component:string;condition:string;notes?:string}[]};diagnosisSummary?:string;workSummary?:string};
-const statuses=["RECEIVED","DIAGNOSING","WAITING_PART","IN_REPAIR","QUALITY_CONTROL"];
-export default function TechnicianPage(){const [orders,setOrders]=useState<Order[]>([]),[selected,setSelected]=useState<Order|null>(null),[diagnosis,setDiagnosis]=useState(""),[work,setWork]=useState(""),[stage,setStage]=useState("DIAGNOSIS"),[message,setMessage]=useState("");
- const load=async()=>{const response=await fetch("/api/admin/repair-orders",{cache:"no-store",credentials:"same-origin"});if(response.status===401||response.status===403){window.location.href="/admin/login";return;}const data=await response.json() as {items?:Order[]};setOrders(data.items??[])};useEffect(()=>{void load()},[]);
- function open(order:Order){setSelected(order);setDiagnosis(order.diagnosisSummary??"");setWork(order.workSummary??"")}
- async function save(){if(!selected)return;const response=await fetch(`/api/admin/repair-orders/${selected.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({diagnosisSummary:diagnosis,workSummary:work,conditions:selected.device.conditions})});const data=await response.json() as {order?:Order};setMessage(response.ok?"Orden actualizada.":"No se pudo guardar.");if(data.order){setSelected(data.order);await load()}}
- async function status(value:string){if(!selected)return;const response=await fetch(`/api/admin/repair-orders/${selected.id}`,{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({status:value})});const data=await response.json() as {order?:Order};setMessage(response.ok?"Estado actualizado.":"No se pudo cambiar el estado.");if(data.order){setSelected(data.order);await load()}}
- async function upload(event:React.ChangeEvent<HTMLInputElement>){if(!selected||!event.target.files?.[0])return;const form=new FormData();form.set("file",event.target.files[0]);const response=await fetch(`/api/admin/repair-orders/${selected.id}/media?stage=${stage}`,{method:"POST",body:form});setMessage(response.ok?"Evidencia guardada.":"No se pudo guardar la evidencia.")}
- return <main className="technician-shell"><header className="technician-header"><div><p className="eyebrow">Área técnica</p><h1>Mis órdenes</h1><p>Diagnóstico, reparación y control de calidad de los equipos asignados.</p></div><Link href="/admin/login" className="button secondary">Salir</Link></header><section className="technician-grid"><div className="technician-orders">{orders.map(order=><button className={selected?.id===order.id?"technician-order active":"technician-order"} key={order.id} onClick={()=>open(order)}><strong>{order.orderNumber}</strong><span>{order.device.brand} {order.device.model}</span><small>{order.status}</small></button>)}{!orders.length&&<div className="empty-state"><h2>No tienes órdenes asignadas</h2><p>Las órdenes aparecerán aquí cuando Administración las asigne.</p></div>}</div>{selected&&<article className="technician-workbench"><p className="eyebrow">Orden {selected.orderNumber}</p><h2>{selected.device.brand} {selected.device.model}</h2><p>{selected.problemReported}</p><label>Estado<select value={selected.status} onChange={event=>void status(event.target.value)}>{statuses.map(value=><option key={value}>{value}</option>)}</select></label><label>Diagnóstico técnico<textarea rows={6} value={diagnosis} onChange={event=>setDiagnosis(event.target.value)} /></label><label>Trabajo realizado<textarea rows={6} value={work} onChange={event=>setWork(event.target.value)} /></label><button className="button primary" onClick={()=>void save()}>Guardar avance</button><label>Etapa de evidencia<select value={stage} onChange={event=>setStage(event.target.value)}><option value="RECEPTION">Recepción</option><option value="DIAGNOSIS">Diagnóstico</option><option value="REPAIR">Reparación</option><option value="QUALITY_CONTROL">Control de calidad</option></select></label><label>Subir evidencia<input type="file" accept="image/jpeg,image/png,image/webp" onChange={event=>void upload(event)} /></label>{message&&<p role="status">{message}</p>}</article>}</section></main>}
+
+type Technician = {
+  firstName: string;
+  lastName: string;
+  email: string;
+};
+
+type Order = {
+  id: string;
+  orderNumber: string;
+  status: string;
+  problemReported: string;
+  device: { brand: string; model: string };
+};
+
+export default function TechnicianHome() {
+  const [technician, setTechnician] = useState<Technician | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    void (async () => {
+      const session = await fetch("/api/technician/auth/session", { cache: "no-store" });
+      const sessionData = await session.json() as {
+        authenticated: boolean;
+        technician: Technician | null;
+      };
+
+      if (!session.ok || !sessionData.authenticated) {
+        window.location.href = "/technician/login";
+        return;
+      }
+
+      setTechnician(sessionData.technician);
+
+      const response = await fetch("/api/technician/orders", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+
+      if (response.status === 401) {
+        window.location.href = "/technician/login";
+        return;
+      }
+
+      const data = await response.json() as { items?: Order[]; error?: string };
+      if (!response.ok) {
+        setError(data.error ?? "No se pudieron cargar las órdenes.");
+        return;
+      }
+
+      setOrders(data.items ?? []);
+    })();
+  }, []);
+
+  async function logout() {
+    await fetch("/api/technician/auth/logout", {
+      method: "POST",
+      credentials: "same-origin",
+      cache: "no-store",
+    });
+    window.location.href = "/technician/login";
+  }
+
+  return (
+    <main className="technician-shell">
+      <header className="technician-header">
+        <div>
+          <p className="eyebrow">Área técnica</p>
+          <h1>Hola{technician ? ", " + technician.firstName : ""}.</h1>
+          <p>Gestiona únicamente las órdenes asignadas a tu identidad técnica.</p>
+        </div>
+        <div>
+          <Link href="/technician/orders" className="button secondary">Órdenes</Link>
+          <Link href="/technician/devices" className="button secondary">Dispositivos</Link>
+          <Link href="/technician/profile" className="button secondary">Mi perfil</Link>
+          <button className="button secondary" onClick={() => void logout()}>Salir</button>
+        </div>
+      </header>
+
+      {error && <p role="alert">{error}</p>}
+
+      <section className="technician-grid">
+        <article className="technician-workbench">
+          <p className="eyebrow">Operación</p>
+          <h2>{orders.length} órdenes asignadas</h2>
+          <p>Las órdenes se cargan desde la identidad técnica actual y nunca desde la sesión administrativa.</p>
+          <Link href="/technician/orders" className="button primary">Abrir órdenes</Link>
+        </article>
+
+        <article className="technician-workbench">
+          <p className="eyebrow">Identidad</p>
+          <h2>Cuenta técnica independiente</h2>
+          <p>{technician?.email ?? "Sesión técnica activa."}</p>
+          <p>Esta área utiliza technician_session y no concede acceso al panel /admin.</p>
+        </article>
+      </section>
+    </main>
+  );
+}
