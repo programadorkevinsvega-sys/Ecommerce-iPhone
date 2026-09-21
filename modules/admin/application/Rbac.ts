@@ -125,3 +125,14 @@ export const DEFAULT_AUTHORIZATION_POLICY = new ExplicitAuthorizationPolicy(ROLE
 export function hasPermission(role: AdminRole, permission: string): boolean {
   return DEFAULT_AUTHORIZATION_POLICY.can(role, permission as Permission);
 }
+
+export type PermissionOverrideValue = Readonly<{ permission: Permission; granted: boolean }>;
+
+export function resolvePermissions(role: AdminRole, overrides: ReadonlyArray<PermissionOverrideValue>): Permission[] {
+  const effective = new Set<Permission>(ROLE_PERMISSIONS[role] ?? []);
+  for (const override of overrides) {
+    if (override.granted) effective.add(override.permission);
+    else effective.delete(override.permission);
+  }
+  return [...effective];
+}
