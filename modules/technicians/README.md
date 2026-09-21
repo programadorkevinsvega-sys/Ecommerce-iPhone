@@ -1,5 +1,11 @@
 # Technicians bounded context
 
+## Estado vivo — 2026-09-21
+
+El bounded context continúa implementado como identidad operacional independiente. El hardening reciente añade ownership de órdenes en Application, composición separada de otros bounded contexts, almacenamiento de evidencia mediante port de storage + adapter R2, y estados completos de UX en el portal.
+
+Los tests cubren autenticación base, lockout activo, ownership de dispositivos/órdenes y actualización de perfil. Aun así, el contexto no se marca como certificado hasta completar build, deploy, verificación productiva y pruebas autenticadas reales sin datos inventados.
+
 ## Responsibility
 
 The `technicians` bounded context manages operational technician identities and their authenticated work against assigned repair orders.
