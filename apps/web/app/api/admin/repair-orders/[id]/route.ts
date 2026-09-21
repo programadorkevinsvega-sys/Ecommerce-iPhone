@@ -15,7 +15,6 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const { env, admin } = await requireAdmin(PERMISSIONS.repairOrdersRead);
     const order = await repairOrderRepository(env).findById((await params).id);
     if (!order) return NextResponse.json({ error: "Repair order not found" }, { status: 404, headers: { "cache-control": "no-store" } });
-    if (admin.role === "TECHNICIAN" && order.toPrimitives().assignedTechnicianId !== admin.id) return responseFor(new Error("FORBIDDEN"));
     return NextResponse.json({ order: order.toPrimitives() }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     return responseFor(error);
@@ -27,7 +26,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { env, admin } = await requireAdmin(PERMISSIONS.repairOrdersWrite);
     const id = (await params).id;
     const existing = await repairOrderManagementApplication(env).get(id);
-    if (admin.role === "TECHNICIAN" && existing.toPrimitives().assignedTechnicianId !== admin.id) return responseFor(new Error("FORBIDDEN"));
     const body = await request.json() as Record<string, unknown>;
     const status = typeof body.status === "string" ? body.status as RepairOrderStatus : null;
     const manager = repairOrderManagementApplication(env);
@@ -37,7 +35,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const order = await manager.updateTechnicalRecord(id, { diagnosisSummary: typeof body.diagnosisSummary === "string" ? body.diagnosisSummary : null, workSummary: typeof body.workSummary === "string" ? body.workSummary : null, conditions }, admin.id);
       return NextResponse.json({ order: order.toPrimitives() }, { headers: { "cache-control": "no-store" } });
     }
-    if (admin.role === "TECHNICIAN" && !["DIAGNOSING", "WAITING_PART", "IN_REPAIR", "QUALITY_CONTROL"].includes(status)) return responseFor(new Error("FORBIDDEN"));
     const order = await manager.transition(id, status, admin.id);
     return NextResponse.json({ order: order.toPrimitives() }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
