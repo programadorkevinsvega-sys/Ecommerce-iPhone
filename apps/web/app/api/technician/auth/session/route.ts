@@ -1,0 +1,1 @@
+import { NextResponse } from "next/server";import { currentTechnician } from "../../../../../lib/technicianAuth";export async function GET(){const technician=await currentTechnician();return NextResponse.json({authenticated:Boolean(technician),technician},{headers:{"cache-control":"no-store"}});}
