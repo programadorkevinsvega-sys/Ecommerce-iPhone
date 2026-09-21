@@ -17,7 +17,10 @@
 
 ```text
 01 → 02 → 03 → 04 → 05 → 06 → 07 → 08 → 09 → 10
+                      ↘ reparación / técnicos (transversal)
 ```
+
+Las reparaciones y técnicos atraviesan Services, Admin/RBAC, Commerce y Notifications. El detalle operativo vive en `docs/PLAN-PLATAFORMA-REPARACIONES.md`.
 
 ---
 
@@ -229,7 +232,6 @@ Construir el panel administrativo completo para operar el negocio sin manipulaci
 - INVENTORY
 - FINANCE
 - CONTENT_EDITOR
-- TECHNICIAN
 
 ### Seguridad
 Los permisos deberán validarse server-side por recurso y acción. Ocultar botones en el frontend no constituye autorización.
@@ -511,6 +513,25 @@ Ejemplo para la Fase 01:
 └── 01.10 Architecture Documentation
 ```
 
+## Estado vivo — 2026-09-21
+
+| Área | Estado |
+|---|---|
+| Foundation | 🟡 Implementada + hardening; certificación final pendiente |
+| Storefront | 🟢 Implementada; certificación E2E/accessibility/performance/SEO pendiente |
+| Commerce Core | 🟢 Implementación cerrada; certificación productiva pendiente |
+| Payments | 🟡 Cinco adapters implementados; certificación real pendiente |
+| Services | 🟢 Implementación + hardening |
+| Admin/RBAC | 🟡 Implementación avanzada; certificación pendiente |
+| Notifications | 🟡 Outbox/Queue/Resend funcional; DLQ/retry/replay pendiente |
+| Technicians | 🟡 Identidad independiente implementada; UI/certificación pendiente |
+
+### Última producción certificada
+
+Worker: `f7d67832-8598-4f59-8db9-b538f543b3ef`
+
+Los commits posteriores están en `main`, pero no se consideran certificados hasta un nuevo build, deploy y `verify:production`.
+
 # Definition of Done Global
 
 Una fase se considera terminada únicamente cuando:
@@ -531,13 +552,13 @@ Una fase se considera terminada únicamente cuando:
 
 | Fase | Issue | Estado |
 |---|---:|---|
-| 01 — Foundation | #1 | ⬜ Pendiente |
-| 02 — Storefront Premium | #2 | ⬜ Pendiente |
-| 03 — Commerce Core | #3 | ⬜ Pendiente |
-| 04 — Payments | #4 | ⬜ Pendiente |
-| 05 — Services | #5 | ⬜ Pendiente |
-| 06 — Admin + RBAC | #6 | ⬜ Pendiente |
-| 07 — Notifications | #7 | ⬜ Pendiente |
+| 01 — Foundation | #1 | 🟡 Implementada, certificación pendiente |
+| 02 — Storefront Premium | #2 | 🟢 Implementada, certificación pendiente |
+| 03 — Commerce Core | #3 | 🟢 Implementación cerrada, certificación pendiente |
+| 04 — Payments | #4 | 🟡 Implementado, certificación real pendiente |
+| 05 — Services | #5 | 🟢 Implementado, certificación pendiente |
+| 06 — Admin + RBAC | #6 | 🟡 Implementación avanzada, certificación pendiente |
+| 07 — Notifications | #7 | 🟡 Implementación funcional, DLQ/retry/replay pendiente |
 | 08 — CMS + Marketing + Reviews | #8 | ⬜ Pendiente |
 | 09 — SEO | #9 | ⬜ Pendiente |
 | 10 — Production Readiness | #10 | ⬜ Pendiente |
