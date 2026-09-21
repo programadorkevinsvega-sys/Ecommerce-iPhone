@@ -1,5 +1,11 @@
 # Ecommerce iPhone
 
+## Estado vivo — 2026-09-21
+
+La revisión del código de main y del ciclo de hardening confirma que la corrección de exactOptionalPropertyTypes en StoreHeader y TechnicianHeader ya está aplicada en fuente. El portal técnico mantiene identidad independiente de admin_users y ahora incluye hardening de UX, estados de carga/error, prevención de dobles operaciones y una composición de aplicación que evita acceso directo de las rutas a repositorios y adaptadores.
+
+El rediseño de /technician/** queda implementado a nivel de código, pero la certificación productiva sigue condicionada a frontend:data:check, foundation:check, architecture:check, formatter, lint, typecheck, tests, build Cloudflare, deploy y verificación de producción. La validación autenticada del workspace técnico requiere evidencia con una cuenta técnica real; no se considera certificada con datos inventados.
+
 Plataforma e-commerce orientada a producción para smartphones y servicios legítimos de dispositivos.
 
 ## Arquitectura
