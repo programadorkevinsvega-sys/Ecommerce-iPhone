@@ -19,7 +19,7 @@ export class D1AdminNotificationsQuery implements AdminNotificationsQuery {
     ).bind(limit).all();
 
     const pending = await this.db.prepare(
-      "SELECT status,COUNT(*) AS count FROM notification_outbox GROUP BY status",
+      "SELECT CASE WHEN terminal_at IS NOT NULL THEN 'TERMINAL' ELSE status END AS status,COUNT(*) AS count FROM notification_outbox GROUP BY CASE WHEN terminal_at IS NOT NULL THEN 'TERMINAL' ELSE status END",
     ).all();
 
     return { deliveries: rows.results, queue: pending.results };
