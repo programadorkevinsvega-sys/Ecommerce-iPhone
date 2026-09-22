@@ -109,19 +109,30 @@ export default function NotificationInbox({ scope, title, subtitle }: Notificati
             body?: string;
             data?: Record<string, unknown>;
           };
-          if (message.type !== "notification" || !message.notificationId || !message.eventId || !message.eventType || !message.createdAt || !message.title || !message.body) return;
+          if (
+            message.type !== "notification" ||
+            !message.notificationId ||
+            !message.eventId ||
+            !message.eventType ||
+            !message.createdAt ||
+            !message.title ||
+            !message.body
+          ) return;
+
+          const realtimeItem: Item = {
+            id: message.notificationId,
+            eventId: message.eventId,
+            eventType: message.eventType,
+            eventVersion: message.eventVersion ?? 1,
+            title: message.title,
+            body: message.body,
+            payload: message.data ?? {},
+            createdAt: message.createdAt,
+          };
+
           setItems((current) => {
-            if (current.some((item) => item.id === message.notificationId)) return current;
-            return [{
-              id: message.notificationId,
-              eventId: message.eventId,
-              eventType: message.eventType,
-              eventVersion: message.eventVersion ?? 1,
-              title: message.title,
-              body: message.body,
-              payload: message.data ?? {},
-              createdAt: message.createdAt,
-            }, ...current];
+            if (current.some((item) => item.id === realtimeItem.id)) return current;
+            return [realtimeItem, ...current];
           });
           setUnread((value) => value + 1);
         } catch {}
