@@ -4,7 +4,7 @@ import nextWorker from "./.open-next/worker.js";
 import type { ExecutionContext, MessageBatch, Message, ScheduledEvent } from "@cloudflare/workers-types";
 import { D1NotificationOutboxRepository } from "../../modules/notifications/infrastructure/D1NotificationOutboxRepository";
 import { NotificationHub } from "../../modules/notifications/infrastructure/NotificationHub";
-import { notificationProcessingApplication, notificationQueuePublisher } from "./notificationsApplication";
+import { notificationDeadLetterApplication, notificationProcessingApplication, notificationQueuePublisher } from "./notificationsApplication";
 import { D1ReservationRepository } from "../../modules/orders/infrastructure/D1ReservationRepository";
 import type { NotificationEvent } from "../../modules/notifications/domain/NotificationEvent";
 
@@ -225,6 +225,21 @@ export default {
   },
 
   async queue(batch: MessageBatch<string>, env: Env) {
+    if (batch.queue === "ecommerce-iphone-notifications-dlq") {
+      const deadLetters = notificationDeadLetterApplication(env);
+      for (const message of batch.messages) {
+        const raw = message as Message<string> & { id?: string };
+        await deadLetters.record({
+          id: raw.id ?? crypto.randomUUID(),
+          queueName: batch.queue,
+          ...(raw.id ? { messageId: raw.id } : {}),
+          messageBody: raw.body,
+        });
+        message.ack();
+      }
+      return;
+    }
+
     for (const message of batch.messages) {
       try {
         await processNotificationMessage(
