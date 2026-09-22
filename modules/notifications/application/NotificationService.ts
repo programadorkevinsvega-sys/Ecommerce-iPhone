@@ -64,12 +64,12 @@ export class NotificationService {
       ? projected.find((value) => value.recipient.id === explicitRecipient.id && value.recipient.type === explicitRecipient.type)
       : undefined;
 
-    if (explicitRecipient && projectedRecipient) {
-      if (!(await this.preferences.isEnabled(explicitRecipient, "EMAIL", event.eventType))) {
-        await this.outbox.markProcessed(event.id);
-        return;
-      }
+    if (explicitRecipient && !(await this.preferences.isEnabled(explicitRecipient, "EMAIL", event.eventType))) {
+      await this.outbox.markProcessed(event.id);
+      return;
+    }
 
+    if (explicitRecipient && projectedRecipient) {
       await this.processLedgerEmail(
         event,
         projectedRecipient.item.id,
