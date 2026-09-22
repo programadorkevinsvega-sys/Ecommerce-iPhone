@@ -67,6 +67,7 @@ promotions:write
 cms:write
 settings:write
 technicians:manage
+notifications:replay
 ```
 
 Per-user permission overrides are supported. A user cannot change their own permissions, and non-`SUPER_ADMIN` users cannot grant permissions they do not effectively possess.
