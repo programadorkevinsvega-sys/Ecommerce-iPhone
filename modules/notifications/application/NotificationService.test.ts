@@ -23,6 +23,9 @@ class MemoryOutbox implements NotificationOutboxRepository {
 class MemoryInbox implements NotificationInboxRepository {
   items: NotificationInboxItem[] = [];
   async create(item: NotificationInboxItem) { this.items.push(item); return true; }
+  async findByEventRecipient(eventId: string, recipient: NotificationRecipient) {
+    return this.items.find((item) => item.eventId === eventId && item.recipientType === recipient.type && item.recipientId === recipient.id) ?? null;
+  }
   async list(_recipient: NotificationRecipient, _limit: number) { return { items: [], nextCursor: null }; }
   async unreadCount(_recipient: NotificationRecipient) { return 0; }
   async markRead(_recipient: NotificationRecipient, _notificationId: string) { return true; }
