@@ -36,7 +36,7 @@ export class D1NotificationDeliveryRepository implements NotificationDeliveryRep
     ).run();
 
     const result = await this.db.prepare(
-      "UPDATE notification_channel_deliveries SET status='CLAIMED',attempts=attempts+1,lease_token=?,lease_expires_at=datetime('now','+' || ? || ' seconds'),last_error=NULL WHERE notification_id=? AND channel='EMAIL' AND recipient_type=? AND recipient_id=? AND recipient=? AND status IN ('PENDING','FAILED')",
+      "UPDATE notification_channel_deliveries SET status='CLAIMED',attempts=attempts+1,lease_token=?,lease_expires_at=datetime('now','+' || ? || ' seconds'),last_error=NULL WHERE notification_id=? AND channel='EMAIL' AND recipient_type=? AND recipient_id=? AND recipient=? AND (status IN ('PENDING','FAILED') OR (status='CLAIMED' AND lease_expires_at<=CURRENT_TIMESTAMP))",
     ).bind(
       token,
       lease,
