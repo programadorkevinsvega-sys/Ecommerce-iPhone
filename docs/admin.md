@@ -183,3 +183,13 @@ The administrative pages use a shared visual/component layer under `apps/web/app
 - `AdminEmptyState`: shared empty state.
 
 New operational surfaces and the existing technician/repair-parts surfaces reuse these primitives instead of introducing independent page styling.
+
+
+## Permission catalog extension — Notifications
+
+Se añadió el permiso administrativo:
+
+notifications:replay
+
+La capacidad está reservada por defecto a SUPER_ADMIN y ADMIN porque permite reenviar mensajes terminales del DLQ mediante el pipeline real. La consulta del monitor de notificaciones continúa bajo dashboard:read.
+
