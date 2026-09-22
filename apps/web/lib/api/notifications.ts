@@ -1,6 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import type { NotificationRecipient } from "../../../modules/notifications/domain/NotificationEvent";
-import { notificationInboxApplication } from "../notificationsApplication";
+import type { NotificationChannel, NotificationRecipient } from "../../../modules/notifications/domain/NotificationEvent";
+import { notificationDeadLetterApplication, notificationInboxApplication, notificationPreferenceApplication } from "../notificationsApplication";
 
 export async function listNotifications(
   recipient: NotificationRecipient,
@@ -51,8 +51,6 @@ export async function upgradeNotificationRealtime(
   );
 }
 
-import { notificationDeadLetterApplication } from "../notificationsApplication";
-
 export async function listNotificationDeadLetters(limit: number) {
   const { env } = getCloudflareContext();
   return notificationDeadLetterApplication(env).list(limit);
@@ -62,9 +60,6 @@ export async function replayNotificationDeadLetter(id: string, adminId: string) 
   const { env } = getCloudflareContext();
   return notificationDeadLetterApplication(env).replay(id, adminId);
 }
-
-import type { NotificationChannel, NotificationRecipient } from "../../../modules/notifications/domain/NotificationEvent";
-import { notificationPreferenceApplication } from "../notificationsApplication";
 
 export async function getNotificationPreferences(recipient: NotificationRecipient) {
   const { env } = getCloudflareContext();
