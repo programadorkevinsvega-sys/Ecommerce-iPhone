@@ -89,9 +89,35 @@ export default function NotificationInbox({ scope, title, subtitle }: Notificati
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       socket = new WebSocket(`${protocol}//${window.location.host}/api/notifications/realtime?scope=${scope}`);
       socket.addEventListener("open", () => { attempt = 0; });
-      socket.addEventListener("message", () => {
-        void loadRef.current(false);
-        void loadUnread();
+      socket.addEventListener("message", (event) => {
+        try {
+          const message = JSON.parse(event.data) as {
+            type?: string;
+            notificationId?: string;
+            eventId?: string;
+            eventType?: string;
+            eventVersion?: number;
+            createdAt?: string;
+            title?: string;
+            body?: string;
+            data?: Record<string, unknown>;
+          };
+          if (message.type !== "notification" || !message.notificationId || !message.eventId || !message.eventType || !message.createdAt || !message.title || !message.body) return;
+          setItems((current) => {
+            if (current.some((item) => item.id === message.notificationId)) return current;
+            return [{
+              id: message.notificationId,
+              eventId: message.eventId,
+              eventType: message.eventType,
+              eventVersion: message.eventVersion ?? 1,
+              title: message.title,
+              body: message.body,
+              payload: message.data ?? {},
+              createdAt: message.createdAt,
+            }, ...current];
+          });
+          setUnread((value) => value + 1);
+        } catch {}
       });
       socket.addEventListener("close", () => {
         if (disposed) return;
