@@ -409,3 +409,11 @@ The current implementation distinguishes provider failures into retryable and te
 
 Explicit recipients use the channel-delivery ledger and channel-specific preferences. Legacy notification events that only carry an email address continue through the previous delivery ledger for backwards compatibility until all producers emit explicit recipient context.
 
+
+### Production smoke gate
+
+The unauthenticated contract smoke check is available as:
+
+`pnpm verify:notifications:production`
+
+It verifies the published inbox, unread count, preference, WebSocket upgrade and admin DLQ endpoints reject unauthenticated access with the expected contract statuses.
