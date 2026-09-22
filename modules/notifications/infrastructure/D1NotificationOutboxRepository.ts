@@ -14,6 +14,7 @@ function mapRow(row: Record<string, unknown>): OutboxRecord {
     status: String(row.status) as OutboxRecord["status"],
     attempts: Number(row.attempts ?? 0),
     availableAt: String(row.available_at),
+    ...(row.terminal_at ? { terminalAt: String(row.terminal_at) } : {}),
   };
 }
 
