@@ -667,7 +667,11 @@ La Fase 07 ya no está limitada al Outbox/Queue/Resend inicial. El código actua
 - replay administrativo auditado;
 - autenticación de recipients customer/technician/admin;
 - UI compartida de bell + inbox para customer/technician;
-- monitor administrativo de entregas y DLQ.
+- preferencias de canal EMAIL/IN_APP;
+- clasificación de fallos transitorios/terminales;
+- ledger de entregas de canal;
+- monitor administrativo de entregas y DLQ;
+- smoke contract de producción sin secretos.
 
 Estado: implementación avanzada / hardening.
 
