@@ -1,4 +1,6 @@
 import { D1NotificationInboxRepository } from "../../modules/notifications/infrastructure/D1NotificationInboxRepository";
+import { D1NotificationDeliveryRepository } from "../../modules/notifications/infrastructure/D1NotificationDeliveryRepository";
+import { D1NotificationPreferenceRepository } from "../../modules/notifications/infrastructure/D1NotificationPreferenceRepository";
 import { D1NotificationOutboxRepository } from "../../modules/notifications/infrastructure/D1NotificationOutboxRepository";
 import { CloudflareNotificationQueuePublisher } from "../../modules/notifications/infrastructure/CloudflareNotificationQueuePublisher";
 import { CloudflareNotificationRealtimePublisher } from "../../modules/notifications/infrastructure/CloudflareNotificationRealtimePublisher";
@@ -16,6 +18,8 @@ export function notificationProcessingApplication(env: CloudflareEnv): Notificat
     new ResendEmailProvider(env.RESEND_API_KEY ?? "", env.EMAIL_FROM ?? ""),
     new D1NotificationInboxRepository(env.DB),
     new CloudflareNotificationRealtimePublisher(env.NOTIFICATION_HUB),
+    new D1NotificationDeliveryRepository(env.DB),
+    new D1NotificationPreferenceRepository(env.DB),
   );
 }
 
