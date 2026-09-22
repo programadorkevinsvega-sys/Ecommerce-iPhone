@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import NotificationPreferences from "./NotificationPreferences";
 
 type NotificationScope = "customer" | "technician" | "admin";
 
@@ -183,6 +184,7 @@ export default function NotificationInbox({ scope, title, subtitle }: Notificati
       )}
 
       {cursor ? <button type="button" className="button secondary notification-inbox-more" onClick={() => void load(true)} disabled={loading}>Cargar anteriores</button> : null}
+      <NotificationPreferences scope={scope} />
     </section>
   );
 }
