@@ -43,12 +43,19 @@ export async function upgradeNotificationRealtime(
   const id = env.NOTIFICATION_HUB.idFromName(
     `notification:${recipient.type}:${recipient.id}`,
   );
-  return env.NOTIFICATION_HUB.get(id).fetch(
+  const response = await env.NOTIFICATION_HUB.get(id).fetch(
     new Request("https://notification-hub/realtime", {
       method: "GET",
       headers: request.headers,
     }),
   );
+
+  // Cloudflare's Workers Response type and the DOM Response type used by
+  // Next.js are structurally equivalent at runtime but differ in stream
+  // generic parameters in TypeScript. Preserve the native WebSocket upgrade
+  // response instead of reconstructing it, and narrow only at this adapter
+  // boundary.
+  return response as unknown as Response;
 }
 
 export async function listNotificationDeadLetters(limit: number) {
