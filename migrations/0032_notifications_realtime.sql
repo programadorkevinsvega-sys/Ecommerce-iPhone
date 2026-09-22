@@ -1,3 +1,6 @@
+ALTER TABLE notification_outbox ADD COLUMN event_version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE notification_outbox ADD COLUMN recipients_json TEXT NOT NULL DEFAULT '[]';
+
 CREATE TABLE IF NOT EXISTS notification_inbox (
   id TEXT PRIMARY KEY,
   event_id TEXT NOT NULL,
