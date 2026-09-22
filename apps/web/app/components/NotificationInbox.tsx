@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type NotificationScope = "customer" | "technician" | "admin";
 
@@ -66,15 +66,11 @@ export default function NotificationInbox({ scope, title, subtitle }: Notificati
     } catch {}
   }, [scope]);
 
-  const connectRealtime = useCallback(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const socket = new WebSocket(`${protocol}//${window.location.host}/api/notifications/realtime?scope=${scope}`);
-    socket.addEventListener("message", () => {
-      void load(false);
-      void loadUnread();
-    });
-    return socket;
-  }, [load, loadUnread, scope]);
+  const loadRef = useRef(load);
+
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
 
   useEffect(() => {
     void load(false);
@@ -82,9 +78,37 @@ export default function NotificationInbox({ scope, title, subtitle }: Notificati
   }, [load, loadUnread]);
 
   useEffect(() => {
-    const socket = connectRealtime();
-    return () => socket.close();
-  }, [connectRealtime]);
+    let disposed = false;
+    let socket: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
+
+    const connect = () => {
+      if (disposed) return;
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      socket = new WebSocket(`${protocol}//${window.location.host}/api/notifications/realtime?scope=${scope}`);
+      socket.addEventListener("open", () => { attempt = 0; });
+      socket.addEventListener("message", () => {
+        void loadRef.current(false);
+        void loadUnread();
+      });
+      socket.addEventListener("close", () => {
+        if (disposed) return;
+        const delay = Math.min(30000, 1000 * 2 ** attempt);
+        attempt += 1;
+        reconnectTimer = setTimeout(connect, delay + Math.floor(Math.random() * Math.max(1, delay)));
+      });
+      socket.addEventListener("error", () => socket?.close());
+    };
+
+    connect();
+
+    return () => {
+      disposed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      socket?.close();
+    };
+  }, [loadUnread, scope]);
 
   async function read(id: string) {
     setBusy(id);
