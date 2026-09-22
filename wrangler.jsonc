@@ -88,6 +88,12 @@
         "dead_letter_queue": "ecommerce-iphone-notifications-dlq",
         "max_concurrency": 10,
         "retry_delay": 30
+      },
+      {
+        "queue": "ecommerce-iphone-notifications-dlq",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 1
       }
     ]
   },
