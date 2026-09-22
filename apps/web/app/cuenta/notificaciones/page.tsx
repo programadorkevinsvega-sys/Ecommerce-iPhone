@@ -9,9 +9,7 @@ export default function CustomerNotificationsPage() {
     <main className="account-page notification-account-page">
       <header className="account-topbar">
         <Link className="brand-mark" href="/">Ecommerce iPhone</Link>
-        <StoreNavigation activeHref="/cuenta">
-          <Link href="/cuenta">Mi cuenta</Link>
-        </StoreNavigation>
+        <StoreNavigation activeHref="/cuenta" />
       </header>
       <div className="notification-account-wrap">
         <NotificationInbox
