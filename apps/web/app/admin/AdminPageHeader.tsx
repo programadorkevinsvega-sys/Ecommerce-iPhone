@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 type AdminPageHeaderProps = {
   kicker: string;
   title: string;
-  description?: string;
-  actions?: ReactNode;
+  description?: string | undefined;
+  actions?: ReactNode | undefined;
 };
 
 export default function AdminPageHeader({ kicker, title, description, actions }: AdminPageHeaderProps) {
