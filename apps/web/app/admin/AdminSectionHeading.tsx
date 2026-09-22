@@ -1,8 +1,10 @@
+import type { ReactNode } from "react";
+
 type AdminSectionHeadingProps = {
   kicker?: string;
   title: string;
-  meta?: React.ReactNode;
-  actions?: React.ReactNode;
+  meta?: ReactNode;
+  actions?: ReactNode;
 };
 
 export default function AdminSectionHeading({ kicker, title, meta, actions }: AdminSectionHeadingProps) {
