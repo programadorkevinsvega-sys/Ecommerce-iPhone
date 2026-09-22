@@ -2,6 +2,7 @@ import type { NotificationRecipient, NotificationInboxItem } from "../domain/Not
 
 export interface NotificationInboxRepository {
   create(item: NotificationInboxItem): Promise<boolean>;
+  findByEventRecipient(eventId: string, recipient: NotificationRecipient): Promise<NotificationInboxItem | null>;
   list(
     recipient: NotificationRecipient,
     limit: number,
