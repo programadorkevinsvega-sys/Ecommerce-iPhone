@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
+
 type AdminTableProps = {
   headers: readonly string[];
-  children: React.ReactNode;
-  empty?: React.ReactNode;
+  children: ReactNode;
+  empty?: ReactNode;
 };
 
 export default function AdminTable({ headers, children, empty }: AdminTableProps) {
