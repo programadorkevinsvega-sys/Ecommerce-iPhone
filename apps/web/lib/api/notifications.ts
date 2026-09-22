@@ -62,3 +62,26 @@ export async function replayNotificationDeadLetter(id: string, adminId: string) 
   const { env } = getCloudflareContext();
   return notificationDeadLetterApplication(env).replay(id, adminId);
 }
+
+import type { NotificationChannel, NotificationRecipient } from "../../../modules/notifications/domain/NotificationEvent";
+import { notificationPreferenceApplication } from "../notificationsApplication";
+
+export async function getNotificationPreferences(recipient: NotificationRecipient) {
+  const { env } = getCloudflareContext();
+  return notificationPreferenceApplication(env).get(recipient);
+}
+
+export async function setNotificationPreference(
+  recipient: NotificationRecipient,
+  channel: string,
+  eventType: string,
+  enabled: boolean,
+) {
+  const { env } = getCloudflareContext();
+  return notificationPreferenceApplication(env).set(
+    recipient,
+    channel as NotificationChannel,
+    eventType,
+    enabled,
+  );
+}
