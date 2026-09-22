@@ -401,3 +401,11 @@ La Fase 07 continúa amarilla hasta pasar:
 
 EVENTS_QUEUE permanece consumiéndose temporalmente para compatibilidad con mensajes históricos; los eventos nuevos usan exclusivamente ecommerce-iphone-notifications.
 
+
+
+### Resilience and channel state
+
+The current implementation distinguishes provider failures into retryable and terminal classes. Retryable provider failures remain eligible for queue/outbox recovery. Terminal failures mark the outbox terminal state and are routed to the notifications DLQ for durable evidence and audited replay.
+
+Explicit recipients use the channel-delivery ledger and channel-specific preferences. Legacy notification events that only carry an email address continue through the previous delivery ledger for backwards compatibility until all producers emit explicit recipient context.
+
