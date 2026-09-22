@@ -10,6 +10,7 @@ function mapRow(row: Record<string, unknown>): OutboxRecord {
     aggregateId: String(row.aggregate_id),
     payload: JSON.parse(String(row.payload_json)),
     createdAt: String(row.created_at),
+    ...(row.recipients_json && JSON.parse(String(row.recipients_json)).length ? { recipients: JSON.parse(String(row.recipients_json)) } : {}),
     status: String(row.status) as OutboxRecord["status"],
     attempts: Number(row.attempts ?? 0),
     availableAt: String(row.available_at),
@@ -21,13 +22,15 @@ export class D1NotificationOutboxRepository implements NotificationOutboxReposit
 
   async enqueue(event: NotificationEvent): Promise<boolean> {
     const result = await this.db.prepare(
-      "INSERT OR IGNORE INTO notification_outbox (id,event_key,event_type,aggregate_id,payload_json,created_at) VALUES (?,?,?,?,?,?)",
+      "INSERT OR IGNORE INTO notification_outbox (id,event_key,event_type,event_version,aggregate_id,payload_json,recipients_json,created_at) VALUES (?,?,?,?,?,?,?,?)",
     ).bind(
       event.id,
       `${event.eventType}:${event.aggregateId}:${event.id}`,
       event.eventType,
+      event.eventVersion,
       event.aggregateId,
-      JSON.stringify({ eventVersion: event.eventVersion, payload: event.payload, recipients: event.recipients ?? [] }),
+      JSON.stringify(event.payload),
+      JSON.stringify(event.recipients ?? []),
       event.createdAt,
     ).run();
     return Boolean(result.meta.changes);
