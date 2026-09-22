@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { requireNotificationRecipient } from "../../../lib/notificationAuth";
 import { notificationInboxApplication } from "../../../lib/notificationsApplication";
 
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
     const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 50), 1), 100);
     const cursor = url.searchParams.get("cursor") ?? undefined;
     const unreadOnly = url.searchParams.get("unread") === "true";
-    const { env } = await import("@opennextjs/cloudflare").then((module) => module.getCloudflareContext());
+    const { env } = getCloudflareContext();
     return NextResponse.json(
       await notificationInboxApplication(env).list(recipient, limit, cursor, unreadOnly),
       { headers: { "cache-control": "no-store" } },
