@@ -33,7 +33,7 @@
     "format:check": "prettier --check .",
     "verify:admin:production": "node scripts/verify-admin-production.mjs",
     "cloudflare:build": "pnpm install --frozen-lockfile && pnpm build:cloudflare",
-    "cloudflare:deploy": "pnpm exec wrangler deploy --env=\"\"",
+    "cloudflare:deploy": "pnpm db:migrate:production && pnpm exec wrangler deploy --env=\"\"",
     "cloudflare:version": "pnpm exec wrangler --version"
   },
   "devDependencies": {
