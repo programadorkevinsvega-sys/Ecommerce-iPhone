@@ -90,3 +90,34 @@ Never edit an applied migration. Add the next numbered migration.
 ## Rollback
 
 Rollback to a known Worker version, then run `pnpm verify:production` and confirm both health endpoints.
+
+
+## Cloudflare Workers Builds
+
+Configuración canónica del Dashboard para el Worker `ecommerce-iphone`:
+
+| Campo | Valor |
+|---|---|
+| Production branch | `main` |
+| Build command | `pnpm install --frozen-lockfile && pnpm build:cloudflare` |
+| Deploy command | `pnpm exec wrangler deploy --env=""` |
+| Version command | `pnpm exec wrangler --version` |
+| Root directory | vacío (raíz del repositorio) |
+
+El Root directory debe permanecer vacío porque `package.json`, `pnpm-lock.yaml`, `wrangler.jsonc` y `apps/web/` pertenecen al monorepo raíz.
+
+Los equivalentes versionados en `package.json` son:
+
+```bash
+pnpm cloudflare:build
+pnpm cloudflare:deploy
+pnpm cloudflare:version
+```
+
+`cloudflare:build` reproduce exactamente el Build command de Workers Builds.
+`cloudflare:deploy` reproduce exactamente el Deploy command de Workers Builds.
+`cloudflare:version` reproduce exactamente el Version command de Workers Builds.
+
+El Deploy command de Workers Builds se mantiene deliberadamente separado de `pnpm deploy:production`. Este último es el release completo manual/reproducible porque además aplica migraciones D1 y ejecuta `verify:production`.
+
+Los cuatro campos de Workers Builds no se configuran dentro de `wrangler.jsonc`; `wrangler.jsonc` continúa siendo el contrato declarativo del Worker para rutas, D1, R2, Queues, rate limits, cron y variables no secretas.
