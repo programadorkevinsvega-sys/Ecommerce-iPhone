@@ -1,5 +1,5 @@
 import type { NotificationEvent, NotificationInboxItem, NotificationRecipient } from "../domain/NotificationEvent";
-import { notificationContent } from "../domain/NotificationEvent";
+import { notificationContent, safeNotificationPayload } from "../domain/NotificationEvent";
 import { renderEmail } from "./NotificationTemplates";
 import type { NotificationInboxRepository } from "./NotificationInboxRepository";
 import type { NotificationRealtimePort } from "./NotificationRealtimePort";
@@ -235,7 +235,7 @@ export class NotificationService {
         recipientId: recipient.id,
         title: content.title,
         body: content.body,
-        payload: event.payload,
+        payload: safeNotificationPayload(event),
         createdAt: event.createdAt,
       };
 
