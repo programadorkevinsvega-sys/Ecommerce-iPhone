@@ -56,7 +56,7 @@ export default function AuditPage() {
   return (
     <AdminPageShell active="audit" kicker="Seguridad" title="Auditoría" description="Registro real de acciones administrativas y cambios sobre recursos.">
       {error && <p className="admin-error" role="alert">{error}</p>}
-      <AdminPanel>
+      <AdminPanel className="admin-page-table-panel">
         <AdminToolbar>
           <label>Acción<input value={action} onChange={(event) => setAction(event.target.value)} maxLength={120} /></label>
           <label>Recurso<input value={resourceType} onChange={(event) => setResourceType(event.target.value)} maxLength={80} /></label>
