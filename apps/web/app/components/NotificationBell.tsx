@@ -21,7 +21,7 @@ export default function NotificationBell({ scope, href, label = "Notificaciones"
     let disposed = false;
     let socket: WebSocket | null = null;
 
-    const loadUnread = async () => {
+    const loadUnread = async (): Promise<boolean> => {
       try {
         const response = await fetch(`/api/notifications/unread-count?scope=${scope}`, {
           cache: "no-store",
@@ -29,14 +29,17 @@ export default function NotificationBell({ scope, href, label = "Notificaciones"
         });
         if (!response.ok) {
           if (response.status === 401 || response.status === 403) setVisible(false);
-          return;
+          return false;
         }
         const data = await response.json() as { unread?: number };
         if (!disposed) {
           setUnread(Math.max(0, Number(data.unread ?? 0)));
           setVisible(true);
         }
-      } catch {}
+        return true;
+      } catch {
+        return false;
+      }
     };
 
     const connect = () => {
@@ -65,8 +68,9 @@ export default function NotificationBell({ scope, href, label = "Notificaciones"
       socket.addEventListener("error", () => socket?.close());
     };
 
-    void loadUnread();
-    connect();
+    void loadUnread().then((authenticated) => {
+      if (authenticated) connect();
+    });
 
     return () => {
       disposed = true;
