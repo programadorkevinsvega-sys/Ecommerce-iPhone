@@ -1,7 +1,7 @@
 type AdminEmptyStateProps = {
   title: string;
-  description?: string;
-  icon?: string;
+  description?: string | undefined;
+  icon?: string | undefined;
 };
 
 export default function AdminEmptyState({ title, description, icon }: AdminEmptyStateProps) {
