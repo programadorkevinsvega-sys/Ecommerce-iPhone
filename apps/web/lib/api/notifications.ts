@@ -1,5 +1,5 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import type { NotificationChannel, NotificationRecipient } from "../../../modules/notifications/domain/NotificationEvent";
+import type { NotificationChannel, NotificationRecipient } from "../../../../modules/notifications/domain/NotificationEvent";
 import { notificationDeadLetterApplication, notificationInboxApplication, notificationPreferenceApplication } from "../notificationsApplication";
 
 export async function listNotifications(
