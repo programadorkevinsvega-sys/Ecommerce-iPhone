@@ -38,6 +38,9 @@ export class NotificationService {
   async processByOutboxId(outboxId: string): Promise<void> {
     const record = await this.outbox.findById(outboxId);
     if (!record) throw new Error("NOTIFICATION_OUTBOX_NOT_FOUND");
+    if (record.terminalAt) {
+      throw new NotificationTerminalError("NOTIFICATION_ALREADY_TERMINAL");
+    }
     if (!(await this.outbox.claim(outboxId, 900))) return;
     await this.process(record);
   }
