@@ -62,6 +62,13 @@ export class D1NotificationInboxRepository implements NotificationInboxRepositor
     return Boolean(result.meta.changes);
   }
 
+  async findByEventRecipient(eventId: string, recipient: NotificationRecipient): Promise<NotificationInboxItem | null> {
+    const row = await this.db.prepare(
+      "SELECT * FROM notification_inbox WHERE event_id=? AND recipient_type=? AND recipient_id=? LIMIT 1",
+    ).bind(eventId, recipient.type, recipient.id).first<Record<string, unknown>>();
+    return row ? mapRow(row) : null;
+  }
+
   async list(
     recipient: NotificationRecipient,
     limit: number,
