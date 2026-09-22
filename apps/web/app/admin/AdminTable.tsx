@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 type AdminTableProps = {
   headers: readonly string[];
   children: ReactNode;
-  empty?: ReactNode;
+  empty?: ReactNode | undefined;
 };
 
 export default function AdminTable({ headers, children, empty }: AdminTableProps) {
