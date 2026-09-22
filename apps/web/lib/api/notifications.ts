@@ -35,6 +35,11 @@ export async function upgradeNotificationRealtime(
   recipient: NotificationRecipient,
 ): Promise<Response> {
   const { env } = getCloudflareContext();
+  const origin = request.headers.get("origin");
+  if (!origin || origin !== env.ALLOWED_ORIGIN) {
+    return new Response("Origin not allowed.", { status: 403 });
+  }
+
   const id = env.NOTIFICATION_HUB.idFromName(
     `notification:${recipient.type}:${recipient.id}`,
   );
