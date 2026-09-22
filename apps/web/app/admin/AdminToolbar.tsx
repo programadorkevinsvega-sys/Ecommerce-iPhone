@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+
 type AdminToolbarProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export default function AdminToolbar({ children }: AdminToolbarProps) {
