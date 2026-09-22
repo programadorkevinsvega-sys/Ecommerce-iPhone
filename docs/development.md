@@ -83,7 +83,7 @@ Configuración canónica del Dashboard para el Worker `ecommerce-iphone`:
 |---|---|
 | Production branch | `main` |
 | Build command | `pnpm install --frozen-lockfile && pnpm build:cloudflare` |
-| Deploy command | `pnpm exec wrangler deploy --env=""` |
+| Deploy command | `pnpm cloudflare:deploy` |
 | Version command | `pnpm exec wrangler --version` |
 | Root directory | vacío (raíz del repositorio) |
 
@@ -98,9 +98,9 @@ pnpm cloudflare:version
 ```
 
 `cloudflare:build` reproduce exactamente el Build command de Workers Builds.
-`cloudflare:deploy` reproduce exactamente el Deploy command de Workers Builds.
+`cloudflare:deploy` reproduce el Deploy command de Workers Builds y aplica las migraciones D1 antes de publicar.
 `cloudflare:version` reproduce exactamente el Version command de Workers Builds.
 
-El Deploy command de Workers Builds se mantiene deliberadamente separado de `pnpm deploy:production`. Este último es el release completo manual/reproducible porque además aplica migraciones D1 y ejecuta `verify:production`.
+El Deploy command de Workers Builds ejecuta `pnpm cloudflare:deploy`, que aplica las migraciones D1 de producción y después publica el Worker. `pnpm deploy:production` sigue siendo el release completo manual/reproducible porque además construye y ejecuta `verify:production`.
 
 Los cuatro campos de Workers Builds no se configuran dentro de `wrangler.jsonc`; `wrangler.jsonc` continúa siendo el contrato declarativo del Worker para rutas, D1, R2, Queues, rate limits, cron y variables no secretas.
