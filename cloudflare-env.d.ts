@@ -6,6 +6,7 @@ declare global {
     MEDIA_BUCKET: R2Bucket;
     EVENTS_QUEUE: Queue;
     NOTIFICATIONS_QUEUE: Queue;
+    NOTIFICATIONS_DLQ_QUEUE: Queue;
     NOTIFICATION_HUB: DurableObjectNamespace;
     SENSITIVE_RATE_LIMITER: { limit(input: { key: string }): Promise<{ success: boolean }> };
     APP_ENV: string;
