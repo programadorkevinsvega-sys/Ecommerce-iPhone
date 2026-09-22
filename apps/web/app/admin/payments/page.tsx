@@ -119,7 +119,7 @@ export default function PaymentsPage() {
     >
       {error && <p className="admin-error" role="alert">{error}</p>}
 
-      <AdminPanel>
+      <AdminPanel className="admin-page-table-panel">
         <AdminToolbar>
           <label>Estado<select value={status} onChange={(event) => setStatus(event.target.value)}>{STATUSES.map((value) => <option key={value} value={value}>{value || "Todos"}</option>)}</select></label>
           <label>Proveedor<select value={provider} onChange={(event) => setProvider(event.target.value)}>{PROVIDERS.map((value) => <option key={value} value={value}>{value || "Todos"}</option>)}</select></label>
