@@ -31,7 +31,10 @@
     "test:e2e": "pnpm --filter @ecommerce/web test:e2e",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify:admin:production": "node scripts/verify-admin-production.mjs"
+    "verify:admin:production": "node scripts/verify-admin-production.mjs",
+    "cloudflare:build": "pnpm install --frozen-lockfile && pnpm build:cloudflare",
+    "cloudflare:deploy": "pnpm exec wrangler deploy --env=\"\"",
+    "cloudflare:version": "pnpm exec wrangler --version"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260908.1",
