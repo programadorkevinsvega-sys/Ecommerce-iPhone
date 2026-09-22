@@ -65,9 +65,8 @@ export default function TechnicianHeader({
         })}
       </nav>
 
-      <NotificationBell scope="technician" href="/technician/notifications" />
-
       <div className="technician-nav-user">
+        <NotificationBell scope="technician" href="/technician/notifications" />
         <div className="technician-user-copy">
           <strong>{firstName || "Técnico"}</strong>
           <span>{email || "Sesión técnica activa"}</span>
