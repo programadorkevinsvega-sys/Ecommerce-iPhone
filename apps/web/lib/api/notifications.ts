@@ -45,3 +45,16 @@ export async function upgradeNotificationRealtime(
     }),
   );
 }
+
+import type { NotificationDeadLetterService } from "../../../modules/notifications/application/NotificationDeadLetterService";
+import { notificationDeadLetterApplication } from "../notificationsApplication";
+
+export async function listNotificationDeadLetters(limit: number) {
+  const { env } = getCloudflareContext();
+  return notificationDeadLetterApplication(env).list(limit);
+}
+
+export async function replayNotificationDeadLetter(id: string, adminId: string) {
+  const { env } = getCloudflareContext();
+  return notificationDeadLetterApplication(env).replay(id, adminId);
+}
