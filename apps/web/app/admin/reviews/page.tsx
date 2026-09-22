@@ -78,7 +78,7 @@ export default function ReviewsPage() {
   return (
     <AdminPageShell active="reviews" kicker="Contenido" title="Reseñas" description="Modera reseñas reales de clientes y registra la respuesta administrativa.">
       {error && <p className="admin-error" role="alert">{error}</p>}
-      <AdminPanel>
+      <AdminPanel className="admin-page-table-panel">
         <AdminToolbar>
           <label>Estado<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos</option><option>PENDING</option><option>APPROVED</option><option>REJECTED</option></select></label>
           <label>Producto<input value={productId} onChange={(event) => setProductId(event.target.value)} placeholder="ID del producto" /></label>
