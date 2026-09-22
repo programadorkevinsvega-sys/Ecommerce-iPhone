@@ -167,3 +167,19 @@ The following admin APIs remain auxiliary and intentionally do not create duplic
 - `/api/admin/users/:id/permissions`: permission management embedded in the administrator editor.
 - `/api/admin/repair-orders/:id/*`: repair-order detail, assignment, evidence and operation endpoints consumed by the repair-order workflow.
 - `/api/admin/repair-orders/technicians`: technician selector data for repair-order assignment.
+
+
+## Shared backoffice UI components
+
+The administrative pages use a shared visual/component layer under `apps/web/app/admin/`:
+
+- `AdminPageShell`: shell + sidebar + page header.
+- `AdminPageHeader`: canonical administrative heading.
+- `AdminPanel`: shared panel surface.
+- `AdminSectionHeading`: panel heading and metadata/actions.
+- `AdminToolbar`: shared filters/actions toolbar.
+- `AdminTable`: shared table structure.
+- `AdminLoadingState`: shared loading state.
+- `AdminEmptyState`: shared empty state.
+
+New operational surfaces and the existing technician/repair-parts surfaces reuse these primitives instead of introducing independent page styling.
