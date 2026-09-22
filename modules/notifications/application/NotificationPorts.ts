@@ -22,6 +22,7 @@ export interface NotificationOutboxRepository {
   markQueued(id: string): Promise<void>;
   markProcessed(id: string): Promise<void>;
   markFailed(id: string, error: string, retryAt: string): Promise<void>;
+  markTerminal(id: string, error: string): Promise<void>;
   hasDelivery(outboxId: string, channel: "EMAIL", recipient: string, template: string): Promise<boolean>;
   claimDelivery(input: NotificationDeliveryClaim): Promise<boolean>;
   recordDelivery(input: { outboxId: string; channel: "EMAIL"; recipient: string; template: string; provider: string; providerMessageId?: string; status: "SENT" | "FAILED"; attempts: number; errorMessage?: string }): Promise<void>;
