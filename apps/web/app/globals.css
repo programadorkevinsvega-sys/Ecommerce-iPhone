@@ -313,3 +313,145 @@
 .technician-auth-shell{min-height:100vh;display:grid;grid-template-columns:1.1fr .9fr;background:#171715}.technician-auth-brand{display:flex;flex-direction:column;justify-content:space-between;gap:50px;padding:40px max(32px,calc((100vw - 1180px)/2));padding-right:60px;color:#fff}.technician-auth-brand .eyebrow{color:#aaa9a2}.technician-brand-light{color:#fff}.technician-brand-light small{color:#aaa9a2}.technician-auth-brand h1{max-width:650px;margin:0;font-size:clamp(3.4rem,7vw,7.3rem);line-height:.9;letter-spacing:-.07em}.technician-auth-brand p:not(.eyebrow){max-width:600px;color:#c6c5be;line-height:1.7}.technician-auth-points{display:grid;gap:10px;color:#aaa9a2;font-size:.73rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase}.technician-auth-panel{display:grid;place-items:center;padding:32px;background:#f6f6f3}.technician-auth-card{width:min(460px,100%);padding:36px;border:1px solid #deddd7;border-radius:26px;background:#fff;box-shadow:0 24px 80px rgb(0 0 0 / 12%)}.technician-auth-card h2{margin:0;font-size:2.5rem;letter-spacing:-.055em}.technician-auth-card>p:not(.eyebrow){color:#77766f;line-height:1.6}.technician-auth-card .technician-form{margin-top:25px}.technician-login-note{padding-top:18px;border-top:1px solid #ecebe5;font-size:.71rem!important}
 @media(max-width:900px){.technician-nav{grid-template-columns:1fr auto}.technician-nav-links{grid-column:1/-1;grid-row:2;justify-content:flex-start;overflow-x:auto;padding-bottom:12px}.technician-dashboard-grid,.technician-profile-grid{grid-template-columns:1fr}.technician-orders-layout{grid-template-columns:1fr}.technician-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.technician-page-head{align-items:flex-start;flex-direction:column}.technician-auth-shell{grid-template-columns:1fr}.technician-auth-brand{min-height:430px;padding:32px}.technician-auth-panel{padding:28px 18px}}
 @media(max-width:600px){.technician-nav{width:min(100% - 24px,1180px);gap:14px;padding:14px 0}.technician-nav-user{grid-column:1/-1;justify-content:space-between}.technician-user-copy{text-align:left}.technician-page-head,.technician-stats,.technician-dashboard-grid,.technician-profile-grid,.technician-orders-layout{width:min(100% - 24px,1180px)}.technician-page-head{padding:48px 0 24px}.technician-page-head h1{font-size:3.2rem}.technician-stats{grid-template-columns:1fr 1fr}.technician-card{padding:21px;border-radius:20px}.technician-capability-list{grid-template-columns:1fr}.technician-order-row{grid-template-columns:1fr}.technician-form-grid{grid-template-columns:1fr}.technician-evidence{display:grid;align-items:start}.technician-evidence-controls{flex-direction:column;align-items:stretch}.technician-evidence-controls select,.technician-evidence-controls .button{width:100%}.technician-auth-brand{min-height:380px;padding:24px}.technician-auth-brand h1{font-size:3.5rem}.technician-auth-card{padding:26px;border-radius:20px}}
+
+
+/* Admin shared controls used by dedicated operational surfaces */
+.admin-toolbar{
+  flex-wrap:wrap;
+}
+.admin-toolbar label{
+  display:grid;
+  gap:6px;
+  color:#43515b;
+  font-size:11px;
+  font-weight:800;
+}
+.admin-toolbar label input,
+.admin-toolbar label select{
+  min-width:150px;
+  box-sizing:border-box;
+  padding:9px 10px;
+  border:1px solid #d7dfe4;
+  border-radius:6px;
+  outline:0;
+  color:#17202a;
+  background:#fff;
+  font:inherit;
+  font-size:13px;
+  font-weight:400;
+}
+.admin-toolbar label input:focus,
+.admin-toolbar label select:focus{
+  border-color:#829b2e;
+  box-shadow:0 0 0 3px #eef3dc;
+}
+.admin-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+}
+.admin-summary-card{
+  min-height:74px;
+  padding:14px;
+  border:1px solid #e1e6eb;
+  border-radius:9px;
+  background:#fff;
+}
+.admin-summary-card span{
+  display:block;
+  color:#788691;
+  font-size:11px;
+  font-weight:700;
+}
+.admin-summary-card strong{
+  display:block;
+  margin-top:8px;
+  color:#101820;
+  font-size:20px;
+}
+.admin-definition-list{
+  display:grid;
+  gap:0;
+  margin:0;
+  padding:0 22px;
+}
+.admin-definition-list>div{
+  display:grid;
+  grid-template-columns:minmax(120px,.45fr) minmax(0,1.55fr);
+  gap:18px;
+  padding:13px 0;
+  border-bottom:1px solid #edf0f2;
+}
+.admin-definition-list>div:last-child{
+  border-bottom:0;
+}
+.admin-definition-list dt{
+  color:#82909b;
+  font-size:11px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.admin-definition-list dd{
+  margin:0;
+  color:#37434c;
+  font-size:13px;
+  overflow-wrap:anywhere;
+}
+.admin-json,
+.admin-json-inline{
+  margin:0;
+  padding:12px 14px;
+  border:1px solid #e1e6eb;
+  border-radius:7px;
+  background:#f8fafb;
+  color:#34414a;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+  font-size:11px;
+  line-height:1.5;
+  white-space:pre-wrap;
+  overflow:auto;
+}
+.admin-json{
+  margin:14px 22px 22px;
+  max-height:360px;
+}
+.admin-json-inline{
+  max-width:360px;
+  max-height:96px;
+}
+.admin-page-panel>h2{
+  margin:0;
+  padding:20px 22px 0;
+  color:#101820;
+  font-size:18px;
+}
+.admin-page-panel>.admin-section-heading+ .admin-json{
+  margin-top:0;
+}
+@media(max-width:760px){
+  .admin-toolbar{
+    align-items:stretch;
+  }
+  .admin-toolbar label{
+    width:100%;
+  }
+  .admin-toolbar label input,
+  .admin-toolbar label select{
+    width:100%;
+  }
+  .admin-summary-grid{
+    grid-template-columns:1fr;
+  }
+  .admin-definition-list{
+    padding:0 16px;
+  }
+  .admin-definition-list>div{
+    grid-template-columns:1fr;
+    gap:5px;
+  }
+  .admin-json-inline{
+    max-width:100%;
+  }
+}
+
