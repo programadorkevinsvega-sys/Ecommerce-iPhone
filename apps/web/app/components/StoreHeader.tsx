@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import NotificationBell from "./NotificationBell";
 
 type StoreNavigationProps = {
   activeHref?: string | undefined;
@@ -39,6 +40,7 @@ export function StoreNavigation({ activeHref, children }: StoreNavigationProps) 
         </Link>
       ))}
       {children}
+      <NotificationBell scope="customer" href="/cuenta/notificaciones" />
     </nav>
   );
 }
