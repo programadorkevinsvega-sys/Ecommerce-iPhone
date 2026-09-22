@@ -126,8 +126,10 @@ export class NotificationService {
         createdAt: event.createdAt,
       };
 
-      if (await this.inbox.create(item)) {
-        await this.realtime.publish(item);
+      const created = await this.inbox.create(item);
+      const existing = created ? item : await this.inbox.findByEventRecipient(event.id, recipient);
+      if (existing) {
+        await this.realtime.publish(existing);
       }
     }
   }
