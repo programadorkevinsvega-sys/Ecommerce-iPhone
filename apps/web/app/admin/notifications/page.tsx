@@ -1,15 +1,83 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import AdminSidebar from "../AdminSidebar";
+import AdminPageShell from "../AdminPageShell";
+import AdminPanel from "../AdminPanel";
+import AdminSectionHeading from "../AdminSectionHeading";
+import AdminTable from "../AdminTable";
+import AdminEmptyState from "../AdminEmptyState";
 import AdminLoadingState from "../AdminLoadingState";
 
-type Delivery={id:string;outbox_id:string;channel:string;recipient:string;template:string;provider:string;provider_message_id?:string;status:string;attempts:number;error_message?:string;created_at:string;event_type:string;aggregate_id:string};
-type Snapshot={deliveries:Delivery[];queue:{status:string;count:number}[]};
+type Delivery = { id: string; outbox_id: string; channel: string; recipient: string; template: string; provider: string; provider_message_id?: string; status: string; attempts: number; error_message?: string; created_at: string; event_type: string; aggregate_id: string };
+type Snapshot = { deliveries: Delivery[]; queue: { status: string; count: number }[] };
 
-export default function NotificationsPage(){
- const [data,setData]=useState<Snapshot>({deliveries:[],queue:[]}),[loading,setLoading]=useState(true),[error,setError]=useState("");
- const load=useCallback(async()=>{setLoading(true);setError("");try{const r=await fetch("/api/admin/notifications?limit=100",{cache:"no-store",credentials:"same-origin"});const b=await r.json() as Snapshot & {error?:string};if(!r.ok)throw new Error(b.error??"No se pudieron cargar las notificaciones.");setData({deliveries:b.deliveries??[],queue:b.queue??[]});}catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar las notificaciones.");}finally{setLoading(false);}},[]);
- useEffect(()=>{void load();},[load]);
- return <main className="admin-shell"><AdminSidebar active="notifications"/><section className="admin-content"><header className="admin-topbar"><div><p className="admin-kicker">Operaciones</p><h1>Notificaciones</h1><p>Estado real del outbox de notificaciones y de las entregas procesadas por el proveedor.</p></div><button className="admin-button" onClick={()=>void load()}>Actualizar</button></header>{error&&<p className="admin-error" role="alert">{error}</p>}{loading?<AdminLoadingState label="Cargando notificaciones…"/>:<><section className="admin-workspace admin-page-grid"><div className="admin-page-panel"><div className="admin-section-heading"><div><p className="admin-kicker">Cola</p><h2>Estados del outbox</h2></div></div><div className="admin-summary-grid">{data.queue.map(item=><article className="admin-summary-card" key={item.status}><span>{item.status}</span><strong>{item.count}</strong></article>)}</div></div><div className="admin-page-panel"><div className="admin-section-heading"><div><p className="admin-kicker">Resumen</p><h2>Entregas mostradas</h2></div><strong>{data.deliveries.length}</strong></div></div></section><section className="admin-workspace admin-page-panel"><div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Fecha</th><th>Evento</th><th>Canal</th><th>Destinatario</th><th>Proveedor</th><th>Estado</th><th>Intentos</th><th>Error</th></tr></thead><tbody>{data.deliveries.map(item=><tr key={item.id}><td>{new Date(item.created_at).toLocaleString("es-CO")}</td><td>{item.event_type}<span className="table-subtext">{item.aggregate_id}</span></td><td>{item.channel}</td><td>{item.recipient}</td><td>{item.provider}</td><td>{item.status}</td><td>{item.attempts}</td><td>{item.error_message??"—"}</td></tr>)}</tbody></table>{!data.deliveries.length&&<div className="admin-empty"><h3>No hay entregas registradas</h3></div>}</div></section></>}</section></main>;
+export default function NotificationsPage() {
+  const [data, setData] = useState<Snapshot>({ deliveries: [], queue: [] });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/notifications?limit=100", { cache: "no-store", credentials: "same-origin" });
+      const body = (await response.json()) as Snapshot & { error?: string };
+      if (!response.ok) throw new Error(body.error ?? "No se pudieron cargar las notificaciones.");
+      setData({ deliveries: body.deliveries ?? [], queue: body.queue ?? [] });
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudieron cargar las notificaciones.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <AdminPageShell
+      active="notifications"
+      kicker="Operaciones"
+      title="Notificaciones"
+      description="Estado real del outbox de notificaciones y de las entregas procesadas por el proveedor."
+      actions={<button className="admin-button" type="button" onClick={() => void load()}>Actualizar</button>}
+    >
+      {error && <p className="admin-error" role="alert">{error}</p>}
+      {loading ? (
+        <AdminLoadingState label="Cargando notificaciones…" />
+      ) : (
+        <>
+          <section className="admin-workspace admin-summary-grid">
+            {data.queue.map((item) => (
+              <article className="admin-summary-card" key={item.status}>
+                <span>{item.status}</span>
+                <strong>{item.count}</strong>
+              </article>
+            ))}
+          </section>
+          <AdminPanel>
+            <AdminSectionHeading kicker="Entregas" title="Historial de entregas" meta={<span className="muted">{data.deliveries.length} mostradas</span>} />
+            <AdminTable
+              headers={["Fecha", "Evento", "Canal", "Destinatario", "Proveedor", "Estado", "Intentos", "Error"]}
+              empty={!data.deliveries.length ? <AdminEmptyState title="No hay entregas registradas" /> : undefined}
+            >
+              {data.deliveries.map((item) => (
+                <tr key={item.id}>
+                  <td>{new Date(item.created_at).toLocaleString("es-CO")}</td>
+                  <td>{item.event_type}<span className="table-subtext">{item.aggregate_id}</span></td>
+                  <td>{item.channel}</td>
+                  <td>{item.recipient}</td>
+                  <td>{item.provider}</td>
+                  <td>{item.status}</td>
+                  <td>{item.attempts}</td>
+                  <td>{item.error_message ?? "—"}</td>
+                </tr>
+              ))}
+            </AdminTable>
+          </AdminPanel>
+        </>
+      )}
+    </AdminPageShell>
+  );
 }
