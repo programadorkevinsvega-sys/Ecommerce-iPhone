@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { currentAdmin } from "./adminAuth";
+import { currentAdmin, PERMISSIONS } from "./adminAuth";
 import { currentCustomerId } from "./customerSession";
 import { currentTechnician } from "./technicianAuth";
 import type { NotificationRecipient, NotificationRecipientType } from "../../modules/notifications/domain/NotificationEvent";
@@ -28,6 +28,7 @@ export async function requireNotificationRecipient(scopeValue: string | null): P
 
   const admin = await currentAdmin();
   if (!admin) throw new Error("UNAUTHORIZED");
+  if (!admin.permissions.includes(PERMISSIONS.dashboardRead)) throw new Error("FORBIDDEN");
   return { type: "admin", id: admin.id };
 }
 
