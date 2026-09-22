@@ -4,6 +4,7 @@ export type OutboxRecord = NotificationEvent & Readonly<{
   status: "PENDING" | "QUEUED" | "PROCESSED" | "FAILED";
   attempts: number;
   availableAt: string;
+  terminalAt?: string | undefined;
 }>;
 
 export type NotificationDeliveryClaim = Readonly<{
