@@ -10,6 +10,7 @@ import { D1NotificationAuditPort } from "../../modules/notifications/infrastruct
 import { NotificationDeadLetterService } from "../../modules/notifications/application/NotificationDeadLetterService";
 import { ResendEmailProvider } from "../../modules/notifications/infrastructure/ResendEmailProvider";
 import { NotificationInboxService } from "../../modules/notifications/application/NotificationInboxService";
+import { NotificationPreferenceService } from "../../modules/notifications/application/NotificationPreferenceService";
 import { NotificationService } from "../../modules/notifications/application/NotificationService";
 
 export function notificationProcessingApplication(env: CloudflareEnv): NotificationService {
@@ -37,4 +38,8 @@ export function notificationDeadLetterApplication(env: CloudflareEnv): Notificat
     new CloudflareNotificationRawQueuePublisher(env.NOTIFICATIONS_QUEUE),
     new D1NotificationAuditPort(env.DB),
   );
+}
+
+export function notificationPreferenceApplication(env: CloudflareEnv): NotificationPreferenceService {
+  return new NotificationPreferenceService(new D1NotificationPreferenceRepository(env.DB));
 }
