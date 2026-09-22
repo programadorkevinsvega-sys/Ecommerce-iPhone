@@ -46,7 +46,6 @@ export async function upgradeNotificationRealtime(
   );
 }
 
-import type { NotificationDeadLetterService } from "../../../modules/notifications/application/NotificationDeadLetterService";
 import { notificationDeadLetterApplication } from "../notificationsApplication";
 
 export async function listNotificationDeadLetters(limit: number) {
