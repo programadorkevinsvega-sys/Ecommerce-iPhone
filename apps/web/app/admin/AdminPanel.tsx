@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+
 type AdminPanelProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 };
 
