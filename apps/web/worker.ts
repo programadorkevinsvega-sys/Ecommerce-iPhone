@@ -7,14 +7,14 @@ import { DurableObject } from "cloudflare:workers";
 import { notificationDeadLetterApplication, notificationProcessingApplication, notificationQueuePublisher } from "./lib/notificationsApplication";
 import { D1ReservationRepository } from "../../modules/orders/infrastructure/D1ReservationRepository";
 import { NotificationTerminalError } from "../../modules/notifications/application/NotificationProcessingError";
-import type { NotificationEvent } from "../../modules/notifications/domain/NotificationEvent";
+import type { NotificationEvent, NotificationInboxItem } from "../../modules/notifications/domain/NotificationEvent";
 
 export class NotificationHub extends DurableObject {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 
     if (request.method === "POST" && url.pathname === "/publish") {
-      const item = await request.json() as import("../../modules/notifications/domain/NotificationEvent").NotificationInboxItem;
+      const item = await request.json() as NotificationInboxItem;
       const message = JSON.stringify({
         type: "notification",
         notificationId: item.id,
