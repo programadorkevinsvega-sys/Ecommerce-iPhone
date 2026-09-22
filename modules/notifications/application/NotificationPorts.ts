@@ -16,7 +16,9 @@ export type NotificationDeliveryClaim = Readonly<{
 
 export interface NotificationOutboxRepository {
   enqueue(event: NotificationEvent): Promise<boolean>;
+  findById(id: string): Promise<OutboxRecord | null>;
   pending(limit: number): Promise<OutboxRecord[]>;
+  claim(id: string, leaseSeconds: number): Promise<boolean>;
   markQueued(id: string): Promise<void>;
   markProcessed(id: string): Promise<void>;
   markFailed(id: string, error: string, retryAt: string): Promise<void>;
