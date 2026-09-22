@@ -82,13 +82,20 @@ export default function NotificationInbox({ scope, title, subtitle }: Notificati
     let disposed = false;
     let socket: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
     let attempt = 0;
 
     const connect = () => {
       if (disposed) return;
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       socket = new WebSocket(`${protocol}//${window.location.host}/api/notifications/realtime?scope=${scope}`);
-      socket.addEventListener("open", () => { attempt = 0; });
+      socket.addEventListener("open", () => {
+        attempt = 0;
+        if (heartbeat) clearInterval(heartbeat);
+        heartbeat = setInterval(() => {
+          if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "ping" }));
+        }, 25000);
+      });
       socket.addEventListener("message", (event) => {
         try {
           const message = JSON.parse(event.data) as {
@@ -133,6 +140,7 @@ export default function NotificationInbox({ scope, title, subtitle }: Notificati
     return () => {
       disposed = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (heartbeat) clearInterval(heartbeat);
       socket?.close();
     };
   }, [loadUnread, scope]);
