@@ -47,11 +47,11 @@ export default function AuditPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [action, adminUserId, from, resourceType, to]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   return (
     <AdminPageShell active="audit" kicker="Seguridad" title="Auditoría" description="Registro real de acciones administrativas y cambios sobre recursos.">
