@@ -1,16 +1,113 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import AdminSidebar from "../AdminSidebar";
+import AdminPageShell from "../AdminPageShell";
+import AdminPanel from "../AdminPanel";
+import AdminSectionHeading from "../AdminSectionHeading";
+import AdminToolbar from "../AdminToolbar";
+import AdminTable from "../AdminTable";
+import AdminEmptyState from "../AdminEmptyState";
 import AdminLoadingState from "../AdminLoadingState";
 
-type Adjustment={id:string;productId:string;adminUserId:string;delta:number;reason:string;idempotencyKey:string;createdAt:string};
-const empty={productId:"",delta:"",reason:""};
+type Adjustment = { id: string; productId: string; adminUserId: string; delta: number; reason: string; idempotencyKey: string; createdAt: string };
+const empty = { productId: "", delta: "", reason: "" };
 
-export default function InventoryPage(){
- const [items,setItems]=useState<Adjustment[]>([]),[form,setForm]=useState(empty),[productId,setProductId]=useState(""),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState("");
- const load=useCallback(async()=>{setLoading(true);setError("");try{const p=new URLSearchParams({limit:"50",offset:"0"});if(productId.trim())p.set("productId",productId.trim());const r=await fetch(`/api/admin/inventory?${p}`,{cache:"no-store",credentials:"same-origin"});const b=await r.json() as {items?:Adjustment[];error?:string};if(!r.ok)throw new Error(b.error??"No se pudo cargar el inventario.");setItems(b.items??[]);}catch(e){setError(e instanceof Error?e.message:"No se pudo cargar el inventario.");}finally{setLoading(false);}},[productId]);
- useEffect(()=>{void load();},[load]);
- async function save(e:FormEvent){e.preventDefault();setSaving(true);setError("");setMessage("");try{const key=crypto.randomUUID();const r=await fetch("/api/admin/inventory",{method:"POST",headers:{"content-type":"application/json","Idempotency-Key":key},credentials:"same-origin",body:JSON.stringify({productId:form.productId,delta:Number(form.delta),reason:form.reason,idempotencyKey:key})});const b=await r.json() as {error?:string};if(!r.ok)throw new Error(b.error??"No se pudo ajustar el stock.");setMessage("Ajuste de inventario aplicado.");setForm(empty);await load();}catch(e){setError(e instanceof Error?e.message:"No se pudo ajustar el inventario.");}finally{setSaving(false);}}
- return <main className="admin-shell"><AdminSidebar active="inventory"/><section className="admin-content"><header className="admin-topbar"><div><p className="admin-kicker">Inventario</p><h1>Inventario</h1><p>Consulta ajustes registrados y aplica movimientos de stock de forma idempotente.</p></div></header>{error&&<p className="admin-error" role="alert">{error}</p>}{message&&<p className="admin-notice" role="status">{message}</p>}<section className="admin-workspace admin-page-grid"><div className="admin-page-panel"><div className="admin-section-heading"><div><p className="admin-kicker">Movimiento</p><h2>Ajustar stock</h2></div></div><form className="admin-form" onSubmit={save}><label>Producto ID<input required value={form.productId} onChange={e=>setForm(v=>({...v,productId:e.target.value}))}/></label><label>Diferencia<input required type="number" step="1" value={form.delta} onChange={e=>setForm(v=>({...v,delta:e.target.value}))}/></label><label>Motivo<textarea required maxLength={500} rows={5} value={form.reason} onChange={e=>setForm(v=>({...v,reason:e.target.value}))}/></label><button className="admin-button primary" disabled={saving}>{saving?"Aplicando…":"Aplicar ajuste"}</button></form></div><div className="admin-page-panel admin-page-table-panel"><div className="admin-toolbar"><label>Filtrar producto<input value={productId} onChange={e=>setProductId(e.target.value)}/></label><button className="admin-button" type="button" onClick={()=>void load()}>Actualizar</button></div>{loading?<AdminLoadingState label="Cargando movimientos…"/>:<div className="admin-table-wrap"><table className="admin-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Delta</th><th>Admin</th><th>Motivo</th><th>Idempotencia</th></tr></thead><tbody>{items.map(item=><tr key={item.id}><td>{new Date(item.createdAt).toLocaleString("es-CO")}</td><td>{item.productId}</td><td className={item.delta<0?"stock-low":""}>{item.delta>0?"+":""}{item.delta}</td><td>{item.adminUserId}</td><td>{item.reason}</td><td>{item.idempotencyKey}</td></tr>)}</tbody></table>{!items.length&&<div className="admin-empty"><h3>No hay movimientos</h3></div>}</div>}</div></section></section></main>;
+export default function InventoryPage() {
+  const [items, setItems] = useState<Adjustment[]>([]);
+  const [form, setForm] = useState(empty);
+  const [productId, setProductId] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const params = new URLSearchParams({ limit: "50", offset: "0" });
+      if (productId.trim()) params.set("productId", productId.trim());
+      const response = await fetch("/api/admin/inventory?" + params, { cache: "no-store", credentials: "same-origin" });
+      const data = (await response.json()) as { items?: Adjustment[]; error?: string };
+      if (!response.ok) throw new Error(data.error ?? "No se pudo cargar el inventario.");
+      setItems(data.items ?? []);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudo cargar el inventario.");
+    } finally {
+      setLoading(false);
+    }
+  }, [productId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const key = crypto.randomUUID();
+      const response = await fetch("/api/admin/inventory", {
+        method: "POST",
+        headers: { "content-type": "application/json", "Idempotency-Key": key },
+        credentials: "same-origin",
+        body: JSON.stringify({ productId: form.productId, delta: Number(form.delta), reason: form.reason, idempotencyKey: key }),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error ?? "No se pudo ajustar el stock.");
+      setMessage("Ajuste de inventario aplicado.");
+      setForm(empty);
+      await load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudo ajustar el inventario.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <AdminPageShell active="inventory" kicker="Inventario" title="Inventario" description="Consulta ajustes registrados y aplica movimientos de stock de forma idempotente.">
+      {error && <p className="admin-error" role="alert">{error}</p>}
+      {message && <p className="admin-notice" role="status">{message}</p>}
+      <section className="admin-workspace admin-page-grid">
+        <AdminPanel>
+          <AdminSectionHeading kicker="Movimiento" title="Ajustar stock" />
+          <form className="admin-form" onSubmit={save}>
+            <label>Producto ID<input required value={form.productId} onChange={(event) => setForm((value) => ({ ...value, productId: event.target.value }))} /></label>
+            <label>Diferencia<input required type="number" step="1" value={form.delta} onChange={(event) => setForm((value) => ({ ...value, delta: event.target.value }))} /></label>
+            <label>Motivo<textarea required maxLength={500} rows={5} value={form.reason} onChange={(event) => setForm((value) => ({ ...value, reason: event.target.value }))} /></label>
+            <button className="admin-button primary" disabled={saving}>{saving ? "Aplicando…" : "Aplicar ajuste"}</button>
+          </form>
+        </AdminPanel>
+
+        <AdminPanel className="admin-page-table-panel">
+          <AdminToolbar>
+            <label>Filtrar producto<input value={productId} onChange={(event) => setProductId(event.target.value)} /></label>
+            <button className="admin-button" type="button" onClick={() => void load()}>Actualizar</button>
+          </AdminToolbar>
+          {loading ? (
+            <AdminLoadingState label="Cargando movimientos…" />
+          ) : (
+            <AdminTable
+              headers={["Fecha", "Producto", "Delta", "Admin", "Motivo", "Idempotencia"]}
+              empty={!items.length ? <AdminEmptyState title="No hay movimientos" /> : undefined}
+            >
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td>{new Date(item.createdAt).toLocaleString("es-CO")}</td>
+                  <td>{item.productId}</td>
+                  <td className={item.delta < 0 ? "stock-low" : ""}>{item.delta > 0 ? "+" : ""}{item.delta}</td>
+                  <td>{item.adminUserId}</td>
+                  <td>{item.reason}</td>
+                  <td>{item.idempotencyKey}</td>
+                </tr>
+              ))}
+            </AdminTable>
+          )}
+        </AdminPanel>
+      </section>
+    </AdminPageShell>
+  );
 }
