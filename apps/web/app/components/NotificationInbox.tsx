@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 type NotificationScope = "customer" | "technician" | "admin";
+
 type Item = {
   id: string;
   eventId: string;
@@ -29,19 +30,25 @@ export default function NotificationInbox({ scope, title, subtitle }: Notificati
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
 
-  const load = useCallback(async (append = false) => {
+  const load = useCallback(async (append = false, nextCursor?: string | null) => {
     setLoading(true);
     setError("");
     try {
       const params = new URLSearchParams({ scope, limit: "50" });
-      if (append && cursor) params.set("cursor", cursor);
+      const effectiveCursor = append ? (nextCursor ?? cursor) : null;
+      if (effectiveCursor) params.set("cursor", effectiveCursor);
       const response = await fetch("/api/notifications?" + params.toString(), {
         cache: "no-store",
         credentials: "same-origin",
       });
       const data = await response.json() as { items?: Item[]; nextCursor?: string | null; error?: string };
       if (!response.ok) throw new Error(data.error ?? "No se pudieron cargar las notificaciones.");
-      setItems((current) => append ? [...current, ...(data.items ?? [])] : (data.items ?? []));
+      setItems((current) => {
+        const incoming = data.items ?? [];
+        if (!append) return incoming;
+        const existing = new Set(current.map((item) => item.id));
+        return [...current, ...incoming.filter((item) => !existing.has(item.id))];
+      });
       setCursor(data.nextCursor ?? null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No se pudieron cargar las notificaciones.");
@@ -52,26 +59,32 @@ export default function NotificationInbox({ scope, title, subtitle }: Notificati
 
   const loadUnread = useCallback(async () => {
     try {
-      const response = await fetch(`/api/notifications/unread-count?scope=${scope}`, { cache: "no-store" });
+      const response = await fetch("/api/notifications/unread-count?scope=" + scope, { cache: "no-store", credentials: "same-origin" });
       if (!response.ok) return;
       const data = await response.json() as { unread?: number };
       setUnread(Number(data.unread ?? 0));
     } catch {}
   }, [scope]);
 
+  const connectRealtime = useCallback(() => {
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const socket = new WebSocket(`${protocol}//${window.location.host}/api/notifications/realtime?scope=${scope}`);
+    socket.addEventListener("message", () => {
+      void load(false);
+      void loadUnread();
+    });
+    return socket;
+  }, [load, loadUnread, scope]);
+
   useEffect(() => {
     void load(false);
     void loadUnread();
+  }, [load, loadUnread]);
 
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const socket = new WebSocket(`${protocol}//${window.location.host}/api/notifications/realtime?scope=${scope}`);
-    const refresh = () => {
-      void load(false);
-      void loadUnread();
-    };
-    socket.addEventListener("message", refresh);
+  useEffect(() => {
+    const socket = connectRealtime();
     return () => socket.close();
-  }, [load, loadUnread, scope]);
+  }, [connectRealtime]);
 
   async function read(id: string) {
     setBusy(id);
