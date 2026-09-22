@@ -3,13 +3,13 @@
 import nextWorker from "./.open-next/worker.js";
 import type { ExecutionContext, MessageBatch, Message, ScheduledEvent } from "@cloudflare/workers-types";
 import { D1NotificationOutboxRepository } from "../../modules/notifications/infrastructure/D1NotificationOutboxRepository";
-import { NotificationHub } from "../../modules/notifications/infrastructure/NotificationHub";
+import { NotificationHub as NotificationHubImplementation } from "../../modules/notifications/infrastructure/NotificationHub";
 import { notificationDeadLetterApplication, notificationProcessingApplication, notificationQueuePublisher } from "./notificationsApplication";
 import { D1ReservationRepository } from "../../modules/orders/infrastructure/D1ReservationRepository";
 import { NotificationTerminalError } from "../../modules/notifications/application/NotificationProcessingError";
 import type { NotificationEvent } from "../../modules/notifications/domain/NotificationEvent";
 
-export { NotificationHub };
+export class NotificationHub extends NotificationHubImplementation {}
 
 type Env = CloudflareEnv & {
   RESEND_API_KEY?: string;
