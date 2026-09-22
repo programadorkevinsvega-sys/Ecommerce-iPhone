@@ -651,3 +651,25 @@ Por lo tanto, el estado oficial sigue siendo **implementado/hardening, certifica
 ### Build Cloudflare — hallazgo 2026-09-21 22:58 UTC
 
 Un build de producción con Node.js 24.18.0, pnpm 12.4.1, Next.js 15.5.25 y OpenNext Cloudflare 1.20.6 compiló Next.js correctamente y falló durante typecheck por `exactOptionalPropertyTypes` en `modules/repairs/application/RepairOrderManagement.ts:102`. La causa fue pasar `diagnosisSummary` y `workSummary` opcionales como propiedades explícitas con valor `undefined`. La corrección aplicada usa propagación condicional para omitir las propiedades cuando son `undefined` y se añadió una regresión específica. `exactOptionalPropertyTypes` permanece habilitado.
+
+
+## Actualización viva — 2026-09-22 — Fase 07
+
+La Fase 07 ya no está limitada al Outbox/Queue/Resend inicial. El código actual incluye:
+
+- inbox durable D1;
+- cursor/catch-up;
+- read/unread;
+- Durable Object NotificationHub;
+- WebSocket Hibernation;
+- Queue dedicada de notificaciones;
+- DLQ y persistencia D1 de mensajes agotados;
+- replay administrativo auditado;
+- autenticación de recipients customer/technician/admin;
+- UI compartida de bell + inbox para customer/technician;
+- monitor administrativo de entregas y DLQ.
+
+Estado: implementación avanzada / hardening.
+
+El release actual todavía necesita build/deploy Cloudflare, migraciones D1 remotas, pruebas E2E/security/load y evidencia productiva antes de cerrar Fase 07.
+
