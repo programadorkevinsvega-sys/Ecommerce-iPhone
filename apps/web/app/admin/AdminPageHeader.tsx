@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import NotificationBell from "../components/NotificationBell";
 
 type AdminPageHeaderProps = {
   kicker: string;
@@ -15,7 +16,10 @@ export default function AdminPageHeader({ kicker, title, description, actions }:
         <h1>{title}</h1>
         {description ? <p>{description}</p> : null}
       </div>
-      {actions ? <div className="admin-toolbar-actions">{actions}</div> : null}
+      <div className="admin-toolbar-actions">
+        <NotificationBell scope="admin" href="/admin/notifications" />
+        {actions}
+      </div>
     </header>
   );
 }
