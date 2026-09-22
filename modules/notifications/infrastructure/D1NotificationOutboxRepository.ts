@@ -45,7 +45,7 @@ export class D1NotificationOutboxRepository implements NotificationOutboxReposit
 
   async pending(limit: number): Promise<OutboxRecord[]> {
     const rows = await this.db.prepare(
-      "SELECT * FROM notification_outbox WHERE ((status IN ('PENDING','FAILED') AND available_at<=CURRENT_TIMESTAMP) OR (status='QUEUED' AND available_at<=CURRENT_TIMESTAMP)) ORDER BY created_at ASC LIMIT ?",
+      "SELECT * FROM notification_outbox WHERE terminal_at IS NULL AND ((status IN ('PENDING','FAILED') AND available_at<=CURRENT_TIMESTAMP) OR (status='QUEUED' AND available_at<=CURRENT_TIMESTAMP)) ORDER BY created_at ASC LIMIT ?",
     ).bind(Math.max(1, Math.min(limit, 100))).all<Record<string, unknown>>();
     return rows.results.map(mapRow);
   }
