@@ -71,6 +71,10 @@
       {
         "binding": "NOTIFICATIONS_QUEUE",
         "queue": "ecommerce-iphone-notifications"
+      },
+      {
+        "binding": "NOTIFICATIONS_DLQ_QUEUE",
+        "queue": "ecommerce-iphone-notifications-dlq"
       }
     ],
     "consumers": [
