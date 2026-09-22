@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminPageShell from "../AdminPageShell";
 import AdminPanel from "../AdminPanel";
 import AdminToolbar from "../AdminToolbar";
@@ -30,7 +30,7 @@ export default function AuditPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function load(nextOffset = 0) {
+  const load = useCallback(async (nextOffset = 0) => {
     setLoading(true);
     setError("");
     const params = new URLSearchParams({ limit: "50", offset: String(nextOffset) });
