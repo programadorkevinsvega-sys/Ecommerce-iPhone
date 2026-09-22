@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { currentAdmin, PERMISSIONS } from "./adminAuth";
 import { currentCustomerId } from "./customerSession";
 import { currentTechnician } from "./technicianAuth";
-import type { NotificationRecipient, NotificationRecipientType } from "../../modules/notifications/domain/NotificationEvent";
+import type { NotificationRecipient, NotificationRecipientType } from "../../../modules/notifications/domain/NotificationEvent";
 
 export type NotificationScope = NotificationRecipientType;
 
