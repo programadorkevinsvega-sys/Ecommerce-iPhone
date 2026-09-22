@@ -129,3 +129,41 @@ Implementation/hardening is complete for the identified F6 code gaps, but Phase 
 - Audit viewer, Promotions and Reviews are composed through `adminApplication`; HTTP routes no longer instantiate those D1 repositories directly.
 - Payment list/detail routes require `payments:read`.
 - `pnpm verify:admin:production` is the repeatable real-production RBAC/session smoke gate.
+
+## Backoffice UI surfaces
+
+The administrative API capabilities are grouped into business-facing pages rather than one page per permission.
+
+Current dedicated administrative pages:
+
+| Surface | Route | Main permissions |
+|---|---|---|
+| Dashboard | `/admin` | `dashboard:read` |
+| Pedidos | `/admin/orders` | `orders:read`, `orders:write` |
+| Productos | `/admin/products` | `products:read`, `products:write` |
+| Categorías | `/admin/categories` | `categories:read`, `categories:write` |
+| Clientes | `/admin/customers` | `customers:read`, `customers:write` |
+| Dispositivos de clientes | `/admin/customer-devices` | `customers:read`, `customers:write` |
+| Servicios ofrecidos | `/admin/service-types` | `service_types:write` |
+| Carrusel de inicio | `/admin/home-carousel` | `cms:write` |
+| CMS | `/admin/cms` | `cms:write` |
+| Solicitudes | `/admin/services` | `services:read`, `services:write` |
+| Técnicos | `/admin/technicians` | `technicians:manage` |
+| Administradores y roles | `/admin/users` | `admins:manage` |
+| Órdenes de reparación | `/admin/repair-orders` | `repair_orders:read`, `repair_orders:write` |
+| Repuestos de taller | `/admin/repair-parts` | `inventory:read`, `inventory:write` |
+| Inventario | `/admin/inventory` | `inventory:read`, `inventory:write` |
+| Pagos | `/admin/payments` | `payments:read`, `payments:void`, `refunds:create` |
+| Auditoría | `/admin/audit` | `audit:read` |
+| Reseñas | `/admin/reviews` | `reviews:write` |
+| Promociones | `/admin/promotions` | `promotions:write` |
+| Configuración | `/admin/settings` | `settings:write` |
+| Notificaciones | `/admin/notifications` | `dashboard:read` |
+
+The following admin APIs remain auxiliary and intentionally do not create duplicate sidebar pages:
+
+- `/api/admin/media`: upload adapter used by product, category, CMS and service editors.
+- `/api/admin/permissions/catalog`: permission catalog consumed by the administrator/roles editor.
+- `/api/admin/users/:id/permissions`: permission management embedded in the administrator editor.
+- `/api/admin/repair-orders/:id/*`: repair-order detail, assignment, evidence and operation endpoints consumed by the repair-order workflow.
+- `/api/admin/repair-orders/technicians`: technician selector data for repair-order assignment.
