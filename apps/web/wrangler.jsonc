@@ -11,7 +11,31 @@
   "d1_databases": [{ "binding": "DB", "database_name": "ecommerce-iphone", "database_id": "39074683-f121-4841-ad80-3759aa739dde" }],
   "r2_buckets": [{ "binding": "MEDIA_BUCKET", "bucket_name": "ecommerce-iphone-media" }],
   "queues": {
-    "producers": [{ "binding": "EVENTS_QUEUE", "queue": "ecommerce-iphone-events" }],
-    "consumers": [{ "queue": "ecommerce-iphone-events", "max_batch_size": 10, "max_batch_timeout": 5, "max_retries": 5 }]
-  }
+    "producers": [
+      { "binding": "EVENTS_QUEUE", "queue": "ecommerce-iphone-events" },
+      { "binding": "NOTIFICATIONS_QUEUE", "queue": "ecommerce-iphone-notifications" },
+      { "binding": "NOTIFICATIONS_DLQ_QUEUE", "queue": "ecommerce-iphone-notifications-dlq" }
+    ],
+    "consumers": [
+      { "queue": "ecommerce-iphone-events", "max_batch_size": 10, "max_batch_timeout": 5, "max_retries": 5 },
+      {
+        "queue": "ecommerce-iphone-notifications",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5,
+        "max_retries": 5,
+        "dead_letter_queue": "ecommerce-iphone-notifications-dlq",
+        "max_concurrency": 10,
+        "retry_delay": 30
+      },
+      { "queue": "ecommerce-iphone-notifications-dlq", "max_batch_size": 10, "max_batch_timeout": 5, "max_retries": 1 }
+    ]
+  },
+  "durable_objects": {
+    "bindings": [
+      { "name": "NOTIFICATION_HUB", "class_name": "NotificationHub" }
+    ]
+  },
+  "migrations": [
+    { "tag": "notifications-v1", "new_sqlite_classes": ["NotificationHub"] }
+  ]
 }
