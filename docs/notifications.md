@@ -360,3 +360,44 @@ Fase 07 remains incomplete until realtime delivery, reconnect recovery, DLQ/repl
 - https://developers.cloudflare.com/queues/reference/delivery-guarantees/
 - https://developers.cloudflare.com/queues/configuration/configure-queues/
 - https://developers.cloudflare.com/queues/configuration/dead-letter-queues/
+
+
+## Implementación viva — 2026-09-22
+
+La Fase 07 avanzó desde la base Outbox/Queue/Resend a una plataforma durable de inbox + realtime.
+
+### Implementado en código
+
+- notification_inbox persistente en D1 con aislamiento por recipient_type + recipient_id.
+- Cursor opaco para paginación y catch-up.
+- read_at y unread-count.
+- PATCH /api/notifications/:id/read y POST /api/notifications/read-all.
+- GET /api/notifications/realtime con autenticación server-side.
+- NotificationHub Durable Object con WebSocket Hibernation y partición por identidad.
+- Publisher realtime detrás de NotificationRealtimePort.
+- Queue dedicada ecommerce-iphone-notifications.
+- DLQ ecommerce-iphone-notifications-dlq.
+- Persistencia de mensajes agotados en D1.
+- Replay administrativo mediante notifications:replay, con auditoría.
+- Bell realtime compartido y bandeja reutilizable para customer/technician.
+- Admin backoffice muestra entregas y DLQ.
+- Reintentos idempotentes del realtime reutilizan el mismo notificationId.
+- notification_outbox versiona el evento y conserva destinatarios explícitos fuera de payload_json.
+
+### No certificado todavía
+
+La Fase 07 continúa amarilla hasta pasar:
+
+- build Cloudflare del release actual;
+- migraciones D1 remotas;
+- verificación del Durable Object/Queue/DLQ desplegados;
+- tests de autorización customer/technician/admin;
+- E2E de desconexión -> catch-up;
+- pruebas de deduplicación y replay;
+- pruebas de carga realtime/Queue;
+- métricas/alertas p95/p99;
+- verify:production;
+- evidencia productiva real.
+
+EVENTS_QUEUE permanece consumiéndose temporalmente para compatibilidad con mensajes históricos; los eventos nuevos usan exclusivamente ecommerce-iphone-notifications.
+
