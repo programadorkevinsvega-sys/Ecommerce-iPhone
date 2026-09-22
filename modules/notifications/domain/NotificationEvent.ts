@@ -45,6 +45,32 @@ export function eventKey(event: NotificationEvent): string {
   return `${event.eventType}:${event.aggregateId}:${event.id}`;
 }
 
+const SAFE_NOTIFICATION_KEYS = new Set([
+  "orderId",
+  "orderNumber",
+  "serviceRequestId",
+  "serviceId",
+  "status",
+  "message",
+  "messageTitle",
+  "notificationTitle",
+  "notificationBody",
+  "aggregateId",
+]);
+
+export function safeNotificationPayload(event: NotificationEvent): Readonly<Record<string, unknown>> {
+  const source = event.payload as Record<string, unknown>;
+  const result: Record<string, unknown> = {
+    eventType: event.eventType,
+    eventVersion: event.eventVersion,
+    aggregateId: event.aggregateId,
+  };
+  for (const [key, value] of Object.entries(source)) {
+    if (SAFE_NOTIFICATION_KEYS.has(key)) result[key] = value;
+  }
+  return result;
+}
+
 export function notificationContent(event: NotificationEvent): Pick<NotificationInboxItem, "title" | "body"> {
   const payload = event.payload as Record<string, unknown>;
   const orderNumber = String(payload.orderNumber ?? payload.orderId ?? "");
