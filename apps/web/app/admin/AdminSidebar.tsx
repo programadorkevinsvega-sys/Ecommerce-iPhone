@@ -13,7 +13,15 @@ export type AdminSidebarSection =
   | "technicians"
   | "users"
   | "repair-orders"
-  | "repair-parts";
+  | "repair-parts"
+  | "payments"
+  | "audit"
+  | "reviews"
+  | "promotions"
+  | "settings"
+  | "inventory"
+  | "notifications"
+  | "cms";
 
 type AdminSidebarProps = { active: AdminSidebarSection };
 
@@ -36,6 +44,14 @@ const items: ReadonlyArray<{
   { key: "users", icon: "♛", label: "Administradores y roles", href: "/admin/users" },
   { key: "repair-orders", icon: "◫", label: "Órdenes de reparación", href: "/admin/repair-orders" },
   { key: "repair-parts", icon: "⚙", label: "Repuestos de taller", href: "/admin/repair-parts" },
+  { key: "inventory", icon: "▥", label: "Inventario", href: "/admin/inventory" },
+  { key: "payments", icon: "$", label: "Pagos", href: "/admin/payments" },
+  { key: "audit", icon: "◌", label: "Auditoría", href: "/admin/audit" },
+  { key: "reviews", icon: "★", label: "Reseñas", href: "/admin/reviews" },
+  { key: "promotions", icon: "%", label: "Promociones", href: "/admin/promotions" },
+  { key: "cms", icon: "▧", label: "CMS", href: "/admin/cms" },
+  { key: "settings", icon: "⚙", label: "Configuración", href: "/admin/settings" },
+  { key: "notifications", icon: "✉", label: "Notificaciones", href: "/admin/notifications" },
 ];
 
 export default function AdminSidebar({ active }: AdminSidebarProps) {
