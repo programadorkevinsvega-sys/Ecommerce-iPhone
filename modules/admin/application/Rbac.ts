@@ -31,6 +31,7 @@ export const PERMISSIONS = {
   cmsWrite: "cms:write",
   settingsWrite: "settings:write",
   techniciansManage: "technicians:manage",
+  notificationsReplay: "notifications:replay",
 } as const satisfies Record<string, Permission>;
 
 const all = Object.values(PERMISSIONS);
