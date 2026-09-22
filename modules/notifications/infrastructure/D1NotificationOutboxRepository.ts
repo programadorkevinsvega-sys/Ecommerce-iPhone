@@ -53,14 +53,14 @@ export class D1NotificationOutboxRepository implements NotificationOutboxReposit
   async claim(id: string, leaseSeconds: number): Promise<boolean> {
     const lease = Math.max(30, Math.min(Math.trunc(leaseSeconds), 900));
     const result = await this.db.prepare(
-      "UPDATE notification_outbox SET status='QUEUED',available_at=datetime('now', '+' || ? || ' seconds') WHERE id=? AND ((status IN ('PENDING','FAILED') AND available_at<=CURRENT_TIMESTAMP) OR (status='QUEUED' AND available_at<=CURRENT_TIMESTAMP))",
+      "UPDATE notification_outbox SET status='QUEUED',available_at=datetime('now', '+' || ? || ' seconds') WHERE id=? AND terminal_at IS NULL AND ((status IN ('PENDING','FAILED') AND available_at<=CURRENT_TIMESTAMP) OR (status='QUEUED' AND available_at<=CURRENT_TIMESTAMP))",
     ).bind(lease, id).run();
     return result.meta.changes === 1;
   }
 
   async markQueued(id: string): Promise<void> {
     await this.db.prepare(
-      "UPDATE notification_outbox SET status='QUEUED',available_at=datetime('now','+600 seconds') WHERE id=? AND status='QUEUED'",
+      "UPDATE notification_outbox SET status='QUEUED',available_at=datetime('now','+600 seconds') WHERE id=? AND status='QUEUED' AND terminal_at IS NULL",
     ).bind(id).run();
   }
 
