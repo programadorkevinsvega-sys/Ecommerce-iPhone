@@ -121,3 +121,19 @@ pnpm cloudflare:version
 El Deploy command de Workers Builds ejecuta `pnpm cloudflare:deploy`, que aplica las migraciones D1 de producción y después publica el Worker. `pnpm deploy:production` sigue siendo el release completo manual/reproducible porque además construye y ejecuta `verify:production`.
 
 Los cuatro campos de Workers Builds no se configuran dentro de `wrangler.jsonc`; `wrangler.jsonc` continúa siendo el contrato declarativo del Worker para rutas, D1, R2, Queues, rate limits, cron y variables no secretas.
+
+
+### Fase 07 notification resources
+
+| Resource | Name |
+|---|---|
+| Notifications Queue | `ecommerce-iphone-notifications` |
+| Notifications DLQ | `ecommerce-iphone-notifications-dlq` |
+| Durable Object | `NotificationHub` |
+| D1 inbox | `notification_inbox` |
+| D1 channel ledger | `notification_channel_deliveries` |
+| D1 preferences | `notification_preferences` |
+| D1 terminal evidence | `notification_dead_letters` |
+
+The production deploy must apply D1 migrations before the Worker is published so the code and schema move together.
+
