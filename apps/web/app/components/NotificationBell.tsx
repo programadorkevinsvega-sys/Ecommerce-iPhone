@@ -20,6 +20,7 @@ export default function NotificationBell({ scope, href, label = "Notificaciones"
   useEffect(() => {
     let disposed = false;
     let socket: WebSocket | null = null;
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
 
     const loadUnread = async (): Promise<boolean> => {
       try {
@@ -49,6 +50,10 @@ export default function NotificationBell({ scope, href, label = "Notificaciones"
       socket.addEventListener("open", () => {
         attempt.current = 0;
         void loadUnread();
+        if (heartbeat) clearInterval(heartbeat);
+        heartbeat = setInterval(() => {
+          if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "ping" }));
+        }, 25000);
       });
       socket.addEventListener("message", (event) => {
         try {
@@ -75,6 +80,7 @@ export default function NotificationBell({ scope, href, label = "Notificaciones"
     return () => {
       disposed = true;
       if (timer.current) clearTimeout(timer.current);
+      if (heartbeat) clearInterval(heartbeat);
       socket?.close();
     };
   }, [scope]);
