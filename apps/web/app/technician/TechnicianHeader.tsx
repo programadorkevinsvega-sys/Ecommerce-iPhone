@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import NotificationBell from "../components/NotificationBell";
 
 const ITEMS = [
   { href: "/technician", label: "Inicio" },
@@ -63,6 +64,8 @@ export default function TechnicianHeader({
           );
         })}
       </nav>
+
+      <NotificationBell scope="technician" href="/technician/notifications" />
 
       <div className="technician-nav-user">
         <div className="technician-user-copy">
