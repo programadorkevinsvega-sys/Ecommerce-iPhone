@@ -44,10 +44,11 @@ export async function upgradeNotificationRealtime(
     `notification:${recipient.type}:${recipient.id}`,
   );
   const response = await env.NOTIFICATION_HUB.get(id).fetch(
-    new Request("https://notification-hub/realtime", {
+    "https://notification-hub/realtime",
+    {
       method: "GET",
       headers: request.headers,
-    }) as unknown as Request,
+    },
   );
 
   // Cloudflare's Workers Response type and the DOM Response type used by
