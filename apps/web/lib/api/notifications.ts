@@ -47,7 +47,7 @@ export async function upgradeNotificationRealtime(
     new Request("https://notification-hub/realtime", {
       method: "GET",
       headers: request.headers,
-    }),
+    }) as unknown as Request,
   );
 
   // Cloudflare's Workers Response type and the DOM Response type used by
