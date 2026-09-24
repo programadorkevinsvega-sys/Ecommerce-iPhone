@@ -11,7 +11,8 @@
     ".next/types/**/*.ts",
     "**/*.ts",
     "**/*.tsx",
-    "../../cloudflare-env.d.ts"
+    "../../cloudflare-env.d.ts",
+    "../../cloudflare-workers-runtime.d.ts"
   ],
   "exclude": [
     "node_modules",
