@@ -77,6 +77,12 @@ export class D1NotificationOutboxRepository implements NotificationOutboxReposit
     ).bind(error.slice(0,1000),retryAt,id).run();
   }
 
+  async markTerminal(id: string, error: string): Promise<void> {
+    await this.db.prepare(
+      "UPDATE notification_outbox SET status='FAILED',terminal_at=CURRENT_TIMESTAMP,last_error=?,available_at=CURRENT_TIMESTAMP WHERE id=? AND terminal_at IS NULL",
+    ).bind(error.slice(0,1000), id).run();
+  }
+
   async claimDelivery(input: NotificationDeliveryClaim): Promise<boolean> {
     const lease = Math.max(60, Math.min(Math.trunc(input.leaseSeconds), 1800));
     const token = crypto.randomUUID();
