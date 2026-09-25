@@ -12,7 +12,8 @@
     "**/*.ts",
     "**/*.tsx",
     "../../cloudflare-env.d.ts",
-    "../../cloudflare-workers-runtime.d.ts"
+    "../../cloudflare-workers-runtime.d.ts",
+    "../../cloudflare-workers-module.d.ts"
   ],
   "exclude": [
     "node_modules",
