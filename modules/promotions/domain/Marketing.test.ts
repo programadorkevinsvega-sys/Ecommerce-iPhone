@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { validateApplicability, validateDiscount, validateWindow } from "./Marketing";
+import { calculateDiscount, validateApplicability, validateDiscount, validateWindow } from "./Marketing";
 
 describe("marketing domain",()=>{
+ it("calculates capped percentage and fixed discounts",()=>{ expect(calculateDiscount("PERCENT",25,10000)).toBe(2500); expect(calculateDiscount("FIXED",15000,10000)).toBe(10000); });
  it("accepts valid percentage and fixed discounts",()=>{
   expect(()=>validateDiscount("PERCENT",100)).not.toThrow();
   expect(()=>validateDiscount("FIXED",5000)).not.toThrow();
