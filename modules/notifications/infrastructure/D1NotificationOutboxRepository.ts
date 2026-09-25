@@ -1,6 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { NotificationEvent } from "../domain/NotificationEvent";
-import type { NotificationOutboxRepository, OutboxRecord } from "../application/NotificationPorts";
+import type { NotificationDeliveryClaim, NotificationOutboxRepository, OutboxRecord } from "../application/NotificationPorts";
 
 function mapRow(row: Record<string, unknown>): OutboxRecord {
   return {
