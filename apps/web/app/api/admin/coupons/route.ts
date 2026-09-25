@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import type { CouponInput } from "../../../../../../modules/promotions/application/AdminCoupons";
-import { AdminCoupons } from "../../../../../../modules/promotions/application/AdminCoupons";
-import { D1CouponRepository } from "../../../../../../modules/promotions/infrastructure/D1CouponRepository";
-import { D1AuditPort } from "../../../../../../modules/admin/infrastructure/D1AuditPort";
+import { adminCouponsApplication } from "../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
 
-export async function GET(){try{const {env}=await requireAdmin(PERMISSIONS.promotionsWrite);return NextResponse.json({items:await new AdminCoupons(new D1CouponRepository(env.DB),new D1AuditPort(env.DB)).list()},{headers:{"cache-control":"no-store"}});}catch(e){return error(e);}}
+export async function GET(){try{const {env}=await requireAdmin(PERMISSIONS.promotionsWrite);return NextResponse.json({items:await adminCouponsApplication(env).list()},{headers:{"cache-control":"no-store"}});}catch(e){return error(e);}}
 export async function POST(request:Request){try{const {env,admin}=await requireAdmin(PERMISSIONS.promotionsWrite);const body=(await request.json()) as Record<string,unknown>;const input=parseCoupon(body);const id=await new AdminCoupons(new D1CouponRepository(env.DB),new D1AuditPort(env.DB)).save(input,admin.id);return NextResponse.json({id},{status:201});}catch(e){return error(e);}}
 function parseCoupon(body:Record<string,unknown>):CouponInput {
  const ids=(value:unknown):string[]=>Array.isArray(value)&&value.every(x=>typeof x==="string")?value:[];
