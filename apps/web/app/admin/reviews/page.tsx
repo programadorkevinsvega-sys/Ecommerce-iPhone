@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AdminPageShell from "../AdminPageShell";
 import AdminPanel from "../AdminPanel";
+import AdminSectionHeading from "../AdminSectionHeading";
 import AdminToolbar from "../AdminToolbar";
 import AdminTable from "../AdminTable";
 import AdminEmptyState from "../AdminEmptyState";
