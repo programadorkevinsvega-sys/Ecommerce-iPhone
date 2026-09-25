@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -19,6 +20,14 @@ const contentSecurityPolicy = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  outputFileTracingRoot: path.resolve(__dirname, "../.."),
+  webpack(config) {
+    config.resolve.alias = {
+      ...(config.resolve.alias ?? {}),
+      "@modules": path.resolve(__dirname, "../../modules"),
+    };
+    return config;
+  },
   images: {
     remotePatterns: [],
   },

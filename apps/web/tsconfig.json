@@ -4,7 +4,12 @@
     "plugins": [{ "name": "next" }],
     "allowJs": false,
     "jsx": "preserve",
-    "incremental": true
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@modules/*": ["../../modules/*"],
+      "@web/*": ["./*"]
+    }
   },
   "include": [
     "next-env.d.ts",

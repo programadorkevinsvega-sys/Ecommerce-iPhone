@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { CmsPageInput } from "../../../../../../modules/cms/application/AdminCms";
+import type { CmsPageInput } from "@modules/cms/application/AdminCms";
 import { adminCmsApplication } from "../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
 

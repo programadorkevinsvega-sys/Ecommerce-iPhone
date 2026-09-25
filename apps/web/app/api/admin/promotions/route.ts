@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { PromotionInput } from "../../../../../../modules/promotions/application/AdminPromotions";
+import type { PromotionInput } from "@modules/promotions/application/AdminPromotions";
 
 function parseBody(value: unknown): { input: PromotionInput; id?: string } {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("INVALID_PROMOTION");

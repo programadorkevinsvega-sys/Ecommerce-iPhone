@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { CouponInput } from "../../../../../../modules/promotions/application/AdminCoupons";
+import type { CouponInput } from "@modules/promotions/application/AdminCoupons";
 import { adminCouponsApplication } from "../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
 
