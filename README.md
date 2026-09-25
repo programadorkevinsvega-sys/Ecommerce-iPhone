@@ -32,16 +32,14 @@ Plataforma e-commerce orientada a producción para smartphones y servicios legí
 | 04 — Payments | 🟡 Multi-provider implementado | Falta certificación real de los 5 providers |
 | 05 — Services | 🟢 Implementación + hardening | Falta certificación final |
 | 06 — Admin + RBAC | 🟡 Implementación avanzada | Falta certificación de seguridad/gates |
-| 07 — Notifications + Queues | 🟡 Implementación funcional | Falta DLQ/retry/replay final |
+| 07 — Notifications + Queues | 🟡 Implementación de código completada + deploy | Falta certificación funcional/E2E/security/load/verify de producción |
 | Reparaciones / Técnico | 🟡 Implementación operativa | Falta cierre funcional, visual y certificación |
 
 Una fase no se considera 100% terminada solo porque compile. El cierre exige implementación, integración, tests, seguridad, reproducibilidad, despliegue y evidencia operativa.
 
 ## Estado de producción
 
-La última versión de Cloudflare que quedó **verificada directamente en producción** antes de los cambios recientes de navegación, técnicos y documentación corresponde al Worker:
-
-`f7d67832-8598-4f59-8db9-b538f543b3ef`
+El último deployment informado exitosamente por Cloudflare es el Worker `3ba65c06-6090-4fb3-a7f2-f6bcc2b8378a` (2026-09-25). El build OpenNext, el bundle y el deploy terminaron correctamente. Este deployment todavía requiere `verify:production` y pruebas funcionales autenticadas para considerarse certificado.
 
 con:
 
@@ -49,11 +47,7 @@ con:
 - `/api/health/ready` → `200`
 - `verify:production` → PASS.
 
-Los commits posteriores están en `main` y requieren una ejecución de build/deploy exitosa antes de considerarse certificados en producción.
-
-Commit funcional de referencia para el estado documentado:
-
-`6a462a44d6869765f6542a5f7287aed136642ec3`
+La ejecución del 2026-09-25 confirmó build y deploy exitosos sobre `main`. La certificación funcional de producción permanece pendiente hasta ejecutar los gates y verificaciones correspondientes.
 
 Los commits de documentación posteriores no cambian este código funcional de referencia.
 
@@ -179,6 +173,8 @@ Los webhooks se verifican server-side y convergen en la misma máquina de estado
 
 ## Notifications
 
+La Fase 07 está implementada a nivel de código y desplegada en Cloudflare. Incluye inbox durable D1, realtime mediante `NotificationHub`, WebSocket Hibernation, Queue dedicada, DLQ, retry/clasificación terminal, replay auditado, preferencias, idempotencia y delivery ledger.
+
 ```text
 Business operation
     ↓
@@ -186,9 +182,10 @@ notification_outbox
     ↓
 Cloudflare Queue
     ↓
-Resend
-    ↓
-notification_deliveries
+Notification Processor
+   ├── D1 notification inbox
+   ├── NotificationHub / WebSocket
+   └── Resend
 ```
 
 ## Seguridad
@@ -211,9 +208,14 @@ Existe:
 
 La certificación global permanece pendiente hasta completar regresiones y evidencia productiva.
 
+## Fase 08 — CMS + Marketing + Reviews
+
+La auditoría 08.1 confirma que existen implementaciones parciales de CMS, promociones y reviews reutilizables desde Fase 06, pero no constituyen todavía la Fase 08 completa. El detalle y los gaps están en `docs/auditoria-fase-8.md`.
+
 ## Documentación canónica
 
 - `roadmap.md`
+- `docs/auditoria-fase-8.md`
 - `docs/auditoria-fases-1-7.md`
 - `docs/PLAN-PLATAFORMA-REPARACIONES.md`
 - `docs/architecture.md`
