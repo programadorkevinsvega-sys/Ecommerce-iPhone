@@ -638,6 +638,20 @@ Una fase se considera terminada únicamente cuando:
 
 ---
 
+### Fase 08.2 — Implementación completa — 2026-09-25
+
+- CMS completo administrable: páginas, blog, categorías, FAQs, landing pages, banners y destacados.
+- Blog y landing pages públicas con metadata SEO/canonical.
+- Publicación programada mediante Cloudflare Worker scheduler.
+- Marketing completo: promociones, cupones, campañas, segmentación por producto/categoría y banners programables.
+- Checkout aplica una única regla de descuento server-side sobre precios actuales de D1 y consume cupón atómicamente.
+- Cupones soportan porcentaje, fijo, vigencia, uso máximo, uso por cliente, mínimo y activación.
+- Reviews soportan compra verificada, moderación, respuesta, reportes y auditoría.
+- RBAC y auditoría server-side en las mutaciones administrativas.
+- Tests de dominio y persistencia para descuentos y redención.
+- UI administrativa incorporada para promociones, cupones, campañas y contenido editorial.
+
+**Estado:** 🟢 implementación de 08.2 cerrada. La certificación de release permanece separada y requiere build/deploy/verify exitoso sobre el commit final.
 ## Estado del roadmap
 
 | Fase | Issue | Estado |
@@ -649,7 +663,7 @@ Una fase se considera terminada únicamente cuando:
 | 05 — Services | #5 | 🟢 Implementado + hardening, certificación pendiente |
 | 06 — Admin + RBAC | #6 | 🟡 Implementación avanzada, certificación pendiente |
 | 07 — Notifications realtime + Email | #7 | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente |
-| 08 — CMS + Marketing + Reviews | #8 | ⬜ Pendiente |
+| 08 — CMS + Marketing + Reviews | #8 | 🟢 08.2 implementación completa; certificación productiva pendiente |
 | 09 — SEO | #9 | ⬜ Pendiente |
 | 10 — Production Readiness | #10 | ⬜ Pendiente |
 
