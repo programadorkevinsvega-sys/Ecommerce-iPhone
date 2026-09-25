@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { D1ReviewModerationRepository } from "../../../../../../modules/reviews/infrastructure/D1ReviewModerationRepository";
+import { D1ReviewModerationRepository } from "../../../../../../../modules/reviews/infrastructure/D1ReviewModerationRepository";
 import { PERMISSIONS, requireAdmin } from "../../../../../lib/adminAuth";
 import { ReviewModeration } from "../../../../../../modules/reviews/application/ReviewModeration";
 import { D1AuditPort } from "../../../../../../modules/admin/infrastructure/D1AuditPort";
