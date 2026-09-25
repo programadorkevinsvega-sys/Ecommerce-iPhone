@@ -18,16 +18,13 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
 
     const effectiveCart = await this.refreshServerPricing(cart);
     const subtotalInCents = effectiveCart.items.reduce((sum, item) => sum + item.quantity * item.unitPriceInCents, 0);
-    const promotion = input.promotionCode
-      ? await this.findApplicablePromotion(input.promotionCode, subtotalInCents)
-      : null;
+    if (input.promotionCode && input.couponCode) throw new Error("Only one discount code may be used");
+    const promotion = input.promotionCode ? await this.findApplicablePromotion(input.promotionCode, effectiveCart, subtotalInCents) : null;
+    const coupon = input.couponCode ? await this.findApplicableCoupon(input.couponCode, input.customerId, effectiveCart, subtotalInCents) : null;
     if (input.promotionCode && !promotion) throw new Error("Promotion is invalid, inactive, expired, or unavailable");
-
-    const discountInCents = promotion
-      ? promotion.discountType === "PERCENT"
-        ? Math.min(subtotalInCents, Math.floor((subtotalInCents * promotion.discountValue) / 100))
-        : Math.min(subtotalInCents, promotion.discountValue)
-      : 0;
+    if (input.couponCode && !coupon) throw new Error("Coupon is invalid, inactive, expired, or unavailable");
+    const discountSource = promotion ?? coupon;
+    const discountInCents = discountSource ? this.calculateDiscount(discountSource.discountType, discountSource.discountValue, discountSource.eligibleSubtotalInCents) : 0;
     const shippingInCents = input.shippingMethod === "PICKUP" ? 0 : 1500000;
     const totalInCents = subtotalInCents + shippingInCents - discountInCents;
     const orderId = crypto.randomUUID();
@@ -53,6 +50,13 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
       input.shippingAddress.addressLine2 ?? null, input.shippingAddress.city, input.shippingAddress.state, input.shippingAddress.postalCode ?? null, input.shippingAddress.countryCode,
     ));
 
+    if (coupon) {
+      statements.push(this.db.prepare("UPDATE coupons SET used_count=used_count+1,updated_at=CURRENT_TIMESTAMP WHERE id=? AND active=1 AND starts_at<=CURRENT_TIMESTAMP AND ends_at>CURRENT_TIMESTAMP AND min_subtotal_in_cents<=? AND (max_uses IS NULL OR used_count<max_uses) AND (max_uses_per_customer IS NULL OR (SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id=? AND customer_id=?)<max_uses_per_customer)").bind(coupon.id, subtotalInCents, coupon.id, input.customerId));
+      statements.push(this.db.prepare("INSERT INTO checkout_guards(id) SELECT 1 WHERE changes()=0"));
+      statements.push(this.db.prepare("INSERT INTO coupon_redemptions(id,coupon_id,customer_id,order_id,amount_in_cents) SELECT ?,?,?,?,? WHERE changes()=1").bind(crypto.randomUUID(),coupon.id,input.customerId,orderId,discountInCents));
+      statements.push(this.db.prepare("INSERT INTO checkout_guards(id) SELECT 1 WHERE changes()=0"));
+    }
+
     for (const item of orderItems) {
       statements.push(this.db.prepare("INSERT INTO inventory_reservations(id,cart_id,product_id,quantity,expires_at,order_id) VALUES(?,?,?,?,datetime('now','+15 minutes'),?)").bind(
         crypto.randomUUID(), effectiveCart.id, item.productId, item.quantity, orderId,
@@ -63,7 +67,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     }
 
     statements.push(this.db.prepare("INSERT INTO order_events(id,order_id,event_type,payload_json) VALUES(?,?,?,?)").bind(
-      crypto.randomUUID(), orderId, "OrderCreated", JSON.stringify({ orderId, orderNumber, totalInCents, currency: effectiveCart.currency, ...(promotion ? { promotionCode: promotion.code, discountInCents } : {}) }),
+      crypto.randomUUID(), orderId, "OrderCreated", JSON.stringify({ orderId, orderNumber, totalInCents, currency: effectiveCart.currency, ...(promotion ? { promotionCode: promotion.code, discountInCents } : coupon ? { couponCode: coupon.code, discountInCents } : {}) }),
     ));
     statements.push(this.db.prepare("DELETE FROM cart_items WHERE cart_id=?").bind(effectiveCart.id));
 
@@ -148,8 +152,34 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     return { ...cart, items };
   }
 
-  private async findApplicablePromotion(code: string, subtotalInCents: number): Promise<PromotionRow | null> {
-    return this.db.prepare("SELECT id,code,discount_type AS discountType,discount_value AS discountValue FROM promotions WHERE code=? AND active=1 AND starts_at<=CURRENT_TIMESTAMP AND ends_at>CURRENT_TIMESTAMP AND min_subtotal_in_cents<=? AND (max_uses IS NULL OR used_count<max_uses) LIMIT 1").bind(code, subtotalInCents).first<PromotionRow>();
+  private async findApplicablePromotion(code: string, cart: CheckoutCart, subtotalInCents: number): Promise<DiscountRow | null> {
+    const row = await this.db.prepare("SELECT id,code,discount_type AS discountType,discount_value AS discountValue,min_subtotal_in_cents AS minSubtotalInCents FROM promotions WHERE code=? COLLATE NOCASE AND active=1 AND starts_at<=CURRENT_TIMESTAMP AND ends_at>CURRENT_TIMESTAMP AND min_subtotal_in_cents<=? AND (max_uses IS NULL OR used_count<max_uses) LIMIT 1").bind(code, subtotalInCents).first<{id:string;code:string;discountType:"PERCENT"|"FIXED";discountValue:number;minSubtotalInCents:number}>();
+    if (!row) return null;
+    const eligibleSubtotalInCents = await this.eligibleSubtotal(row.id, cart, "promotion");
+    return eligibleSubtotalInCents > 0 ? {...row, eligibleSubtotalInCents} : null;
+  }
+
+  private async findApplicableCoupon(code: string, customerId: string, cart: CheckoutCart, subtotalInCents: number): Promise<DiscountRow | null> {
+    const row = await this.db.prepare("SELECT id,code,discount_type AS discountType,discount_value AS discountValue,min_subtotal_in_cents AS minSubtotalInCents FROM coupons WHERE code=? COLLATE NOCASE AND active=1 AND starts_at<=CURRENT_TIMESTAMP AND ends_at>CURRENT_TIMESTAMP AND min_subtotal_in_cents<=? AND (max_uses IS NULL OR used_count<max_uses) AND (max_uses_per_customer IS NULL OR (SELECT COUNT(*) FROM coupon_redemptions WHERE coupon_id=coupons.id AND customer_id=?)<max_uses_per_customer) LIMIT 1").bind(code, subtotalInCents, customerId).first<{id:string;code:string;discountType:"PERCENT"|"FIXED";discountValue:number;minSubtotalInCents:number}>();
+    if (!row) return null;
+    const eligibleSubtotalInCents = await this.eligibleSubtotal(row.id, cart, "coupon");
+    return eligibleSubtotalInCents > 0 ? {...row, eligibleSubtotalInCents} : null;
+  }
+
+  private async eligibleSubtotal(id: string, cart: CheckoutCart, table: "promotion"|"coupon"): Promise<number> {
+    let total=0;
+    const link = table === "promotion" ? "promotion_products" : "coupon_products";
+    const categoryLink = table === "promotion" ? "promotion_categories" : "coupon_categories";
+    for (const item of cart.items) {
+      const row = await this.db.prepare(`SELECT EXISTS(SELECT 1 FROM ${link} WHERE ${table}_id=? AND product_id=?) OR EXISTS(SELECT 1 FROM ${categoryLink} pc JOIN product_categories pcat ON pcat.category_id=pc.category_id WHERE pc.${table}_id=? AND pcat.product_id=?) AS eligible`).bind(id,item.productId,id,item.productId).first<{eligible:number}>();
+      if (row?.eligible===1) total += item.quantity*item.unitPriceInCents;
+    }
+    const targets = await this.db.prepare(`SELECT (SELECT COUNT(*) FROM ${link} WHERE ${table}_id=?) + (SELECT COUNT(*) FROM ${categoryLink} WHERE ${table}_id=?) AS count`).bind(id,id).first<{count:number}>();
+    return targets?.count===0 ? cart.items.reduce((sum,item)=>sum+item.quantity*item.unitPriceInCents,0) : total;
+  }
+
+  private calculateDiscount(type:"PERCENT"|"FIXED",value:number,eligibleSubtotalInCents:number):number {
+    return type==="PERCENT" ? Math.min(eligibleSubtotalInCents,Math.floor((eligibleSubtotalInCents*value)/100)) : Math.min(eligibleSubtotalInCents,value);
   }
 
   private async pruneExpiredIdempotency(): Promise<void> {
@@ -199,7 +229,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
   }
 }
 
-type PromotionRow = { id: string; code: string; discountType: "PERCENT" | "FIXED"; discountValue: number };
+type DiscountRow = { id: string; code: string; discountType: "PERCENT" | "FIXED"; discountValue: number; minSubtotalInCents: number; eligibleSubtotalInCents: number };
 type OrderRow = {
   id: string; order_number: string; customer_id: string | null; email: string; status: Order["status"]; currency: string;
   subtotal_in_cents: number; shipping_in_cents: number; discount_in_cents: number; total_in_cents: number; shipping_method: string;
