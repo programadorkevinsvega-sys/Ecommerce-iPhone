@@ -93,7 +93,7 @@ Las rutas públicas mantienen:
 - Carrito
 - Mi cuenta
 
-La navegación contextual usa `aria-current` y mantiene el conjunto estándar Inicio, Catálogo, Servicios, Consultar reparación, Contacto, Carrito y Mi cuenta.
+La navegación contextual usa `aria-current` e incluye Inicio, Catálogo, Servicios, Consultar reparación, Blog, Preguntas frecuentes, Contacto, Carrito y Mi cuenta.\n\nLas superficies públicas de marketing/CMS consumen datos reales de D1: banners programados, contenido destacado y FAQs publicados. No se agregaron datos de demostración ni proveedores fake.
 
 ## Clientes
 
@@ -210,7 +210,7 @@ La certificación global permanece pendiente hasta completar regresiones y evide
 
 ## Fase 08 — CMS + Marketing + Reviews
 
-**08.2 — 🟢 implementación completa.** Incluye CMS administrable, blog y landing pages públicas SEO-friendly, FAQs, banners, destacados, publicación programada, promociones, cupones con límites y segmentación, campañas, aplicación server-side en checkout, reviews verificadas, moderación, reportes, auditoría y tests. La certificación productiva continúa separada del cierre de implementación y requiere build/deploy/verify exitoso.
+**08.3 — 🟢 implementación completa en código; certificación final pendiente del release.** Incluye CMS administrable, blog y landing pages públicas SEO-friendly, FAQs públicas, banners y destacados públicos, navegación Blog/FAQ, publicación programada, promociones, cupones con límites y segmentación, campañas, aplicación server-side en checkout, reviews verificadas, moderación concurrente, reportes con protección IDOR, auditoría, RBAC y pruebas de concurrencia. El pipeline de producción incluye verificación remota de la migración D1 0036 antes del deploy. El cierre 100% exige que el build Cloudflare final, migración remota, deploy y `verify:production` pasen sobre el mismo release.
 
 ## Documentación canónica
 
