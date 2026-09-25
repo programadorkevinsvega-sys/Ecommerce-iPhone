@@ -1,0 +1,9 @@
+import {NextResponse} from "next/server";
+import {getCloudflareContext} from "@opennextjs/cloudflare";
+import {AdminCampaigns} from "../../../../../../modules/promotions/application/AdminCampaigns";
+import {D1CampaignRepository} from "../../../../../../modules/promotions/infrastructure/D1CampaignRepository";
+import {D1AuditPort} from "../../../../../../modules/admin/infrastructure/D1AuditPort";
+import {PERMISSIONS,requireAdmin} from "../../../../lib/adminAuth";
+export async function GET(){try{const {env}=await requireAdmin(PERMISSIONS.promotionsWrite);return NextResponse.json({items:await new AdminCampaigns(new D1CampaignRepository(env.DB),new D1AuditPort(env.DB)).list()},{headers:{"cache-control":"no-store"}});}catch(e){return error(e);}}
+export async function POST(request:Request){try{const {env,admin}=await requireAdmin(PERMISSIONS.promotionsWrite);const b=await request.json() as unknown;if(!b||typeof b!=="object"||Array.isArray(b))throw new Error("INVALID_CAMPAIGN");const x=b as Record<string,unknown>;if(typeof x.name!=="string"||typeof x.slug!=="string"||typeof x.startsAt!=="string"||typeof x.endsAt!=="string"||typeof x.active!=="boolean"||(x.description!==undefined&&typeof x.description!=="string"))throw new Error("INVALID_CAMPAIGN");const id=await new AdminCampaigns(new D1CampaignRepository(env.DB),new D1AuditPort(env.DB)).save({id:typeof x.id==="string"?x.id:undefined,name:x.name,slug:x.slug,description:typeof x.description==="string"?x.description:undefined,startsAt:x.startsAt,endsAt:x.endsAt,active:x.active},admin.id);return NextResponse.json({id},{status:201});}catch(e){return error(e);}}
+function error(e:unknown){const c=e instanceof Error?e.message:"UNKNOWN";const s=c==="UNAUTHORIZED"?401:c==="FORBIDDEN"?403:400;return NextResponse.json({error:s===401?"Authentication required":s===403?"Forbidden":c},{status:s});}
