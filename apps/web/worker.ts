@@ -257,6 +257,11 @@ export default {
   },
 
   async scheduled(_event: ScheduledEvent, env: Env) {
+    const now = new Date().toISOString();
+    await env.DB.batch([
+      env.DB.prepare("UPDATE cms_blog_posts SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
+      env.DB.prepare("UPDATE cms_landing_pages SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
+    ]);
     await new D1ReservationRepository(env.DB).releaseExpired();
 
     const repo = new D1NotificationOutboxRepository(env.DB);
