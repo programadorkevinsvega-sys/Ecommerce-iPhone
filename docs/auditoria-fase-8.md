@@ -12,9 +12,9 @@ Estado de implementación: 🟢 **completa**.
 
 Implementado: CMS administrable, blog, categorías, FAQs, landing pages, banners, destacados, publicación programada, marketing, promociones, cupones, campañas, aplicabilidad por producto/categoría, checkout server-side, reviews verificadas, moderación, reportes, auditoría y RBAC. La compilación de producción reciente completó TypeScript, generación de 118 páginas y optimización de rutas.
 
-## 08.3 — Hardening e implementación de certificación
+## 08.3 — Hardening, frontend público y certificación
 
-Estado: 🟡 **implementación en curso; certificación productiva pendiente**.
+Estado de implementación: 🟢 **completa en código**. Estado de certificación: 🟡 **pendiente de evidencia del release final**.
 
 ### Hardening aplicado
 
@@ -28,9 +28,13 @@ Estado: 🟡 **implementación en curso; certificación productiva pendiente**.
 - El repositorio de reportes usa mapeo tipado de filas D1.
 - CMS incorpora validaciones de ventanas editoriales, banners, destacados, IDs, prioridades, URLs y estados de publicación.
 - Se añadió `migrations/0036_phase08_review_hardening.sql` con reportes y eventos de moderación durables, claves foráneas, índices, restricciones y unicidad cliente/review.
-- Se añadieron pruebas del dominio de moderación y una regresión que garantiza que editar un cupón no reinicie sus redenciones.
+- Se añadieron pruebas del dominio de moderación, concurrencia de redención de cupones, concurrencia de moderación/reportes e invariantes RBAC.
+- El storefront público incorpora banners, destacados y FAQs desde D1, además de navegación pública a Blog y Preguntas frecuentes.
+- Las APIs públicas de CMS/marketing y las rutas editoriales fueron llevadas a la capa Application/Infrastructure para conservar las fronteras de Clean Architecture.
+- Se añadió una verificación remota de D1 para la migración 0036, incluyendo registro de migración, tablas y claves foráneas, ejecutada como gate previo al deploy.
+- Se corrigió la persistencia de `used_count` para que una edición administrativa nunca lo reinicie.
 
-### Gates pendientes
+### Gates de certificación pendientes
 
 - [ ] Suite completa de tests.
 - [ ] Lint y architecture checks.
