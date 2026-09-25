@@ -35,7 +35,8 @@
     "cloudflare:build": "pnpm install --frozen-lockfile && pnpm build:cloudflare",
     "cloudflare:deploy": "pnpm db:migrate:production && pnpm exec wrangler deploy --env=\"\"",
     "cloudflare:version": "pnpm exec wrangler --version",
-    "verify:notifications:production": "node scripts/verify-notifications-production.mjs"
+    "verify:notifications:production": "node scripts/verify-notifications-production.mjs",
+    "db:verify:production": "node scripts/verify-d1-review-hardening.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260908.1",
