@@ -210,7 +210,7 @@ La certificación global permanece pendiente hasta completar regresiones y evide
 
 ## Fase 08 — CMS + Marketing + Reviews
 
-La auditoría 08.1 confirma que existen implementaciones parciales de CMS, promociones y reviews reutilizables desde Fase 06, pero no constituyen todavía la Fase 08 completa. El detalle y los gaps están en `docs/auditoria-fase-8.md`.
+**08.2 — 🟢 implementación completa.** Incluye CMS administrable, blog y landing pages públicas SEO-friendly, FAQs, banners, destacados, publicación programada, promociones, cupones con límites y segmentación, campañas, aplicación server-side en checkout, reviews verificadas, moderación, reportes, auditoría y tests. La certificación productiva continúa separada del cierre de implementación y requiere build/deploy/verify exitoso.
 
 ## Documentación canónica
 
