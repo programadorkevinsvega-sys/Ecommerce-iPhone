@@ -2,6 +2,12 @@ declare var WebSocketPair: {
   new (): [WebSocket, WebSocket];
 };
 
+declare global {
+  interface ResponseInit {
+    webSocket?: WebSocket;
+  }
+}
+
 declare module "cloudflare:workers" {
   abstract class DurableObject<Env = unknown> {
     protected readonly ctx: DurableObjectState;
