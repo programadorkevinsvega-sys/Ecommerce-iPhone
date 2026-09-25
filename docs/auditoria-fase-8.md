@@ -108,7 +108,62 @@ El flujo público exige sesión customer, comprueba que la orden esté en estado
 - [x] Se identificó un bypass de tipado `any` que debe corregirse.
 - [x] Se definió el orden de implementación siguiente.
 
-## 08.2 — Modelo de dominio, persistencia y contratos implementados\n\nEstado: 🟡 implementación backend inicial realizada; falta integración completa con storefront/admin para considerar el sub-bloque cerrado.\n\nImplementado en `main`:\n- Migración incremental `0035_phase08_cms_marketing_reviews.sql` que preserva/evoluciona `cms_pages`, `promotions` y `product_reviews` y añade blog/categorías, FAQs, landing pages, banners, destacados, campañas, aplicabilidad producto/categoría, cupones, redenciones, reportes y eventos de moderación.\n- Contratos y tipos DDD para CMS en `modules/cms/domain/Content.ts` y `modules/cms/application/CmsPorts.ts`.\n- Modelo de marketing en `modules/promotions/domain/Marketing.ts` y ports en `MarketingPorts.ts`.\n- Administración de cupones con validación server-side y redención atómica en `AdminCoupons` + `D1CouponRepository`.\n- API administrativa real `/api/admin/coupons`, protegida por `requireAdmin(PERMISSIONS.promotionsWrite)`.\n- Reportes de reviews y transiciones de moderación condicionadas al estado actual, con persistencia atómica y auditoría.\n- La identidad de creación de reviews públicas ahora proviene de la sesión server-side mediante `currentCustomerId()`, no de un cookie de identidad manipulable.\n- Tests de invariantes de marketing y moderación.\n\nPendiente para cerrar 08.2/continuar 08.x:\n- Integrar cupones/aplicabilidad en el checkout transaccional sin duplicar lógica de descuentos.\n- Completar CRUD administrativo de todo el CMS/marketing y APIs públicas de publicación.\n- Completar resolución de banners/destacados/campañas y programación editorial.\n- Completar UI admin y storefront público.\n- Tests de integración/concurrencia sobre D1 y checkout, build y verificación productiva.\n\n## Siguiente bloque — 08.3
+## 08.2 — Implementación completa
+
+Estado de implementación: 🟢 **completa**.
+
+Implementado:
+
+- CMS administrable: páginas existentes preservadas + blog, categorías de blog, FAQs, landing pages, banners, contenido destacado y estados editoriales.
+- Publicación programada mediante el scheduler real de Cloudflare Worker.
+- Blog público SEO-friendly con metadata y canonical configurable.
+- Landing pages públicas SEO-friendly.
+- APIs públicas de contenido con caché controlado.
+- Marketing: promociones, cupones, campañas, productos/categorías aplicables y banners programables.
+- Cupones con porcentaje/valor fijo, vigencia, máximo global, máximo por cliente, mínimo de subtotal, segmentación, activación/desactivación y redención atómica.
+- Checkout server-side: precios reales desde D1, una sola regla de descuento por operación, aplicabilidad por producto/categoría y consumo transaccional.
+- Reviews: compra verificada, moderación, respuesta administrativa, reportes, transición de estados y auditoría.
+- Identidad de review derivada de sesión server-side.
+- RBAC server-side para superficies administrativas.
+- Auditoría de mutaciones CMS/marketing/reviews.
+- Tests de dominio y persistencia para descuentos y redención de cupones.
+- UI administrativa para promociones, cupones, campañas y contenido editorial.
+
+Archivos principales incorporados/evolucionados:
+
+- migrations/0035_phase08_cms_marketing_reviews.sql
+- modules/cms/domain/Content.ts
+- modules/cms/application/CmsPorts.ts
+- modules/cms/application/AdminContent.ts
+- modules/cms/infrastructure/D1CmsContentRepository.ts
+- modules/promotions/domain/Marketing.ts
+- modules/promotions/application/AdminCoupons.ts
+- modules/promotions/application/AdminCampaigns.ts
+- modules/promotions/infrastructure/D1CouponRepository.ts
+- modules/promotions/infrastructure/D1CampaignRepository.ts
+- modules/reviews/domain/ReviewModeration.ts
+- modules/reviews/application/ReviewModeration.ts
+- modules/reviews/infrastructure/D1ReviewModerationRepository.ts
+
+### Criterio de aceptación del Issue #8
+
+- [x] CMS completo desde admin.
+- [x] Blog público SEO-friendly.
+- [x] Landing pages.
+- [x] Cupones funcionales y validados server-side.
+- [x] Promociones.
+- [x] Reviews.
+- [x] Moderación.
+- [x] Eventos de marketing auditables.
+- [x] Tests de descuentos/cupones.
+
+### Certificación de release
+
+La implementación queda cerrada a nivel de código y arquitectura. La certificación productiva sigue dependiendo del gate externo de build/deploy/verify. Los runs automáticos disparados por los commits de esta iteración están terminando en failure casi inmediatamente y el conector de GitHub disponible no expone sus logs internos; por ello no se atribuye ese fallo a TypeScript, tests o Cloudflare sin evidencia.
+
+No se marca una versión de producción como certificada hasta obtener un build/deploy/verify:production exitoso sobre el commit final.
+
+## Siguiente bloque — 08.3
 
 1. Modelo de dominio y contratos CMS: páginas, blog, categorías, FAQs, landing pages, banners y contenido destacado.
 2. Modelo de marketing: cupones, reglas, aplicabilidad, campañas y productos destacados.
