@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { ReviewModeration } from "../../../../../../modules/reviews/application/ReviewModeration";
-import { D1ReviewModerationRepository } from "../../../../../../modules/reviews/infrastructure/D1ReviewModerationRepository";
-import { D1AuditPort } from "../../../../../../modules/admin/infrastructure/D1AuditPort";
+import { ReviewModeration } from "../../../../../../../modules/reviews/application/ReviewModeration";
+import { D1ReviewModerationRepository } from "../../../../../../../modules/reviews/infrastructure/D1ReviewModerationRepository";
+import { D1AuditPort } from "../../../../../../../modules/admin/infrastructure/D1AuditPort";
 import { currentCustomerId } from "../../../../../lib/customerSession";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 
