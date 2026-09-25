@@ -4,6 +4,8 @@ export type Promotion = Readonly<{ id:string; code:string; name:string; discount
 export type Coupon = Readonly<{ id:string; code:string; name:string; discountType:DiscountType; discountValue:number; minSubtotalInCents:number; maxUses:number|null; usedCount:number; maxUsesPerCustomer:number|null; startsAt:string; endsAt:string; active:boolean } & Applicability>;
 export type Campaign = Readonly<{ id:string; slug:string; name:string; description?:string; startsAt:string; endsAt:string; active:boolean }>;
 
+export function calculateDiscount(type:DiscountType,value:number,eligibleSubtotalInCents:number):number { return type==="PERCENT" ? Math.min(eligibleSubtotalInCents,Math.floor((eligibleSubtotalInCents*value)/100)) : Math.min(eligibleSubtotalInCents,value); }
+
 export function validateDiscount(type:DiscountType,value:number):void {
   if(type==="PERCENT" && (!Number.isSafeInteger(value) || value<1 || value>100)) throw new Error("INVALID_PERCENT_DISCOUNT");
   if(type==="FIXED" && (!Number.isSafeInteger(value) || value<1)) throw new Error("INVALID_FIXED_DISCOUNT");
