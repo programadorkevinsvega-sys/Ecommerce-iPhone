@@ -1,6 +1,6 @@
 import {NextResponse} from "next/server";
-import {publicContent} from "../../../../lib/publicContent";
-import {publicMarketing} from "../../../../lib/publicMarketing";
+import {publicContent} from "../../../lib/publicContent";
+import {publicMarketing} from "../../../lib/publicMarketing";
 
 type Kind="blog"|"blog-categories"|"faqs"|"landing"|"banners"|"featured";
 const allowed:ReadonlySet<Kind>=new Set(["blog","blog-categories","faqs","landing","banners","featured"]);
