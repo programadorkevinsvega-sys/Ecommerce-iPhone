@@ -1,6 +1,16 @@
 import { Review, type ReviewProps } from "../domain/Review";
 
-export type PublicReview = ReviewProps & { id:string; customerName:string };
+export type PublicReview = Readonly<{
+  id:string;
+  productId:string;
+  rating:number;
+  title?:string;
+  body:string;
+  status:"APPROVED";
+  verifiedPurchase:boolean;
+  customerName:string;
+  adminResponse?:string;
+}>;
 export interface ReviewRepository {
   listApproved(productId:string):Promise<readonly PublicReview[]>;
   create(review:Review):Promise<void>;
