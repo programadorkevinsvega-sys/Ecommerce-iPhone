@@ -38,6 +38,8 @@ export default function CheckoutPage() {
       const postalCode = normalizeSingleLine(get("postalCode"));
       if (postalCode) assertLength(postalCode, "postalCode");
 
+      const discountCode = normalizeSingleLine(get("discountCode")).toUpperCase();
+      if (discountCode && !/^[A-Z0-9_-]{3,64}$/u.test(discountCode)) throw new Error("INVALID_DISCOUNT_CODE");
       const selectedProvider = normalizeSingleLine(get("paymentProvider")).toUpperCase();
       const providerEntry = PAYMENT_PROVIDER_OPTIONS.find(([value]) => value === selectedProvider);
       if (!providerEntry) throw new Error("UNAUTHORIZED_PAYMENT_PROVIDER");
@@ -57,7 +59,7 @@ export default function CheckoutPage() {
       const orderResponse = await fetch("/api/checkout", {
         method: "POST",
         headers: { "content-type": "application/json", "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify({ email, firstName, lastName, phone, shippingMethod, shippingAddress }),
+        body: JSON.stringify({ email, firstName, lastName, phone, shippingMethod, shippingAddress, ...(discountCode ? { couponCode: discountCode } : {}) }),
       });
       if (!orderResponse.ok) throw Object.assign(new Error("CHECKOUT_FAILED"), { status: orderResponse.status });
       const orderData = await orderResponse.json() as { order?: { id?: unknown } };
@@ -103,6 +105,7 @@ export default function CheckoutPage() {
           <label htmlFor="checkout-state">Departamento</label><input id="checkout-state" name="state" type="text" required minLength={1} maxLength={80} autoComplete="shipping address-level1" />
           <label htmlFor="checkout-postal">Código postal</label><input id="checkout-postal" name="postalCode" type="text" minLength={3} maxLength={20} autoComplete="shipping postal-code" inputMode="numeric" />
         </fieldset>
+        <fieldset><legend>Descuento</legend><label htmlFor="checkout-discount">Cupón o código promocional</label><input id="checkout-discount" name="discountCode" type="text" maxLength={64} autoComplete="off" /><small>Se valida y aplica exclusivamente en servidor.</small></fieldset>
         <fieldset><legend>Método de pago</legend>
           <label htmlFor="checkout-provider">Proveedor</label><select id="checkout-provider" name="paymentProvider" defaultValue="WOMPI" required aria-label="Proveedor de pago">{PAYMENT_PROVIDER_OPTIONS.map(([value, { label }]) => <option key={value} value={value}>{label}</option>)}</select>
         </fieldset>
