@@ -71,7 +71,11 @@ export function adminCouponsApplication(env: CloudflareEnv): AdminCoupons { retu
 
 export function adminContentApplication(env: CloudflareEnv): AdminContent { return new AdminContent(new D1CmsContentRepository(env.DB), new D1AuditPort(env.DB)); }
 
-export function reviewModerationApplication(env: CloudflareEnv): ReviewModeration { return new ReviewModeration(new D1ReviewModerationRepository(env.DB), new D1AuditPort(env.DB)); }\n\nexport function adminCampaignsApplication(env: CloudflareEnv): AdminCampaigns { return new AdminCampaigns(new D1CampaignRepository(env.DB), new D1AuditPort(env.DB)); }\n\nexport function adminReviewsApplication(env: CloudflareEnv): AdminReviews {
+export function reviewModerationApplication(env: CloudflareEnv): ReviewModeration { return new ReviewModeration(new D1ReviewModerationRepository(env.DB), new D1AuditPort(env.DB)); }
+
+export function adminCampaignsApplication(env: CloudflareEnv): AdminCampaigns { return new AdminCampaigns(new D1CampaignRepository(env.DB), new D1AuditPort(env.DB)); }
+
+export function adminReviewsApplication(env: CloudflareEnv): AdminReviews {
   return new AdminReviews(new D1AdminReviewRepository(env.DB), new D1AuditPort(env.DB));
 }
 
