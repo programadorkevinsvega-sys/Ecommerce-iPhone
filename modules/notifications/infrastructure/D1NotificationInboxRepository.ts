@@ -98,9 +98,10 @@ export class D1NotificationInboxRepository implements NotificationInboxRepositor
 
     const hasMore = rows.results.length > normalized;
     const items = rows.results.slice(0, normalized).map(mapRow);
+    const lastItem = items.at(-1);
     return {
       items,
-      nextCursor: hasMore && items.length ? encodeCursor(items[items.length - 1]) : null,
+      nextCursor: hasMore && lastItem ? encodeCursor(lastItem) : null,
     };
   }
 
