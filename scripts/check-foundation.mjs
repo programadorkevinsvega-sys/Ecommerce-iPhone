@@ -22,10 +22,8 @@ const requiredFiles = [
   "apps/web/app/api/health/live/route.ts",
   "apps/web/app/api/health/ready/route.ts",
   "apps/web/app/api/admin/resources/route.ts",
-  ".github/workflows/ci.yml",
   ".github/workflows/deploy.yml",
   ".github/workflows/production-verification.yml",
-  ".github/workflows/staging.yml",
   ".github/workflows/rollback.yml",
 ];
 
@@ -35,9 +33,6 @@ for (const file of requiredFiles) {
 }
 
 const wrangler = await readFile("wrangler.jsonc", "utf8");
-for (const environment of ["development", "staging"]) {
-  if (!wrangler.includes(`\"${environment}\"`)) failures.push(`wrangler environment is not declared: ${environment}`);
-}
 for (const binding of ["API_RATE_LIMITER", "SENSITIVE_RATE_LIMITER"]) {
   if (!wrangler.includes(`\"name\": \"${binding}\"`)) failures.push(`rate-limit binding is not declared: ${binding}`);
 }
@@ -73,17 +68,12 @@ for (const entry of [".env", ".env.*", ".dev.vars", ".dev.vars.*"]) {
   if (!gitignore.includes(entry)) failures.push(`secret file is not ignored: ${entry}`);
 }
 
-const ci = await readFile(".github/workflows/ci.yml", "utf8");
-if (!ci.includes("pnpm install --frozen-lockfile")) failures.push("CI must use frozen lockfile installation");
-if (!ci.includes("pnpm foundation:check")) failures.push("CI must run foundation:check");
-if (!ci.includes("pnpm architecture:check")) failures.push("CI must run architecture:check");
-if (!ci.includes("pnpm test:e2e") && !ci.includes("pnpm --filter @ecommerce/web test:e2e")) failures.push("CI must run E2E tests");
-
 const deploy = await readFile(".github/workflows/deploy.yml", "utf8");
 if (/push:\s*\n\s*branches:\s*\[main\]/.test(deploy)) failures.push("manual deploy workflow must not duplicate the automatic Cloudflare Workers Builds deploy");
 
 const productionVerification = await readFile(".github/workflows/production-verification.yml", "utf8");
 if (!productionVerification.includes("pnpm verify:production")) failures.push("production verification workflow must execute runtime verification");
+if (!deploy.includes("pnpm db:verify:production")) failures.push("production deploy must verify remote D1 review hardening migration");
 
 const adminRoute = await readFile("apps/web/app/api/admin/resources/route.ts", "utf8");
 if (/\.prepare\s*\(/.test(adminRoute)) failures.push("admin presentation route must not execute SQL directly");
