@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { reviewService } from "../../../../../lib/storefrontReviews";
 import { assertLength, normalizeIdentifier, normalizeMultiline, normalizeSingleLine, validateRating } from "../../../../../lib/inputValidation";
+import { currentCustomerId } from "../../../../../lib/customerSession";
 
 function errorResponse(error: unknown): Response {
   const code = error instanceof Error ? error.message : "UNKNOWN";
@@ -31,7 +32,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const customerId = (await cookies()).get("customer_id")?.value;
+    const customerId = await currentCustomerId();
     if (!customerId) return NextResponse.json({ error: "Tu sesión ya no es válida. Inicia sesión nuevamente." }, { status: 401 });
     const body = await request.json() as Record<string, unknown>;
     const orderId = assertLength(normalizeIdentifier(body.orderId), "orderId");
