@@ -8,6 +8,7 @@ import AdminTable from "../AdminTable";
 import AdminEmptyState from "../AdminEmptyState";
 import AdminLoadingState from "../AdminLoadingState";
 
+type ReviewReport = { id:string; reviewId:string; customerId:string; reason:string; details?:string; status:"OPEN"|"REVIEWED"|"DISMISSED"|"ACTIONED"; resolvedBy?:string; resolvedAt?:string };
 type Review = {
   id: string;
   productId: string;
@@ -25,12 +26,14 @@ type Review = {
 
 export default function ReviewsPage() {
   const [items, setItems] = useState<Review[]>([]);
+  const [reports, setReports] = useState<ReviewReport[]>([]);
   const [status, setStatus] = useState("");
   const [productId, setProductId] = useState("");
   const [responseText, setResponseText] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [reportStatus, setReportStatus] = useState("OPEN");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -49,6 +52,43 @@ export default function ReviewsPage() {
       setLoading(false);
     }
   }, [status, productId]);
+
+  const loadReports = useCallback(async () => {
+    try {
+      const query = reportStatus ? "?status=" + encodeURIComponent(reportStatus) : "";
+      const response = await fetch("/api/admin/reviews/reports" + query, { cache:"no-store", credentials:"same-origin" });
+      const data = (await response.json()) as { items?:ReviewReport[]; error?:string };
+      if (!response.ok) throw new Error(data.error ?? "No se pudieron cargar los reportes.");
+      setReports(data.items ?? []);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudieron cargar los reportes.");
+    }
+  }, [reportStatus]);
+
+  useEffect(() => {
+    void loadReports();
+  }, [loadReports]);
+
+  async function resolveReport(id:string, nextStatus:"REVIEWED"|"DISMISSED"|"ACTIONED") {
+    setBusy(id + nextStatus);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/reviews/reports", {
+        method:"PATCH",
+        credentials:"same-origin",
+        cache:"no-store",
+        headers:{"content-type":"application/json"},
+        body:JSON.stringify({id,status:nextStatus}),
+      });
+      const data = (await response.json()) as { error?:string };
+      if (!response.ok) throw new Error(data.error ?? "No se pudo resolver el reporte.");
+      await loadReports();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudo resolver el reporte.");
+    } finally {
+      setBusy("");
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -109,6 +149,31 @@ export default function ReviewsPage() {
                     <span className="muted">{item.adminResponse ?? "Sin respuesta"}</span>
                   )}
                 </td>
+              </tr>
+            ))}
+          </AdminTable>
+        )}
+      </AdminPanel>
+      <AdminPanel>
+        <AdminSectionHeading kicker="Moderación" title="Reportes de reseñas" meta={<span className="muted">{reports.length} reportes</span>} />
+        <AdminToolbar>
+          <label>Estado<select value={reportStatus} onChange={(event) => setReportStatus(event.target.value)}><option value="OPEN">Abiertos</option><option value="">Todos</option><option value="REVIEWED">Revisados</option><option value="DISMISSED">Descartados</option><option value="ACTIONED">Con acción</option></select></label>
+          <button className="admin-button" type="button" onClick={() => void loadReports()}>Actualizar reportes</button>
+        </AdminToolbar>
+        {!reports.length ? <AdminEmptyState title="No hay reportes para este filtro" /> : (
+          <AdminTable headers={["Reseña","Cliente","Motivo","Detalles","Estado","Resolución"]} empty={undefined}>
+            {reports.map((report) => (
+              <tr key={report.id}>
+                <td><strong>{report.reviewId}</strong></td>
+                <td>{report.customerId}</td>
+                <td>{report.reason}</td>
+                <td>{report.details ?? "—"}</td>
+                <td>{report.status}</td>
+                <td>{report.status === "OPEN" ? <div>
+                  <button className="table-action" disabled={Boolean(busy)} onClick={() => void resolveReport(report.id,"REVIEWED")}>Revisado</button>
+                  <button className="table-action" disabled={Boolean(busy)} onClick={() => void resolveReport(report.id,"ACTIONED")}>Accionar</button>
+                  <button className="table-action danger" disabled={Boolean(busy)} onClick={() => void resolveReport(report.id,"DISMISSED")}>Descartar</button>
+                </div> : <span className="muted">{report.resolvedAt ?? "Resuelto"}</span>}</td>
               </tr>
             ))}
           </AdminTable>
