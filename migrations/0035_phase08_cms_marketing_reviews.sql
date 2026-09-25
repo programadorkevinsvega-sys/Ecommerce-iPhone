@@ -147,17 +147,6 @@ CREATE TABLE IF NOT EXISTS promotion_categories (
   PRIMARY KEY (promotion_id, category_id)
 );
 
-CREATE TABLE IF NOT EXISTS coupon_products (
-  coupon_id TEXT NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
-  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-  PRIMARY KEY (coupon_id, product_id)
-);
-CREATE TABLE IF NOT EXISTS coupon_categories (
-  coupon_id TEXT NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
-  category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
-  PRIMARY KEY (coupon_id, category_id)
-);
-
 CREATE TABLE IF NOT EXISTS coupons (
   id TEXT PRIMARY KEY,
   code TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -175,6 +164,17 @@ CREATE TABLE IF NOT EXISTS coupons (
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_coupons_active_window ON coupons(active, starts_at, ends_at);
+
+CREATE TABLE IF NOT EXISTS coupon_products (
+  coupon_id TEXT NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  PRIMARY KEY (coupon_id, product_id)
+);
+CREATE TABLE IF NOT EXISTS coupon_categories (
+  coupon_id TEXT NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
+  category_id TEXT NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
+  PRIMARY KEY (coupon_id, category_id)
+);
 
 CREATE TABLE IF NOT EXISTS coupon_redemptions (
   id TEXT PRIMARY KEY,
