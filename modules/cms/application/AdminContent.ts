@@ -1,6 +1,6 @@
 import type { AuditPort } from "../../admin/application/AuditPort";
 import type { CmsKind,CmsValue } from "./CmsContentPorts";
-import { validatePublication,validateSeo } from "../domain/Content";
+import { validatePublication,validateSeo,type SeoFields } from "../domain/Content";
 import type { CmsContentRepository } from "./CmsContentPorts";
 
 export class AdminContent{
@@ -9,7 +9,7 @@ export class AdminContent{
  async save(kind:CmsKind,v:CmsValue,adminId:string):Promise<string>{
   if(!adminId.trim())throw new Error("ADMIN_ID_REQUIRED");
   const value=v as unknown as Record<string,unknown>;
-  if("seoTitle" in value||"seoDescription" in value||"canonicalUrl" in value)validateSeo(value);
+  if("seoTitle" in value||"seoDescription" in value||"canonicalUrl" in value)validateSeo(value as SeoFields);
   if(typeof value.status==="string")validatePublication(value.status as "DRAFT"|"SCHEDULED"|"PUBLISHED"|"ARCHIVED",typeof value.scheduledAt==="string"?value.scheduledAt:undefined,typeof value.publishedAt==="string"?value.publishedAt:undefined);
   const slug=typeof value.slug==="string"?value.slug.trim().toLowerCase():"";
   if((kind==="BLOG_CATEGORY"||kind==="BLOG_POST"||kind==="LANDING_PAGE")&&!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(slug))throw new Error("INVALID_CONTENT_SLUG");
