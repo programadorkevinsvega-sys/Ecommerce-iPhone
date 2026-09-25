@@ -49,7 +49,10 @@ const items: ReadonlyArray<{
   { key: "audit", icon: "◌", label: "Auditoría", href: "/admin/audit" },
   { key: "reviews", icon: "★", label: "Reseñas", href: "/admin/reviews" },
   { key: "promotions", icon: "%", label: "Promociones", href: "/admin/promotions" },
+  { key: "promotions", icon: "◇", label: "Cupones", href: "/admin/coupons" },
+  { key: "promotions", icon: "◆", label: "Campañas", href: "/admin/campaigns" },
   { key: "cms", icon: "▧", label: "CMS", href: "/admin/cms" },
+  { key: "cms", icon: "▤", label: "Contenido editorial", href: "/admin/cms/content" },
   { key: "settings", icon: "⚙", label: "Configuración", href: "/admin/settings" },
   { key: "notifications", icon: "✉", label: "Notificaciones", href: "/admin/notifications" },
 ];
