@@ -1,11 +1,13 @@
 import { AdminAuditViewer } from "../../../modules/admin/application/AdminAuditViewer";
 import { AdminPromotions } from "../../../modules/promotions/application/AdminPromotions";
+import { AdminCoupons } from "../../../modules/promotions/application/AdminCoupons";
 import { AdminReviews } from "../../../modules/reviews/application/AdminReviews";
 import { AdminDashboardService } from "../../../modules/admin/application/AdminDashboardService";
 import { AdminNotificationsService } from "../../../modules/admin/application/AdminNotificationsService";
 import { AdminUserManagement } from "../../../modules/admin/application/AdminUserManagement";
 import { D1AdminAuditRepository } from "../../../modules/admin/infrastructure/D1AdminAuditRepository";
 import { D1PromotionRepository } from "../../../modules/promotions/infrastructure/D1PromotionRepository";
+import { D1CouponRepository } from "../../../modules/promotions/infrastructure/D1CouponRepository";
 import { D1AdminReviewRepository } from "../../../modules/reviews/infrastructure/D1AdminReviewRepository";
 import { D1AdminDashboardQuery } from "../../../modules/admin/infrastructure/D1AdminDashboardQuery";
 import { D1AdminNotificationsQuery } from "../../../modules/admin/infrastructure/D1AdminNotificationsQuery";
@@ -58,6 +60,8 @@ export function adminAuditApplication(env: CloudflareEnv): AdminAuditViewer {
 export function adminPromotionsApplication(env: CloudflareEnv): AdminPromotions {
   return new AdminPromotions(new D1PromotionRepository(env.DB), new D1AuditPort(env.DB));
 }
+
+export function adminCouponsApplication(env: CloudflareEnv): AdminCoupons { return new AdminCoupons(new D1CouponRepository(env.DB), new D1AuditPort(env.DB)); }
 
 export function adminReviewsApplication(env: CloudflareEnv): AdminReviews {
   return new AdminReviews(new D1AdminReviewRepository(env.DB), new D1AuditPort(env.DB));
