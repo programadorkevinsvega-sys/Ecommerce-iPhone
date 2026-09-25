@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminContentApplication } from "../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
-import type { CmsKind,CmsValue } from "../../../../../modules/cms/application/CmsContentPorts";
+import type { CmsKind,CmsValue } from "../../../../../../modules/cms/application/CmsContentPorts";
 
 const kinds:ReadonlySet<CmsKind>=new Set(["BLOG_CATEGORY","BLOG_POST","FAQ","LANDING_PAGE","BANNER","FEATURED"]);
 export async function GET(request:Request){
