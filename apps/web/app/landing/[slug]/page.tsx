@@ -1,7 +1,5 @@
-import { notFound } from "next/navigation";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-
-export const dynamic = "force-dynamic";
-
-export async function generateMetadata({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const {env}=await getCloudflareContext({async:true});const p=await env.DB.prepare("SELECT title,seo_title AS seoTitle,seo_description AS seoDescription,canonical_url AS canonicalUrl FROM cms_landing_pages WHERE slug=? AND status='PUBLISHED' AND published_at<=CURRENT_TIMESTAMP LIMIT 1").bind(slug).first<{title:string;seoTitle:string|null;seoDescription:string|null;canonicalUrl:string|null}>();if(!p)return {title:"Contenido no encontrado"};return {title:p.seoTitle||p.title,description:p.seoDescription||undefined,alternates:p.canonicalUrl?{canonical:p.canonicalUrl}:undefined};}
-export default async function LandingPage({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const {env}=await getCloudflareContext({async:true});const p=await env.DB.prepare("SELECT title,content FROM cms_landing_pages WHERE slug=? AND status='PUBLISHED' AND published_at<=CURRENT_TIMESTAMP LIMIT 1").bind(slug).first<{title:string;content:string}>();if(!p)notFound();return <main className="store-shell"><article className="content-article"><p className="eyebrow">Landing</p><h1>{p.title}</h1><div className="content-body">{p.content}</div></article></main>;}
+import {notFound} from "next/navigation";
+import {publicContent} from "../../../lib/publicContent";
+export const dynamic="force-dynamic";
+export async function generateMetadata({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const p=await (await publicContent()).get("landing",slug);if(!p)return {title:"Contenido no encontrado"};return {title:p.seoTitle||p.title,description:p.seoDescription||undefined,alternates:p.canonicalUrl?{canonical:p.canonicalUrl}:undefined};}
+export default async function LandingPage({params}:{params:Promise<{slug:string}>}){const {slug}=await params;const p=await (await publicContent()).get("landing",slug);if(!p)notFound();return <main className="store-shell"><article className="content-article"><p className="eyebrow">Landing</p><h1>{p.title}</h1><div className="content-body">{p.content}</div></article></main>}
