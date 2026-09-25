@@ -28,7 +28,7 @@ class Reservations implements ReservationRepository {
 
 class Orders implements OrderCheckoutRepository {
   called = false;
-  async checkout(): Promise<any> {
+  async checkout(): Promise<{id:string}> {
     this.called = true;
     return { id: "order-1" };
   }
@@ -57,7 +57,7 @@ describe("Checkout", () => {
   it("validates shipping policy before checkout", async () => {
     const orders = new Orders();
     const checkout = createCheckout(orders);
-    await expect(checkout.execute(cart, { ...input, shippingMethod: "INVALID" as any })).rejects.toThrow("Invalid shipping method");
+    await expect(checkout.execute(cart, { ...input, shippingMethod: "INVALID" as CheckoutInput["shippingMethod"] })).rejects.toThrow("Invalid shipping method");
     await expect(checkout.execute(cart, { ...input, shippingAddress: { ...input.shippingAddress, countryCode: "US" } })).rejects.toThrow("limited to Colombia");
     expect(orders.called).toBe(false);
   });
