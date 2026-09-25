@@ -10,13 +10,14 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   const customerId=await currentCustomerId();
   if(!customerId)return NextResponse.json({error:"Authentication required"},{status:401,headers:{"cache-control":"no-store"}});
   const {id}=await params;
-  if(!id.trim()||id.length>128)return NextResponse.json({error:"Invalid review"},{status:422});
+  const productId=id.trim();
+  if(!productId||productId.length>128)return NextResponse.json({error:"Invalid product"},{status:422,headers:{"cache-control":"no-store"}});
   const {env}=await getCloudflareContext({async:true});
   const body=await request.json() as unknown;
   if(!body||typeof body!=="object"||Array.isArray(body))throw new Error("INVALID_REVIEW_REPORT");
   const value=body as Record<string,unknown>;
-  if(typeof value.reason!=="string"||typeof value.details!=="undefined"&&typeof value.details!=="string")throw new Error("INVALID_REVIEW_REPORT");
-  const reportId=await new ReviewModeration(new D1ReviewModerationRepository(env.DB),new D1AuditPort(env.DB)).report({reviewId:id.trim(),customerId,reason:value.reason,...(typeof value.details==="string"?{details:value.details}:{})});
+  if(typeof value.reviewId!=="string"||!value.reviewId.trim()||value.reviewId.length>128||typeof value.reason!=="string"||typeof value.details!=="undefined"&&typeof value.details!=="string")throw new Error("INVALID_REVIEW_REPORT");
+  const reportId=await new ReviewModeration(new D1ReviewModerationRepository(env.DB),new D1AuditPort(env.DB)).report({reviewId:value.reviewId.trim(),productId,customerId,reason:value.reason,...(typeof value.details==="string"?{details:value.details}: {})});
   return NextResponse.json({id:reportId},{status:201,headers:{"cache-control":"no-store"}});
  }catch(e){
   const code=e instanceof Error?e.message:"UNKNOWN";
