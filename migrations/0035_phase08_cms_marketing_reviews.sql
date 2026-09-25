@@ -187,39 +187,3 @@ CREATE TABLE IF NOT EXISTS coupon_redemptions (
 );
 CREATE INDEX IF NOT EXISTS idx_coupon_redemptions_customer ON coupon_redemptions(coupon_id, customer_id, created_at DESC);
 
-CREATE TABLE IF NOT EXISTS campaign_promotions (
-  campaign_id TEXT NOT NULL REFERENCES marketing_campaigns(id) ON DELETE CASCADE,
-  promotion_id TEXT NOT NULL REFERENCES promotions(id) ON DELETE CASCADE,
-  PRIMARY KEY (campaign_id, promotion_id)
-);
-CREATE TABLE IF NOT EXISTS campaign_coupons (
-  campaign_id TEXT NOT NULL REFERENCES marketing_campaigns(id) ON DELETE CASCADE,
-  coupon_id TEXT NOT NULL REFERENCES coupons(id) ON DELETE CASCADE,
-  PRIMARY KEY (campaign_id, coupon_id)
-);
-
-CREATE TABLE IF NOT EXISTS review_reports (
-  id TEXT PRIMARY KEY,
-  review_id TEXT NOT NULL REFERENCES product_reviews(id) ON DELETE CASCADE,
-  customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE RESTRICT,
-  reason TEXT NOT NULL,
-  details TEXT,
-  status TEXT NOT NULL DEFAULT 'OPEN' CHECK (status IN ('OPEN','REVIEWED','DISMISSED','ACTIONED')),
-  resolved_by TEXT REFERENCES admin_users(id) ON DELETE SET NULL,
-  resolved_at TEXT,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(review_id, customer_id)
-);
-CREATE INDEX IF NOT EXISTS idx_review_reports_status ON review_reports(status, created_at DESC);
-
-CREATE TABLE IF NOT EXISTS review_moderation_events (
-  id TEXT PRIMARY KEY,
-  review_id TEXT NOT NULL REFERENCES product_reviews(id) ON DELETE CASCADE,
-  admin_user_id TEXT REFERENCES admin_users(id) ON DELETE SET NULL,
-  from_status TEXT NOT NULL CHECK (from_status IN ('PENDING','APPROVED','REJECTED')),
-  to_status TEXT NOT NULL CHECK (to_status IN ('PENDING','APPROVED','REJECTED')),
-  response TEXT,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_review_moderation_events_review ON review_moderation_events(review_id, created_at DESC);
