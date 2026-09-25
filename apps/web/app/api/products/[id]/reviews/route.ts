@@ -1,4 +1,3 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { reviewService } from "../../../../../lib/storefrontReviews";
 import { assertLength, normalizeIdentifier, normalizeMultiline, normalizeSingleLine, validateRating } from "../../../../../lib/inputValidation";
