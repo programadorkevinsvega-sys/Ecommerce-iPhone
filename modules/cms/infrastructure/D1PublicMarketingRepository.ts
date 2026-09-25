@@ -1,5 +1,5 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import type { PublicContent, PublicContentKind, PublicContentRecord, PublicContentRepository } from "../application/PublicContent";
+import type { PublicContentKind, PublicContentRecord, PublicContentRepository } from "../application/PublicContent";
 import type { PublicBanner,PublicFaq,PublicFeatured,PublicMarketingRepository } from "../application/PublicMarketing";
 
 type BannerRow={id:string;name:string;placement:string;imageUrl:string;altText:string;href:string|null;priority:number};
