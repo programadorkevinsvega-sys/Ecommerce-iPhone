@@ -1,10 +1,6 @@
-export {};
-
-declare global {
-  var WebSocketPair: {
-    new (): [WebSocket, WebSocket];
-  };
-}
+declare var WebSocketPair: {
+  new (): [WebSocket, WebSocket];
+};
 
 declare module "cloudflare:workers" {
   abstract class DurableObject<Env = unknown> {
