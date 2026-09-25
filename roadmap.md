@@ -389,7 +389,7 @@ La auditoría inicial del 2026-09-25 revisó el código real de `main` antes de 
 - Persistencia: `cms_pages`, `promotions` y `product_reviews` ya existen en migraciones anteriores, por lo que 08.1 debe reutilizar/evolucionar el esquema en lugar de duplicarlo.
 - Arquitectura: las piezas existentes respetan en general la separación Application/Infrastructure y composition root; antes de ampliar la fase deben eliminarse atajos de tipado como `any` presentes en `apps/web/app/api/admin/promotions/route.ts` y revisar validación/auditoría/concurrencia.
 
-### Orden de implementación después de 08.1
+### 08.2 — Modelo de dominio, persistencia y contratos\n\n🟡 Backend inicial implementado en `main`: migración D1 `0035_phase08_cms_marketing_reviews.sql`, modelos/ports CMS y marketing, administración de cupones con redención atómica, reportes y moderación de reviews con auditoría, y corrección de identidad pública de reviews para usar sesión server-side. El sub-bloque no está cerrado: falta integración transaccional de cupones/aplicabilidad en checkout, CRUD completo, publicación pública, UI, tests de integración/concurrencia y verificación productiva.\n\n### Orden de implementación después de 08.2
 
 1. Diseñar el modelo completo CMS/Marketing/Reviews y migraciones incrementales sin romper datos existentes.
 2. Completar CMS Domain/Application/Infrastructure y APIs administrativas.
