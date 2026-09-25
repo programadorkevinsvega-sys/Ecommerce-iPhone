@@ -2,7 +2,7 @@ import type { AuditPort } from "../../admin/application/AuditPort";
 import { validateApplicability, validateDiscount, validateWindow, type Coupon } from "../domain/Marketing";
 import type { CouponRepository } from "./MarketingPorts";
 
-export type CouponInput=Readonly<Omit<Coupon,"id"|"usedCount"> & { id?:string; usedCount?:number }>;
+export type CouponInput=Readonly<Omit<Coupon,"id"|"usedCount"> & { id?:string }>;
 
 export class AdminCoupons {
   constructor(private readonly repository:CouponRepository,private readonly audit:AuditPort) {}
@@ -11,7 +11,8 @@ export class AdminCoupons {
     const code=input.code.trim().toUpperCase();
     const name=input.name.trim();
     const productIds=[...input.productIds], categoryIds=[...input.categoryIds];
-    const usedCount=input.usedCount??0;
+    const existing=input.id?.trim()?await this.repository.list().then(xs=>xs.find(x=>x.id===input.id?.trim())):undefined;
+    const usedCount=existing?.usedCount??0;
     if(!/^[A-Z0-9_-]{3,64}$/u.test(code)||!name||name.length>200||!Number.isSafeInteger(usedCount)||usedCount<0||input.minSubtotalInCents<0||!Number.isSafeInteger(input.minSubtotalInCents)) throw new Error("INVALID_COUPON");
     if(input.maxUses!==null&&(!Number.isSafeInteger(input.maxUses)||input.maxUses<1||input.maxUses<usedCount)) throw new Error("INVALID_MAX_USES");
     if(input.maxUsesPerCustomer!==null&&(!Number.isSafeInteger(input.maxUsesPerCustomer)||input.maxUsesPerCustomer<1)) throw new Error("INVALID_MAX_USES_PER_CUSTOMER");
