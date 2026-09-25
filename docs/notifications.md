@@ -348,9 +348,17 @@ Load testing must exercise real Cloudflare primitives rather than replacing the 
 11. Unit/integration/security/E2E/load tests.
 12. Production deployment and certification.
 
+## Current implementation status — 2026-09-25
+
+La implementación descrita en este documento está presente en `main` y fue incluida en un deployment de Cloudflare exitoso el 2026-09-25. El Worker publicado reportó `NotificationHub`, `ecommerce-iphone-notifications` y `ecommerce-iphone-notifications-dlq` como bindings activos, además de los endpoints de inbox, realtime, preferencias y administración.
+
+Estado de código: **implementado**.
+
+Esto no equivale a certificación funcional. Quedan como gates: migraciones D1 remotas verificadas, pruebas reales de autorización, desconexión/catch-up, deduplicación, retry/DLQ/replay, carga, observabilidad y `verify:production`.
+
 ## Certification
 
-Fase 07 remains incomplete until realtime delivery, reconnect recovery, DLQ/replay, authorization, observability, load tests and production verification are evidenced.
+Fase 07 permanece sin certificación final hasta evidenciar los gates funcionales, de seguridad, carga y producción anteriores. El build/deploy exitoso por sí solo no se interpreta como `100%`.
 
 ## References
 
