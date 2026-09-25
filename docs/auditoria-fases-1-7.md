@@ -31,7 +31,7 @@ La documentación ha sido actualizada en `main` mediante commits separados de la
 | 04 Payments | 🟡 Implementada + hardening | Pendiente certificación real de proveedores |
 | 05 Services | 🟢 Implementación + hardening | Pendiente gates/certificación |
 | 06 Admin + RBAC | 🟡 Application consolidada + hardening final de RBAC, auth, auditoría y boundaries | Pendiente ejecución de gates, smoke productivo y evidencia final |
-| 07 Notifications + Queues | 🟡 Base Outbox/Queue/Resend + diseño realtime | Inbox durable, Durable Objects/WebSocket, DLQ/retry/replay, E2E/load y certificación pendientes |
+| 07 Notifications + Queues | 🟢 Implementación de código completada + deploy 2026-09-25 | Certificación funcional/E2E/security/load/verify pendiente |
 
 El trabajo reciente corresponde al hardening de **Fase 01 — eliminación de datos/mock de negocio en frontend**, al cierre de código de **Fase 06** y a la consolidación de navegación pública y del bounded context `technicians`.
 
@@ -503,9 +503,43 @@ Estos cambios están en `main` pero todavía no deben marcarse como certificados
 
 # 9. Notifications + Queues — FASE 07
 
-Implementado: notification ports, NotificationService, templates, D1 outbox/deliveries, Resend, Queue, cron, IDs deterministas, claim atómico de deliveries/outbox.
+## Estado de implementación
 
-Pendiente: DLQ explícita, retry definitivo, replay y auditoría de fallos terminales.
+**🟢 Código implementado y deployment de Cloudflare exitoso — 2026-09-25.**
+
+El release desplegado confirmó:
+
+- D1 notification inbox y catch-up;
+- NotificationHub Durable Object;
+- WebSocket Hibernation;
+- Queue dedicada `ecommerce-iphone-notifications`;
+- DLQ `ecommerce-iphone-notifications-dlq`;
+- retry y clasificación de fallos;
+- persistencia D1 de dead letters;
+- replay administrativo auditado;
+- preferencias de canal;
+- delivery ledger;
+- idempotencia;
+- APIs customer/technician/admin;
+- frontend de bandeja/notificaciones;
+- integración Resend.
+
+El build pasó TypeScript/lint, generación de 110 páginas, OpenNext bundle y Wrangler deploy. Cloudflare reportó los bindings de Queue, DLQ y Durable Object y finalizó con `Success! Build completed.`
+
+## Certificación pendiente
+
+La implementación de código no se confunde con certificación. Continúan pendientes:
+
+- migraciones D1 remotas verificadas;
+- pruebas E2E de desconexión/catch-up;
+- autorización customer/technician/admin con identidades reales;
+- deduplicación e idempotencia bajo concurrencia;
+- retry/DLQ/replay reales;
+- pruebas de carga realtime/Queue;
+- métricas/alertas p95/p99;
+- `verify:production` y evidencia funcional productiva.
+
+El deployment exitoso constituye evidencia de integración del release, no evidencia por sí solo de todos los escenarios funcionales anteriores.
 
 ---
 
