@@ -22,9 +22,11 @@ type Promotion = {
   active: number | boolean;
   createdAt: string;
   updatedAt: string;
+  productIds: string[];
+  categoryIds: string[];
 };
 
-const emptyForm = { id: "", code: "", name: "", discountType: "PERCENT" as "PERCENT" | "FIXED", discountValue: "", minSubtotalInCents: "0", maxUses: "", startsAt: "", endsAt: "", active: true };
+const emptyForm = { id: "", code: "", name: "", productIds: "", categoryIds: "", discountType: "PERCENT" as "PERCENT" | "FIXED", discountValue: "", minSubtotalInCents: "0", maxUses: "", startsAt: "", endsAt: "", active: true };
 
 function toLocalInput(value: string) {
   const date = new Date(value);
@@ -65,7 +67,7 @@ export default function PromotionsPage() {
       return;
     }
     setEditing(true);
-    setForm({ id: item.id, code: item.code, name: item.name, discountType: item.discountType, discountValue: String(item.discountValue), minSubtotalInCents: String(item.minSubtotalInCents), maxUses: item.maxUses == null ? "" : String(item.maxUses), startsAt: toLocalInput(item.startsAt), endsAt: toLocalInput(item.endsAt), active: Boolean(item.active) });
+    setForm({ id: item.id, code: item.code, name: item.name, discountType: item.discountType, discountValue: String(item.discountValue), minSubtotalInCents: String(item.minSubtotalInCents), maxUses: item.maxUses == null ? "" : String(item.maxUses), startsAt: toLocalInput(item.startsAt), endsAt: toLocalInput(item.endsAt), active: Boolean(item.active), productIds: item.productIds.join(","), categoryIds: item.categoryIds.join(",") });
   }
 
   async function save(event: FormEvent) {
@@ -73,7 +75,7 @@ export default function PromotionsPage() {
     setSaving(true);
     setError("");
     try {
-      const body = { ...(form.id ? { id: form.id } : {}), code: form.code, name: form.name, discountType: form.discountType, discountValue: Number(form.discountValue), minSubtotalInCents: Number(form.minSubtotalInCents), maxUses: form.maxUses === "" ? null : Number(form.maxUses), startsAt: new Date(form.startsAt).toISOString(), endsAt: new Date(form.endsAt).toISOString(), active: form.active };
+      const body = { ...(form.id ? { id: form.id } : {}), productIds: form.productIds.split(",").map((v) => v.trim()).filter(Boolean), categoryIds: form.categoryIds.split(",").map((v) => v.trim()).filter(Boolean), code: form.code, name: form.name, discountType: form.discountType, discountValue: Number(form.discountValue), minSubtotalInCents: Number(form.minSubtotalInCents), maxUses: form.maxUses === "" ? null : Number(form.maxUses), startsAt: new Date(form.startsAt).toISOString(), endsAt: new Date(form.endsAt).toISOString(), active: form.active };
       const response = await fetch("/api/admin/promotions", { method: "POST", headers: { "content-type": "application/json" }, credentials: "same-origin", body: JSON.stringify(body) });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "No se pudo guardar la promoción.");
@@ -113,7 +115,7 @@ export default function PromotionsPage() {
               <label>Nombre<input required maxLength={200} value={form.name} onChange={(event) => setForm((value) => ({ ...value, name: event.target.value }))} /></label>
               <label>Tipo<select value={form.discountType} onChange={(event) => setForm((value) => ({ ...value, discountType: event.target.value as "PERCENT" | "FIXED" }))}><option value="PERCENT">Porcentaje</option><option value="FIXED">Valor fijo (centavos)</option></select></label>
               <label>Descuento<input type="number" min="1" max={form.discountType === "PERCENT" ? 100 : undefined} value={form.discountValue} onChange={(event) => setForm((value) => ({ ...value, discountValue: event.target.value }))} /></label>
-              <label>Mínimo subtotal (centavos)<input type="number" min="0" value={form.minSubtotalInCents} onChange={(event) => setForm((value) => ({ ...value, minSubtotalInCents: event.target.value }))} /></label>
+              <label>Productos aplicables (IDs, coma)<input value={form.productIds} onChange={(event) => setForm((value) => ({ ...value, productIds: event.target.value }))} /></label><label>Categorías aplicables (IDs, coma)<input value={form.categoryIds} onChange={(event) => setForm((value) => ({ ...value, categoryIds: event.target.value }))} /></label><label>Mínimo subtotal (centavos)<input type="number" min="0" value={form.minSubtotalInCents} onChange={(event) => setForm((value) => ({ ...value, minSubtotalInCents: event.target.value }))} /></label>
               <label>Máximo de usos<input type="number" min="1" value={form.maxUses} onChange={(event) => setForm((value) => ({ ...value, maxUses: event.target.value }))} /></label>
               <label>Inicio<input required type="datetime-local" value={form.startsAt} onChange={(event) => setForm((value) => ({ ...value, startsAt: event.target.value }))} /></label>
               <label>Fin<input required type="datetime-local" value={form.endsAt} onChange={(event) => setForm((value) => ({ ...value, endsAt: event.target.value }))} /></label>
