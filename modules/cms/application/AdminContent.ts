@@ -1,32 +1,25 @@
 import type { AuditPort } from "../../admin/application/AuditPort";
-import type { CmsKind } from "./CmsContentPorts";
-import { validatePublication, validateSeo, type Banner, type BlogCategory, type BlogPost, type Faq, type FeaturedContent, type LandingPage } from "../domain/Content";
+import type { CmsKind,CmsValue } from "./CmsContentPorts";
+import { validatePublication,validateSeo } from "../domain/Content";
 import type { CmsContentRepository } from "./CmsContentPorts";
 
-export type ContentInput =
- | {kind:"BLOG_CATEGORY";value:BlogCategory}
- | {kind:"BLOG_POST";value:BlogPost}
- | {kind:"FAQ";value:Faq}
- | {kind:"LANDING_PAGE";value:LandingPage}
- | {kind:"BANNER";value:Banner}
- | {kind:"FEATURED";value:FeaturedContent};
-
-export class AdminContent {
+export class AdminContent{
  constructor(private readonly repo:CmsContentRepository,private readonly audit:AuditPort){}
- async list(kind:ContentInput["kind"]){return this.repo.list(kind);}
- async save(kind:CmsKind,v:ContentInput["value"],adminId:string):Promise<string>{
+ list(kind:CmsKind){return this.repo.list(kind);}
+ async save(kind:CmsKind,v:CmsValue,adminId:string):Promise<string>{
   if(!adminId.trim())throw new Error("ADMIN_ID_REQUIRED");
-  const input={kind,value:v};
-  if("seoTitle" in v || "seoDescription" in v || "canonicalUrl" in v)validateSeo(v);
-  if("status" in v)validatePublication(v.status,v.scheduledAt,v.publishedAt);
-  if(kind==="BLOG_CATEGORY"&&!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(v.slug))throw new Error("INVALID_CONTENT_SLUG");
-  if(input.kind==="BLOG_POST"||input.kind==="LANDING_PAGE"){if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(v.slug)||v.title.trim().length<1||v.title.length>200||v.content.length>100000)throw new Error("INVALID_CONTENT");}
-  if(input.kind==="FAQ"&&(!v.question.trim()||!v.answer.trim()||v.question.length>500||v.answer.length>10000))throw new Error("INVALID_FAQ");
-  if(input.kind==="BANNER"&&(!v.name.trim()||!v.placement.trim()||!/^https?:\/\//iu.test(v.imageUrl)))throw new Error("INVALID_BANNER");
-  if(input.kind==="FEATURED"&&(!v.contentId.trim()||!v.placement.trim()))throw new Error("INVALID_FEATURED_CONTENT");
-  const id=await this.repo.save(kind,v);
-  await this.audit.audit(adminId,"ADMIN_CONTENT_SAVED",kind,id,{});
-  return id;
+  const value=v as unknown as Record<string,unknown>;
+  if("seoTitle" in value||"seoDescription" in value||"canonicalUrl" in value)validateSeo(value);
+  if(typeof value.status==="string")validatePublication(value.status as "DRAFT"|"SCHEDULED"|"PUBLISHED"|"ARCHIVED",typeof value.scheduledAt==="string"?value.scheduledAt:undefined,typeof value.publishedAt==="string"?value.publishedAt:undefined);
+  const slug=typeof value.slug==="string"?value.slug.trim().toLowerCase():"";
+  if((kind==="BLOG_CATEGORY"||kind==="BLOG_POST"||kind==="LANDING_PAGE")&&!/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(slug))throw new Error("INVALID_CONTENT_SLUG");
+  const title=typeof value.title==="string"?value.title.trim():"";
+  const body=typeof value.content==="string"?value.content:"";
+  if((kind==="BLOG_POST"||kind==="LANDING_PAGE")&&(!title||title.length>200||body.length>100000))throw new Error("INVALID_CONTENT");
+  if(kind==="FAQ"&&(!String(value.question??"").trim()||!String(value.answer??"").trim()||String(value.question).length>500||String(value.answer).length>10000))throw new Error("INVALID_FAQ");
+  if(kind==="BANNER"&&(!String(value.name??"").trim()||!String(value.placement??"").trim()||!/^https?:\/\//iu.test(String(value.imageUrl??""))))throw new Error("INVALID_BANNER");
+  if(kind==="FEATURED"&&(!String(value.contentId??"").trim()||!String(value.placement??"").trim()))throw new Error("INVALID_FEATURED_CONTENT");
+  const id=await this.repo.save(kind,v);await this.audit.audit(adminId,"ADMIN_CONTENT_SAVED",kind,id,{});return id;
  }
- async setActive(kind:ContentInput["kind"],id:string,active:boolean,adminId:string){const ok=await this.repo.setActive(kind,id,active);if(!ok)throw new Error("CONTENT_NOT_FOUND");await this.audit.audit(adminId,"ADMIN_CONTENT_ACTIVE_CHANGED",kind,id,{active});}
+ async setActive(kind:CmsKind,id:string,active:boolean,adminId:string){const ok=await this.repo.setActive(kind,id,active);if(!ok)throw new Error("CONTENT_NOT_FOUND");await this.audit.audit(adminId,"ADMIN_CONTENT_ACTIVE_CHANGED",kind,id,{active});}
 }
