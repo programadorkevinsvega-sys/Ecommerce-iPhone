@@ -1,10 +1,15 @@
-declare var WebSocketPair: {
-  new (): [WebSocket, WebSocket];
-};
+export {};
 
 declare global {
+  var WebSocketPair: {
+    new (): {
+      0: WebSocket;
+      1: WebSocket;
+    };
+  };
+
   interface ResponseInit {
-    webSocket?: WebSocket;
+    webSocket?: WebSocket | null;
   }
 }
 
