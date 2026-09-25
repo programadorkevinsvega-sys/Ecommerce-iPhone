@@ -16,7 +16,7 @@ export default async function HomePage() {
   const categories = await listPublicCategories();
   const slides = await listPublicHomeSlides();
   const products = await listHomeProductItems();
-  const services = await listHomeServiceItems();
+  const services = await listHomeServiceItems();\n  const marketing = await publicMarketing();\n  const [banners, featured] = await Promise.all([marketing.banners("HOME"), marketing.featured("HOME")]);
   return (
     <main className="store-shell">
       <StoreHeader activeHref="/" />
@@ -77,7 +77,7 @@ export default async function HomePage() {
           </div>
         )}
       </section>
-      <HomeCollectionCarousel title="Productos destacados." items={products} />
+      <MarketingBanners items={banners} />\n      <FeaturedContent items={featured} />\n      <HomeCollectionCarousel title="Productos destacados." items={products} />
       <HomeCollectionCarousel title="Servicios disponibles." items={services} />
       <section className="section split-section">
         <div>
