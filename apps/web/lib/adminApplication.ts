@@ -21,6 +21,10 @@ import { AdminPermissionManagement } from "../../../modules/admin/application/Ad
 import { D1AdminPermissionRepository } from "../../../modules/admin/infrastructure/D1AdminPermissionRepository";
 import { D1AdminSettingsRepository } from "../../../modules/admin/infrastructure/D1AdminSettingsRepository";
 import { D1AuditPort } from "../../../modules/admin/infrastructure/D1AuditPort";
+import { ReviewModeration } from "../../../modules/reviews/application/ReviewModeration";
+import { D1ReviewModerationRepository } from "../../../modules/reviews/infrastructure/D1ReviewModerationRepository";
+import { AdminCampaigns } from "../../../modules/promotions/application/AdminCampaigns";
+import { D1CampaignRepository } from "../../../modules/promotions/infrastructure/D1CampaignRepository";
 import { AdminSettings } from "../../../modules/admin/application/AdminSettings";
 import { AdminPayments } from "../../../modules/payments/application/AdminPayments";
 import { D1PaymentAdminRepository } from "../../../modules/payments/infrastructure/D1PaymentAdminRepository";
@@ -67,7 +71,7 @@ export function adminCouponsApplication(env: CloudflareEnv): AdminCoupons { retu
 
 export function adminContentApplication(env: CloudflareEnv): AdminContent { return new AdminContent(new D1CmsContentRepository(env.DB), new D1AuditPort(env.DB)); }
 
-export function adminReviewsApplication(env: CloudflareEnv): AdminReviews {
+export function reviewModerationApplication(env: CloudflareEnv): ReviewModeration { return new ReviewModeration(new D1ReviewModerationRepository(env.DB), new D1AuditPort(env.DB)); }\n\nexport function adminCampaignsApplication(env: CloudflareEnv): AdminCampaigns { return new AdminCampaigns(new D1CampaignRepository(env.DB), new D1AuditPort(env.DB)); }\n\nexport function adminReviewsApplication(env: CloudflareEnv): AdminReviews {
   return new AdminReviews(new D1AdminReviewRepository(env.DB), new D1AuditPort(env.DB));
 }
 
