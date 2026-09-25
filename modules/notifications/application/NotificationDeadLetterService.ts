@@ -9,6 +9,10 @@ export class NotificationDeadLetterService {
     private readonly audit: NotificationAuditPort,
   ) {}
 
+  async record(input: { id: string; queueName: string; messageId?: string | undefined; messageBody: string }): Promise<void> {
+    await this.repository.record(input);
+  }
+
   list(limit: number) {
     return this.repository.list(Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : 50);
   }
