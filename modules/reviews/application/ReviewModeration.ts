@@ -4,11 +4,11 @@ import type { ReviewModerationRepository } from "./ReviewModerationPorts";
 
 export class ReviewModeration {
  constructor(private readonly repository:ReviewModerationRepository,private readonly audit:AuditPort){}
- async report(input:{reviewId:string;customerId:string;reason:string;details?:string}):Promise<string>{
-  if(!input.reviewId.trim()||!input.customerId.trim()) throw new Error("INVALID_REVIEW_REPORT");
+ async report(input:{reviewId:string;productId:string;customerId:string;reason:string;details?:string}):Promise<string>{
+  if(!input.reviewId.trim()||!input.productId.trim()||!input.customerId.trim()) throw new Error("INVALID_REVIEW_REPORT");
   validateReport(input.reason,input.details);
   const report:ReviewReport={id:crypto.randomUUID(),reviewId:input.reviewId.trim(),customerId:input.customerId.trim(),reason:input.reason.trim(),...(input.details?.trim()?{details:input.details.trim()}:{}),status:"OPEN"};
-  await this.repository.createReport(report);
+  await this.repository.createReport(report,input.productId.trim());
   await this.audit.audit(report.customerId,"CUSTOMER_REVIEW_REPORTED","product_review",report.reviewId,{reportId:report.id});
   return report.id;
  }
