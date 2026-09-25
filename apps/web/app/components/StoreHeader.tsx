@@ -16,7 +16,7 @@ const NAV_ITEMS = [
   { href: "/catalog", label: "Catálogo" },
   { href: "/servicios", label: "Servicios" },
   { href: "/reparaciones", label: "Consultar reparación" },
-  { href: "/contacto", label: "Contacto" },
+  { href: "/blog", label: "Blog" },\n  { href: "/faq", label: "Preguntas frecuentes" },\n  { href: "/contacto", label: "Contacto" },
   { href: "/cart", label: "Carrito" },
   { href: "/cuenta", label: "Mi cuenta" },
 ] as const;
