@@ -17,10 +17,10 @@ export class D1ReviewModerationRepository implements ReviewModerationRepository 
   ]);
   if(result[0]?.meta.changes!==1) throw new Error("REVIEW_MODERATION_CONFLICT");
  }
- async createReport(report:ReviewReport):Promise<void>{
-  const result=await this.db.prepare("INSERT INTO review_reports(id,review_id,customer_id,reason,details,status) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM product_reviews WHERE id=?) AND NOT EXISTS (SELECT 1 FROM review_reports WHERE review_id=? AND customer_id=?) AND (SELECT COUNT(*) FROM review_reports WHERE customer_id=? AND created_at>=datetime('now','-1 hour'))<5").bind(report.id,report.reviewId,report.customerId,report.reason,report.details??null,report.status,report.reviewId,report.reviewId,report.customerId,report.customerId).run();
+ async createReport(report:ReviewReport,productId:string):Promise<void>{
+  const result=await this.db.prepare("INSERT INTO review_reports(id,review_id,customer_id,reason,details,status) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM product_reviews WHERE id=? AND product_id=?) AND NOT EXISTS (SELECT 1 FROM review_reports WHERE review_id=? AND customer_id=?) AND (SELECT COUNT(*) FROM review_reports WHERE customer_id=? AND created_at>=datetime('now','-1 hour'))<5").bind(report.id,report.reviewId,report.customerId,report.reason,report.details??null,report.status,report.reviewId,productId,report.reviewId,report.customerId,report.customerId).run();
   if(result.meta.changes!==1){
-   const review=await this.getStatus(report.reviewId);
+   const review=await this.db.prepare("SELECT 1 FROM product_reviews WHERE id=? AND product_id=?").bind(report.reviewId,productId).first();
    if(!review) throw new Error("REVIEW_NOT_FOUND");
    const duplicate=await this.db.prepare("SELECT 1 FROM review_reports WHERE review_id=? AND customer_id=? LIMIT 1").bind(report.reviewId,report.customerId).first();
    if(duplicate) throw new Error("REVIEW_REPORT_ALREADY_EXISTS");
