@@ -2,11 +2,22 @@ import type { D1Database } from "@cloudflare/workers-types";
 import type { PromotionRepository } from "../application/AdminPromotions";
 import type { Promotion } from "../domain/Marketing";
 
+type PromotionRow = Omit<Promotion, "productIds" | "categoryIds" | "active"> & { active: number };
+
 export class D1PromotionRepository implements PromotionRepository {
  constructor(private readonly db:D1Database){}
  async list():Promise<readonly Promotion[]>{
-  const rows=await this.db.prepare("SELECT id,code,name,discount_type AS discountType,discount_value AS discountValue,min_subtotal_in_cents AS minSubtotalInCents,max_uses AS maxUses,used_count AS usedCount,starts_at AS startsAt,ends_at AS endsAt,active FROM promotions ORDER BY created_at DESC").all<Omit<Promotion,"productIds"|"categoryIds"> & {active:number}>();
-  return Promise.all(rows.results.map(async r=>({...r,active:r.active===1,productIds:(await this.db.prepare("SELECT product_id FROM promotion_products WHERE promotion_id=? ORDER BY product_id").bind(r.id).all<{product_id:string}>()).results.map(x=>x.product_id),categoryIds:(await this.db.prepare("SELECT category_id FROM promotion_categories WHERE promotion_id=? ORDER BY category_id").bind(r.id).all<{category_id:string}>()).results.map(x=>x.category_id)})));
+  const rows=await this.db.prepare("SELECT id,code,name,discount_type AS discountType,discount_value AS discountValue,min_subtotal_in_cents AS minSubtotalInCents,max_uses AS maxUses,used_count AS usedCount,starts_at AS startsAt,ends_at AS endsAt,active FROM promotions ORDER BY created_at DESC").all<PromotionRow>();
+  return Promise.all(rows.results.map(async r=>{
+   const products=await this.db.prepare("SELECT product_id FROM promotion_products WHERE promotion_id=? ORDER BY product_id").bind(r.id).all<{product_id:string}>();
+   const categories=await this.db.prepare("SELECT category_id FROM promotion_categories WHERE promotion_id=? ORDER BY category_id").bind(r.id).all<{category_id:string}>();
+   return {
+    id:r.id, code:r.code, name:r.name, discountType:r.discountType, discountValue:r.discountValue,
+    minSubtotalInCents:r.minSubtotalInCents, maxUses:r.maxUses, usedCount:r.usedCount,
+    startsAt:r.startsAt, endsAt:r.endsAt, active:r.active===1,
+    productIds:products.results.map(x=>x.product_id), categoryIds:categories.results.map(x=>x.category_id)
+   };
+  }));
  }
  async save(input:Promotion):Promise<string>{
   const result=await this.db.batch([
