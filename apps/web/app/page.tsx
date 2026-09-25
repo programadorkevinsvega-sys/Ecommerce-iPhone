@@ -1,5 +1,8 @@
 import Image from "next/image";
 import StoreHeader from "./components/StoreHeader";
+import MarketingBanners from "./components/MarketingBanners";
+import FeaturedContent from "./components/FeaturedContent";
+import { publicMarketing } from "../lib/publicMarketing";
 import Link from "next/link";
 import { listPublicCategories } from "../lib/catalog";
 import HomeCarousel from "./components/HomeCarousel";
