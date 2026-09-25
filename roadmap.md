@@ -338,6 +338,8 @@ Fase 07 solo podrá declararse completa cuando la notificación sea durable, el 
 
 **Issue:** #8 — CMS, Marketing y Reviews
 
+**Estado previo auditado para 08.1:** 🟡 existen piezas funcionales heredadas de Fase 06 (CMS básico, promociones y reviews), pero Fase 08 no se considera iniciada/implementada hasta completar la auditoría y cerrar los gaps descritos en `docs/auditoria-fase-8.md`.
+
 ### Objetivo
 Convertir el e-commerce en una plataforma administrable de contenido, marketing y reputación.
 
@@ -374,6 +376,29 @@ Convertir el e-commerce en una plataforma administrable de contenido, marketing 
 Descuentos y cupones deben validarse server-side y sus eventos deben ser auditables.
 
 ---
+
+
+## Fase 08 — 08.1 Auditoría de estado existente
+
+La auditoría inicial del 2026-09-25 revisó el código real de `main` antes de reconstruir funcionalidades. Hallazgos principales:
+
+- CMS: existe bounded context parcial (`AdminCms` + `D1CmsRepository`), API administrativa y `/admin/cms`; actualmente cubre páginas CMS básicas y activación, no el CMS completo del Issue #8 (blog, categorías, banners, FAQs, landing pages y contenido destacado).
+- Marketing: existe bounded context `promotions`, `AdminPromotions`, repositorio D1, API `/api/admin/promotions` y `/admin/promotions`; cubre promociones/códigos básicos, pero no cubre todavía el modelo completo de cupones por cliente/producto/categoría, campañas, banners programables y destacados.
+- Reviews: existe dominio `Review`, `ReviewService`, persistencia D1, creación condicionada a compra entregada, prevención de duplicados, API de producto y moderación administrativa con respuesta; `/admin/reviews` existe. Falta completar capacidades de reportes y endurecer/validar integralmente el flujo público y administrativo requerido por Fase 08.
+- Frontend público: no se encontraron rutas dedicadas `/blog`, `/landing` o `/faq` en la estructura revisada; el contenido CMS existente no constituye todavía un sistema público completo de publicación.
+- Persistencia: `cms_pages`, `promotions` y `product_reviews` ya existen en migraciones anteriores, por lo que 08.1 debe reutilizar/evolucionar el esquema en lugar de duplicarlo.
+- Arquitectura: las piezas existentes respetan en general la separación Application/Infrastructure y composition root; antes de ampliar la fase deben eliminarse atajos de tipado como `any` presentes en `apps/web/app/api/admin/promotions/route.ts` y revisar validación/auditoría/concurrencia.
+
+### Orden de implementación después de 08.1
+
+1. Diseñar el modelo completo CMS/Marketing/Reviews y migraciones incrementales sin romper datos existentes.
+2. Completar CMS Domain/Application/Infrastructure y APIs administrativas.
+3. Implementar publicación pública de páginas/blog/FAQs/landing con SEO-safe rendering.
+4. Construir motor de cupones/promociones server-side con reglas, límites, uso por cliente y aplicación por producto/categoría.
+5. Completar campañas, banners programables y contenido destacado.
+6. Completar reviews públicas, compra verificada, moderación, respuesta y reportes.
+7. Integrar auditoría, RBAC, idempotencia, concurrencia y tests.
+8. Build, deploy y certificación productiva.
 
 ## Fase 09 — SEO Avanzado
 
@@ -623,7 +648,7 @@ Una fase se considera terminada únicamente cuando:
 | 04 — Payments | #4 | 🟡 Implementado, certificación real pendiente |
 | 05 — Services | #5 | 🟢 Implementado + hardening, certificación pendiente |
 | 06 — Admin + RBAC | #6 | 🟡 Implementación avanzada, certificación pendiente |
-| 07 — Notifications realtime + Email | #7 | 🟡 Base Outbox/Queue/Resend implementada; realtime/Durable Objects/inbox/DLQ/replay pendientes |
+| 07 — Notifications realtime + Email | #7 | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente |
 | 08 — CMS + Marketing + Reviews | #8 | ⬜ Pendiente |
 | 09 — SEO | #9 | ⬜ Pendiente |
 | 10 — Production Readiness | #10 | ⬜ Pendiente |
@@ -653,9 +678,9 @@ Por lo tanto, el estado oficial sigue siendo **implementado/hardening, certifica
 Un build de producción con Node.js 24.18.0, pnpm 12.4.1, Next.js 15.5.25 y OpenNext Cloudflare 1.20.6 compiló Next.js correctamente y falló durante typecheck por `exactOptionalPropertyTypes` en `modules/repairs/application/RepairOrderManagement.ts:102`. La causa fue pasar `diagnosisSummary` y `workSummary` opcionales como propiedades explícitas con valor `undefined`. La corrección aplicada usa propagación condicional para omitir las propiedades cuando son `undefined` y se añadió una regresión específica. `exactOptionalPropertyTypes` permanece habilitado.
 
 
-## Actualización viva — 2026-09-22 — Fase 07
+## Actualización viva — 2026-09-25 — Fase 07
 
-La Fase 07 ya no está limitada al Outbox/Queue/Resend inicial. El código actual incluye:
+La Fase 07 ya no está limitada al Outbox/Queue/Resend inicial. El código actual incluye y el deployment de producción del 2026-09-25 confirmó la integración del Worker con estos recursos:
 
 - inbox durable D1;
 - cursor/catch-up;
@@ -672,8 +697,11 @@ La Fase 07 ya no está limitada al Outbox/Queue/Resend inicial. El código actua
 - ledger de entregas de canal;
 - monitor administrativo de entregas y DLQ;
 - smoke contract de producción sin secretos.
+- frontend customer/technician/admin para bandeja y gestión de notificaciones.
 
-Estado: implementación avanzada / hardening.
+Estado de código: **🟢 implementado**.
 
-El release actual todavía necesita build/deploy Cloudflare, migraciones D1 remotas, pruebas E2E/security/load y evidencia productiva antes de cerrar Fase 07.
+Deployment 2026-09-25: **🟢 SUCCESS**. OpenNext build, bundle y Wrangler deploy completados; Queue `ecommerce-iphone-notifications`, DLQ `ecommerce-iphone-notifications-dlq` y Durable Object `NotificationHub` quedaron provisionados/enlazados.
+
+Certificación de fase: **🟡 pendiente** de migraciones D1 remotas verificadas, tests E2E/security/load, pruebas reales de retry/DLQ/replay/idempotencia/reconnect y `verify:production`.
 
