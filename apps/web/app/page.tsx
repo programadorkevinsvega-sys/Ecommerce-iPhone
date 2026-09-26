@@ -83,7 +83,8 @@ export default async function HomePage() {
         )}
       </section>
       <MarketingBanners items={banners} />
-      <FeaturedContent items={featured} />\n      <HomeCollectionCarousel title="Productos destacados." items={products} />
+      <FeaturedContent items={featured} />
+      <HomeCollectionCarousel title="Productos destacados." items={products} />
       <HomeCollectionCarousel title="Servicios disponibles." items={services} />
       <section className="section split-section">
         <div>
