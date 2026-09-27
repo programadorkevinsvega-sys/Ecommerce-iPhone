@@ -417,7 +417,7 @@ La auditoría inicial del 2026-09-25 revisó el código real de `main` antes de 
 
 ### Estado 08.4
 
-🟡 **En implementación.** El build Cloudflare del 2026-09-26 ya supera compilación, typecheck, generación de 118 páginas y optimización. También se corrigió un error real del workflow de producción en el paso de verificación D1. El cierre requiere que el nuevo pipeline pase todos los gates y que exista evidencia de deploy + smoke + verify sobre producción.
+🟢 **Código implementado y conectado; certificación productiva pendiente.** El build Cloudflare del 2026-09-26 ya supera compilación, typecheck, generación de 118 páginas y optimización. También se corrigió un error real del workflow de producción en el paso de verificación D1. El cierre de certificación requiere que el pipeline pase todos los gates y que exista evidencia de deploy + smoke + verify sobre producción. Los runs 1490/1491 fallaron casi inmediatamente sin steps/logs expuestos por GitHub; el run 1491 fue reintentado y volvió a fallar.
 
 ## Fase 09 — SEO Avanzado
 
@@ -682,7 +682,7 @@ Una fase se considera terminada únicamente cuando:
 | 05 — Services | #5 | 🟢 Implementado + hardening, certificación pendiente |
 | 06 — Admin + RBAC | #6 | 🟡 Implementación avanzada, certificación pendiente |
 | 07 — Notifications realtime + Email | #7 | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente |
-| 08 — CMS + Marketing + Reviews | #8 | 🟢 08.3 implementación completa; certificación final pendiente de build/deploy/verify |
+| 08 — CMS + Marketing + Reviews | #8 | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify |
 | 09 — SEO | #9 | ⬜ Pendiente |
 | 10 — Production Readiness | #10 | ⬜ Pendiente |
 
