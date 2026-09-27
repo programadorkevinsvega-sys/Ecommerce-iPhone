@@ -54,7 +54,7 @@ Estado de implementación: 🟢 **completa en código**. Estado de certificació
 
 ## 08.4 — Certificación productiva y hardening final
 
-Estado: 🟡 **implementación iniciada**.
+Estado de código: 🟢 **implementación completa**. Certificación productiva: 🟡 **pendiente de evidencia del pipeline/runtime**.
 
 Se incorporó un gate productivo específico en `scripts/verify-phase08-production.mjs` que verifica contra la URL real:
 
@@ -85,6 +85,8 @@ Durante la preparación de 08.4 se detectó y corrigió un defecto del workflow 
 - [ ] evidencia final y cierre del Issue #8.
 
 No se aceptan mocks, fake providers, datos de ejemplo, simulaciones ni placeholders como sustitutos de estas verificaciones.
+
+**Evidencia CI actual:** los runs 1490 y 1491 de `Cloudflare Production Deploy` terminan casi inmediatamente con `failure` y el job no expone steps/logs mediante la integración disponible. El run 1491 fue reintentado y volvió a fallar antes de exponer ejecución. No se atribuye ese fallo al código de Fase 08 sin evidencia del job.
 
 ## Regla global de Fase 08
 
