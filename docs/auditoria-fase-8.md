@@ -52,6 +52,40 @@ Estado de implementación: 🟢 **completa en código**. Estado de certificació
 
 **Regla:** 08.3 no se considera certificada por compilar. No se utilizarán mocks, fake providers, datos de ejemplo, simulaciones ni placeholders.
 
+## 08.4 — Certificación productiva y hardening final
+
+Estado: 🟡 **implementación iniciada**.
+
+Se incorporó un gate productivo específico en `scripts/verify-phase08-production.mjs` que verifica contra la URL real:
+
+- storefront y superficies públicas de CMS;
+- APIs públicas de blog, categorías, FAQs, banners, destacados y landing;
+- respuestas 400/404 esperadas para entradas inválidas/no existentes;
+- políticas públicas de caché de las APIs de contenido;
+- aislamiento de las APIs administrativas sin sesión.
+
+El workflow de producción ejecuta este gate después del deploy, junto con `verify:production`, y mantiene la verificación remota de la migración 0036 antes del deploy.
+
+Durante la preparación de 08.4 se detectó y corrigió un defecto del workflow `.github/workflows/deploy.yml`: el paso de verificación D1 contenía secuencias literales de salto de línea dentro del YAML. La corrección se realizó sin cambiar dependencias ni desactivar ningún gate.
+
+### Criterio de cierre 08.4
+
+- [ ] install reproducible y lockfile íntegro;
+- [ ] audit de dependencias;
+- [ ] foundation/architecture/frontend-data checks;
+- [ ] format/lint/typecheck;
+- [ ] suite de tests;
+- [ ] build Cloudflare;
+- [ ] migraciones D1 remotas;
+- [ ] verificación D1 0036;
+- [ ] deploy real;
+- [ ] `verify:production`;
+- [ ] smoke 08.4 real;
+- [ ] performance gate;
+- [ ] evidencia final y cierre del Issue #8.
+
+No se aceptan mocks, fake providers, datos de ejemplo, simulaciones ni placeholders como sustitutos de estas verificaciones.
+
 ## Regla global de Fase 08
 
 Lo existente se reutiliza únicamente donde cumple requisitos de producción. Las capacidades pasan por Domain/Application/Ports/Infrastructure y las superficies administrativas permanecen protegidas server-side por RBAC.
