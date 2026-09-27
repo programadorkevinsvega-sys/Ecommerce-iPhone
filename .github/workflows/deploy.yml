@@ -93,6 +93,11 @@ jobs:
         env:
           PRODUCTION_URL: ${{ env.PRODUCTION_URL }}
 
+      - name: Verify Phase 08 production flows
+        run: pnpm verify:phase08:production
+        env:
+          PRODUCTION_URL: ${{ env.PRODUCTION_URL }}
+
       - name: Install Playwright browser
         run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
 
