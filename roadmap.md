@@ -400,6 +400,25 @@ La auditoría inicial del 2026-09-25 revisó el código real de `main` antes de 
 7. Integrar auditoría, RBAC, idempotencia, concurrencia y tests.
 8. Build, deploy y certificación productiva.
 
+
+## Fase 08 — 08.4 Certificación productiva y hardening final
+
+**Objetivo:** convertir la implementación 08.3 en un release verificable de producción, cerrando los gates específicos de CMS, Marketing y Reviews sin introducir mocks, datos ficticios ni bypasses.
+
+### Alcance
+
+- Gate de arquitectura, foundation, frontend production-data, formato, lint, typecheck, tests y build.
+- Aplicación y verificación remota de la migración D1 de hardening de reviews.
+- Smoke tests reales contra `https://iphone.jnmtortas.com` para storefront, Blog, FAQ, APIs públicas de CMS/Marketing y respuestas 4xx esperadas.
+- Verificación de aislamiento de las APIs administrativas sin sesión.
+- Verificación de políticas de caché de las APIs públicas de contenido.
+- Integración del gate 08.4 en el workflow de deploy para impedir declarar un release exitoso si falla el comportamiento productivo del bounded context.
+- Documentación y evidencia de release antes de cerrar el Issue #8.
+
+### Estado 08.4
+
+🟡 **En implementación.** El build Cloudflare del 2026-09-26 ya supera compilación, typecheck, generación de 118 páginas y optimización. También se corrigió un error real del workflow de producción en el paso de verificación D1. El cierre requiere que el nuevo pipeline pase todos los gates y que exista evidencia de deploy + smoke + verify sobre producción.
+
 ## Fase 09 — SEO Avanzado
 
 **Issue:** #9 — SEO máximo: técnico, contenido, structured data y crecimiento orgánico
