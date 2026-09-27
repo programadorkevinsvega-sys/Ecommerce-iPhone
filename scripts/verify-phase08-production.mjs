@@ -1,4 +1,6 @@
-const BASE_URL = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
+const BASE_URL = (
+  process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com"
+).replace(/\/$/, "");
 
 const timeoutMs = Number(process.env.PHASE08_TIMEOUT_MS ?? "15000");
 
@@ -19,7 +21,9 @@ async function request(path) {
 async function assertStatus(path, expected) {
   const response = await request(path);
   if (response.status !== expected) {
-    throw new Error(`${path}: expected HTTP ${expected}, got ${response.status}`);
+    throw new Error(
+      `${path}: expected HTTP ${expected}, got ${response.status}`,
+    );
   }
   console.log(`PASS ${path}: HTTP ${response.status}`);
   return response;
@@ -31,10 +35,12 @@ async function assertPublicJson(path) {
   if (!contentType.includes("application/json")) {
     throw new Error(`${path}: expected JSON response, got ${contentType}`);
   }
+
   const cacheControl = response.headers.get("cache-control") ?? "";
   if (!cacheControl.includes("public")) {
     throw new Error(`${path}: expected public cache policy`);
   }
+
   await response.arrayBuffer();
 }
 
@@ -47,7 +53,14 @@ for (const path of ["/", "/blog", "/faq", "/catalog", "/contacto"]) {
   await assertStatus(path, 200);
 }
 
-for (const kind of ["blog", "blog-categories", "faqs", "banners", "featured", "landing"]) {
+for (const kind of [
+  "blog",
+  "blog-categories",
+  "faqs",
+  "banners",
+  "featured",
+  "landing",
+]) {
   await assertPublicJson(`/api/content?kind=${kind}`);
 }
 
