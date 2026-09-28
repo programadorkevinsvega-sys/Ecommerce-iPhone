@@ -33,12 +33,12 @@ describe("AdminPromotions", () => {
       "admin-1",
     );
 
-    expect(id).toBe("promotion-1");
+    expect(id).toMatch(/^[0-9a-f-]{36}$/u);
     expect(context.audit.audit).toHaveBeenCalledWith(
       "admin-1",
       "ADMIN_PROMOTION_SAVED",
       "promotion",
-      "promotion-1",
+      id,
       { code: "IPHONE10" },
     );
   });
