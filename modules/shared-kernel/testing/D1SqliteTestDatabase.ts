@@ -112,6 +112,10 @@ export class D1SqliteTestDatabase {
   }
 
   exec(sql: string, ...params: unknown[]): void {
+    if (params.length === 0) {
+      this.db.exec(sql);
+      return;
+    }
     this.db.prepare(sql).run(...params);
   }
 
