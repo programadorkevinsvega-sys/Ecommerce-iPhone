@@ -4,9 +4,9 @@ import type {
   MutationOrder,
   MutationService,
   ProductCreation,
+  StatusTransitionValidator,
 } from "../application/AdminResourceRepository";
 import type { ResourceName } from "../application/AdminResources";
-import type { StatusTransitionValidator } from "../application/AdminResourceRepository";
 
 type Db = D1Database;
 const like = (query: string) => `%${query}%`;
