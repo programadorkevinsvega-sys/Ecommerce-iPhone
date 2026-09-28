@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     if (!password || password.length > 1024) return NextResponse.json({ error: "Invalid credentials" }, { status: 400 });
 
     const fingerprint = await requestFingerprint();
-    const { env } = getCloudflareContext();
+    const env = cloudflareEnv();
     const result = await buildAuthenticateAdmin(env).execute(email, password, fingerprint.ipHash, fingerprint.userAgentHash);
     await setAdminSession(result.token, result.expiresAt);
 
