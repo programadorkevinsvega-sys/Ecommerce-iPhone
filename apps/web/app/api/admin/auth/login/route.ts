@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { cloudflareEnv } from "../../../../../lib/cloudflareContext";
 import { buildAuthenticateAdmin } from "../../../../../lib/adminAuthCompositionV2";
 import { requestFingerprint, setAdminSession } from "../../../../../lib/adminAuth";
 import { validateEmail } from "../../../../../lib/inputValidation";
