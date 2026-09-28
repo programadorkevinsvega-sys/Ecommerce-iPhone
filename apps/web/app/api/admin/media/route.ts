@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { cloudflareEnv } from "../../../../lib/cloudflareContext";
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
 
 const TYPES = new Map([
