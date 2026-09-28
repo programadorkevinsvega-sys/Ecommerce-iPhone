@@ -1,7 +1,7 @@
 import {NextResponse} from "next/server";
 import {PERMISSIONS,requireAdmin} from "../../../../../lib/adminAuth";
 import {reviewModerationApplication} from "../../../../../lib/adminApplication";
-import type {ReviewReportStatus} from "@modules/reviews/domain/ReviewModeration";
+import type {ReviewReportStatus} from "@modules/reviews/application/ReviewModerationContracts";
 const reportStatuses:readonly ReviewReportStatus[]=["OPEN","REVIEWED","DISMISSED","ACTIONED"];
 const resolutionStatuses:readonly Exclude<ReviewReportStatus,"OPEN">[]=["REVIEWED","DISMISSED","ACTIONED"];
 export async function GET(request:Request){try{const {env}=await requireAdmin(PERMISSIONS.reviewsWrite);const requested=new URL(request.url).searchParams.get("status");const status=requested===null||requested===""?undefined:parseReportStatus(requested);return NextResponse.json({items:await reviewModerationApplication(env).listReports(status)},{headers:{"cache-control":"no-store"}});}catch(e){return error(e);}}
