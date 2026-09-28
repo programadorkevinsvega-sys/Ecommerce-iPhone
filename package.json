@@ -29,7 +29,7 @@
     "typecheck": "pnpm --filter @ecommerce/web typecheck",
     "test": "pnpm --filter @ecommerce/web test",
     "test:e2e": "pnpm --filter @ecommerce/web test:e2e",
-    "format": "prettier --write .",
+    "format": "node scripts/format-repository.mjs",
     "format:check": "prettier --check .",
     "verify:admin:production": "node scripts/verify-admin-production.mjs",
     "cloudflare:build": "pnpm audit --prod && pnpm foundation:check && pnpm frontend:data:check && pnpm architecture:check && pnpm format && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build:cloudflare",
