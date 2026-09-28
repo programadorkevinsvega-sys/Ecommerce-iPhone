@@ -5,7 +5,7 @@ import {
   repairOrderRepository,
 } from "../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../lib/adminAuth";
-import type { RepairOrderStatus } from "../../../../../modules/repairs/application/RepairOrderContracts";
+import type { RepairOrderStatus } from "../../../../../../modules/repairs/application/RepairOrderContracts";
 
 function bodyRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("INVALID_BODY");
