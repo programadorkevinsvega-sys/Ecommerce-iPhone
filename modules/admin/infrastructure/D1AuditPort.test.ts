@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { D1SqliteTestDatabase } from "../../orders/infrastructure/D1SqliteTestDatabase";
+import { D1SqliteTestDatabase } from "../../shared-kernel/testing/D1SqliteTestDatabase";
 import { D1AuditPort } from "./D1AuditPort";
 
 describe("D1AuditPort", () => {
