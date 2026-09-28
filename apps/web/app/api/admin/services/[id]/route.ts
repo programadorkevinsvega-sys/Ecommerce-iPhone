@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { cloudflareEnv } from "../../../../lib/cloudflareContext";
 import { adminServiceDetailsApplication, serviceWorkflowApplication } from "../../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../../lib/adminAuth";
 import { parseServiceRequestStatus } from "../../../../../../../modules/services/domain/ServiceRequest";
