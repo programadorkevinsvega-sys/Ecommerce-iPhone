@@ -15,17 +15,32 @@ function setup() {
 describe("AdminPromotions", () => {
   it("audits a real promotion mutation with the actor", async () => {
     const context = setup();
-    const id = await context.service.save({
-      code: "IPHONE10",
-      name: "iPhone 10",
-      discountType: "PERCENT",
-      discountValue: 10,
-      startsAt: "2026-09-01T00:00:00.000Z",
-      endsAt: "2026-10-01T00:00:00.000Z",
-    }, undefined, "admin-1");
+    const id = await context.service.save(
+      {
+        code: "IPHONE10",
+        name: "iPhone 10",
+        discountType: "PERCENT",
+        discountValue: 10,
+        minSubtotalInCents: 0,
+        maxUses: null,
+        maxUsesPerCustomer: null,
+        startsAt: "2026-09-01T00:00:00.000Z",
+        endsAt: "2026-10-01T00:00:00.000Z",
+        active: true,
+        productIds: [],
+        categoryIds: [],
+      },
+      "admin-1",
+    );
 
     expect(id).toBe("promotion-1");
-    expect(context.audit.audit).toHaveBeenCalledWith("admin-1", "ADMIN_PROMOTION_SAVED", "promotion", "promotion-1", { code: "IPHONE10" });
+    expect(context.audit.audit).toHaveBeenCalledWith(
+      "admin-1",
+      "ADMIN_PROMOTION_SAVED",
+      "promotion",
+      "promotion-1",
+      { code: "IPHONE10" },
+    );
   });
 
   it("audits activation changes", async () => {
