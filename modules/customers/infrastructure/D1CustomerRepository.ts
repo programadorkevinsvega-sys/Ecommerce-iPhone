@@ -1,7 +1,8 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { Customer, Address, type CustomerProps, type AddressProps } from "../domain/Customer";
+import type { CustomerAddressRepository } from "../application/CustomerAddressRepository";
 
-export class D1CustomerRepository {
+export class D1CustomerRepository implements CustomerAddressRepository {
   constructor(private readonly db: D1Database) {}
 
   private hydrate(row: any) {
