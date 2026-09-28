@@ -30,7 +30,7 @@ function order(assignedTechnicianId = "tech-1") {
 function setup() {
   const repairOrder = order();
   const devices = new Map<string, CustomerDevice>();
-  const orders = new Map<string, RepairOrder>([[repairOrder.getId(), repairOrder]]);
+  const orders = new Map<string, RepairOrder>([[repairOrder.toPrimitives().id, repairOrder]]);
   const deviceRepository = {
     list: vi.fn(async () => [...devices.values()]),
     find: vi.fn(async (_customerId: string, id: string) => devices.get(id) ?? null),
@@ -48,7 +48,7 @@ function setup() {
   } as unknown as CustomerDeviceRepository;
 
   const orderRepository = {
-    save: vi.fn(async (next: RepairOrder) => orders.set(next.getId(), next)),
+    save: vi.fn(async (next: RepairOrder) => orders.set(next.toPrimitives().id, next)),
     findById: vi.fn(async (id: string) => orders.get(id) ?? null),
     findByServiceRequestId: vi.fn(async () => null),
     findByPublicToken: vi.fn(async () => null),
