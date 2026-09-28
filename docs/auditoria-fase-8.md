@@ -125,3 +125,12 @@ La regla aplicada es **compatibilidad segura antes que eliminación especulativa
 No se encontraron páginas principales de storefront, customer account, admin, technician, CMS, marketing, reviews, checkout, repairs o notifications que sean simples placeholders sin integración real. Las APIs de webhooks, health, realtime y operaciones administrativas se clasificaron por su consumidor legítimo en lugar de exigir un consumidor React.
 
 La auditoría de trazabilidad se considera corregida a nivel de código. La certificación de producción sigue dependiendo de ejecutar la suite, build Cloudflare, deploy y verificaciones reales sobre el release final.
+
+
+### Verificación posterior a las correcciones — 2026-09-28
+
+Los commits de corrección activaron automáticamente `Cloudflare Production Deploy` runs 1499 y 1500. Ambos fueron creados para los commits finales pero terminaron en `failure` aproximadamente cuatro segundos después de iniciar, con el job `deploy` sin steps ejecutados y sin logs disponibles desde GitHub. El intento de recuperar los logs devuelve `BlobNotFound`.
+
+Esto demuestra que el bloqueo actual del release **no es un error reportado por lint, typecheck, tests, build o deploy del código**: GitHub Actions ni siquiera llegó a ejecutar el primer step del job.
+
+No se modifica ni relaja el workflow para ocultar este bloqueo. La certificación productiva continúa pendiente hasta obtener una ejecución real del pipeline o una ejecución equivalente que produzca evidencia de todos los gates.
