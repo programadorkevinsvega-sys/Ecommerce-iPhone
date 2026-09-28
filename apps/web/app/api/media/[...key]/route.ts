@@ -1,7 +1,7 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { cloudflareEnv } from "../../../lib/cloudflareContext";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ key: string[] }> }) {
-  const { env } = getCloudflareContext();
+  const env = cloudflareEnv();
   const key = (await params).key.join("/");
   if (!key || key.includes("..")) return new Response("Not found", { status: 404 });
   const object = await env.MEDIA_BUCKET.get(key);

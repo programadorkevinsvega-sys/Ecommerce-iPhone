@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {D1SqliteTestDatabase} from "../../orders/infrastructure/D1SqliteTestDatabase";
+import {D1SqliteTestDatabase} from "../../shared-kernel/testing/D1SqliteTestDatabase";
 import {D1ReviewModerationRepository} from "./D1ReviewModerationRepository";
 function db(){const d=new D1SqliteTestDatabase();d.exec("CREATE TABLE customers(id TEXT PRIMARY KEY);CREATE TABLE admin_users(id TEXT PRIMARY KEY);CREATE TABLE product_reviews(id TEXT PRIMARY KEY,product_id TEXT NOT NULL,customer_id TEXT NOT NULL,order_id TEXT NOT NULL,rating INTEGER NOT NULL,title TEXT,body TEXT NOT NULL,status TEXT NOT NULL,verified_purchase INTEGER NOT NULL,admin_response TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,updated_at TEXT DEFAULT CURRENT_TIMESTAMP);CREATE TABLE review_moderation_events(id TEXT PRIMARY KEY,review_id TEXT NOT NULL,admin_user_id TEXT NOT NULL,from_status TEXT NOT NULL,to_status TEXT NOT NULL,response TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP);CREATE TABLE review_reports(id TEXT PRIMARY KEY,review_id TEXT NOT NULL,customer_id TEXT NOT NULL,reason TEXT NOT NULL,details TEXT,status TEXT NOT NULL,resolved_by TEXT,resolved_at TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP,updated_at TEXT DEFAULT CURRENT_TIMESTAMP,UNIQUE(review_id,customer_id));");return d;}
 describe("D1ReviewModerationRepository",()=>{

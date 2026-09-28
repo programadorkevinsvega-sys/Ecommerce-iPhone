@@ -1,5 +1,5 @@
 import { Address, type AddressProps } from "../domain/Customer";
-import type { D1CustomerRepository } from "../infrastructure/D1CustomerRepository";
+import type { CustomerAddressRepository } from "./CustomerAddressRepository";
 
 function text(value: unknown, max: number): string {
   return String(value ?? "").replace(/[\u0000-\u001F\u007F]/gu, " ").replace(/\s+/gu, " ").trim().slice(0, max);
@@ -24,7 +24,7 @@ function props(input: Record<string, unknown>): AddressProps {
 }
 
 export class CustomerAddressService {
-  constructor(private readonly repository: D1CustomerRepository) {}
+  constructor(private readonly repository: CustomerAddressRepository) {}
 
   async list(customerId: string) {
     return this.repository.listAddresses(customerId);

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { cloudflareEnv } from "../../../../../lib/cloudflareContext";
 import { bootstrapAdmin } from "../../../../../lib/adminAuth";
 
 export async function POST(request: Request) {
   try {
-    const { env } = getCloudflareContext();
+    const env = cloudflareEnv();
     const email = env.ADMIN_EMAIL?.trim().toLowerCase();
     const password = env.ADMIN_PASSWORD;
 

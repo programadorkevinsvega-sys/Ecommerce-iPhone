@@ -50,3 +50,9 @@ export function parsePaymentProvider(value: unknown): PaymentProvider {
   if (!["WOMPI", "STRIPE", "MERCADOPAGO", "PAYPAL", "BINANCE_PAY"].includes(normalized)) throw new Error("Unsupported payment provider");
   return normalized as PaymentProvider;
 }
+
+export { verifyWompiWebhook } from "../../../modules/payments/infrastructure/WompiWebhookVerifier";
+export { verifyStripeWebhook } from "../../../modules/payments/infrastructure/StripeWebhookVerifier";
+export { verifyMercadoPagoWebhook } from "../../../modules/payments/infrastructure/MercadoPagoWebhookVerifier";
+export { verifyPayPalWebhook } from "../../../modules/payments/infrastructure/PayPalWebhookVerifier";
+export { verifyBinancePayWebhook } from "../../../modules/payments/infrastructure/BinancePayWebhookVerifier";

@@ -4,19 +4,19 @@ import type {
   MutationOrder,
   MutationService,
   ProductCreation,
+  StatusTransitionValidator,
 } from "../application/AdminResourceRepository";
 import type { ResourceName } from "../application/AdminResources";
-import { assertOrderTransition, type OrderStatus } from "../../orders/domain/Order";
-import {
-  assertServiceRequestTransition,
-  type ServiceRequestStatus,
-} from "../../services/domain/ServiceRequest";
 
 type Db = D1Database;
 const like = (query: string) => `%${query}%`;
 
 export class D1AdminResourceRepository implements AdminResourceRepository {
-  constructor(private readonly db: Db) {}
+  constructor(
+    private readonly db: Db,
+    private readonly validateOrderTransition: StatusTransitionValidator,
+    private readonly validateServiceTransition: StatusTransitionValidator,
+  ) {}
 
   async list(resource: ResourceName, query: string): Promise<unknown[]> {
     const pattern = like(query);
@@ -197,10 +197,7 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
     fromStatus: string,
   ): Promise<void> {
     if (fromStatus === status) throw new Error("SERVICE_NOOP_TRANSITION");
-    assertServiceRequestTransition(
-      fromStatus as ServiceRequestStatus,
-      status as ServiceRequestStatus,
-    );
+    this.validateServiceTransition(fromStatus, status);
     const result = await this.db.batch([
       this.db
         .prepare(
@@ -235,7 +232,7 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
     fromStatus: string,
   ): Promise<void> {
     if (fromStatus === status) throw new Error("ORDER_NOOP_TRANSITION");
-    assertOrderTransition(fromStatus as OrderStatus, status as OrderStatus);
+    this.validateOrderTransition(fromStatus, status);
     const result = await this.db.batch([
       this.db
         .prepare("UPDATE orders SET status=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND status=?")

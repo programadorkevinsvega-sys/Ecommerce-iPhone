@@ -1,9 +1,10 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import type { AddressProps, CustomerProps } from "../../../../../modules/customers/domain/Customer";
 import { commerceContext } from "../../../lib/commerce";
 
 type Input = Readonly<Record<string, unknown>>;
+type AddressInput = Readonly<{ label: string; recipientName: string; phone: string; addressLine1: string; addressLine2?: string; city: string; state: string; postalCode?: string; countryCode: string; isDefault: boolean }>;
+type CustomerInput = Readonly<{ email: string; firstName: string; lastName: string; phone?: string }>;
 
 function asRecord(value: unknown): Input | undefined {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
     const phone = optionalString(parsed, "phone");
 
     const addressInput = asRecord(parsed.address);
-    const address: AddressProps | undefined = addressInput
+    const address: AddressInput | undefined = addressInput
       ? {
           label: requiredString(addressInput, "label"),
           recipientName: requiredString(addressInput, "recipientName"),
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Tu sesión ya no es válida. Inicia sesión nuevamente." }, { status: 401 });
     }
 
-    const customer: CustomerProps = {
+    const customer: CustomerInput = {
       email,
       firstName,
       lastName,

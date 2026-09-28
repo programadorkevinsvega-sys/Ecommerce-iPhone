@@ -1,5 +1,5 @@
 import type { CustomerAccountRepository, CustomerAccountRow } from "./CustomerAccountRepository";
-import { hashCustomerPassword, hashCustomerToken, verifyCustomerPassword } from "../infrastructure/CustomerPasswordSecurity";
+import { hashCustomerPassword, hashCustomerToken, verifyCustomerPassword } from "./CustomerPasswordSecurity";
 
 export type CustomerAccount = Readonly<{ id:string; email:string; firstName:string; lastName:string; phone:string|null; whatsapp:string|null; countryCode:string }>;
 

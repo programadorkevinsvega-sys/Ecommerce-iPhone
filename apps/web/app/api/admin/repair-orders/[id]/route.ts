@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { repairOrderManagementApplication, repairOrderRepository } from "../../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../../lib/adminAuth";
-import type { RepairOrderStatus } from "../../../../../../../modules/repairs/domain/RepairOrder";
+import type { RepairOrderStatus } from "../../../../../../../modules/repairs/application/RepairOrderContracts";
 
 function responseFor(error: unknown): Response {
   const code = error instanceof Error ? error.message : "UNKNOWN";
