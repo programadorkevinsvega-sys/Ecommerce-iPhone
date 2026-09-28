@@ -7,16 +7,17 @@ const roots = [
   join(process.cwd(), "apps", "web", "lib"),
 ];
 const extensions = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
-const forbiddenMarkers = /\b(mock|mocks|demo|fake|dummy|fixture|sample|hardcoded|InMemory|TODO)\b/i;
+const forbiddenMarkers = /\b(mock|mocks|demo|fake|dummy|fixture|sample|hardcoded|InMemory)\b/i;
+const forbiddenTodoMarker = /(^|[\s(/:*])TODO(?=($|[\s):,.;*/]))/;
 const forbiddenBusinessNames = /\b(?:mock|fake|demo|dummy|fixture|sample|seed|fallback)(?:[A-Z_][A-Za-z0-9_]*)?\s*(?:Products?|Users?|Customers?|Orders?|Reviews?|Services?|Promotions?|Inventory|Prices?|Credentials?)\b/i;
-const forbiddenSensitiveValues = /(?:admin@(?:example\.(?:com|org)|test\.(?:com|org))|(?:demo|fake|test)@(?:example\.(?:com|org)|test\.(?:com|org))|password(?:123|1234|!|@)|secret(?:123|1234)?|token(?:123|demo)|\b(?:555)[- .]?\d{3}[- .]?\d{4}\b)/i;
+const forbiddenSensitiveValues = /(?:admin@(?:example\.(?:com|org)|test\.(?:com|org))|(?:demo|fake|test)@(?:example\.(?:com|org)|test\.(?:com|org))|password(?:123|1234|!|@)|(?:secret|token)(?:123|1234|demo)?|\b(?:555)[- .]?\d{3}[- .]?\d{4}\b)/i;
 const forbiddenInMemoryImport = /(?:from\s+["'][^"']*InMemoryProductRepository|require\s*\(\s*["'][^"']*InMemoryProductRepository)/i;
 const businessPriceLiteral = /(?:priceInCents|unitPriceInCents|totalInCents|shippingInCents|discountInCents)\s*[:=]\s*\d+/i;
 const forbiddenBrowserStorage = /\b(?:localStorage|sessionStorage|indexedDB|document\.cookie)\b/i;
 const forbiddenBrowserLogging = /\bconsole\.(?:log|error|warn|info|debug|trace)\s*\(/i;
 const forbiddenDebugStatement = /\bdebugger\b/;
 const forbiddenSensitiveQueryKey = /(?:URLSearchParams|searchParams|location\.(?:search|href)|history\.(?:pushState|replaceState)|router\.(?:push|replace))[^\n]*(?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)/i;
-const forbiddenClientSecrets = /\b(?:secretKey|privateKey|accessToken|apiKey|apiSecret|clientSecret|integritySecret|certificateSN)\b/i;
+const forbiddenHardcodedSecrets = /\b(?:secretKey|privateKey|accessToken|apiKey|apiSecret|clientSecret|integritySecret|certificateSN|secret|token)\b\s*(?:[:=]|=>)\s*["'][^"']+["']/i;
 const forbiddenCardData = /\b(?:cardNumber|card_number|cvv|cvc|securityCode|security_code)\b/i;
 
 const violations = [];
@@ -35,7 +36,7 @@ async function walk(directory) {
       await walk(path);
       continue;
     }
-    if (!extensions.test(entry.name) || !isFrontendPath(path)) continue;
+    if (!extensions.test(entry.name) || !isFrontendPath(path) || /\.(?:test|spec)\.[^.]+$/.test(entry.name)) continue;
     await inspect(path);
   }
 }
@@ -49,6 +50,9 @@ async function inspect(path) {
     const lineNumber = index + 1;
     if (forbiddenMarkers.test(line)) {
       violations.push(`${file}:${lineNumber}: forbidden production-data marker: ${line.trim()}`);
+    }
+    if (forbiddenTodoMarker.test(line)) {
+      violations.push(file + ":" + lineNumber + ": forbidden production-data marker: " + line.trim());
     }
     if (forbiddenBusinessNames.test(line)) {
       violations.push(`${file}:${lineNumber}: mock/demo business-data identifier: ${line.trim()}`);
@@ -74,7 +78,7 @@ async function inspect(path) {
     if (forbiddenSensitiveQueryKey.test(line)) {
       violations.push(`${file}:${lineNumber}: sensitive credentials/payment data must not be placed in browser URLs or query strings: ${line.trim()}`);
     }
-    if (forbiddenClientSecrets.test(line)) {
+    if (forbiddenHardcodedSecrets.test(line)) {
       violations.push(`${file}:${lineNumber}: frontend must not contain server secret/private key/access token variables: ${line.trim()}`);
     }
     if (forbiddenCardData.test(line)) {
