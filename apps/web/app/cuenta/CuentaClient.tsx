@@ -161,7 +161,12 @@ export default function CuentaClient() {
               <div className="account-panel-heading"><div><p className="eyebrow">Tienda</p><h2>Últimos pedidos</h2></div><Link href="/catalog">Comprar</Link></div>
               {data.orders.length ? (
                 <div className="account-compact-list">
-                  {data.orders.slice(0, 4).map(order => <div className="account-compact-row" key={order.id}><div><strong>{order.orderNumber}</strong><span>{statusLabel(order.status)}</span></div><b>{money(order.totalInCents, order.currency)}</b></div>)}
+                  {data.orders.slice(0, 4).map(order => (
+                    <Link className="account-compact-row" href={`/orders/${encodeURIComponent(order.id)}`} key={order.id}>
+                      <div><strong>{order.orderNumber}</strong><span>{statusLabel(order.status)}</span></div>
+                      <b>{money(order.totalInCents, order.currency)}</b>
+                    </Link>
+                  ))}
                 </div>
               ) : <div className="account-empty"><strong>No hay compras todavía.</strong><span>Descubre nuestros productos y accesorios.</span></div>}
             </article>
