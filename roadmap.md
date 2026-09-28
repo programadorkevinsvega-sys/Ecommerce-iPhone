@@ -738,3 +738,19 @@ Deployment 2026-09-25: **🟢 SUCCESS**. OpenNext build, bundle y Wrangler deplo
 
 Certificación de fase: **🟡 pendiente** de migraciones D1 remotas verificadas, tests E2E/security/load, pruebas reales de retry/DLQ/replay/idempotencia/reconnect y `verify:production`.
 
+
+
+### Actualización 2026-09-28 — cierre de hallazgos de trazabilidad 08.4
+
+La auditoría profunda de rutas frontend/API detectó y corrigió los defectos concretos encontrados:
+
+- `/api/customer/devices/[id]` ahora tiene GET real con ownership por `customerId`; PATCH/DELETE permanecen bloqueados para clientes.
+- `/orders/[id]` fue tipada sin `any`, endurecida y conectada desde el listado de pedidos del portal de cliente.
+- Se eliminó la copia obsoleta del flujo de pagos en el detalle de pedido.
+- `/api/customer` conserva compatibilidad pero dejó de aceptar `Record<string, any>`; el body se valida como `unknown` y se transforma a tipos de dominio.
+- Se añadió regresión de ownership para lectura de dispositivos.
+- Las APIs legacy/indirectas no se eliminaron de forma especulativa: permanecen como compatibilidad o interfaces públicas/operativas hasta demostrar ausencia de consumidores externos.
+
+**Estado de implementación 08.4:** 🟢 corregido e integrado a nivel de código.
+
+**Certificación:** permanece separada de la implementación y solo se marcará como cerrada cuando el commit final pase tests, lint/typecheck, arquitectura, build Cloudflare, migraciones/verificación D1, deploy real, `verify:production` y smoke funcional contra producción.
