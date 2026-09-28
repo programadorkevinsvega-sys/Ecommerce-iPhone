@@ -1,5 +1,5 @@
 import {describe,expect,it} from "vitest";
-import {D1SqliteTestDatabase} from "../../orders/infrastructure/D1SqliteTestDatabase";
+import {D1SqliteTestDatabase} from "../../shared-kernel/testing/D1SqliteTestDatabase";
 import {D1CouponRepository} from "./D1CouponRepository";
 
 function db(){const d=new D1SqliteTestDatabase();d.exec("CREATE TABLE customers(id TEXT PRIMARY KEY);CREATE TABLE coupons(id TEXT PRIMARY KEY,code TEXT UNIQUE,name TEXT,discount_type TEXT,discount_value INTEGER,min_subtotal_in_cents INTEGER,max_uses INTEGER,used_count INTEGER,max_uses_per_customer INTEGER,starts_at TEXT,ends_at TEXT,active INTEGER,updated_at TEXT DEFAULT CURRENT_TIMESTAMP,created_at TEXT DEFAULT CURRENT_TIMESTAMP);CREATE TABLE coupon_products(coupon_id TEXT,product_id TEXT,PRIMARY KEY(coupon_id,product_id));CREATE TABLE coupon_categories(coupon_id TEXT,category_id TEXT,PRIMARY KEY(coupon_id,category_id));CREATE TABLE coupon_redemptions(id TEXT PRIMARY KEY,coupon_id TEXT,customer_id TEXT,order_id TEXT,amount_in_cents INTEGER,created_at TEXT DEFAULT CURRENT_TIMESTAMP,UNIQUE(coupon_id,order_id));CREATE TABLE orders(id TEXT PRIMARY KEY);");return d;}
