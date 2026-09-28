@@ -21,6 +21,11 @@ const forbiddenCardData = /\b(?:cardNumber|card_number|cvv|cvc|securityCode|secu
 
 const violations = [];
 
+function isFrontendPath(path) {
+  const normalized = relative(process.cwd(), path).replaceAll("\\", "/");
+  return !normalized.startsWith("apps/web/app/api/");
+}
+
 async function walk(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
@@ -30,7 +35,7 @@ async function walk(directory) {
       await walk(path);
       continue;
     }
-    if (!extensions.test(entry.name)) continue;
+    if (!extensions.test(entry.name) || !isFrontendPath(path)) continue;
     await inspect(path);
   }
 }
