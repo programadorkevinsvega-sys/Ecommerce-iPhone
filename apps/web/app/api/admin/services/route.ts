@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     await requireAdmin(PERMISSIONS.servicesRead);
     const raw = new URL(request.url).searchParams.get("status");
     const status = raw ? parseServiceRequestStatus(raw) : undefined;
-    const { env } = getCloudflareContext();
+    const env = cloudflareEnv();
     const query = adminServiceQueryApplication(env);
     return NextResponse.json({ items: (await query.list(status)).map((item) => item.toPrimitives()) }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
