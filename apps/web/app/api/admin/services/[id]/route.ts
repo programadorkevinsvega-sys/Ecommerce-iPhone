@@ -15,7 +15,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
   try {
     await requireAdmin(PERMISSIONS.servicesRead);
     const { id } = await context.params;
-    const { env } = getCloudflareContext();
+    const env = cloudflareEnv();
     return NextResponse.json({ service: (await adminServiceDetailsApplication(env).get(id)).toPrimitives() });
   } catch (error) {
     return errorResponse(error);
@@ -31,7 +31,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!["transition", "quote", "assign", "complete"].includes(action)) {
       return NextResponse.json({ error: "Revisa los datos ingresados e inténtalo nuevamente." }, { status: 422 });
     }
-    const { env } = getCloudflareContext();
+    const env = cloudflareEnv();
     const workflow = serviceWorkflowApplication(env);
     if (action === "transition") return NextResponse.json({ service: (await workflow.transition(id, parseServiceRequestStatus(body.status), admin.id)).toPrimitives() });
     if (action === "quote") return NextResponse.json({ service: (await workflow.quote(id, Number(body.amountInCents), admin.id)).toPrimitives() });
