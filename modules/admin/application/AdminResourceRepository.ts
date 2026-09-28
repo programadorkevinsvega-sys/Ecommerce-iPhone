@@ -19,6 +19,7 @@ export type ProductCreation = {
 
 export type MutationService = { status: string; email: string };
 export type MutationOrder = { status: string; email: string; orderNumber: string };
+export type StatusTransitionValidator = (fromStatus: string, toStatus: string) => void;
 
 export interface AdminResourceRepository {
   list(resource: ResourceName, query: string): Promise<unknown[]>;
