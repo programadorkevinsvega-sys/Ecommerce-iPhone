@@ -13,7 +13,7 @@ export default function RecoverPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const value = new URLSearchParams(window.location.search).get("token")?.trim() ?? "";
+    const value = new URLSearchParams(window.location.hash.slice(1)).get("token")?.trim() ?? "";
     if (value) {
       setToken(value);
       setMode("reset");
