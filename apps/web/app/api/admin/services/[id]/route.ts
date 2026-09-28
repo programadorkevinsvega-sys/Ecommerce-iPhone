@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cloudflareEnv } from "../../../../lib/cloudflareContext";
 import { adminServiceDetailsApplication, serviceWorkflowApplication } from "../../../../../lib/adminApplication";
 import { PERMISSIONS, requireAdmin } from "../../../../../lib/adminAuth";
-import { parseServiceRequestStatus } from "../../../../../../../modules/services/domain/ServiceRequest";
+import { parseServiceRequestStatus } from "../../../../../../../modules/services/application/ServiceWorkflowService";
 
 function errorResponse(error: unknown): Response {
   const code = error instanceof Error ? error.message.toUpperCase() : "UNKNOWN";
