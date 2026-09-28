@@ -60,6 +60,15 @@ describe("CustomerDeviceService", () => {
     expect(await service.archive("customer-2", device.getId())).toBe(false);
   });
 
+  it("returns a device only to its owning customer", async () => {
+    const repository = new Devices();
+    const service = new CustomerDeviceService(repository);
+    const device = await service.create("customer-1", input);
+    expect(await service.get("customer-1", device.getId())).not.toBeNull();
+    expect(await service.get("customer-2", device.getId())).toBeNull();
+  });
+
+
   it("rejects invalid protected identifiers", async () => {
     const repository = new Devices();
     await expect(new CustomerDeviceService(repository).create("customer-1", { ...input, imeiLast4: "123" })).rejects.toThrow();
