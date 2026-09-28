@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authenticatedCustomer } from "../../../../lib/customerAccount";
+import { authenticatedCustomer } from "../../../../../lib/customerAccount";
 
 export async function GET(
   _request: Request,
