@@ -16,7 +16,12 @@ const businessPriceLiteral = /(?:priceInCents|unitPriceInCents|totalInCents|ship
 const forbiddenBrowserStorage = /\b(?:localStorage|sessionStorage|indexedDB|document\.cookie)\b/i;
 const forbiddenBrowserLogging = /\bconsole\.(?:log|error|warn|info|debug|trace)\s*\(/i;
 const forbiddenDebugStatement = /\bdebugger\b/;
-const forbiddenSensitiveQueryKey = /(?:URLSearchParams|searchParams|location\.(?:search|href)|history\.(?:pushState|replaceState)|router\.(?:push|replace))[^\n]*(?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)/i;
+const forbiddenSensitiveQueryKey = [
+  /new\\s+URLSearchParams\\s*\\([^)]*?(?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)/i,
+  /(?:URLSearchParams|searchParams)\\s*\\.\\s*(?:set|append|has|get)\\s*\\(\\s*["'`]\\s*(?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)\\s*["'`]/i,
+  /(?:router\\.(?:push|replace)|history\\.(?:pushState|replaceState))\\s*\\([^)]*?[?&](?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)=/i,
+  /(?:location\\.(?:search|href))\\s*=\\s*[^;\n]*[?&](?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)=/i,
+];
 const forbiddenHardcodedSecrets = /\b(?:secretKey|privateKey|accessToken|apiKey|apiSecret|clientSecret|integritySecret|certificateSN|secret|token)\b\s*(?:[:=]|=>)\s*["'][^"']+["']/i;
 const forbiddenCardData = /\b(?:cardNumber|card_number|cvv|cvc|securityCode|security_code)\b/i;
 
@@ -75,7 +80,7 @@ async function inspect(path) {
     if (forbiddenDebugStatement.test(line)) {
       violations.push(`${file}:${lineNumber}: frontend must not contain debugger statements: ${line.trim()}`);
     }
-    if (forbiddenSensitiveQueryKey.test(line)) {
+    if (forbiddenSensitiveQueryKey.some((pattern) => pattern.test(line))) {
       violations.push(`${file}:${lineNumber}: sensitive credentials/payment data must not be placed in browser URLs or query strings: ${line.trim()}`);
     }
     if (forbiddenHardcodedSecrets.test(line)) {
