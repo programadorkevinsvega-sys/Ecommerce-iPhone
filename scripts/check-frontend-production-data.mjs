@@ -17,10 +17,10 @@ const forbiddenBrowserStorage = /\b(?:localStorage|sessionStorage|indexedDB|docu
 const forbiddenBrowserLogging = /\bconsole\.(?:log|error|warn|info|debug|trace)\s*\(/i;
 const forbiddenDebugStatement = /\bdebugger\b/;
 const forbiddenSensitiveQueryKey = [
-  /new\\s+URLSearchParams\\s*\\([^)]*?(?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)/i,
-  /(?:URLSearchParams|searchParams)\\s*\\.\\s*(?:set|append|has|get)\\s*\\(\\s*["'`]\\s*(?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)\\s*["'`]/i,
-  /(?:router\\.(?:push|replace)|history\\.(?:pushState|replaceState))\\s*\\([^)]*?[?&](?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)=/i,
-  /(?:location\\.(?:search|href))\\s*=\\s*[^;\n]*[?&](?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)=/i,
+  /new\s+URLSearchParams\s*\([^)]*?(?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)/i,
+  /(?:URLSearchParams|searchParams)\s*\.\s*(?:set|append|has|get)\s*\(\s*["'`]\s*(?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)\s*["'`]/i,
+  /(?:router\.(?:push|replace)|history\.(?:pushState|replaceState))\s*\([^)]*?[?&](?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)=/i,
+  /(?:location\.(?:search|href))\s*=\s*[^;\n]*[?&](?:token|access_token|refresh_token|password|secret|api[_-]?key|authorization|bearer|cvv|cvc|card(?:_number|Number)?|iban)=/i,
 ];
 const forbiddenHardcodedSecrets = /\b(?:secretKey|privateKey|accessToken|apiKey|apiSecret|clientSecret|integritySecret|certificateSN|secret|token)\b\s*(?:[:=]|=>)\s*["'][^"']+["']/i;
 const forbiddenCardData = /\b(?:cardNumber|card_number|cvv|cvc|securityCode|security_code)\b/i;
