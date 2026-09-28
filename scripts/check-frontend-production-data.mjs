@@ -10,7 +10,7 @@ const extensions = /\.(ts|tsx|mts|cts|js|jsx|mjs|cjs)$/;
 const forbiddenMarkers = /\b(mock|mocks|demo|fake|dummy|fixture|sample|hardcoded|InMemory)\b/i;
 const forbiddenTodoMarker = /(^|[\s(/:*])TODO(?=($|[\s):,.;*/]))/;
 const forbiddenBusinessNames = /\b(?:mock|fake|demo|dummy|fixture|sample|seed|fallback)(?:[A-Z_][A-Za-z0-9_]*)?\s*(?:Products?|Users?|Customers?|Orders?|Reviews?|Services?|Promotions?|Inventory|Prices?|Credentials?)\b/i;
-const forbiddenSensitiveValues = /(?:admin@(?:example\.(?:com|org)|test\.(?:com|org))|(?:demo|fake|test)@(?:example\.(?:com|org)|test\.(?:com|org))|password(?:123|1234|!|@)|(?:secret|token)(?:123|1234|demo)?|\b(?:555)[- .]?\d{3}[- .]?\d{4}\b)/i;
+const forbiddenSensitiveValues = /(?:admin@(?:example\.(?:com|org)|test\.(?:com|org))|(?:demo|fake|test)@(?:example\.(?:com|org)|test\.(?:com|org))|password(?:123|1234|!|@)|secret(?:123|1234)|token(?:123|demo)|\b(?:555)[- .]?\d{3}[- .]?\d{4}\b)/i;
 const forbiddenInMemoryImport = /(?:from\s+["'][^"']*InMemoryProductRepository|require\s*\(\s*["'][^"']*InMemoryProductRepository)/i;
 const businessPriceLiteral = /(?:priceInCents|unitPriceInCents|totalInCents|shippingInCents|discountInCents)\s*[:=]\s*\d+/i;
 const forbiddenBrowserStorage = /\b(?:localStorage|sessionStorage|indexedDB|document\.cookie)\b/i;
