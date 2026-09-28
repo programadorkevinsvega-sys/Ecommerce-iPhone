@@ -23,7 +23,7 @@ export async function POST(request: Request) {
         aggregateId: reset.email,
         payload: {
           email: reset.email,
-          resetUrl: `${origin}/cuenta/recuperar?token=${encodeURIComponent(reset.token)}`,
+          resetUrl: `${origin}/cuenta/recuperar#token=${encodeURIComponent(reset.token)}`,
           expiresInMinutes: 30,
         },
       });
