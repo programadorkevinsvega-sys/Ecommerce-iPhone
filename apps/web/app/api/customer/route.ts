@@ -69,18 +69,22 @@ export async function POST(request: Request) {
 
     const addressInput = asRecord(parsed.address);
     const address: AddressInput | undefined = addressInput
-      ? {
-          label: requiredString(addressInput, "label"),
-          recipientName: requiredString(addressInput, "recipientName"),
-          phone: requiredString(addressInput, "phone"),
-          addressLine1: requiredString(addressInput, "addressLine1"),
-          ...(optionalString(addressInput, "addressLine2") ? { addressLine2: optionalString(addressInput, "addressLine2") } : {}),
-          city: requiredString(addressInput, "city"),
-          state: requiredString(addressInput, "state"),
-          ...(optionalString(addressInput, "postalCode") ? { postalCode: optionalString(addressInput, "postalCode") } : {}),
-          countryCode: requiredString(addressInput, "countryCode").toUpperCase(),
-          isDefault: addressInput.isDefault === undefined ? true : addressInput.isDefault === true,
-        }
+      ? (() => {
+          const addressLine2 = optionalString(addressInput, "addressLine2");
+          const postalCode = optionalString(addressInput, "postalCode");
+          return {
+            label: requiredString(addressInput, "label"),
+            recipientName: requiredString(addressInput, "recipientName"),
+            phone: requiredString(addressInput, "phone"),
+            addressLine1: requiredString(addressInput, "addressLine1"),
+            ...(addressLine2 !== undefined ? { addressLine2 } : {}),
+            city: requiredString(addressInput, "city"),
+            state: requiredString(addressInput, "state"),
+            ...(postalCode !== undefined ? { postalCode } : {}),
+            countryCode: requiredString(addressInput, "countryCode").toUpperCase(),
+            isDefault: addressInput.isDefault === undefined ? true : addressInput.isDefault === true,
+          };
+        })()
       : undefined;
 
     const context = await commerceContext();
