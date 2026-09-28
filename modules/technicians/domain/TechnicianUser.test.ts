@@ -54,8 +54,8 @@ describe("TechnicianUser", () => {
 
     expect(user.toPrimitives()).toMatchObject({
       failedLoginCount: 0,
-      lockedUntil: undefined,
       lastLoginAt: "2026-09-20T01:00:00.000Z",
     });
+    expect(user.toPrimitives()).not.toHaveProperty("lockedUntil");
   });
 });
