@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { D1SqliteTestDatabase } from "../../orders/infrastructure/D1SqliteTestDatabase";
+import { D1SqliteTestDatabase } from "../../shared-kernel/testing/D1SqliteTestDatabase";
 import { Category } from "../domain/Category";
 import { D1CategoryRepository } from "./D1CategoryRepository";
 
