@@ -91,3 +91,37 @@ No se aceptan mocks, fake providers, datos de ejemplo, simulaciones ni placehold
 ## Regla global de Fase 08
 
 Lo existente se reutiliza únicamente donde cumple requisitos de producción. Las capacidades pasan por Domain/Application/Ports/Infrastructure y las superficies administrativas permanecen protegidas server-side por RBAC.
+
+
+## Auditoría de trazabilidad frontend/API — 2026-09-28
+
+Se realizó una auditoría completa de trazabilidad sobre el árbol actual de `main`, cruzando rutas Next.js, componentes, consumidores HTTP, helpers de frontend, APIs, Application Layer y persistencia.
+
+### Correcciones aplicadas
+
+- `/api/customer/devices/[id]` ahora implementa GET real con ownership server-side mediante `CustomerDeviceService.get(customerId, id)`. PATCH/DELETE continúan rechazados explícitamente porque esas mutaciones pertenecen al personal autorizado.
+- La página `/orders/[id]` dejó de usar `any`, valida la respuesta del endpoint, codifica el identificador y elimina el texto obsoleto que afirmaba que la selección de proveedor pertenecía a una fase futura.
+- El portal de cliente enlaza sus pedidos reales con `/orders/[id]`, haciendo que el detalle de pedido forme parte de la navegación autenticada actual.
+- `/api/customer` conserva compatibilidad pero ahora valida el body como `unknown`/record y construye tipos de dominio explícitos; se eliminó el `Record<string, any>` de esta ruta legacy.
+- Se añadió una regresión de ownership para lecturas de dispositivos de cliente en `CustomerDeviceService.test.ts`.
+
+### Rutas legacy/indirectas conservadas deliberadamente
+
+No se eliminaron rutas únicamente porque no aparezca un `fetch()` desde React. Las siguientes tienen contrato HTTP legítimo o compatibilidad potencial y permanecen hasta demostrar que no existen consumidores externos:
+
+- `/productos/[slug]` → redirect permanente hacia `/iphone/[slug]`.
+- `/api/customer` → compatibilidad de cuenta.
+- `/api/orders` y `/api/orders/[id]` → API de pedidos del cliente; el detalle ahora también está enlazado desde el portal.
+- `/api/categories` → API pública.
+- `/api/content*` → API pública de CMS/marketing.
+- `/api/services/[id]` → detalle autenticado de solicitud propia.
+- endpoints públicos de refund/void → compatibilidad administrativa protegida; la UI actual usa las variantes `/api/admin/payments/*`.
+- `/api/payments/[id]/refund/reconcile` → operación administrativa/operativa, no una acción de storefront.
+
+La regla aplicada es **compatibilidad segura antes que eliminación especulativa**.
+
+### Resultado
+
+No se encontraron páginas principales de storefront, customer account, admin, technician, CMS, marketing, reviews, checkout, repairs o notifications que sean simples placeholders sin integración real. Las APIs de webhooks, health, realtime y operaciones administrativas se clasificaron por su consumidor legítimo en lugar de exigir un consumidor React.
+
+La auditoría de trazabilidad se considera corregida a nivel de código. La certificación de producción sigue dependiendo de ejecutar la suite, build Cloudflare, deploy y verificaciones reales sobre el release final.
