@@ -19,10 +19,7 @@ const requiredFiles = [
   "apps/web/next.config.ts",
   "apps/web/middleware.ts",
   "apps/web/worker.ts",
-  "apps/web/app/api/health/live/route.ts",
-  "apps/web/app/api/health/ready/route.ts",
   "apps/web/app/api/admin/resources/route.ts",
-  ".github/workflows/deploy.yml",
   ".github/workflows/production-verification.yml",
   ".github/workflows/rollback.yml",
 ];
@@ -44,11 +41,6 @@ if (!worker.includes("SENSITIVE_RATE_LIMITER")) failures.push("Worker must enfor
 if (!worker.includes('url.pathname === "/api/health/live"')) failures.push("Worker must expose liveness handling");
 if (!worker.includes('url.pathname === "/api/health/ready"')) failures.push("Worker must expose readiness handling");
 
-const liveRoute = await readFile("apps/web/app/api/health/live/route.ts", "utf8");
-const readyRoute = await readFile("apps/web/app/api/health/ready/route.ts", "utf8");
-if (!liveRoute.includes("status")) failures.push("liveness endpoint is not implemented");
-if (!readyRoute.includes("status")) failures.push("readiness endpoint is not implemented");
-
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 if (packageJson.packageManager !== "pnpm@12.4.1") failures.push("packageManager must pin pnpm@12.4.1");
 if (packageJson.engines?.node !== "24.18.0") failures.push("package.json must pin Node.js 24.18.0");
@@ -68,12 +60,10 @@ for (const entry of [".env", ".env.*", ".dev.vars", ".dev.vars.*"]) {
   if (!gitignore.includes(entry)) failures.push(`secret file is not ignored: ${entry}`);
 }
 
-const deploy = await readFile(".github/workflows/deploy.yml", "utf8");
-if (/push:\s*\n\s*branches:\s*\[main\]/.test(deploy)) failures.push("manual deploy workflow must not duplicate the automatic Cloudflare Workers Builds deploy");
-
 const productionVerification = await readFile(".github/workflows/production-verification.yml", "utf8");
 if (!productionVerification.includes("pnpm verify:production")) failures.push("production verification workflow must execute runtime verification");
-if (!deploy.includes("pnpm db:verify:production")) failures.push("production deploy must verify remote D1 review hardening migration");
+if (!packageJson.scripts?.["cloudflare:deploy"]?.includes("db:migrate:production")) failures.push("Cloudflare production deploy must apply remote D1 migrations");
+if (!packageJson.scripts?.["cloudflare:deploy"]?.includes("db:verify:production")) failures.push("Cloudflare production deploy must verify remote D1 review hardening migration");
 
 const adminRoute = await readFile("apps/web/app/api/admin/resources/route.ts", "utf8");
 if (/\.prepare\s*\(/.test(adminRoute)) failures.push("admin presentation route must not execute SQL directly");
