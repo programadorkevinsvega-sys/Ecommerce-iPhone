@@ -14,7 +14,7 @@ type AnalyticsInteractionProps = Readonly<{
   prefetch?: boolean | undefined;
 }>;
 
-type AnalyticsEventOnMountProps = Readonly<{
+let browserAnalyticsIds: { visitorId: string; sessionId: string } | undefined;\n\nfunction browserAnalyticsContext(): { visitorId: string; sessionId: string } {\n  if (!browserAnalyticsIds) {\n    browserAnalyticsIds = { visitorId: crypto.randomUUID(), sessionId: crypto.randomUUID() };\n  }\n  return browserAnalyticsIds;\n}\n\ntype AnalyticsEventOnMountProps = Readonly<{
   eventType: AnalyticsEventType;
   payload: AnalyticsPayload;
 }>;
