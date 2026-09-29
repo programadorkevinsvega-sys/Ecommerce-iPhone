@@ -51,9 +51,9 @@ function extractProduct(html) {
   assert(typeof json.sku === "string" && json.sku.length >= 8, "product JSON-LD did not expose a valid SKU");
   const brand = typeof json.brand?.name === "string" ? json.brand.name : "unknown";
   const condition =
-    typeof json.itemCondition === "string" && json.itemCondition.endsWith("/NewCondition")
+    typeof json.offers?.itemCondition === "string" && json.offers.itemCondition.endsWith("/NewCondition")
       ? "NEW"
-      : typeof json.itemCondition === "string" && json.itemCondition.endsWith("/UsedCondition")
+      : typeof json.offers?.itemCondition === "string" && json.offers.itemCondition.endsWith("/UsedCondition")
         ? "USED"
         : "REFURBISHED";
   const stockAvailable = json.offers?.availability === "https://schema.org/InStock";
