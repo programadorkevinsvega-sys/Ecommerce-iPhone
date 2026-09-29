@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import Script from "next/script";
 import { breadcrumbSchema } from "../../../../modules/seo/application/StructuredData";
@@ -42,14 +43,18 @@ export default async function CmsPage({ params }: { params: Promise<{ slug: stri
     <main className="store-shell">
       <StoreHeader activeHref="/" />
       <nav className="breadcrumbs" aria-label="Migas de pan">
-        <a href="/">Inicio</a><span>/</span><span aria-current="page">{p.title}</span>
+        <Link href="/">Inicio</Link>
+        <span>/</span>
+        <span aria-current="page">{p.title}</span>
       </nav>
       <article className="content-article">
         <p className="eyebrow">Contenido</p>
         <h1>{p.title}</h1>
         <div className="content-body">{p.content}</div>
       </article>
-      <Script id="cms-breadcrumb-jsonld" type="application/ld+json">{serializeJsonLd(breadcrumbs)}</Script>
+      <Script id="cms-breadcrumb-jsonld" type="application/ld+json">
+        {serializeJsonLd(breadcrumbs)}
+      </Script>
     </main>
   );
 }
