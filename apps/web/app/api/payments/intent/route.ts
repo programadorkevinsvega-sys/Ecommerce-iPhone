@@ -5,7 +5,7 @@ import { commerceContext } from "../../../../lib/commerce";
 import { analyticsApp } from "../../../../lib/analyticsApplication";
 import { analyticsSetCookie, ANALYTICS_SESSION_COOKIE, ANALYTICS_VISITOR_COOKIE, ensureAnalyticsContext } from "../../../../lib/analyticsContext";
 import { cloudflareEnv } from "../../../../lib/cloudflareContext";
-import { waitUntil } from "cloudflare:workers";
+import { cloudflareWaitUntil } from "../../../lib/cloudflareContext";
 
 const ERROR_GENERIC = "No pudimos completar la operación.";
 const ERROR_VALIDATION = "Revisa los datos ingresados e inténtalo nuevamente.";
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       shippingAddress: { addressLine1: order.shippingAddress.addressLine1, ...(order.shippingAddress.addressLine2 ? { addressLine2: order.shippingAddress.addressLine2 } : {}), city: order.shippingAddress.city, state: order.shippingAddress.state, countryCode: order.shippingAddress.countryCode, phone: order.shippingAddress.phone },
     });
     const analytics=ensureAnalyticsContext(request);
-    waitUntil(
+    cloudflareWaitUntil(
       analyticsApp(cloudflareEnv()).record({
         eventId: `payment-started:${result.payment.id}`,
         eventType: "PaymentStarted",

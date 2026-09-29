@@ -4,7 +4,7 @@ import { commerceContext } from "../../../lib/commerce";
 import { analyticsApp } from "../../../lib/analyticsApplication";
 import { ensureAnalyticsContext, analyticsSetCookie, ANALYTICS_SESSION_COOKIE, ANALYTICS_VISITOR_COOKIE } from "../../../lib/analyticsContext";
 import { cloudflareEnv } from "../../../lib/cloudflareContext";
-import { waitUntil } from "cloudflare:workers";
+import { cloudflareWaitUntil } from "../../../lib/cloudflareContext";
 
 const GENERIC_ERROR = "No pudimos completar la operación.";
 const VALIDATION_ERROR = "Revisa los datos ingresados e inténtalo nuevamente.";
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     const { id, context } = await authorizedCartContext();
     const result = await context.cart.addItem({ cartId: id, productId: body.productId, quantity: body.quantity, ...(body.variantId ? { variantId: body.variantId } : {}) });
     const analytics = ensureAnalyticsContext(request);
-    waitUntil(
+    cloudflareWaitUntil(
       analyticsApp(cloudflareEnv()).record({
         eventId: crypto.randomUUID(),
         eventType: "CartItemAdded",
@@ -100,7 +100,7 @@ export async function DELETE(request: Request) {
     const { id, context } = await authorizedCartContext();
     const result = await context.cart.removeItem({ cartId: id, productId: body.productId, ...(body.variantId ? { variantId: body.variantId } : {}) });
     const analytics = ensureAnalyticsContext(request);
-    waitUntil(
+    cloudflareWaitUntil(
       analyticsApp(cloudflareEnv()).record({
         eventId: crypto.randomUUID(),
         eventType: "CartItemRemoved",

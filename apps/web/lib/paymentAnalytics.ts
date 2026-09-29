@@ -1,9 +1,9 @@
 import { analyticsApp } from "./analyticsApplication";
-import { cloudflareEnv } from "./cloudflareContext";
+import { cloudflareEnv, cloudflareWaitUntil } from "./cloudflareContext";
 import type { ProviderTransaction } from "../../../modules/payments/application/PaymentPorts";
 import type { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
 import type { D1PaymentRepository } from "../../../modules/payments/infrastructure/D1PaymentRepository";
-import { waitUntil } from "cloudflare:workers";
+
 
 type PaymentRepositories = Readonly<{
   payments: D1PaymentRepository;
@@ -14,7 +14,7 @@ export function recordPurchaseCompleted(
   repositories: PaymentRepositories,
   transaction: ProviderTransaction,
 ): void {
-  waitUntil(
+  cloudflareWaitUntil(
     recordPurchaseCompletedNow(repositories, transaction).catch(() => undefined),
   );
 }

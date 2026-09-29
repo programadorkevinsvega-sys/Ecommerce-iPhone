@@ -5,7 +5,5 @@ declare module "cloudflare:workers" {
     constructor(ctx: DurableObjectState, env: Env);
   }
 
-  function waitUntil(promise: Promise<unknown>): void;
-
-  export { DurableObject, waitUntil };
+  export { DurableObject };
 }

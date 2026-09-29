@@ -6,7 +6,7 @@ import { assertLength, normalizeSingleLine, validateEmail, validatePhone } from 
 import { analyticsApp } from "../../../lib/analyticsApplication";
 import { analyticsSetCookie, ANALYTICS_SESSION_COOKIE, ANALYTICS_VISITOR_COOKIE, ensureAnalyticsContext } from "../../../lib/analyticsContext";
 import { cloudflareEnv } from "../../../lib/cloudflareContext";
-import { waitUntil } from "cloudflare:workers";
+import { cloudflareWaitUntil } from "../../../lib/cloudflareContext";
 
 function safeError(error:unknown):{error:string;status:number} {
   const code=error instanceof Error?error.message.toUpperCase():"UNKNOWN";
@@ -66,7 +66,7 @@ export async function POST(request:Request){
   const {checkout}=await checkoutUseCase();
   const order=await checkout.execute(cart,{email:customerResult.customer.toPrimitives().email,shippingAddress,shippingMethod,customerId:customerResult.customer.getId(),idempotencyKey,...(promotionCode?{promotionCode}:{}),...(couponCode?{couponCode}:{})});
   const analytics=ensureAnalyticsContext(request);
-  waitUntil(
+  cloudflareWaitUntil(
     analyticsApp(cloudflareEnv()).record({
       eventId: `checkout-started:${order.id}`,
       eventType: "CheckoutStarted",
