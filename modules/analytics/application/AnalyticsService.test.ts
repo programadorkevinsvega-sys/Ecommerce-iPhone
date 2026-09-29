@@ -41,6 +41,31 @@ describe("AnalyticsService", () => {
     ]);
   });
 
+  it("accepts server-side purchase events with server-derived source", async () => {
+    const port = new RecordingPort();
+    const service = new AnalyticsService(port);
+
+    await service.record({
+      eventId: "purchase-12345678",
+      eventType: "PurchaseCompleted",
+      occurredAt: "2026-09-29T12:00:00.000Z",
+      sessionId: "order-12345678",
+      visitorId: "customer-12345678",
+      source: "server",
+      payload: {
+        orderId: "order-12345678",
+        paymentId: "payment-12345678",
+        provider: "STRIPE",
+        transactionId: "transaction-12345678",
+        amountInCents: 10000,
+        currency: "COP",
+      },
+    });
+
+    expect(port.events[0]?.source).toBe("server");
+    expect(port.events[0]?.eventType).toBe("PurchaseCompleted");
+  });
+
   it("rejects sensitive catalog analytics payloads", async () => {
     const port = new RecordingPort();
     const service = new AnalyticsService(port);
