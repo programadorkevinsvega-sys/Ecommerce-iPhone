@@ -4,7 +4,7 @@ import Script from "next/script";
 import { articleSchema, breadcrumbSchema } from "../../../../modules/seo/application/StructuredData";
 import StoreHeader from "../../components/StoreHeader";
 import { publicContent } from "../../../lib/publicContent";
-import { contentCanonical, publicMetadata, canonicalForPath } from "../../../lib/seo";
+import { contentCanonical, publicMetadataWithOverrides, canonicalForPath } from "../../../lib/seo";
 import { serializeJsonLd } from "../../../lib/jsonLd";
 
 export const dynamic = "force-dynamic";
@@ -17,16 +17,16 @@ export async function generateMetadata({
   const { slug } = await params;
   const p = await (await publicContent()).get("blog", slug);
   if (!p) return { title: "Contenido no encontrado", robots: { index: false, follow: false } };
-  const seo = contentCanonical({ path: "/blog/" + p.slug, storedCanonicalUrl: p.canonicalUrl });
-  return {
-    ...publicMetadata({
-      title: p.seoTitle ?? p.title,
-      description: p.seoDescription ?? p.excerpt,
-      path: "/blog/" + p.slug,
-      noindex: seo.noindex,
-    }),
-    alternates: { canonical: seo.canonical },
-  };
+  const path = "/blog/" + p.slug;
+  const seo = contentCanonical({ path, storedCanonicalUrl: p.canonicalUrl });
+  const metadata = await publicMetadataWithOverrides({
+    title: p.seoTitle ?? p.title,
+    description: p.seoDescription ?? p.excerpt,
+    path,
+    noindex: seo.noindex,
+    canonical: seo.canonical,
+  });
+  return metadata;
 }
 
 export default async function BlogPostPage({
