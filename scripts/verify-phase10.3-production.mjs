@@ -92,10 +92,10 @@ try {
     visitorId,
     requestId,
     payload: {
-      productId,
-      brand: "Apple",
-      condition: "NEW",
-      stockAvailable: true,
+      productId: product.productId,
+      brand: product.brand,
+      condition: product.condition,
+      stockAvailable: product.stockAvailable,
       hasVariants: false,
     },
   };
