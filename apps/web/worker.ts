@@ -5,6 +5,7 @@ import type { ExecutionContext, MessageBatch, Message, ScheduledEvent } from "@c
 import { D1NotificationOutboxRepository } from "../../modules/notifications/infrastructure/D1NotificationOutboxRepository";
 import { DurableObject } from "cloudflare:workers";
 import { notificationDeadLetterApplication, notificationProcessingApplication, notificationQueuePublisher } from "./lib/notificationsApplication";
+import { seoManagementApplication } from "./lib/seoApplication";
 import { D1ReservationRepository } from "../../modules/orders/infrastructure/D1ReservationRepository";
 import { NotificationTerminalError } from "../../modules/notifications/application/NotificationProcessingError";
 import type { NotificationEvent, NotificationInboxItem } from "../../modules/notifications/domain/NotificationEvent";
@@ -253,6 +254,28 @@ export default {
     }
 
     const response = await nextWorker.fetch(request, env, ctx);
+
+    if (
+      (request.method === "GET" || request.method === "HEAD") &&
+      response.status === 404 &&
+      !url.pathname.startsWith("/api/") &&
+      !url.pathname.startsWith("/_next/")
+    ) {
+      const redirect = await seoManagementApplication(env).resolveRedirect(url.pathname);
+      if (redirect?.statusCode === 301 && redirect.targetUrl) {
+        return withHeaders(new Response(null, {
+          status: 301,
+          headers: { Location: redirect.targetUrl, "Cache-Control": "public, max-age=3600" },
+        }), { "X-Request-Id": id });
+      }
+      if (redirect?.statusCode === 410) {
+        return withHeaders(new Response(null, {
+          status: 410,
+          headers: { "Cache-Control": "public, max-age=300" },
+        }), { "X-Request-Id": id });
+      }
+    }
+
     const publicContentResponse =
       response.status === 200 &&
       (url.pathname === "/api/content" || url.pathname.startsWith("/api/content/"));
