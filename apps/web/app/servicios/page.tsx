@@ -3,14 +3,16 @@ import Image from "next/image";
 import StoreHeader from "../components/StoreHeader";
 import Link from "next/link";
 import { listPublicServices } from "../../lib/services";
-import { publicMetadata } from "../../lib/seo";
+import { publicMetadataWithOverrides } from "../../lib/seo";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = publicMetadata({
-  title: "Servicios técnicos | Ecommerce iPhone",
-  description: "Consulta servicios técnicos publicados, precios, requisitos, compatibilidad y solicitudes.",
-  path: "/servicios",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  return publicMetadataWithOverrides({
+    title: "Servicios técnicos | Ecommerce iPhone",
+    description: "Consulta servicios técnicos publicados, precios, requisitos, compatibilidad y solicitudes.",
+    path: "/servicios",
+  });
+}
 
 const money = (value: number) =>
   new Intl.NumberFormat("es-CO", {
