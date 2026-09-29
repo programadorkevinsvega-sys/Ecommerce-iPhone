@@ -1,7 +1,9 @@
 import type { MetadataRoute } from "next";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { searchCatalog } from "../lib/catalog";
 import { publicContent } from "../lib/publicContent";
 import { siteConfig, canonicalUrl } from "../../../modules/seo/application/SeoPolicy";
+import { seoManagementApplication } from "../lib/seoApplication";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +12,8 @@ const PAGE_SIZE = 48;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const config = siteConfig();
+  const { env } = await getCloudflareContext({ async: true });
+  const overrides = new Map((await seoManagementApplication(env).routeOverrides()).map((item) => [item.path, item]));
   const entries: MetadataRoute.Sitemap = [
     { url: canonicalUrl("/", config), changeFrequency: "daily", priority: 1 },
     { url: canonicalUrl("/catalog", config), changeFrequency: "daily", priority: 0.9 },
@@ -21,15 +25,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: canonicalUrl("/reparaciones", config), changeFrequency: "weekly", priority: 0.7 },
   ];
 
+  const addEntry = (path: string, defaults: Omit<MetadataRoute.Sitemap[number], "url">) => {
+    const override = overrides.get(path);
+    if (override && !override.indexable) return;
+    let url = canonicalUrl(path, config);
+    if (override?.canonicalUrl) {
+      try {
+        const canonical = new URL(override.canonicalUrl);
+        if (canonical.origin !== new URL(config.origin).origin) return;
+        url = canonicalUrl(canonical.pathname + canonical.search, config);
+      } catch {
+        return;
+      }
+    }
+    entries.push({ url, ...defaults });
+  };
+
   const brands = new Set<string>();
   const first = await searchCatalog({ page: 1, pageSize: PAGE_SIZE });
   for (const product of first.items) {
     brands.add(product.brand);
-    entries.push({
-      url: canonicalUrl("/iphone/" + product.slug, config),
-      changeFrequency: "daily",
-      priority: 0.8,
-    });
+    addEntry("/iphone/" + product.slug, { changeFrequency: "daily", priority: 0.8 });
   }
 
   const totalPages = Math.min(Math.ceil(first.total / PAGE_SIZE), Math.floor(MAX_URLS / PAGE_SIZE));
@@ -38,11 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const product of result.items) {
       brands.add(product.brand);
       if (entries.length >= MAX_URLS) break;
-      entries.push({
-        url: canonicalUrl("/iphone/" + product.slug, config),
-        changeFrequency: "daily",
-        priority: 0.8,
-      });
+      addEntry("/iphone/" + product.slug, { changeFrequency: "daily", priority: 0.8 });
     }
     if (result.items.length === 0 || entries.length >= MAX_URLS) break;
   }
@@ -51,11 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (entries.length >= MAX_URLS) break;
     const slug = brand.trim().toLowerCase().replace(/\s+/g, "-");
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) continue;
-    entries.push({
-      url: canonicalUrl("/catalog/" + slug, config),
-      changeFrequency: "daily",
-      priority: 0.7,
-    });
+    addEntry("/catalog/" + slug, { changeFrequency: "daily", priority: 0.7 });
   }
 
   const content = await publicContent();
@@ -70,19 +78,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const path = "/content/" + item.slug;
     const canonical = safeCanonical(item.canonicalUrl, config.origin);
     if (item.canonicalUrl && !canonical) continue;
-    entries.push({
-      url: canonicalUrl(canonical ? canonical.pathname + canonical.search : path, config),
-      changeFrequency: "weekly",
-      priority: 0.6,
-    });
+    addEntry(canonical ? canonical.pathname + canonical.search : path, { changeFrequency: "weekly", priority: 0.6 });
   }
 
   for (const item of blog) {
     if (entries.length >= MAX_URLS) break;
     const canonical = safeCanonical(item.canonicalUrl, config.origin);
     if (item.canonicalUrl && !canonical) continue;
-    entries.push({
-      url: canonicalUrl(canonical ? canonical.pathname + canonical.search : "/blog/" + item.slug, config),
+    addEntry(canonical ? canonical.pathname + canonical.search : "/blog/" + item.slug, {
       ...(item.publishedAt ? { lastModified: new Date(item.publishedAt) } : {}),
       changeFrequency: "weekly",
       priority: 0.7,
@@ -93,8 +96,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (entries.length >= MAX_URLS) break;
     const canonical = item.canonicalUrl ? new URL(item.canonicalUrl) : null;
     if (canonical && canonical.origin !== new URL(config.origin).origin) continue;
-    entries.push({
-      url: canonicalUrl(canonical ? canonical.pathname + canonical.search : "/landing/" + item.slug, config),
+    addEntry(canonical ? canonical.pathname + canonical.search : "/landing/" + item.slug, {
       ...(item.publishedAt ? { lastModified: new Date(item.publishedAt) } : {}),
       changeFrequency: "weekly",
       priority: 0.7,
