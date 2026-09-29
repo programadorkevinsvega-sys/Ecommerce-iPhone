@@ -531,6 +531,8 @@ Los cambios posteriores de limpieza del warning ESLint en `worker.ts` son un aju
 
 **Issue:** #10 — Analytics, observabilidad, seguridad avanzada y producción
 
+**Estado actual:** 🟡 En ejecución — 10.1 auditoría completada; 10.2 Analytics Foundation implementada, pendiente de pipeline/migración/verificación productiva.
+
 ### Objetivo
 Preparar la plataforma para producción real con testing completo, seguridad, observabilidad, analítica y despliegue controlado.
 
