@@ -3,14 +3,16 @@ import Image from "next/image";
 import Link from "next/link";
 import StoreHeader from "../components/StoreHeader";
 import { publicContent } from "../../lib/publicContent";
-import { publicMetadata } from "../../lib/seo";
+import { publicMetadataWithOverrides } from "../../lib/seo";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = publicMetadata({
-  title: "Blog | Ecommerce iPhone",
-  description: "Consejos, novedades y contenido editorial de Ecommerce iPhone.",
-  path: "/blog",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  return publicMetadataWithOverrides({
+    title: "Blog | Ecommerce iPhone",
+    description: "Consejos, novedades y contenido editorial de Ecommerce iPhone.",
+    path: "/blog",
+  });
+}
 
 export default async function BlogPage() {
   const rows = await (await publicContent()).list("blog");
