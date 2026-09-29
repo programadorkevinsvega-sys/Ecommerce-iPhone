@@ -34,3 +34,12 @@ export function analyticsSetCookie(name: string, value: string, maxAge: number):
     "SameSite=Lax",
   ].join("; ");
 }
+
+export function ensureAnalyticsContext(request: Request): { visitorId: string; sessionId: string; setCookies: boolean } {
+  const current = analyticsRequestContext(request);
+  return {
+    visitorId: current.visitorId ?? crypto.randomUUID(),
+    sessionId: current.sessionId ?? crypto.randomUUID(),
+    setCookies: current.visitorId === undefined || current.sessionId === undefined,
+  };
+}
