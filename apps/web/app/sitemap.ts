@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { listPublicCategories, searchCatalog } from "../lib/catalog";
+import { searchCatalog } from "../lib/catalog";
 import { publicContent } from "../lib/publicContent";
 import { siteConfig, canonicalUrl } from "../../../modules/seo/application/SeoPolicy";
 
@@ -63,8 +63,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   for (const item of blog) {
     if (entries.length >= MAX_URLS) break;
-    const canonical = item.canonicalUrl ? new URL(item.canonicalUrl) : null;
-    if (canonical && canonical.origin !== new URL(config.origin).origin) continue;
+    const canonical = safeCanonical(item.canonicalUrl, config.origin);
+    if (item.canonicalUrl && !canonical) continue;
     entries.push({
       url: canonicalUrl(canonical ? canonical.pathname + canonical.search : "/blog/" + item.slug, config),
       ...(item.publishedAt ? { lastModified: new Date(item.publishedAt) } : {}),
@@ -86,4 +86,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   return entries;
+}
+
+function safeCanonical(value: string | undefined, origin: string): URL | null {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.origin === new URL(origin).origin ? url : null;
+  } catch {
+    return null;
+  }
 }
