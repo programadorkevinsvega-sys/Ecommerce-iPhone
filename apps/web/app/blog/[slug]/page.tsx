@@ -22,6 +22,7 @@ export async function generateMetadata({
   const metadata = await publicMetadataWithOverrides({
     title: p.seoTitle ?? p.title,
     description: p.seoDescription ?? p.excerpt,
+    image: p.coverImageUrl,
     path,
     type: "article",
     noindex: seo.noindex,
