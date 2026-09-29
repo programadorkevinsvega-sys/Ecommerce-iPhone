@@ -43,8 +43,8 @@ export default async function FaqPage() {
           </div>
         )}
       </section>
-      {faq && <script id="faq-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(faq) }} />}
-      <script id="faq-breadcrumb-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbs) }} />
+      {faq && <script id="faq-jsonld" type="application/ld+json">{serializeJsonLd(faq)}</script>}
+      <script id="faq-breadcrumb-jsonld" type="application/ld+json">{serializeJsonLd(breadcrumbs)}</script>
     </main>
   );
 }
