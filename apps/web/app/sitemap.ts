@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { searchCatalog } from "../lib/catalog";
+import { listPublicCategories, searchCatalog } from "../lib/catalog";
 import { publicContent } from "../lib/publicContent";
 import { siteConfig, canonicalUrl } from "../../../modules/seo/application/SeoPolicy";
 
@@ -18,15 +18,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: canonicalUrl("/blog", config), changeFrequency: "weekly", priority: 0.7 },
     { url: canonicalUrl("/faq", config), changeFrequency: "monthly", priority: 0.6 },
   ];
-
-  const categories = await (await import("../lib/catalog")).listPublicCategories();
-  for (const category of categories) {
-    entries.push({
-      url: canonicalUrl("/catalog?category=" + encodeURIComponent(category.slug), config),
-      changeFrequency: "daily",
-      priority: 0.7,
-    });
-  }
 
   const first = await searchCatalog({ page: 1, pageSize: PAGE_SIZE });
   for (const product of first.items) {
@@ -61,8 +52,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (const item of pages) {
     if (entries.length >= MAX_URLS) break;
     const path = "/content/" + item.slug;
-    const canonical = item.canonicalUrl ? new URL(item.canonicalUrl) : null;
-    if (canonical && canonical.origin !== new URL(config.origin).origin) continue;
+    const canonical = safeCanonical(item.canonicalUrl, config.origin);
+    if (item.canonicalUrl && !canonical) continue;
     entries.push({
       url: canonicalUrl(canonical ? canonical.pathname + canonical.search : path, config),
       changeFrequency: "weekly",
