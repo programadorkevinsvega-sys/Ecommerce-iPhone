@@ -7,6 +7,8 @@ import { DurableObject } from "cloudflare:workers";
 import { notificationDeadLetterApplication, notificationProcessingApplication, notificationQueuePublisher } from "./lib/notificationsApplication";
 import { seoManagementApplication } from "./lib/seoApplication";
 import { D1ReservationRepository } from "../../modules/orders/infrastructure/D1ReservationRepository";
+import { analyticsPersistence } from "../../modules/analytics/infrastructure/analyticsComposition";
+import type { AnalyticsEvent } from "../../modules/analytics/domain/AnalyticsEvent";
 import { NotificationTerminalError } from "../../modules/notifications/application/NotificationProcessingError";
 import type { NotificationEvent, NotificationInboxItem } from "../../modules/notifications/domain/NotificationEvent";
 
@@ -76,6 +78,8 @@ type Env = CloudflareEnv & {
   API_RATE_LIMITER?: { limit(input: { key: string }): Promise<{ success: boolean }> };
   SENSITIVE_RATE_LIMITER?: { limit(input: { key: string }): Promise<{ success: boolean }> };
 };
+
+type AnalyticsQueueMessage = Readonly<{ kind: "analytics"; schemaVersion: 1; event: AnalyticsEvent }>;
 
 type NotificationQueueMessage = Readonly<{
   schemaVersion: number;
@@ -181,6 +185,21 @@ function parseQueueMessage(body: string): NotificationQueueMessage | null {
   } catch {
     return null;
   }
+}
+
+function parseAnalyticsMessage(body: string): AnalyticsQueueMessage | null {
+  try {
+    const value = JSON.parse(body) as Partial<AnalyticsQueueMessage>;
+    if (value.kind !== "analytics" || value.schemaVersion !== 1 || !value.event) return null;
+    return value as AnalyticsQueueMessage;
+  } catch { return null; }
+}
+
+async function processAnalyticsMessage(message: Message<string>, env: Env): Promise<void> {
+  const parsed = parseAnalyticsMessage(message.body);
+  if (!parsed) throw new Error("INVALID_ANALYTICS_QUEUE_MESSAGE");
+  await analyticsPersistence(env.DB).record(parsed.event);
+  message.ack();
 }
 
 async function processNotificationMessage(
@@ -292,6 +311,7 @@ const worker = {
 
   async scheduled(_event: ScheduledEvent, env: Env) {
     const now = new Date().toISOString();
+    await analyticsPersistence(env.DB).purgeExpired(500);
     await env.DB.batch([
       env.DB.prepare("UPDATE cms_blog_posts SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
       env.DB.prepare("UPDATE cms_landing_pages SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
@@ -321,6 +341,13 @@ const worker = {
   },
 
   async queue(batch: MessageBatch<string>, env: Env) {
+    if (batch.queue === "ecommerce-iphone-analytics") {
+      for (const message of batch.messages) {
+        try { await processAnalyticsMessage(message, env); } catch { message.retry(); }
+      }
+      return;
+    }
+
     if (batch.queue === "ecommerce-iphone-notifications-dlq") {
       const deadLetters = notificationDeadLetterApplication(env);
       for (const message of batch.messages) {
