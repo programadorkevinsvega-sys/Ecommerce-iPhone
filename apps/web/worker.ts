@@ -202,6 +202,32 @@ async function processAnalyticsMessage(message: Message<string>, env: Env): Prom
   message.ack();
 }
 
+async function recordAbandonedCarts(env: Env): Promise<void> {
+  const rows = await env.DB.prepare(
+    "SELECT c.id,c.updated_at,COUNT(ci.product_id) AS item_count FROM carts c INNER JOIN cart_items ci ON ci.cart_id=c.id WHERE c.updated_at<=datetime('now','-30 minutes') GROUP BY c.id,c.updated_at LIMIT 200",
+  ).all<{ id: string; updated_at: string; item_count: number }>();
+
+  const analytics = analyticsPersistence(env.DB);
+  for (const row of rows.results) {
+    const occurredAt = new Date(row.updated_at).toISOString();
+    await analytics.record({
+      eventId: `cart-abandoned:${row.id}:${row.updated_at}`,
+      eventType: "CartAbandoned",
+      occurredAt,
+      receivedAt: new Date().toISOString(),
+      sessionId: `cart:${row.id}`,
+      visitorId: `cart:${row.id}`,
+      source: "server",
+      eventVersion: 1,
+      payload: {
+        cartId: row.id,
+        itemCount: Number(row.item_count),
+        abandonmentMinutes: Math.max(30, Math.floor((Date.now() - new Date(row.updated_at).getTime()) / 60000)),
+      },
+    });
+  }
+}
+
 async function processNotificationMessage(
   message: Message<string>,
   env: Env,
@@ -312,6 +338,7 @@ const worker = {
   async scheduled(_event: ScheduledEvent, env: Env) {
     const now = new Date().toISOString();
     await analyticsPersistence(env.DB).purgeExpired(500);
+    await recordAbandonedCarts(env);
     await env.DB.batch([
       env.DB.prepare("UPDATE cms_blog_posts SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
       env.DB.prepare("UPDATE cms_landing_pages SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
