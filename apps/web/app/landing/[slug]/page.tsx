@@ -42,7 +42,7 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
       <article className="content-article">
         <p className="eyebrow">Landing</p><h1>{p.title}</h1><div className="content-body">{p.content}</div>
       </article>
-      <script id="landing-breadcrumb-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbs) }} />
+      <script id="landing-breadcrumb-jsonld" type="application/ld+json">{serializeJsonLd(breadcrumbs)}</script>
     </main>
   );
 }
