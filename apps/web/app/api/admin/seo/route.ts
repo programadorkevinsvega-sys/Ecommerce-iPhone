@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { requireAdmin, PERMISSIONS } from "../../../../lib/adminAuth";
 import { seoManagementApplication } from "../../../../lib/seoApplication";
-import { validateSeoRedirect, validateSeoRouteOverride } from "../../../../../modules/seo/domain/SeoRedirect";
-import { D1AuditPort } from "../../../../../modules/admin/infrastructure/D1AuditPort";
 
 export async function GET() {
   try {
@@ -31,7 +29,6 @@ export async function POST(request: Request) {
         throw new Error("INVALID_SEO_REDIRECT");
       }
       const targetUrl = typeof value.targetUrl === "string" ? value.targetUrl : undefined;
-      validateSeoRedirect({ sourcePath: value.sourcePath, targetUrl, statusCode: value.statusCode });
       await seoManagementApplication(env).saveRedirect({
         id: typeof value.id === "string" && value.id ? value.id : crypto.randomUUID(),
         sourcePath: value.sourcePath,
@@ -40,7 +37,6 @@ export async function POST(request: Request) {
         active: value.active,
         adminId: admin.id,
       });
-      await new D1AuditPort(env.DB).audit(admin.id, "SEO_REDIRECT_SAVED", "seo_redirect", value.sourcePath, { sourcePath: value.sourcePath, statusCode: value.statusCode, active: value.active });
       return NextResponse.json({ saved: true });
     }
 
@@ -48,13 +44,6 @@ export async function POST(request: Request) {
       if (typeof value.path !== "string" || typeof value.indexable !== "boolean") {
         throw new Error("INVALID_SEO_ROUTE");
       }
-      validateSeoRouteOverride({
-        path: value.path,
-        ...(typeof value.seoTitle === "string" ? { seoTitle: value.seoTitle } : {}),
-        ...(typeof value.seoDescription === "string" ? { seoDescription: value.seoDescription } : {}),
-        ...(typeof value.canonicalUrl === "string" ? { canonicalUrl: value.canonicalUrl } : {}),
-        ...(typeof value.ogImageUrl === "string" ? { ogImageUrl: value.ogImageUrl } : {}),
-      });
       const optional = (key: string) =>
         typeof value[key] === "string" && value[key] !== "" ? (value[key] as string) : undefined;
       await seoManagementApplication(env).saveRouteOverride({
@@ -67,7 +56,6 @@ export async function POST(request: Request) {
         ...(optional("ogImageUrl") ? { ogImageUrl: optional("ogImageUrl") } : {}),
         adminId: admin.id,
       });
-      await new D1AuditPort(env.DB).audit(admin.id, "SEO_ROUTE_OVERRIDE_SAVED", "seo_route_override", value.path, { path: value.path, indexable: value.indexable });
       revalidateTag("seo-route-override");
       return NextResponse.json({ saved: true });
     }
