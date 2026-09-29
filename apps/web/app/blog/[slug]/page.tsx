@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Script from "next/script";
 import { articleSchema, breadcrumbSchema } from "../../../../../modules/seo/application/StructuredData";
 import StoreHeader from "../../components/StoreHeader";
 import { publicContent } from "../../../lib/publicContent";
@@ -56,8 +55,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         {p.excerpt && <p>{p.excerpt}</p>}
         <div className="content-body">{p.content}</div>
       </article>
-      <Script id="article-jsonld" type="application/ld+json">{serializeJsonLd(article)}</Script>
-      <Script id="article-breadcrumb-jsonld" type="application/ld+json">{serializeJsonLd(breadcrumbs)}</Script>
+      <script id="article-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(article) }} />
+      <script id="article-breadcrumb-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbs) }} />
     </main>
   );
 }
