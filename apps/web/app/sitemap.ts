@@ -49,7 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   for (const brand of brands) {
     if (entries.length >= MAX_URLS) break;
-    const slug = brand.trim().toLowerCase().replace(/\\s+/g, "-");
+    const slug = brand.trim().toLowerCase().replace(/\s+/g, "-");
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) continue;
     entries.push({
       url: canonicalUrl("/catalog/" + slug, config),
