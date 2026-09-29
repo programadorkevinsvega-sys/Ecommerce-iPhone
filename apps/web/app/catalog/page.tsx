@@ -143,6 +143,9 @@ export default async function CatalogPage({
 
   return (
     <main className="store-shell">
+      {analyticsEvents.map((event) => (
+        <AnalyticsEventOnMount key={event.eventType} eventType={event.eventType} payload={event.payload} />
+      ))}
       <StoreHeader activeHref="/catalog" />
       <section className="catalog-hero">
         <p className="eyebrow">Catálogo</p>
@@ -214,6 +217,7 @@ export default async function CatalogPage({
             <div className="product-grid">
               {result.items.map((product) => (
                 <AnalyticsInteraction
+                  key={product.id}
                   eventType="SearchResultClicked"
                   payload={{
                     productId: product.id,
@@ -252,7 +256,7 @@ export default async function CatalogPage({
                   <span className="stock-note">
                     {product.stock > 0 ? `${product.stock} disponibles` : "Agotado"}
                   </span>
-                </Link>
+                </AnalyticsInteraction>
               ))}
             </div>
           )}
