@@ -798,3 +798,12 @@ La auditoría profunda de rutas frontend/API detectó y corrigió los defectos c
 **Estado de implementación 08.4:** 🟢 corregido e integrado a nivel de código.
 
 **Certificación:** permanece separada de la implementación y solo se marcará como cerrada cuando el commit final pase tests, lint/typecheck, arquitectura, build Cloudflare, migraciones/verificación D1, deploy real, `verify:production` y smoke funcional contra producción.
+
+
+### Estado actual — 10.1 Auditoría de Production Readiness — 2026-09-29
+
+🟢 **10.1 completada.** Se auditó el estado real de `main` antes de implementar las subfases posteriores. La evidencia y el gap analysis quedan registrados en `docs/FASE-10.1-PRODUCTION-READINESS-AUDIT.md`.
+
+Hallazgos principales: analytics existe solo como bounded context/documentación inicial; observabilidad tiene base de Cloudflare/request IDs/health pero requiere correlación, structured logging, error tracking y métricas; seguridad cuenta con headers/CSP/CORS/rate limiting pero requiere auditoría transversal y verificación externa de WAF/bot/MFA/webhooks/PII; testing tiene Vitest/Playwright y verificaciones productivas pero requiere integración, contract, security, concurrency y regression suites completas; CI/CD tiene gates y verificación Cloudflare pero debe consolidar evidencia sin duplicar el deploy automático; rollback/recovery existe como base pero requiere validación ejecutable.
+
+**Siguiente subfase:** 10.2 — Analytics Foundation.
