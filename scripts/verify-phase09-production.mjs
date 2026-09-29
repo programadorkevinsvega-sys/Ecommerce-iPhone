@@ -38,9 +38,26 @@ const escapedOrigin = BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const productMatch = sitemap.body.match(new RegExp("<loc>" + escapedOrigin + "(/iphone/[^<]+)</loc>"));
 if (productMatch) {
   const product = await assertStatus(productMatch[1], 200);
-  assert(product.body.includes("application/ld+json"), "product page has no JSON-LD");
-  assert(product.body.includes("\"@type\":\"Product\""), "product page has no Product structured data");
-  assert(product.body.includes("\"@type\":\"BreadcrumbList\""), "product page has no BreadcrumbList structured data");
+  const jsonLdBlocks = [...product.body.matchAll(/<script[^>]*type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)]
+    .map((match) => match[1]?.trim())
+    .filter((value) => Boolean(value));
+  assert(jsonLdBlocks.length > 0, "product page has no JSON-LD");
+  const schemas = jsonLdBlocks.flatMap((value) => {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch {
+      return [];
+    }
+  });
+  assert(
+    schemas.some((schema) => schema && typeof schema === "object" && schema["@type"] === "Product"),
+    "product page has no Product structured data",
+  );
+  assert(
+    schemas.some((schema) => schema && typeof schema === "object" && schema["@type"] === "BreadcrumbList"),
+    "product page has no BreadcrumbList structured data",
+  );
   assert(product.body.includes("rel=\"canonical\""), "product page has no canonical");
   console.log("PASS product SEO smoke");
 }
