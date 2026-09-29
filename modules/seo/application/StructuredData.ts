@@ -46,6 +46,7 @@ export function productSchema(input: {
   priceInCents: number;
   currency: string;
   inStock: boolean;
+  itemCondition?: "NEW" | "USED" | "REFURBISHED";
   reviews?: readonly Readonly<{
     id: string;
     rating: number;
@@ -72,6 +73,14 @@ export function productSchema(input: {
       availability: input.inStock
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
+      ...(input.itemCondition
+        ? {
+            itemCondition:
+              input.itemCondition === "NEW"
+                ? "https://schema.org/NewCondition"
+                : "https://schema.org/UsedCondition",
+          }
+        : {}),
     },
   };
 
