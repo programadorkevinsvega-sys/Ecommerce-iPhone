@@ -14,7 +14,9 @@ export type Indexability = Readonly<{
 export function siteConfig(): SeoSiteConfig {
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
   const origin =
-    configured && /^https?:\/\//iu.test(configured)
+    configured &&
+    (configured === PRODUCTION_SITE_URL ||
+      /^https?:\/\/(?:localhost|127\\.0\\.0\\.1)(?::\\d+)?$/iu.test(configured))
       ? configured.replace(/\/$/, "")
       : PRODUCTION_SITE_URL;
 
