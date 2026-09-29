@@ -206,7 +206,7 @@ async function processNotificationMessage(
   message.ack();
 }
 
-export default {
+const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
     const id = requestId(request);
@@ -354,3 +354,5 @@ export default {
     }
   },
 };
+
+export default worker;
