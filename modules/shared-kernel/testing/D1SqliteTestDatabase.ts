@@ -45,7 +45,7 @@ export class D1SqliteTestDatabase {
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
       CREATE TABLE carts (
-        id TEXT PRIMARY KEY, customer_id TEXT, currency TEXT NOT NULL
+        id TEXT PRIMARY KEY, customer_id TEXT, currency TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
       CREATE TABLE cart_items (
         cart_id TEXT NOT NULL, product_id TEXT NOT NULL, quantity INTEGER NOT NULL,
