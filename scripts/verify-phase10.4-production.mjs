@@ -53,12 +53,17 @@ const requestId = `phase10-4-request-${probe}`;
 let completed = false;
 
 try {
-  const productRows = await d1(
-    "SELECT id,slug,stock FROM products WHERE slug='iphone-17-pro-max' AND active=1 LIMIT 1",
+  const preferredProductRows = await d1(
+    "SELECT id,slug,stock FROM products WHERE slug='iphone-17-pro-max' AND active=1 AND stock>0 LIMIT 1",
   );
-  assert(productRows.length === 1, "real published product iphone-17-pro-max was not found in production D1");
+  const productRows = preferredProductRows.length > 0
+    ? preferredProductRows
+    : await d1("SELECT id,slug,stock FROM products WHERE active=1 AND stock>0 ORDER BY updated_at DESC LIMIT 1");
+  assert(productRows.length === 1, "no active production product with stock available for real cart verification");
   const productId = productRows[0].id;
-  assert(Number(productRows[0].stock) > 0, "real verification product has no stock available");
+  console.log(
+    `PASS real verification product: ${productRows[0].slug} with stock ${Number(productRows[0].stock)}${preferredProductRows.length === 0 ? " (fallback because iphone-17-pro-max has no stock)" : ""}`,
+  );
 
   const cartCookie = `cart_id=${cartId}`;
   const analyticsCookie = `__Host-analytics-visitor=${visitorId}; __Host-analytics-session=${sessionId}`;
