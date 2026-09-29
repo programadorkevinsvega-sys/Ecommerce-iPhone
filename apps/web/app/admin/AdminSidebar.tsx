@@ -21,7 +21,8 @@ export type AdminSidebarSection =
   | "settings"
   | "inventory"
   | "notifications"
-  | "cms";
+  | "cms"
+  | "seo";
 
 type AdminSidebarProps = { active: AdminSidebarSection };
 
@@ -53,6 +54,7 @@ const items: ReadonlyArray<{
   { key: "promotions", icon: "◆", label: "Campañas", href: "/admin/campaigns" },
   { key: "cms", icon: "▧", label: "CMS", href: "/admin/cms" },
   { key: "cms", icon: "▤", label: "Contenido editorial", href: "/admin/cms/content" },
+  { key: "seo", icon: "⌁", label: "SEO", href: "/admin/seo" },
   { key: "settings", icon: "⚙", label: "Configuración", href: "/admin/settings" },
   { key: "notifications", icon: "✉", label: "Notificaciones", href: "/admin/notifications" },
 ];
