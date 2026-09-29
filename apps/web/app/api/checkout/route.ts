@@ -3,6 +3,10 @@ import { NextResponse } from "next/server";
 import { checkoutUseCase, commerceContext } from "../../../lib/commerce";
 import { publishNotificationEvent } from "../../../lib/notifications";
 import { assertLength, normalizeSingleLine, validateEmail, validatePhone } from "../../../lib/inputValidation";
+import { analyticsApp } from "../../../lib/analyticsApplication";
+import { analyticsSetCookie, ANALYTICS_SESSION_COOKIE, ANALYTICS_VISITOR_COOKIE, ensureAnalyticsContext } from "../../../lib/analyticsContext";
+import { cloudflareEnv } from "../../../lib/cloudflareContext";
+import { waitUntil } from "cloudflare:workers";
 
 function safeError(error:unknown):{error:string;status:number} {
   const code=error instanceof Error?error.message.toUpperCase():"UNKNOWN";
@@ -61,8 +65,26 @@ export async function POST(request:Request){
   const cart=await context.cart.getOwnedByCustomer(cartId,customerResult.customer.getId());
   const {checkout}=await checkoutUseCase();
   const order=await checkout.execute(cart,{email:customerResult.customer.toPrimitives().email,shippingAddress,shippingMethod,customerId:customerResult.customer.getId(),idempotencyKey,...(promotionCode?{promotionCode}:{}),...(couponCode?{couponCode}:{})});
+  const analytics=ensureAnalyticsContext(request);
+  waitUntil(
+    analyticsApp(cloudflareEnv()).record({
+      eventId: `checkout-started:${order.id}`,
+      eventType: "CheckoutStarted",
+      occurredAt: new Date().toISOString(),
+      sessionId: analytics.sessionId,
+      visitorId: analytics.visitorId,
+      requestId: request.headers.get("x-request-id")?.trim() || undefined,
+      payload: {
+        orderId: order.id,
+        itemCount: cart.items.length,
+        shippingMethod,
+        hasDiscount: Boolean(promotionCode || couponCode),
+      },
+    }).catch(() => undefined),
+  );
   await publishNotificationEvent({id:`order-created:${order.id}`,eventType:"OrderCreated",aggregateId:order.id,payload:{email:customerResult.customer.toPrimitives().email,orderId:order.id,orderNumber:order.orderNumber,status:order.status,totalInCents:order.totalInCents,currency:order.currency}});
   const response=NextResponse.json({order},{status:201});
+  if(analytics.setCookies){response.headers.append("Set-Cookie",analyticsSetCookie(ANALYTICS_VISITOR_COOKIE,analytics.visitorId,31536000));response.headers.append("Set-Cookie",analyticsSetCookie(ANALYTICS_SESSION_COOKIE,analytics.sessionId,1800));}
   if(!currentSession){const newSession=await context.customerSession.create(customerResult.customer.getId());response.cookies.set("customer_session",newSession.token,{httpOnly:true,sameSite:"lax",secure:process.env.NODE_ENV==="production",path:"/",maxAge:60*60*24*30});}
   response.cookies.set("customer_id","",{httpOnly:true,maxAge:0,path:"/"});
   return response;
