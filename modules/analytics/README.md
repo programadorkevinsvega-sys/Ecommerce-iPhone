@@ -15,3 +15,13 @@ Owns product and business analytics events. Tracking providers are adapters and 
 Event types: VisitorStarted, SessionStarted, ProductViewed, SearchPerformed, CartItemAdded, CheckoutStarted, PaymentStarted, PurchaseCompleted, RevenueRecorded.
 
 The foundation does not manufacture business events. Later analytics subphases emit each event only from the corresponding real application state transition.
+
+
+## Phase 10.3 — Catalog and search
+
+The catalog storefront emits real analytics events from rendered catalog/product state and user interactions. The contract now covers ProductViewed, SearchPerformed, SearchResultClicked, CategoryNavigated, FilterApplied, PaginationChanged, ProductVariantSelected and RelatedProductClicked.
+
+- Search/product payloads are minimized and never include the raw search query, credentials, payment data or PII.
+- Browser interaction events use an in-memory anonymous context and the server establishes HttpOnly, Secure, SameSite=Lax first-party analytics identifiers through the analytics endpoint.
+- Product and search rendering remains server-side; interactive events are emitted only from client interaction components.
+- Production verification exercises a real published product route, a real catalog search route, Queue → D1 persistence and event-id idempotency.
