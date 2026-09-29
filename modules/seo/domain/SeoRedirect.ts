@@ -38,3 +38,34 @@ export function validateSeoRoutePath(path: string): void {
     throw new Error("INVALID_SEO_ROUTE");
   }
 }
+
+export function validateSeoRouteOverride(input: Readonly<{
+  path: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  canonicalUrl?: string;
+  ogImageUrl?: string;
+}>): void {
+  validateSeoRoutePath(input.path);
+  if (input.seoTitle !== undefined && (!input.seoTitle.trim() || input.seoTitle.length > 180)) {
+    throw new Error("INVALID_SEO_TITLE");
+  }
+  if (input.seoDescription !== undefined && input.seoDescription.length > 320) {
+    throw new Error("INVALID_SEO_DESCRIPTION");
+  }
+  for (const [field, value] of [
+    ["canonicalUrl", input.canonicalUrl],
+    ["ogImageUrl", input.ogImageUrl],
+  ] as const) {
+    if (value === undefined) continue;
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new Error("INVALID_" + field.toUpperCase());
+    }
+    if (url.origin !== "https://iphone.jnmtortas.com" || url.protocol !== "https:") {
+      throw new Error("INVALID_" + field.toUpperCase());
+    }
+  }
+}
