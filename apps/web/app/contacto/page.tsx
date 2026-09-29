@@ -1,6 +1,7 @@
 import StoreHeader from "../components/StoreHeader";
 import type {Metadata} from "next";
+import { publicMetadataWithOverrides } from "../../lib/seo";
 import Link from "next/link";
 
-export const metadata:Metadata={title:"Contacto | Ecommerce iPhone",description:"Contacta al equipo de Ecommerce iPhone para resolver dudas sobre productos, compras y servicios.",alternates:{canonical:"/contacto"}};
+export async function generateMetadata(): Promise<Metadata> { return publicMetadataWithOverrides({ title:"Contacto | Ecommerce iPhone", description:"Contacta al equipo de Ecommerce iPhone para resolver dudas sobre productos, compras y servicios.", path:"/contacto" }); }
 export default function ContactoPage(){return <main className="store-shell"><StoreHeader activeHref="/contacto" /><section className="catalog-hero"><p className="eyebrow">Contacto</p><h1>Estamos para ayudarte.</h1><p>Resuelve dudas sobre disponibilidad, estado, garantía, compra o servicios antes de tomar una decisión.</p></section><section className="section contact-grid"><article className="contact-card"><p className="eyebrow">Compras</p><h2>¿Tienes una duda sobre un equipo?</h2><p>Revisa primero el catálogo para consultar precio, condición, batería, capacidad, color, garantía e inventario.</p><Link className="button primary" href="/catalog">Ver catálogo</Link></article><article className="contact-card"><p className="eyebrow">Servicios</p><h2>¿Necesitas soporte técnico?</h2><p>Consulta diagnóstico, reparación, configuración y demás servicios disponibles.</p><Link className="button secondary" href="/servicios">Ver servicios</Link></article></section></main>}
