@@ -16,7 +16,7 @@ async function getRouteOverride(path: string) {
       return new D1SeoRepository(env.DB).findRouteOverride(path);
     },
     ["seo-route-override", path],
-    { revalidate: 60 },
+    { revalidate: 60, tags: ["seo-route-override", "seo-route-override:" + path] },
   );
   return cached();
 }
