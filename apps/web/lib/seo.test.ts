@@ -8,9 +8,9 @@ describe("web SEO adapter", () => {
       description: "Descripción",
       path: "/iphone/test",
     });
-    expect(metadata.alternates?.canonical).toBe("http://localhost:3000/iphone/test");
+    expect(metadata.alternates?.canonical).toBe("https://iphone.jnmtortas.com/iphone/test");
     expect(metadata.robots).toEqual({ index: true, follow: true });
-    expect(metadata.openGraph?.url).toBe("http://localhost:3000/iphone/test");
+    expect(metadata.openGraph?.url).toBe("https://iphone.jnmtortas.com/iphone/test");
     expect(metadata.twitter?.card).toBe("summary");
   });
 
@@ -21,7 +21,7 @@ describe("web SEO adapter", () => {
         storedCanonicalUrl: "https://other.example/guide",
       }),
     ).toEqual({
-      canonical: "http://localhost:3000/content/guide",
+      canonical: "https://iphone.jnmtortas.com/content/guide",
       noindex: true,
     });
   });
