@@ -53,6 +53,26 @@ export function indexability(
   return { index: true, follow: true };
 }
 
+export function contentCanonical(input: { path: string; storedCanonicalUrl?: string }): {
+  canonical: string;
+  noindex: boolean;
+} {
+  const config = siteConfig();
+  if (!input.storedCanonicalUrl) {
+    return { canonical: canonicalUrl(input.path, config), noindex: false };
+  }
+
+  try {
+    const stored = new URL(input.storedCanonicalUrl);
+    if (stored.origin !== new URL(config.origin).origin) {
+      return { canonical: canonicalUrl(input.path, config), noindex: true };
+    }
+    return { canonical: canonicalUrl(stored.pathname + stored.search, config), noindex: false };
+  } catch {
+    return { canonical: canonicalUrl(input.path, config), noindex: true };
+  }
+}
+
 export function isIndexablePath(pathname: string): boolean {
   return ![
     "/admin",
