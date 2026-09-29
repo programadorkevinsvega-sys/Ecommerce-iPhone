@@ -1,4 +1,6 @@
 import type { SeoRedirectStatus } from "../domain/SeoRedirect";
+import { validateSeoRedirect, validateSeoRouteOverride } from "../domain/SeoRedirect";
+import type { AuditPort } from "../../admin/application/AuditPort";
 
 export type SeoRedirectRecord = Readonly<{
   id: string;
@@ -48,7 +50,10 @@ export interface SeoRepository {
 }
 
 export class SeoManagement {
-  constructor(private readonly repository: SeoRepository) {}
+  constructor(
+    private readonly repository: SeoRepository,
+    private readonly audit?: AuditPort,
+  ) {}
 
   redirects() {
     return this.repository.listRedirects();
@@ -58,12 +63,23 @@ export class SeoManagement {
     return this.repository.listRouteOverrides();
   }
 
-  saveRedirect(input: Parameters<SeoRepository["saveRedirect"]>[0]) {
-    return this.repository.saveRedirect(input);
+  async saveRedirect(input: Parameters<SeoRepository["saveRedirect"]>[0]) {
+    validateSeoRedirect(input);
+    await this.repository.saveRedirect(input);
+    await this.audit?.audit(input.adminId, "SEO_REDIRECT_SAVED", "seo_redirect", input.sourcePath, {
+      sourcePath: input.sourcePath,
+      statusCode: input.statusCode,
+      active: input.active,
+    });
   }
 
-  saveRouteOverride(input: Parameters<SeoRepository["saveRouteOverride"]>[0]) {
-    return this.repository.saveRouteOverride(input);
+  async saveRouteOverride(input: Parameters<SeoRepository["saveRouteOverride"]>[0]) {
+    validateSeoRouteOverride(input);
+    await this.repository.saveRouteOverride(input);
+    await this.audit?.audit(input.adminId, "SEO_ROUTE_OVERRIDE_SAVED", "seo_route_override", input.path, {
+      path: input.path,
+      indexable: input.indexable,
+    });
   }
 
   resolveRedirect(sourcePath: string) {
