@@ -11,7 +11,7 @@ describe("web SEO adapter", () => {
     expect(metadata.alternates?.canonical).toBe("https://iphone.jnmtortas.com/iphone/test");
     expect(metadata.robots).toEqual({ index: true, follow: true });
     expect(metadata.openGraph?.url).toBe("https://iphone.jnmtortas.com/iphone/test");
-    expect(metadata.twitter?.card).toBe("summary");
+    expect(metadata.twitter).toMatchObject({ card: "summary" });
   });
 
   it("turns foreign CMS canonicals into noindex instead of publishing them", () => {
