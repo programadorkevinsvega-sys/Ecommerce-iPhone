@@ -1,4 +1,5 @@
 import StoreHeader from "../components/StoreHeader";
+import { AnalyticsEventOnMount, AnalyticsInteraction } from "../components/AnalyticsInteraction";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -72,6 +73,63 @@ export default async function CatalogPage({
     page,
     pageSize: 12,
   });
+  const filterCount = [brand, category, condition, sort !== "newest" ? sort : undefined].filter(
+    (value) => value !== undefined,
+  ).length;
+  const hasSearchQuery = q !== undefined;
+
+  const analyticsEvents = [
+    ...(hasSearchQuery
+      ? [
+          {
+            eventType: "SearchPerformed" as const,
+            payload: {
+              queryPresent: true,
+              queryLength: q.length,
+              resultCount: result.total,
+              page: result.page,
+              pageSize: result.pageSize,
+              sort,
+              hasBrandFilter: brand !== undefined,
+              hasCategoryFilter: category !== undefined,
+              hasConditionFilter: condition !== undefined,
+            },
+          },
+        ]
+      : []),
+    ...(category
+      ? [
+          {
+            eventType: "CategoryNavigated" as const,
+            payload: { categorySlug: category, page: result.page, resultCount: result.total },
+          },
+        ]
+      : []),
+    ...(filterCount > 0
+      ? [
+          {
+            eventType: "FilterApplied" as const,
+            payload: {
+              filterCount,
+              hasSearchQuery,
+              hasBrandFilter: brand !== undefined,
+              hasCategoryFilter: category !== undefined,
+              hasConditionFilter: condition !== undefined,
+              sort,
+            },
+          },
+        ]
+      : []),
+    ...(page > 1
+      ? [
+          {
+            eventType: "PaginationChanged" as const,
+            payload: { page, pageSize: result.pageSize, hasSearchQuery },
+          },
+        ]
+      : []),
+  ];
+
   const pages = Math.max(1, Math.ceil(result.total / result.pageSize));
   const qs = (nextPage: number) =>
     new URLSearchParams({
@@ -155,11 +213,16 @@ export default async function CatalogPage({
           ) : (
             <div className="product-grid">
               {result.items.map((product) => (
-                <Link
-                  prefetch={false}
+                <AnalyticsInteraction
+                  eventType="SearchResultClicked"
+                  payload={{
+                    productId: product.id,
+                    position: result.items.findIndex((item) => item.id === product.id) + 1,
+                    page: result.page,
+                    queryPresent: hasSearchQuery,
+                  }}
                   href={productHref(product.slug)}
                   className="product-card"
-                  key={product.id}
                 >
                   <div className="product-image" aria-hidden={product.images.length === 0}>
                     {product.images[0] ? (
@@ -196,10 +259,10 @@ export default async function CatalogPage({
           {pages > 1 && (
             <nav className="pagination" aria-label="Paginación">
               <span>
-                {page > 1 ? <Link href={`/catalog?${qs(page - 1)}`}>Anterior</Link> : null}
+                {page > 1 ? <AnalyticsInteraction eventType="PaginationChanged" payload={{ page: page - 1, pageSize: result.pageSize, hasSearchQuery }} href={`/catalog?${qs(page - 1)}`}>Anterior</AnalyticsInteraction> : null}
               </span>
               <span>
-                {page < pages ? <Link href={`/catalog?${qs(page + 1)}`}>Siguiente</Link> : null}
+                {page < pages ? <AnalyticsInteraction eventType="PaginationChanged" payload={{ page: page + 1, pageSize: result.pageSize, hasSearchQuery }} href={`/catalog?${qs(page + 1)}`}>Siguiente</AnalyticsInteraction> : null}
               </span>
             </nav>
           )}
