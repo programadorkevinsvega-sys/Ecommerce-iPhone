@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, PERMISSIONS } from "../../../../lib/adminAuth";
 import { seoManagementApplication } from "../../../../lib/seoApplication";
-import { validateSeoRedirect, validateSeoRoutePath } from "../../../../../modules/seo/domain/SeoRedirect";
+import { validateSeoRedirect, validateSeoRouteOverride } from "../../../../../modules/seo/domain/SeoRedirect";
 
 export async function GET() {
   try {
@@ -45,7 +45,13 @@ export async function POST(request: Request) {
       if (typeof value.path !== "string" || typeof value.indexable !== "boolean") {
         throw new Error("INVALID_SEO_ROUTE");
       }
-      validateSeoRoutePath(value.path);
+      validateSeoRouteOverride({
+        path: value.path,
+        ...(typeof value.seoTitle === "string" ? { seoTitle: value.seoTitle } : {}),
+        ...(typeof value.seoDescription === "string" ? { seoDescription: value.seoDescription } : {}),
+        ...(typeof value.canonicalUrl === "string" ? { canonicalUrl: value.canonicalUrl } : {}),
+        ...(typeof value.ogImageUrl === "string" ? { ogImageUrl: value.ogImageUrl } : {}),
+      });
       const optional = (key: string) =>
         typeof value[key] === "string" && value[key] !== "" ? (value[key] as string) : undefined;
       await seoManagementApplication(env).saveRouteOverride({
