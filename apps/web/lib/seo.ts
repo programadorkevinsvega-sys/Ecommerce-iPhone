@@ -4,6 +4,7 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { D1SeoRepository } from "../../../modules/seo/infrastructure/D1SeoRepository";
 import {
   canonicalUrl,
+  contentCanonical,
   indexability,
   isIndexablePath,
   siteConfig,
@@ -86,26 +87,6 @@ export async function publicMetadataWithOverrides(input: {
     ...metadata,
     alternates: { canonical: canonicalUrl(safe.pathname + safe.search, config) },
   };
-}
-
-export function contentCanonical(input: { path: string; storedCanonicalUrl?: string }): {
-  canonical: string;
-  noindex: boolean;
-} {
-  const config = siteConfig();
-  if (!input.storedCanonicalUrl) {
-    return { canonical: canonicalUrl(input.path, config), noindex: false };
-  }
-
-  try {
-    const stored = new URL(input.storedCanonicalUrl);
-    if (stored.origin !== new URL(config.origin).origin) {
-      return { canonical: canonicalUrl(input.path, config), noindex: true };
-    }
-    return { canonical: canonicalUrl(stored.pathname + stored.search, config), noindex: false };
-  } catch {
-    return { canonical: canonicalUrl(input.path, config), noindex: true };
-  }
 }
 
 export function canonicalForPath(path: string): string {
