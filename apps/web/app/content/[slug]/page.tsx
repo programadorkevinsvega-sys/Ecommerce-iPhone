@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Script from "next/script";
 import { breadcrumbSchema } from "../../../../../modules/seo/application/StructuredData";
 import StoreHeader from "../../components/StoreHeader";
 import { publicContent } from "../../../lib/publicContent";
@@ -43,7 +42,7 @@ export default async function CmsPage({ params }: { params: Promise<{ slug: stri
       <article className="content-article">
         <p className="eyebrow">Contenido</p><h1>{p.title}</h1><div className="content-body">{p.content}</div>
       </article>
-      <Script id="cms-breadcrumb-jsonld" type="application/ld+json">{serializeJsonLd(breadcrumbs)}</Script>
+      <script id="cms-breadcrumb-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbs) }} />
     </main>
   );
 }
