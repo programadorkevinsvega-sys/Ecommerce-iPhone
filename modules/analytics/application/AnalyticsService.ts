@@ -1,4 +1,4 @@
-import type { AnalyticsEvent, AnalyticsPayload, AnalyticsEventType } from "../domain/AnalyticsEvent";
+import { isAnalyticsEventType, type AnalyticsEvent, type AnalyticsPayload } from "../domain/AnalyticsEvent";
 import type { AnalyticsPort } from "./AnalyticsPort";
 
 const MAX_PAYLOAD_BYTES = 8192;
@@ -20,10 +20,11 @@ function assertPayload(payload: AnalyticsPayload): void {
 export class AnalyticsService {
   constructor(private readonly port: AnalyticsPort) {}
   async record(input: {
-    eventId: string; eventType: AnalyticsEventType; occurredAt: string;
+    eventId: string; eventType: unknown; occurredAt: string;
     sessionId: string; visitorId: string; requestId?: string | undefined; payload: AnalyticsPayload;
   }): Promise<void> {
     assertIdentifier(input.eventId, "event_id");
+    if (!isAnalyticsEventType(input.eventType)) throw new Error("INVALID_ANALYTICS_EVENT_TYPE");
     assertIdentifier(input.sessionId, "session_id");
     assertIdentifier(input.visitorId, "visitor_id");
     assertPayload(input.payload);
