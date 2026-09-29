@@ -17,10 +17,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: canonicalUrl("/servicios", config), changeFrequency: "weekly", priority: 0.8 },
     { url: canonicalUrl("/blog", config), changeFrequency: "weekly", priority: 0.7 },
     { url: canonicalUrl("/faq", config), changeFrequency: "monthly", priority: 0.6 },
+    { url: canonicalUrl("/contacto", config), changeFrequency: "monthly", priority: 0.5 },
+    { url: canonicalUrl("/reparaciones", config), changeFrequency: "weekly", priority: 0.7 },
   ];
 
+  const brands = new Set<string>();
   const first = await searchCatalog({ page: 1, pageSize: PAGE_SIZE });
   for (const product of first.items) {
+    brands.add(product.brand);
     entries.push({
       url: canonicalUrl("/iphone/" + product.slug, config),
       changeFrequency: "daily",
@@ -32,6 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   for (let page = 2; page <= totalPages; page += 1) {
     const result = await searchCatalog({ page, pageSize: PAGE_SIZE });
     for (const product of result.items) {
+      brands.add(product.brand);
       if (entries.length >= MAX_URLS) break;
       entries.push({
         url: canonicalUrl("/iphone/" + product.slug, config),
@@ -40,6 +45,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     }
     if (result.items.length === 0 || entries.length >= MAX_URLS) break;
+  }
+
+  for (const brand of brands) {
+    if (entries.length >= MAX_URLS) break;
+    const slug = brand.trim().toLowerCase().replace(/\\s+/g, "-");
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) continue;
+    entries.push({
+      url: canonicalUrl("/catalog/" + slug, config),
+      changeFrequency: "daily",
+      priority: 0.7,
+    });
   }
 
   const content = await publicContent();
