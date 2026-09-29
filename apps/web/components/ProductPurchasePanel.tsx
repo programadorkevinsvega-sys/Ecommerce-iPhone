@@ -1,7 +1,8 @@
 "use client";
 import {useMemo,useState} from "react";
 import Link from "next/link";
-import type {ProductVariant} from "../../../modules/catalog/application/ProductVariants";\nimport { trackAnalyticsEvent } from "../app/components/AnalyticsInteraction";
+import type {ProductVariant} from "../../../modules/catalog/application/ProductVariants";
+import { trackAnalyticsEvent } from "../app/components/AnalyticsInteraction";
 const money=(c:number)=>new Intl.NumberFormat("es-CO",{style:"currency",currency:"COP",maximumFractionDigits:0}).format(c/100);
 export function ProductPurchasePanel({productId,basePrice,variants,disabled}:{productId:string;basePrice:number;variants:readonly ProductVariant[];disabled?:boolean}){
  const [variantId,setVariantId]=useState(variants[0]?.id??"");const [busy,setBusy]=useState(false);const [added,setAdded]=useState(false);const [error,setError]=useState("");
