@@ -5,7 +5,7 @@ import { commerceContext } from "../../../../lib/commerce";
 import { analyticsApp } from "../../../../lib/analyticsApplication";
 import { analyticsSetCookie, ANALYTICS_SESSION_COOKIE, ANALYTICS_VISITOR_COOKIE, ensureAnalyticsContext } from "../../../../lib/analyticsContext";
 import { cloudflareEnv } from "../../../../lib/cloudflareContext";
-import { cloudflareWaitUntil } from "../../../lib/cloudflareContext";
+import { cloudflareWaitUntil } from "../../../../lib/cloudflareContext";
 
 const ERROR_GENERIC = "No pudimos completar la operación.";
 const ERROR_VALIDATION = "Revisa los datos ingresados e inténtalo nuevamente.";
