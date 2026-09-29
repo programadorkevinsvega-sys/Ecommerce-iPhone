@@ -22,6 +22,14 @@ describe("SEO policy", () => {
     else process.env.NEXT_PUBLIC_APP_URL = previousUrl;
   });
 
+  it("ignores nonproduction configured hosts", () => {
+    const previous = process.env.NEXT_PUBLIC_APP_URL;
+    process.env.NEXT_PUBLIC_APP_URL = "https://staging.invalid";
+    expect(siteConfig().origin).toBe(PRODUCTION_SITE_URL);
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+    else process.env.NEXT_PUBLIC_APP_URL = previous;
+  });
+
   it("normalizes public canonical paths", () => {
     expect(canonicalPath("https://iphone.jnmtortas.com/iphone/test/")).toBe("/iphone/test");
     expect(canonicalUrl("/iphone/test")).toBe("https://iphone.jnmtortas.com/iphone/test");
