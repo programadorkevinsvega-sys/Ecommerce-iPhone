@@ -158,20 +158,25 @@ No se deben generar eventos de compra o revenue sin una operación real confirma
 
 ## 10.4 — Analytics del carrito y checkout
 
-### Trabajo
+### Implementación realizada
 
-- Add to cart.
-- Remove from cart.
-- Cart abandonment.
-- Checkout started.
-- Shipping selection.
-- Payment started.
-- Purchase completed.
-- Conversion calculation.
+- `CartItemAdded` se emite después de una mutación real y exitosa de `POST /api/cart`.
+- `CartItemRemoved` se emite después de una eliminación real y exitosa de `DELETE /api/cart`.
+- `CartAbandoned` se detecta server-side desde el scheduled Worker para carritos con items sin actividad durante al menos 30 minutos; usa un `eventId` determinista para idempotencia.
+- `CheckoutStarted` se emite server-side después de crear realmente una orden `PENDING_PAYMENT`, no desde un clic de frontend.
+- `ShippingMethodSelected` registra la selección real del formulario antes del checkout; no contiene datos financieros.
+- `PaymentStarted` se emite server-side después de crear/recuperar correctamente el payment intent, usando importe, moneda, proveedor, order ID y payment ID provenientes del estado server-side.
+- `PurchaseCompleted` se emite desde la confirmación server-side de los webhooks de Wompi, Stripe, Mercado Pago, PayPal y Binance Pay, únicamente cuando payment y order quedan realmente en estado `PAID`.
+- El evento de compra usa `purchase-completed:<paymentId>` como clave idempotente y nunca depende de importe enviado por el navegador.
+- Las operaciones de analytics se envían mediante `waitUntil()` en las rutas HTTP para no añadir la publicación a Queue al camino crítico de checkout/cart/payment; Cloudflare recomienda este patrón para trabajo no crítico como analytics. citeturn6search1turn6search2
+- Se reutiliza `EVENTS_QUEUE` y la idempotencia D1 de 10.2; Cloudflare Queues entrega al menos una vez, por lo que el `eventId` estable evita doble contabilización. citeturn5search0
+- `verify:phase10.4:production` comprueba mutaciones reales de carrito contra un producto publicado, checkout público, protección del endpoint de payment intent, persistencia real de CartItemAdded/CartItemRemoved y la existencia/estado de los eventos server-side de abandono/compra.
+
+**Estado:** 🟡 implementación conectada; certificación productiva pendiente de un deploy que pase el gate 10.4.
 
 ### Regla crítica
 
-Los valores financieros definitivos deben proceder del estado server-side, no de payloads manipulables del cliente.
+Los valores financieros definitivos deben proceder del estado server-side, no de payloads manipulables del cliente. `PaymentStarted` y `PurchaseCompleted` cumplen esta regla; el último solo se genera tras confirmación real del proveedor y transición `order=PAID` + `payment=PAID`.
 
 ---
 
