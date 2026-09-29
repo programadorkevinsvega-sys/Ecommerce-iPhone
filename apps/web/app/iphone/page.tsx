@@ -2,14 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import StoreHeader from "../components/StoreHeader";
 import { searchCatalog } from "../../lib/catalog";
-import { publicMetadata } from "../../lib/seo";
+import { publicMetadataWithOverrides } from "../../lib/seo";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = publicMetadata({
-  title: "iPhone | Compra iPhone nuevo y reacondicionado",
-  description: "Explora nuestro catálogo de iPhone nuevos y reacondicionados, con garantía y atención especializada.",
-  path: "/iphone",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  return publicMetadataWithOverrides({
+    title: "iPhone | Compra iPhone nuevo y reacondicionado",
+    description: "Explora nuestro catálogo de iPhone nuevos y reacondicionados, con garantía y atención especializada.",
+    path: "/iphone",
+  });
+}
 
 const money = (cents: number, currency: string) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(cents / 100);
