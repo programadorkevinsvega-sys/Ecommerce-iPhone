@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { cloudflareEnv } from "../../../lib/cloudflareContext";
 import { analyticsApp } from "../../../lib/analyticsApplication";
-import { isAnalyticsEventType, type AnalyticsPayload } from "@modules/analytics/domain/AnalyticsEvent";
 
 const MAX_BODY_BYTES = 16_384;
 
@@ -9,7 +8,7 @@ function validId(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9._:-]{8,128}$/.test(value);
 }
 
-function parsePayload(value: unknown): AnalyticsPayload {
+function parsePayload(value: unknown): Readonly<Record<string, string | number | boolean | null>> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("INVALID_ANALYTICS_PAYLOAD");
   const payload = value as Record<string, unknown>;
   const result: Record<string, string | number | boolean | null> = {};
@@ -38,8 +37,6 @@ export async function POST(request: Request) {
     const parsed = JSON.parse(raw) as unknown;
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("INVALID_ANALYTICS_EVENT");
     const body = parsed as Record<string, unknown>;
-    if (!isAnalyticsEventType(body.eventType)) throw new Error("INVALID_ANALYTICS_EVENT_TYPE");
-
     const sessionId = validId(body.sessionId) ? body.sessionId : crypto.randomUUID();
     const visitorId = validId(body.visitorId) ? body.visitorId : crypto.randomUUID();
     const eventId = validId(body.eventId) ? body.eventId : crypto.randomUUID();
