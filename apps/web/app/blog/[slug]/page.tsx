@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import Script from "next/script";
 import { articleSchema, breadcrumbSchema } from "../../../../modules/seo/application/StructuredData";
@@ -58,7 +59,11 @@ export default async function BlogPostPage({
     <main className="store-shell">
       <StoreHeader activeHref="/blog" />
       <nav className="breadcrumbs" aria-label="Migas de pan">
-        <a href="/">Inicio</a><span>/</span><a href="/blog">Blog</a><span>/</span><span aria-current="page">{p.title}</span>
+        <Link href="/">Inicio</Link>
+        <span>/</span>
+        <Link href="/blog">Blog</Link>
+        <span>/</span>
+        <span aria-current="page">{p.title}</span>
       </nav>
       <article className="content-article">
         <p className="eyebrow">
@@ -68,8 +73,12 @@ export default async function BlogPostPage({
         {p.excerpt && <p>{p.excerpt}</p>}
         <div className="content-body">{p.content}</div>
       </article>
-      <Script id="article-jsonld" type="application/ld+json">{serializeJsonLd(article)}</Script>
-      <Script id="article-breadcrumb-jsonld" type="application/ld+json">{serializeJsonLd(breadcrumbs)}</Script>
+      <Script id="article-jsonld" type="application/ld+json">
+        {serializeJsonLd(article)}
+      </Script>
+      <Script id="article-breadcrumb-jsonld" type="application/ld+json">
+        {serializeJsonLd(breadcrumbs)}
+      </Script>
     </main>
   );
 }
