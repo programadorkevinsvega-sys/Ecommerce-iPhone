@@ -73,10 +73,6 @@
         "queue": "ecommerce-iphone-notifications"
       },
       {
-        "binding": "ANALYTICS_QUEUE",
-        "queue": "ecommerce-iphone-analytics"
-      },
-      {
         "binding": "NOTIFICATIONS_DLQ_QUEUE",
         "queue": "ecommerce-iphone-notifications-dlq"
       }
@@ -85,12 +81,6 @@
       {
         "queue": "ecommerce-iphone-events",
         "max_batch_size": 10,
-        "max_batch_timeout": 5,
-        "max_retries": 5
-      },
-      {
-        "queue": "ecommerce-iphone-analytics",
-        "max_batch_size": 25,
         "max_batch_timeout": 5,
         "max_retries": 5
       },
