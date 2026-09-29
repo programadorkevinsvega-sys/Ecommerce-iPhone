@@ -113,7 +113,7 @@ La verificación realiza automáticamente:
 
 El evento usado por esta prueba es un **probe técnico controlado**, no un evento comercial ni revenue ficticio. La prueba no sustituye los eventos reales que implementarán las subfases 10.3–10.5.
 
-**10.2 continúa sin certificarse hasta que un deploy real produzca PASS explícito de este gate en producción.** El éxito de compilación, tests locales o deploy por sí solos no cierra la subfase.
+**10.2 quedó certificada en producción el 2026-09-29** mediante el gate `verify:phase10.2:production`, con ingestión real, `HTTP → EVENTS_QUEUE → D1`, idempotencia y limpieza del probe.
 
 ### Eventos base
 
@@ -133,17 +133,19 @@ No se deben generar eventos de compra o revenue sin una operación real confirma
 
 ## 10.3 — Analytics del catálogo y búsqueda
 
-### Trabajo
+### Implementación realizada
 
-- Product view.
-- Search.
-- Search result interaction.
-- Category navigation.
-- Filter interaction.
-- Pagination.
-- Product variant selection.
-- Related product interaction.
-- Attribution del origen de navegación cuando exista.
+- `ProductViewed` se emite desde la página real de producto después de hidratar el Client Component de tracking.
+- `SearchPerformed` se emite desde el resultado real de `/catalog` con métricas minimizadas: presencia y longitud de consulta, resultados, página, orden y filtros; nunca se persiste la consulta textual.
+- `SearchResultClicked` registra la interacción con productos reales del resultado.
+- `CategoryNavigated`, `FilterApplied` y `PaginationChanged` se emiten desde el estado real de navegación del catálogo.
+- `ProductVariantSelected` se emite desde el selector real de variantes del producto.
+- `RelatedProductClicked` se emite desde enlaces reales de productos relacionados.
+- El endpoint de analytics crea/usa identificadores anónimos server-side y los devuelve mediante cookies `HttpOnly`, `Secure`, `SameSite=Lax`; el navegador no lee ni escribe cookies ni browser storage.
+- Los eventos continúan usando `EVENTS_QUEUE` y la persistencia D1 idempotente de 10.2.
+- `verify:phase10.3:production` comprueba un producto publicado real, una búsqueda real, persistencia `HTTP → EVENTS_QUEUE → D1`, versión/source/contexto y ausencia de la consulta textual en el payload.
+
+**Estado:** 🟡 implementada en código y conectada; certificación productiva pendiente de un deploy que pase el gate 10.3.
 
 ### Validaciones
 
