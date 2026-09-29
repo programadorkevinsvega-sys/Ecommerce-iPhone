@@ -16,9 +16,7 @@ export function siteConfig(): SeoSiteConfig {
   const origin =
     configured && /^https?:\/\//iu.test(configured)
       ? configured.replace(/\/$/, "")
-      : process.env.APP_ENV === "production"
-        ? PRODUCTION_SITE_URL
-        : "http://localhost:3000";
+      : PRODUCTION_SITE_URL;
 
   return { origin, name: "Ecommerce iPhone", locale: "es_CO" };
 }
