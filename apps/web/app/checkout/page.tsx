@@ -6,6 +6,7 @@ import { useState } from "react";
 import type { PaymentProvider } from "../../../../modules/payments/domain/Payment";
 import { assertLength, normalizeSingleLine, safeFormError, validateEmail, validatePhone } from "../../lib/inputValidation";
 import { PAYMENT_PROVIDER_OPTIONS, validatePaymentRedirect } from "../../lib/paymentProviderConfig";
+import { trackAnalyticsEvent } from "../components/AnalyticsInteraction";
 
 export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
@@ -97,7 +98,7 @@ export default function CheckoutPage() {
           <label htmlFor="checkout-phone">Teléfono</label><input id="checkout-phone" name="phone" type="tel" required minLength={7} maxLength={25} autoComplete="tel" inputMode="tel" />
         </fieldset>
         <fieldset><legend>Entrega</legend>
-          <label htmlFor="checkout-shipping-method">Método</label><select id="checkout-shipping-method" name="shippingMethod" defaultValue="DELIVERY" required><option value="DELIVERY">Envío a domicilio</option><option value="PICKUP">Recogida</option></select>
+          <label htmlFor="checkout-shipping-method">Método</label><select id="checkout-shipping-method" name="shippingMethod" defaultValue="DELIVERY" required onChange={(event) => trackAnalyticsEvent("ShippingMethodSelected", { shippingMethod: event.currentTarget.value })}><option value="DELIVERY">Envío a domicilio</option><option value="PICKUP">Recogida</option></select>
           <label htmlFor="checkout-recipient">Nombre del destinatario</label><input id="checkout-recipient" name="recipientName" type="text" required minLength={1} maxLength={80} autoComplete="shipping name" />
           <label htmlFor="checkout-address">Dirección</label><input id="checkout-address" name="addressLine1" type="text" required minLength={1} maxLength={180} autoComplete="shipping street-address" />
           <label htmlFor="checkout-address-2">Apartamento / complemento</label><input id="checkout-address-2" name="addressLine2" type="text" maxLength={180} autoComplete="shipping address-line2" />
