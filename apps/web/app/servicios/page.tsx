@@ -1,98 +1,92 @@
-"use client";
+import type { Metadata } from "next";
 import Image from "next/image";
 import StoreHeader from "../components/StoreHeader";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { listPublicServices } from "../../lib/services";
+import { publicMetadata } from "../../lib/seo";
 
-type ServiceType = {
-  code: string;
-  name: string;
-  description: string;
-  imageUrl?: string;
-  category: string;
-  workflow: { quoteRequired: boolean; paymentRequired: boolean };
-  priceFromInCents?: number;
-  fixedPriceInCents?: number;
-  estimatedMinutes?: number;
-  warrantyDays?: number;
-  requiresDiagnosis?: boolean;
-  requiresApproval?: boolean;
-  compatibility: { brand: string; model?: string }[];
-  requirements: { description: string; required: boolean }[];
-};
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = publicMetadata({
+  title: "Servicios técnicos | Ecommerce iPhone",
+  description: "Consulta servicios técnicos publicados, precios, requisitos, compatibilidad y solicitudes.",
+  path: "/servicios",
+});
 
-const money = (value: number) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(value / 100);
+const money = (value: number) =>
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(value / 100);
 
-export default function ServicesPage() {
-  const [services, setServices] = useState<ServiceType[]>([]);
-  useEffect(() => {
-    fetch("/api/services")
-      .then((r) => r.json())
-      .then((j) => setServices(j.services ?? []))
-      .catch(() => setServices([]));
-  }, []);
+export default async function ServicesPage() {
+  const services = await listPublicServices();
   return (
     <main className="store-shell services-page">
       <StoreHeader activeHref="/servicios" />
       <section className="catalog-hero services-hero">
         <p className="eyebrow">Servicios</p>
         <h1>Soporte técnico configurable.</h1>
-        <p>
-          Consulta los servicios publicados por la tienda y envía tu solicitud con los datos de tu
-          equipo.
-        </p>
+        <p>Consulta los servicios publicados por la tienda y envía tu solicitud con los datos de tu equipo.</p>
       </section>
       <section className="section">
         <div className="services-grid">
-          {services.map((service) => (
-            <article className="service-card" key={service.code}>
-              {service.imageUrl && (
-                <Image
-                  className="service-card-image"
-                  src={service.imageUrl}
-                  alt=""
-                  width={640}
-                  height={260}
-                  sizes="(max-width: 620px) 100vw, (max-width: 1050px) 50vw, 25vw"
-                  unoptimized={service.imageUrl.startsWith("/api/media/")}
-                />
-              )}
-              <div className="service-card-content">
-                <p className="service-category">{service.category}</p>
-                <h2>{service.name}</h2>
-                <p>{service.description}</p>
-                <div className="service-card-details">
-                  {(service.fixedPriceInCents !== undefined || service.priceFromInCents !== undefined) && (
-                    <span>{service.fixedPriceInCents !== undefined ? money(service.fixedPriceInCents) : `Desde ${money(service.priceFromInCents!)}`}</span>
+          {services.map((service) => {
+            const p = service.toPrimitives();
+            return (
+              <article className="service-card" key={p.code}>
+                {p.imageUrl && (
+                  <Image
+                    className="service-card-image"
+                    src={p.imageUrl}
+                    alt={p.name}
+                    width={640}
+                    height={260}
+                    sizes="(max-width: 620px) 100vw, (max-width: 1050px) 50vw, 25vw"
+                    unoptimized={p.imageUrl.startsWith("/api/media/")}
+                  />
+                )}
+                <div className="service-card-content">
+                  <p className="service-category">{p.category}</p>
+                  <h2>{p.name}</h2>
+                  <p>{p.description}</p>
+                  <div className="service-card-details">
+                    {(p.fixedPriceInCents !== undefined || p.priceFromInCents !== undefined) && (
+                      <span>
+                        {p.fixedPriceInCents !== undefined
+                          ? money(p.fixedPriceInCents)
+                          : "Desde " + money(p.priceFromInCents as number)}
+                      </span>
+                    )}
+                    {p.estimatedMinutes !== undefined && <span>{p.estimatedMinutes} min estimados</span>}
+                    {p.warrantyDays !== undefined && <span>Garantía: {p.warrantyDays} días</span>}
+                  </div>
+                  {(p.requiresDiagnosis || p.requiresApproval || p.requirements.length > 0) && (
+                    <ul className="service-card-requirements">
+                      {p.requiresDiagnosis && <li>Requiere diagnóstico</li>}
+                      {p.requiresApproval && <li>Requiere tu aprobación</li>}
+                      {p.requirements.map((item) => <li key={item.description}>{item.description}</li>)}
+                    </ul>
                   )}
-                  {service.estimatedMinutes !== undefined && <span>{service.estimatedMinutes} min estimados</span>}
-                  {service.warrantyDays !== undefined && <span>Garantía: {service.warrantyDays} días</span>}
+                  {p.compatibility.length > 0 && (
+                    <p className="service-card-compatibility">
+                      <strong>Compatible con:</strong>{" "}
+                      {p.compatibility.map((item) => item.model ? item.brand + " " + item.model : item.brand).join(", ")}
+                    </p>
+                  )}
                 </div>
-                {(service.requiresDiagnosis || service.requiresApproval || service.requirements.length > 0) && (
-                  <ul className="service-card-requirements">
-                    {service.requiresDiagnosis && <li>Requiere diagnóstico</li>}
-                    {service.requiresApproval && <li>Requiere tu aprobación</li>}
-                    {service.requirements.map((item) => <li key={item.description}>{item.description}</li>)}
-                  </ul>
-                )}
-                {service.compatibility.length > 0 && (
-                  <p className="service-card-compatibility"><strong>Compatible con:</strong> {service.compatibility.map((item) => item.model ? `${item.brand} ${item.model}` : item.brand).join(", ")}</p>
-                )}
-              </div>
-              <div className="service-card-footer">
-                <span>
-                  {service.workflow.quoteRequired ? "Cotización" : "Precio definido"}
-                  {service.workflow.paymentRequired ? " · Pago requerido" : ""}
-                </span>
-                <Link
-                  className="service-card-link"
-                  href={`/servicios/solicitar?type=${encodeURIComponent(service.code)}`}
-                >
-                  Solicitar <span aria-hidden="true">→</span>
-                </Link>
-              </div>
-            </article>
-          ))}
+                <div className="service-card-footer">
+                  <span>
+                    {p.workflow.quoteRequired ? "Cotización" : "Precio definido"}
+                    {p.workflow.paymentRequired ? " · Pago requerido" : ""}
+                  </span>
+                  <Link className="service-card-link" href={"/servicios/solicitar?type=" + encodeURIComponent(p.code)}>
+                    Solicitar <span aria-hidden="true">→</span>
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
         </div>
         {services.length === 0 && (
           <div className="empty-state">
