@@ -483,6 +483,35 @@ Crear únicamente páginas con contenido útil y diferenciado. Evitar thin conte
 
 ---
 
+### Fase 09 — Estado de implementación — 2026-09-28
+
+Se inició la implementación real de Fase 09 sobre `main`.
+
+Implementado en código:
+- bounded context SEO con política central de canonical/indexability;
+- metadata dinámica centralizada con canonical, robots, Open Graph y Twitter;
+- Organization/WebSite/BreadcrumbList;
+- Product/Offer/Review con datos reales de producto e inventario y reviews aprobadas;
+- Article para blog;
+- FAQ estructurado únicamente cuando existe contenido publicado;
+- sitemap dinámico conectado a catálogo y CMS, con exclusión de URLs no indexables y respeto de canonical overrides;
+- robots.txt production-safe;
+- SSR real de la página pública de servicios;
+- noindex para superficies privadas/transaccionales;
+- persistencia D1 para overrides SEO y redirects 301/410;
+- redirect manager administrativo protegido por RBAC;
+- aplicación de redirects/410 en el Worker después de un 404 real;
+- panel administrativo SEO para metadata, index/noindex, canonical, OG image, redirects y estado técnico;
+- verificación productiva específica: `pnpm verify:phase09:production`;
+- tests unitarios para política SEO, metadata, structured data y validación de administración.
+
+Decisiones explícitas:
+- `hreflang` no se genera mientras no existan variantes lingüísticas reales y URLs localizadas recíprocas.
+- `LocalBusiness` no se genera porque el modelo público actual no aporta datos verificados suficientes.
+- Las superficies de más de 50.000 URLs deberán dividirse mediante sitemaps separados cuando los datos reales del catálogo/CMS alcancen ese límite; el generador actual respeta el máximo de un sitemap.
+
+Estado: 🟡 implementación avanzada en curso; **no certificada como cerrada** hasta ejecutar formatter, lint, typecheck, tests, build Cloudflare, migración/verificación D1, deploy del commit correcto, `verify:production`, `verify:phase09:production` y smoke real de producción.
+
 ## Fase 10 — Testing + Security + Observability + Production
 
 **Issue:** #10 — Analytics, observabilidad, seguridad avanzada y producción
@@ -683,7 +712,7 @@ Una fase se considera terminada únicamente cuando:
 | 06 — Admin + RBAC | #6 | 🟡 Implementación avanzada, certificación pendiente |
 | 07 — Notifications realtime + Email | #7 | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente |
 | 08 — CMS + Marketing + Reviews | #8 | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify |
-| 09 — SEO | #9 | ⬜ Pendiente |
+| 09 — SEO | #9 | 🟡 Implementación avanzada en curso; certificación productiva pendiente |
 | 10 — Production Readiness | #10 | ⬜ Pendiente |
 
 > Este archivo es la referencia central del roadmap. El detalle operativo de cada fase vive en su Issue correspondiente y posteriormente en sus sub-Issues técnicos.
