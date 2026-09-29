@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { cloudflareEnv } from "../../../../lib/cloudflareContext";
 import { analyticsApp } from "../../../../lib/analyticsApplication";
+import {
+  ANALYTICS_SESSION_COOKIE,
+  ANALYTICS_VISITOR_COOKIE,
+  analyticsRequestContext,
+  analyticsSetCookie,
+} from "../../../../lib/analyticsContext";
 
 const MAX_BODY_BYTES = 16_384;
+const SESSION_MAX_AGE = 1_800;
+const VISITOR_MAX_AGE = 31_536_000;
 
 function validId(value: unknown): value is string {
   return typeof value === "string" && /^[A-Za-z0-9._:-]{8,128}$/.test(value);
@@ -25,7 +33,9 @@ function parsePayload(value: unknown): Readonly<Record<string, string | number |
 export async function POST(request: Request) {
   try {
     const contentLength = Number(request.headers.get("content-length") ?? "0");
-    if (contentLength > MAX_BODY_BYTES) return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+    if (contentLength > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+    }
     if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
       return NextResponse.json({ error: "Content-Type must be application/json" }, { status: 415 });
     }
@@ -34,11 +44,16 @@ export async function POST(request: Request) {
     if (new TextEncoder().encode(raw).byteLength > MAX_BODY_BYTES) {
       return NextResponse.json({ error: "Payload too large" }, { status: 413 });
     }
+
     const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("INVALID_ANALYTICS_EVENT");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("INVALID_ANALYTICS_EVENT");
+    }
+
     const body = parsed as Record<string, unknown>;
-    const sessionId = validId(body.sessionId) ? body.sessionId : crypto.randomUUID();
-    const visitorId = validId(body.visitorId) ? body.visitorId : crypto.randomUUID();
+    const context = analyticsRequestContext(request);
+    const visitorId = context.visitorId ?? (validId(body.visitorId) ? body.visitorId : crypto.randomUUID());
+    const sessionId = context.sessionId ?? (validId(body.sessionId) ? body.sessionId : crypto.randomUUID());
     const eventId = validId(body.eventId) ? body.eventId : crypto.randomUUID();
     const occurredAt = typeof body.occurredAt === "string" ? body.occurredAt : new Date().toISOString();
     const requestId = request.headers.get("x-request-id")?.trim() || undefined;
@@ -53,13 +68,28 @@ export async function POST(request: Request) {
       payload: parsePayload(body.payload ?? {}),
     });
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       { accepted: true, eventId, sessionId, visitorId },
       {
         status: 202,
         headers: { "cache-control": "no-store" },
       },
     );
+
+    if (context.visitorId === undefined) {
+      response.headers.append(
+        "Set-Cookie",
+        analyticsSetCookie(ANALYTICS_VISITOR_COOKIE, visitorId, VISITOR_MAX_AGE),
+      );
+    }
+    if (context.sessionId === undefined) {
+      response.headers.append(
+        "Set-Cookie",
+        analyticsSetCookie(ANALYTICS_SESSION_COOKIE, sessionId, SESSION_MAX_AGE),
+      );
+    }
+
+    return response;
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     const status =
