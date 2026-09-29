@@ -3,7 +3,7 @@ import Script from "next/script";
 import StoreHeader from "../components/StoreHeader";
 import { publicMarketing } from "../../lib/publicMarketing";
 import { publicMetadata, canonicalForPath } from "../../lib/seo";
-import { breadcrumbSchema, faqSchema } from "../../../modules/seo/application/StructuredData";
+import { breadcrumbSchema, faqSchema } from "../../../../modules/seo/application/StructuredData";
 import { serializeJsonLd } from "../../lib/jsonLd";
 
 export const dynamic = "force-dynamic";
