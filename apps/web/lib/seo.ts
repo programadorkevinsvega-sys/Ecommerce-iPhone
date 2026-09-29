@@ -1,10 +1,25 @@
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { D1SeoRepository } from "../../../modules/seo/infrastructure/D1SeoRepository";
 import {
   canonicalUrl,
   indexability,
   isIndexablePath,
   siteConfig,
 } from "../../../modules/seo/application/SeoPolicy";
+
+async function getRouteOverride(path: string) {
+  const cached = unstable_cache(
+    async () => {
+      const { env } = await getCloudflareContext({ async: true });
+      return new D1SeoRepository(env.DB).findRouteOverride(path);
+    },
+    ["seo-route-override", path],
+    { revalidate: 60 },
+  );
+  return cached();
+}
 
 export function publicMetadata(input: {
   title: string;
@@ -17,7 +32,7 @@ export function publicMetadata(input: {
   const config = siteConfig();
   const canonical = canonicalUrl(input.path, config);
   const policy = indexability(input.noindex ? "noindex" : "index");
-  const metadata: Metadata = {
+  return {
     title: input.title,
     ...(input.description ? { description: input.description } : {}),
     alternates: { canonical },
@@ -40,11 +55,34 @@ export function publicMetadata(input: {
       ...(input.image ? { images: [canonicalUrl(input.image, config)] } : {}),
     },
   };
-  return metadata;
 }
 
-export function canonicalForPath(path: string): string {
-  return canonicalUrl(path, siteConfig());
+export async function publicMetadataWithOverrides(input: {
+  title: string;
+  description?: string;
+  path: string;
+  image?: string;
+  type?: "website" | "article";
+  noindex?: boolean;
+}): Promise<Metadata> {
+  const override = await getRouteOverride(input.path);
+  const metadata = publicMetadata({
+    ...input,
+    title: override?.seoTitle ?? input.title,
+    description: override?.seoDescription ?? input.description,
+    image: override?.ogImageUrl ?? input.image,
+    noindex: input.noindex || override?.indexable === false,
+  });
+  if (!override?.canonicalUrl) return metadata;
+  const safe = new URL(override.canonicalUrl);
+  const config = siteConfig();
+  if (safe.origin !== new URL(config.origin).origin) {
+    return { ...metadata, robots: { index: false, follow: true } };
+  }
+  return {
+    ...metadata,
+    alternates: { canonical: canonicalUrl(safe.pathname + safe.search, config) },
+  };
 }
 
 export function contentCanonical(input: { path: string; storedCanonicalUrl?: string }): {
@@ -65,6 +103,10 @@ export function contentCanonical(input: { path: string; storedCanonicalUrl?: str
   } catch {
     return { canonical: canonicalUrl(input.path, config), noindex: true };
   }
+}
+
+export function canonicalForPath(path: string): string {
+  return canonicalUrl(path, siteConfig());
 }
 
 export function shouldIndexPath(path: string): boolean {
