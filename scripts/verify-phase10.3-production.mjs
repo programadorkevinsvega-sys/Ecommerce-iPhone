@@ -44,12 +44,20 @@ function sqlString(value) {
   return "'" + value.replaceAll("'", "''") + "'";
 }
 
-function extractProductId(html) {
+function extractProduct(html) {
   const match = html.match(/<script[^>]*id="product-jsonld"[^>]*>([\s\S]*?)<\/script>/i);
   assert(match, "product JSON-LD script was not found");
   const json = JSON.parse(match[1]);
   assert(typeof json.sku === "string" && json.sku.length >= 8, "product JSON-LD did not expose a valid SKU");
-  return json.sku;
+  const brand = typeof json.brand?.name === "string" ? json.brand.name : "unknown";
+  const condition =
+    typeof json.itemCondition === "string" && json.itemCondition.endsWith("/NewCondition")
+      ? "NEW"
+      : typeof json.itemCondition === "string" && json.itemCondition.endsWith("/UsedCondition")
+        ? "USED"
+        : "REFURBISHED";
+  const stockAvailable = json.offers?.availability === "https://schema.org/InStock";
+  return { productId: json.sku, brand, condition, stockAvailable };
 }
 
 const probe = crypto.randomUUID();
@@ -69,7 +77,7 @@ try {
   });
   const productHtml = await productResponse.text();
   assert(productResponse.status === 200, `catalog product route: expected HTTP 200, got ${productResponse.status}`);
-  const productId = extractProductId(productHtml);
+  const product = extractProduct(productHtml);
   console.log("PASS real product route: /iphone/iphone-17-pro-max HTTP 200");
 
   const searchResponse = await request(`/catalog?q=${encodeURIComponent("phase10-3-verification")}`);
@@ -150,7 +158,7 @@ try {
       assert(productRow.session_id === sessionId && searchRow.session_id === sessionId, "catalog analytics session mismatch");
       assert(productRow.visitor_id === visitorId && searchRow.visitor_id === visitorId, "catalog analytics visitor mismatch");
       assert(productRow.source === "web" && searchRow.source === "web", "catalog analytics source mismatch");
-      assert(typeof productRow.payload_json === "string" && productRow.payload_json.includes(productId), "ProductViewed payload does not reference the real product");
+      assert(typeof productRow.payload_json === "string" && productRow.payload_json.includes(product.productId), "ProductViewed payload does not reference the real product");
       assert(typeof searchRow.payload_json === "string" && !searchRow.payload_json.includes("phase10-3-verification"), "SearchPerformed stored the raw search query");
       console.log(`PASS HTTP → EVENTS_QUEUE → D1: catalog/search events persisted after ${attempt} poll(s)`);
       console.log("PASS analytics idempotency: ProductViewed has exactly one D1 row");
