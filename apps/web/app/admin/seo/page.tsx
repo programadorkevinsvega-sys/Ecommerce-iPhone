@@ -153,6 +153,26 @@ export default function SeoAdminPage() {
 
       <section className="admin-workspace admin-page-grid">
         <AdminPanel>
+          <AdminSectionHeading kicker="Sitemap status" title="Publicación técnica" />
+          <div className="admin-form">
+            <p><strong>Sitemap:</strong> <code>https://iphone.jnmtortas.com/sitemap.xml</code></p>
+            <p><strong>Robots:</strong> <code>https://iphone.jnmtortas.com/robots.txt</code></p>
+            <p><strong>Origen:</strong> producción Cloudflare Workers + D1</p>
+            <p><strong>Índice:</strong> URLs públicas reales; filtros, superficies privadas, API y contenido no indexable quedan fuera.</p>
+          </div>
+        </AdminPanel>
+        <AdminPanel>
+          <AdminSectionHeading kicker="Robots rules" title="Reglas permitidas" />
+          <div className="admin-form">
+            <p>Las reglas de crawler se mantienen en código para impedir que una edición administrativa bloquee accidentalmente contenido público.</p>
+            <p><strong>Disallow:</strong> <code>/admin</code>, <code>/api</code>, <code>/cart</code>, <code>/checkout</code>, <code>/cuenta</code>, <code>/orders</code>, <code>/technician</code>.</p>
+            <p><strong>Allow:</strong> contenido público y assets necesarios para renderizarlo.</p>
+          </div>
+        </AdminPanel>
+      </section>
+
+      <section className="admin-workspace admin-page-grid">
+        <AdminPanel>
           <AdminSectionHeading kicker="Redirects" title="Redirects registrados" meta={<span className="muted">{redirects.length}</span>} />
           {loading ? <AdminLoadingState label="Cargando redirects…" /> : (
             <AdminTable headers={["Origen", "Destino", "Código", "Estado", "Actualizado"]} empty={!redirects.length ? <AdminEmptyState title="No hay redirects" /> : undefined}>
