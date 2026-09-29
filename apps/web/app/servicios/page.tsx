@@ -63,17 +63,17 @@ export default async function ServicesPage() {
                     {p.estimatedMinutes !== undefined && <span>{p.estimatedMinutes} min estimados</span>}
                     {p.warrantyDays !== undefined && <span>Garantía: {p.warrantyDays} días</span>}
                   </div>
-                  {(p.requiresDiagnosis || p.requiresApproval || p.requirements.length > 0) && (
+                  {(p.requiresDiagnosis || p.requiresApproval || (p.requirements?.length ?? 0) > 0) && (
                     <ul className="service-card-requirements">
                       {p.requiresDiagnosis && <li>Requiere diagnóstico</li>}
                       {p.requiresApproval && <li>Requiere tu aprobación</li>}
-                      {p.requirements.map((item) => <li key={item.description}>{item.description}</li>)}
+                      {(p.requirements ?? []).map((item) => <li key={item.description}>{item.description}</li>)}
                     </ul>
                   )}
-                  {p.compatibility.length > 0 && (
+                  {(p.compatibility?.length ?? 0) > 0 && (
                     <p className="service-card-compatibility">
                       <strong>Compatible con:</strong>{" "}
-                      {p.compatibility.map((item) => item.model ? item.brand + " " + item.model : item.brand).join(", ")}
+                      {(p.compatibility ?? []).map((item) => item.model ? item.brand + " " + item.model : item.brand).join(", ")}
                     </p>
                   )}
                 </div>
