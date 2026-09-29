@@ -64,6 +64,7 @@ export async function publicMetadataWithOverrides(input: {
   image?: string;
   type?: "website" | "article";
   noindex?: boolean;
+  canonical?: string;
 }): Promise<Metadata> {
   const override = await getRouteOverride(input.path);
   const metadata = publicMetadata({
@@ -73,8 +74,9 @@ export async function publicMetadataWithOverrides(input: {
     image: override?.ogImageUrl ?? input.image,
     noindex: input.noindex || override?.indexable === false,
   });
-  if (!override?.canonicalUrl) return metadata;
-  const safe = new URL(override.canonicalUrl);
+  const selectedCanonical = override?.canonicalUrl ?? input.canonical;
+  if (!selectedCanonical) return metadata;
+  const safe = new URL(selectedCanonical);
   const config = siteConfig();
   if (safe.origin !== new URL(config.origin).origin) {
     return { ...metadata, robots: { index: false, follow: true } };
