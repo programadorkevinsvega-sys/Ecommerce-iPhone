@@ -141,7 +141,7 @@ try {
 } finally {
   try {
     await d1(
-      `DELETE FROM analytics_events WHERE session_id=${sqlString(sessionId)} OR event_id LIKE 'cart-abandoned:${cartId}:%'`,
+      `DELETE FROM analytics_events WHERE session_id=${sqlString(sessionId)} OR instr(event_id, ${sqlString(`cart-abandoned:${cartId}:`)}) = 1`,
     );
     await d1(`DELETE FROM cart_items WHERE cart_id=${sqlString(cartId)}`);
     await d1(`DELETE FROM carts WHERE id=${sqlString(cartId)}`);
