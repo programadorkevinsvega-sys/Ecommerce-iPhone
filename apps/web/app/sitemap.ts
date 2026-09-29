@@ -103,11 +103,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  const filtered = entries.filter((entry) => {
+  const filtered = entries.flatMap((entry) => {
     const path = new URL(entry.url).pathname;
-    return overrides.get(path)?.indexable !== false;
+    const override = overrides.get(path);
+    if (override?.indexable === false) return [];
+    if (!override?.canonicalUrl) return [entry];
+    try {
+      const canonical = new URL(override.canonicalUrl);
+      if (canonical.origin !== new URL(config.origin).origin) return [];
+      return [{ ...entry, url: canonicalUrl(canonical.pathname + canonical.search, config) }];
+    } catch {
+      return [];
+    }
   });
-  return filtered;
+  return [...new Map(filtered.map((entry) => [entry.url, entry])).values()];
 }
 
 function safeCanonical(value: string | undefined, origin: string): URL | null {
