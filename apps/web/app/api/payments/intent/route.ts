@@ -59,6 +59,11 @@ export async function POST(request: Request) {
       }).catch(() => undefined),
     );
     const response = NextResponse.json({ payment: result.payment, checkout: { provider: result.checkout.provider, reference: result.checkout.providerReference, publicKey: result.checkout.publicKey, currency: result.checkout.currency, amountInCents: result.checkout.amountInCents, integritySignature: result.checkout.integritySignature, checkoutUrl: result.checkout.checkoutUrl, ...(result.checkout.clientSecret ? { clientSecret: result.checkout.clientSecret } : {}) } }, { status: 201, headers: { "cache-control": "no-store" } });
+    if(analytics.setCookies){
+      response.headers.append("Set-Cookie",analyticsSetCookie(ANALYTICS_VISITOR_COOKIE,analytics.visitorId,31536000));
+      response.headers.append("Set-Cookie",analyticsSetCookie(ANALYTICS_SESSION_COOKIE,analytics.sessionId,1800));
+    }
+    return response;
   } catch (error) {
     return safePaymentError(error);
   }
