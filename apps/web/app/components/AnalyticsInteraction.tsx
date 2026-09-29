@@ -14,7 +14,16 @@ type AnalyticsInteractionProps = Readonly<{
   prefetch?: boolean | undefined;
 }>;
 
-let browserAnalyticsIds: { visitorId: string; sessionId: string } | undefined;\n\nfunction browserAnalyticsContext(): { visitorId: string; sessionId: string } {\n  if (!browserAnalyticsIds) {\n    browserAnalyticsIds = { visitorId: crypto.randomUUID(), sessionId: crypto.randomUUID() };\n  }\n  return browserAnalyticsIds;\n}\n\ntype AnalyticsEventOnMountProps = Readonly<{
+let browserAnalyticsIds: { visitorId: string; sessionId: string } | undefined;
+
+function browserAnalyticsContext(): { visitorId: string; sessionId: string } {
+  if (!browserAnalyticsIds) {
+    browserAnalyticsIds = { visitorId: crypto.randomUUID(), sessionId: crypto.randomUUID() };
+  }
+  return browserAnalyticsIds;
+}
+
+type AnalyticsEventOnMountProps = Readonly<{
   eventType: AnalyticsEventType;
   payload: AnalyticsPayload;
 }>;
