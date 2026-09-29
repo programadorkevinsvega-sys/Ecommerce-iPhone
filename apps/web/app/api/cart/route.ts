@@ -1,6 +1,10 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { commerceContext } from "../../../lib/commerce";
+import { analyticsApp } from "../../../lib/analyticsApplication";
+import { ensureAnalyticsContext, analyticsSetCookie, ANALYTICS_SESSION_COOKIE, ANALYTICS_VISITOR_COOKIE } from "../../../lib/analyticsContext";
+import { cloudflareEnv } from "../../../lib/cloudflareContext";
+import { waitUntil } from "cloudflare:workers";
 
 const GENERIC_ERROR = "No pudimos completar la operación.";
 const VALIDATION_ERROR = "Revisa los datos ingresados e inténtalo nuevamente.";
@@ -48,6 +52,10 @@ export async function GET() {
     const result = await context.cart.get(id);
     const response = NextResponse.json(result, { headers: { "cache-control": "no-store" } });
     if (!(await cookies()).get("cart_id")) setCartCookie(response, id);
+    if (analytics.setCookies) {
+      response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_VISITOR_COOKIE, analytics.visitorId, 31536000));
+      response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_SESSION_COOKIE, analytics.sessionId, 1800));
+    }
     return response;
   } catch (error) {
     return errorResponse(error);
@@ -60,6 +68,22 @@ export async function POST(request: Request) {
     if (!body.productId || body.quantity === undefined) return NextResponse.json({ error: VALIDATION_ERROR }, { status: 422 });
     const { id, context } = await authorizedCartContext();
     const result = await context.cart.addItem({ cartId: id, productId: body.productId, quantity: body.quantity, ...(body.variantId ? { variantId: body.variantId } : {}) });
+    const analytics = ensureAnalyticsContext(request);
+    waitUntil(
+      analyticsApp(cloudflareEnv()).record({
+        eventId: crypto.randomUUID(),
+        eventType: "CartItemAdded",
+        occurredAt: new Date().toISOString(),
+        sessionId: analytics.sessionId,
+        visitorId: analytics.visitorId,
+        requestId: request.headers.get("x-request-id")?.trim() || undefined,
+        payload: {
+          productId: body.productId,
+          quantity: body.quantity,
+          ...(body.variantId ? { variantId: body.variantId } : {}),
+        },
+      }).catch(() => undefined),
+    );
     const response = NextResponse.json(result, { headers: { "cache-control": "no-store" } });
     if (!(await cookies()).get("cart_id")) setCartCookie(response, id);
     return response;
@@ -73,7 +97,28 @@ export async function DELETE(request: Request) {
     const body = (await request.json()) as { productId?: string; variantId?: string };
     if (!body.productId) return NextResponse.json({ error: VALIDATION_ERROR }, { status: 422 });
     const { id, context } = await authorizedCartContext();
-    return NextResponse.json(await context.cart.removeItem({ cartId: id, productId: body.productId, ...(body.variantId ? { variantId: body.variantId } : {}) }), { headers: { "cache-control": "no-store" } });
+    const result = await context.cart.removeItem({ cartId: id, productId: body.productId, ...(body.variantId ? { variantId: body.variantId } : {}) });
+    const analytics = ensureAnalyticsContext(request);
+    waitUntil(
+      analyticsApp(cloudflareEnv()).record({
+        eventId: crypto.randomUUID(),
+        eventType: "CartItemRemoved",
+        occurredAt: new Date().toISOString(),
+        sessionId: analytics.sessionId,
+        visitorId: analytics.visitorId,
+        requestId: request.headers.get("x-request-id")?.trim() || undefined,
+        payload: {
+          productId: body.productId,
+          ...(body.variantId ? { variantId: body.variantId } : {}),
+        },
+      }).catch(() => undefined),
+    );
+    const response = NextResponse.json(result, { headers: { "cache-control": "no-store" } });
+    if (analytics.setCookies) {
+      response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_VISITOR_COOKIE, analytics.visitorId, 31536000));
+      response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_SESSION_COOKIE, analytics.sessionId, 1800));
+    }
+    return response;
   } catch (error) {
     return errorResponse(error);
   }
