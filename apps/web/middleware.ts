@@ -8,6 +8,14 @@ function requestId(request: NextRequest): string {
   return supplied && REQUEST_ID_PATTERN.test(supplied) ? supplied : crypto.randomUUID();
 }
 
+function isPublicContentRequest(request: NextRequest): boolean {
+  return (
+    request.method === "GET" &&
+    (request.nextUrl.pathname === "/api/content" ||
+      request.nextUrl.pathname.startsWith("/api/content/"))
+  );
+}
+
 export function middleware(request: NextRequest): Response {
   if (!request.nextUrl.pathname.startsWith("/api/")) {
     return NextResponse.next();
@@ -19,18 +27,23 @@ export function middleware(request: NextRequest): Response {
 
   if (!isAllowedOrigin && (request.method === "OPTIONS" || MUTATING_METHODS.has(request.method))) {
     return NextResponse.json(
-      { error: { code: "ORIGIN_NOT_ALLOWED", message: "Request origin is not allowed." } },
+      { error: { code: "ORIGIN_NOT_ALLOWED", message: "Request origin is not allowed." },
+      },
       { status: 403, headers: { "X-Request-Id": requestId(request) } },
     );
   }
 
-  const response = request.method === "OPTIONS"
-    ? new NextResponse(null, { status: 204 })
-    : NextResponse.next();
+  const response =
+    request.method === "OPTIONS"
+      ? new NextResponse(null, { status: 204 })
+      : NextResponse.next();
 
   const id = requestId(request);
   response.headers.set("X-Request-Id", id);
-  response.headers.set("Cache-Control", "no-store");
+
+  if (!isPublicContentRequest(request)) {
+    response.headers.set("Cache-Control", "no-store");
+  }
 
   if (origin === currentOrigin) {
     response.headers.set("Access-Control-Allow-Origin", currentOrigin);
@@ -40,7 +53,10 @@ export function middleware(request: NextRequest): Response {
 
   if (request.method === "OPTIONS") {
     response.headers.set("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, Idempotency-Key, X-Request-Id");
+    response.headers.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, Idempotency-Key, X-Request-Id",
+    );
     response.headers.set("Access-Control-Max-Age", "600");
   }
 
