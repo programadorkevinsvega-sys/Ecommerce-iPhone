@@ -38,7 +38,7 @@ const escapedOrigin = BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const productMatch = sitemap.body.match(new RegExp("<loc>" + escapedOrigin + "(/iphone/[^<]+)</loc>"));
 if (productMatch) {
   const product = await assertStatus(productMatch[1], 200);
-  const jsonLdBlocks = [...product.body.matchAll(/<script[^>]*type=["']application\\/ld\\+json["'][^>]*>([\\s\\S]*?)<\\/script>/gi)]
+  const jsonLdBlocks = [...product.body.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)]
     .map((match) => match[1]?.trim())
     .filter((value) => Boolean(value));
   assert(jsonLdBlocks.length > 0, "product page has no JSON-LD");
