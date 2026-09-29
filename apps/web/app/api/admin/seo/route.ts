@@ -3,6 +3,7 @@ import { revalidateTag } from "next/cache";
 import { requireAdmin, PERMISSIONS } from "../../../../lib/adminAuth";
 import { seoManagementApplication } from "../../../../lib/seoApplication";
 import { validateSeoRedirect, validateSeoRouteOverride } from "../../../../../modules/seo/domain/SeoRedirect";
+import { D1AuditPort } from "../../../../../modules/admin/infrastructure/D1AuditPort";
 
 export async function GET() {
   try {
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
         active: value.active,
         adminId: admin.id,
       });
+      await new D1AuditPort(env.DB).audit(admin.id, "SEO_REDIRECT_SAVED", "seo_redirect", typeof value.id === "string" ? value.id : null, { sourcePath: value.sourcePath, statusCode: value.statusCode, active: value.active });
       return NextResponse.json({ saved: true });
     }
 
@@ -65,6 +67,7 @@ export async function POST(request: Request) {
         ...(optional("ogImageUrl") ? { ogImageUrl: optional("ogImageUrl") } : {}),
         adminId: admin.id,
       });
+      await new D1AuditPort(env.DB).audit(admin.id, "SEO_ROUTE_OVERRIDE_SAVED", "seo_route_override", typeof value.id === "string" ? value.id : null, { path: value.path, indexable: value.indexable });
       revalidateTag("seo-route-override");
       return NextResponse.json({ saved: true });
     }
