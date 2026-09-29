@@ -2,7 +2,7 @@
 
 Owns SEO metadata, canonical URLs, redirects, sitemap inputs, structured-data models and indexability policy.
 
-## Implemented in Fase 09
+## Implemented and certified in Fase 09
 
 - Deterministic production origin: https://iphone.jnmtortas.com, overridable by explicit NEXT_PUBLIC_APP_URL.
 - Typed canonical/indexability policy.
@@ -25,3 +25,13 @@ Owns SEO metadata, canonical URLs, redirects, sitemap inputs, structured-data mo
 
 - hreflang is not emitted until the application has real locale variants and reciprocal localized URLs. Generating language alternates without real localized content would create false SEO signals.
 - LocalBusiness is not emitted because the current public data model does not expose verified business address/contact/opening-hours data suitable for structured data.
+## Production certification — 2026-09-29
+
+Fase 09 is certified in production after Cloudflare Workers Build `#6539623a` deployed commit `dcfb1ad` with Worker Version ID `04c77cdd-4af1-4258-a76a-5a34140a9478`.
+
+Verification passed against `https://iphone.jnmtortas.com`:
+- `verify:production.mjs`: live/ready health checks passed.
+- `verify-phase08-production.mjs`: CMS/Marketing/Reviews regression smoke passed.
+- `verify-phase09-production.mjs`: robots, sitemap, real product SEO, Product/Breadcrumb structured data, FAQ, indexability and missing-product 404 checks passed.
+
+The product JSON-LD is rendered as a server-side script so structured data is present in the production HTML response.
