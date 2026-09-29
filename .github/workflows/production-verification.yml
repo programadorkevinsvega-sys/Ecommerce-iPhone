@@ -39,3 +39,6 @@ jobs:
 
       - name: Verify deployed production Worker
         run: pnpm verify:production
+
+      - name: Verify deployed Phase 09 SEO
+        run: pnpm verify:phase09:production
