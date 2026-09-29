@@ -1,4 +1,8 @@
-import { chromium } from "@playwright/test";
+import { createRequire } from "node:module";
+import { join } from "node:path";
+
+const require = createRequire(join(process.cwd(), "package.json"));
+const { chromium } = require("@playwright/test");
 
 const baseUrl = (process.env.PERF_BASE_URL ?? "").replace(/\/$/, "");
 if (!baseUrl) {
