@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { cloudflareEnv } from "../../../lib/cloudflareContext";
-import { analyticsApp } from "../../../lib/analyticsApplication";
+import { cloudflareEnv } from "../../../../lib/cloudflareContext";
+import { analyticsApp } from "../../../../lib/analyticsApplication";
 
 const MAX_BODY_BYTES = 16_384;
 
@@ -53,13 +53,26 @@ export async function POST(request: Request) {
       payload: parsePayload(body.payload ?? {}),
     });
 
-    return NextResponse.json({ accepted: true, eventId, sessionId, visitorId }, {
-      status: 202,
-      headers: { "cache-control": "no-store" },
-    });
+    return NextResponse.json(
+      { accepted: true, eventId, sessionId, visitorId },
+      {
+        status: 202,
+        headers: { "cache-control": "no-store" },
+      },
+    );
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
-    const status = code === "INVALID_ANALYTICS_EVENT_TYPE" || code === "INVALID_ANALYTICS_EVENT" || code === "INVALID_ANALYTICS_PAYLOAD" ? 400 : code === "ANALYTICS_SENSITIVE_FIELD" || code === "ANALYTICS_PAYLOAD_TOO_LARGE" ? 422 : 400;
-    return NextResponse.json({ error: status === 400 ? "Invalid analytics event" : "Analytics payload rejected" }, { status });
+    const status =
+      code === "INVALID_ANALYTICS_EVENT_TYPE" ||
+      code === "INVALID_ANALYTICS_EVENT" ||
+      code === "INVALID_ANALYTICS_PAYLOAD"
+        ? 400
+        : code === "ANALYTICS_SENSITIVE_FIELD" || code === "ANALYTICS_PAYLOAD_TOO_LARGE"
+          ? 422
+          : 400;
+    return NextResponse.json(
+      { error: status === 400 ? "Invalid analytics event" : "Analytics payload rejected" },
+      { status },
+    );
   }
 }
