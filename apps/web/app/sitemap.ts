@@ -103,7 +103,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  return entries;
+  const filtered = entries.filter((entry) => {
+    const path = new URL(entry.url).pathname;
+    return overrides.get(path)?.indexable !== false;
+  });
+  return filtered;
 }
 
 function safeCanonical(value: string | undefined, origin: string): URL | null {
