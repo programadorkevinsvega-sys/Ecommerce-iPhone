@@ -5,6 +5,8 @@ import FeaturedContent from "./components/FeaturedContent";
 import { publicMarketing } from "../lib/publicMarketing";
 import Link from "next/link";
 import { listPublicCategories } from "../lib/catalog";
+import type { Metadata } from "next";
+import { publicMetadataWithOverrides } from "../lib/seo";
 import HomeCarousel from "./components/HomeCarousel";
 import HomeCollectionCarousel from "./components/HomeCollectionCarousel";
 import {
@@ -14,6 +16,14 @@ import {
 } from "../lib/homeCarousel";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return publicMetadataWithOverrides({
+    title: "Ecommerce iPhone",
+    description: "Tienda online de smartphones y servicios para dispositivos móviles.",
+    path: "/",
+  });
+}
 
 export default async function HomePage() {
   const categories = await listPublicCategories();
