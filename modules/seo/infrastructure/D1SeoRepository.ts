@@ -103,6 +103,25 @@ export class D1SeoRepository implements SeoRepository {
       .run();
   }
 
+  async findRouteOverride(path: string): Promise<SeoRouteOverrideRecord | null> {
+    const row = await this.db
+      .prepare("SELECT id,path,seo_title,seo_description,canonical_url,indexable,og_image_url,created_at,updated_at FROM seo_route_overrides WHERE path=? LIMIT 1")
+      .bind(path)
+      .first<OverrideRow>();
+    if (!row) return null;
+    return {
+      id: row.id,
+      path: row.path,
+      ...(row.seo_title ? { seoTitle: row.seo_title } : {}),
+      ...(row.seo_description ? { seoDescription: row.seo_description } : {}),
+      ...(row.canonical_url ? { canonicalUrl: row.canonical_url } : {}),
+      indexable: row.indexable === 1,
+      ...(row.og_image_url ? { ogImageUrl: row.og_image_url } : {}),
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
   async findActiveRedirect(sourcePath: string): Promise<SeoRedirectRecord | null> {
     const row = await this.db
       .prepare("SELECT id,source_path,target_url,status_code,active,created_at,updated_at FROM seo_redirects WHERE source_path=? AND active=1 LIMIT 1")
