@@ -8,3 +8,8 @@ export function serviceCustomerPortal() {
   const { env } = getCloudflareContext();
   return new ServiceCustomerPortal(new D1ServiceRequestRepository(env.DB), new D1ServiceTypeRepository(env.DB), new ServiceRequestFactory());
 }
+
+export async function listPublicServices() {
+  const { env } = await getCloudflareContext({ async: true });
+  return new D1ServiceTypeRepository(env.DB).listEnabled();
+}
