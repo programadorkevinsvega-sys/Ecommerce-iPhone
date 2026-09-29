@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cloudflareEnv } from "../../../lib/cloudflareContext";
-import { analyticsApplication } from "@modules/analytics/infrastructure/analyticsComposition";
+import { analyticsApp } from "../../../lib/analyticsApplication";
 import { isAnalyticsEventType, type AnalyticsPayload } from "@modules/analytics/domain/AnalyticsEvent";
 
 const MAX_BODY_BYTES = 16_384;
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     const occurredAt = typeof body.occurredAt === "string" ? body.occurredAt : new Date().toISOString();
     const requestId = request.headers.get("x-request-id")?.trim() || undefined;
 
-    await analyticsApplication(cloudflareEnv().EVENTS_QUEUE).record({
+    await analyticsApp(cloudflareEnv()).record({
       eventId,
       eventType: body.eventType,
       occurredAt,
