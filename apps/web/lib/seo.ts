@@ -47,6 +47,26 @@ export function canonicalForPath(path: string): string {
   return canonicalUrl(path, siteConfig());
 }
 
+export function contentCanonical(input: { path: string; storedCanonicalUrl?: string }): {
+  canonical: string;
+  noindex: boolean;
+} {
+  const config = siteConfig();
+  if (!input.storedCanonicalUrl) {
+    return { canonical: canonicalUrl(input.path, config), noindex: false };
+  }
+
+  try {
+    const stored = new URL(input.storedCanonicalUrl);
+    if (stored.origin !== new URL(config.origin).origin) {
+      return { canonical: canonicalUrl(input.path, config), noindex: true };
+    }
+    return { canonical: canonicalUrl(stored.pathname + stored.search, config), noindex: false };
+  } catch {
+    return { canonical: canonicalUrl(input.path, config), noindex: true };
+  }
+}
+
 export function shouldIndexPath(path: string): boolean {
   return isIndexablePath(path);
 }
