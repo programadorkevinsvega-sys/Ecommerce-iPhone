@@ -2,16 +2,18 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import StoreHeader from "../components/StoreHeader";
 import { publicMarketing } from "../../lib/publicMarketing";
-import { publicMetadata, canonicalForPath } from "../../lib/seo";
+import { publicMetadataWithOverrides, canonicalForPath } from "../../lib/seo";
 import { breadcrumbSchema, faqSchema } from "../../../../modules/seo/application/StructuredData";
 import { serializeJsonLd } from "../../lib/jsonLd";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = publicMetadata({
-  title: "Preguntas frecuentes | Ecommerce iPhone",
-  description: "Respuestas oficiales sobre compras, productos, servicios, entregas y garantías.",
-  path: "/faq",
-});
+export async function generateMetadata(): Promise<Metadata> {
+  return publicMetadataWithOverrides({
+    title: "Preguntas frecuentes | Ecommerce iPhone",
+    description: "Respuestas oficiales sobre compras, productos, servicios, entregas y garantías.",
+    path: "/faq",
+  });
+}
 
 export default async function FaqPage() {
   const items = await (await publicMarketing()).faqs();
