@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import StoreHeader from "../../components/StoreHeader";
 import { searchCatalog } from "../../../lib/catalog";
-import { publicMetadata } from "../../../lib/seo";
+import { publicMetadataWithOverrides } from "../../../lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export async function generateMetadata({
   const { brand } = await params;
   const name = decodeURIComponent(brand).replace(/-/g, " ").trim();
   const result = await searchCatalog({ brand: name, page: 1, pageSize: 1 });
-  return publicMetadata({
+  return publicMetadataWithOverrides({
     title: name + " | Catálogo",
     description:
       result.total > 0
