@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Script from "next/script";
 import StoreHeader from "../components/StoreHeader";
 import { publicMarketing } from "../../lib/publicMarketing";
 import { publicMetadataWithOverrides, canonicalForPath } from "../../lib/seo";
@@ -44,8 +43,8 @@ export default async function FaqPage() {
           </div>
         )}
       </section>
-      {faq && <Script id="faq-jsonld" type="application/ld+json">{serializeJsonLd(faq)}</Script>}
-      <Script id="faq-breadcrumb-jsonld" type="application/ld+json">{serializeJsonLd(breadcrumbs)}</Script>
+      {faq && <script id="faq-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(faq) }} />}
+      <script id="faq-breadcrumb-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbs) }} />
     </main>
   );
 }
