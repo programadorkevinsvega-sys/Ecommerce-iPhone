@@ -1,5 +1,9 @@
 # Ecommerce iPhone — Roadmap
 
+## Actualización viva — 2026-09-29
+
+La Fase 09 — SEO Avanzado quedó implementada, desplegada y certificada en producción. El release final fue verificado contra `https://iphone.jnmtortas.com` con `verify:production`, `verify:phase08:production` y `verify:phase09:production`. La versión desplegada fue `04c77cdd-4af1-4258-a76a-5a34140a9478` a partir del commit `dcfb1ad`. El warning de ESLint de `apps/web/worker.ts` fue posteriormente corregido separando el objeto Worker en una constante antes del `export default`.
+
 ## Actualización viva — 2026-09-21
 
 El hardening actual del bounded context technicians incluye: aislamiento de identidad respecto de admin_users, ownership server-side de órdenes, sesiones persistidas con token hash, lockout y auditoría, composición limpia de Application/Infrastructure y un portal técnico con navegación, formularios, loading/error/empty/success states y responsive coherentes con el lenguaje visual existente.
@@ -483,9 +487,9 @@ Crear únicamente páginas con contenido útil y diferenciado. Evitar thin conte
 
 ---
 
-### Fase 09 — Estado de implementación — 2026-09-28
+### Fase 09 — Estado de implementación y certificación — 2026-09-29
 
-Se inició la implementación real de Fase 09 sobre `main`.
+La Fase 09 fue implementada completamente sobre `main`, desplegada en Cloudflare Workers y certificada contra producción.
 
 Implementado en código:
 - bounded context SEO con política central de canonical/indexability;
@@ -510,7 +514,18 @@ Decisiones explícitas:
 - `LocalBusiness` no se genera porque el modelo público actual no aporta datos verificados suficientes.
 - Las superficies de más de 50.000 URLs deberán dividirse mediante sitemaps separados cuando los datos reales del catálogo/CMS alcancen ese límite; el generador actual respeta el máximo de un sitemap.
 
-Estado: 🟡 implementación avanzada en curso; **no certificada como cerrada** hasta ejecutar formatter, lint, typecheck, tests, build Cloudflare, migración/verificación D1, deploy del commit correcto, `verify:production`, `verify:phase09:production` y smoke real de producción.
+Estado: 🟢 **Fase 09 cerrada y certificada en producción.**
+
+Evidencia del release certificado del 2026-09-29:
+- Cloudflare Workers Build: `#6539623a`.
+- Commit desplegado: `dcfb1ad`.
+- Worker Version ID: `04c77cdd-4af1-4258-a76a-5a34140a9478`.
+- `verify:production.mjs`: PASS para `/api/health/live` y `/api/health/ready`.
+- `verify-phase08-production.mjs`: PASS, sin regresiones del CMS/Marketing/Reviews.
+- `verify-phase09-production.mjs`: PASS para `/robots.txt`, `/sitemap.xml`, producto real, Product SEO/JSON-LD, FAQ, indexabilidad y 404 de producto inexistente.
+- Deploy de Cloudflare: SUCCESS.
+
+Los cambios posteriores de limpieza del warning ESLint en `worker.ts` son un ajuste de calidad independiente; cualquier release que incluya ese cambio deberá volver a pasar el ciclo normal de build/deploy/verify antes de considerarse una nueva versión certificada.
 
 ## Fase 10 — Testing + Security + Observability + Production
 
@@ -660,9 +675,9 @@ Ejemplo para la Fase 01:
 
 ### Última producción certificada
 
-Worker: `f7d67832-8598-4f59-8db9-b538f543b3ef`
+Worker: `04c77cdd-4af1-4258-a76a-5a34140a9478`
 
-Los commits posteriores están en `main`, pero no se consideran certificados hasta un nuevo build, deploy y `verify:production`.
+Release certificado: Cloudflare Workers Build `#6539623a`, commit `dcfb1ad`, con `verify:production`, `verify:phase08:production` y `verify:phase09:production` en PASS.
 
 **Base de código de aplicación revisada:** `d6962439e434d5064a339648b5ed32174c7b602b`.
 
@@ -712,7 +727,7 @@ Una fase se considera terminada únicamente cuando:
 | 06 — Admin + RBAC | #6 | 🟡 Implementación avanzada, certificación pendiente |
 | 07 — Notifications realtime + Email | #7 | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente |
 | 08 — CMS + Marketing + Reviews | #8 | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify |
-| 09 — SEO | #9 | 🟡 Implementación avanzada en curso; certificación productiva pendiente |
+| 09 — SEO | #9 | 🟢 **Cerrada y certificada en producción** |
 | 10 — Production Readiness | #10 | ⬜ Pendiente |
 
 > Este archivo es la referencia central del roadmap. El detalle operativo de cada fase vive en su Issue correspondiente y posteriormente en sus sub-Issues técnicos.
