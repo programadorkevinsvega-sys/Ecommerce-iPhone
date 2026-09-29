@@ -12,7 +12,7 @@ Owns product and business analytics events. Tracking providers are adapters and 
 - `POST /api/analytics/events` accepts validated analytics events and returns 202 after queue publication.
 - Event storage is separate from transactional tables and payment/order correctness.
 
-Event types: VisitorStarted, SessionStarted, ProductViewed, SearchPerformed, CartItemAdded, CheckoutStarted, PaymentStarted, PurchaseCompleted, RevenueRecorded.
+Base event types: VisitorStarted, SessionStarted, ProductViewed, SearchPerformed, CartItemAdded, CheckoutStarted, PaymentStarted, PurchaseCompleted, RevenueRecorded. The Phase 10.3/10.4 contract extends this allow-list with catalog/search interaction and cart/checkout events.
 
 The foundation does not manufacture business events. Later analytics subphases emit each event only from the corresponding real application state transition.
 
