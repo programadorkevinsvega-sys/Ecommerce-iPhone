@@ -23,6 +23,7 @@ export async function generateMetadata({
     title: p.seoTitle ?? p.title,
     description: p.seoDescription ?? p.excerpt,
     path,
+    type: "article",
     noindex: seo.noindex,
     canonical: seo.canonical,
   });
