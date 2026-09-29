@@ -10,6 +10,8 @@ import {
   siteConfig,
 } from "../../../modules/seo/application/SeoPolicy";
 
+export { contentCanonical };
+
 async function getRouteOverride(path: string) {
   const cached = unstable_cache(
     async () => {
