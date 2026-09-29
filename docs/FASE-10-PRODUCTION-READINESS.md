@@ -98,9 +98,22 @@ Crear una capa de analytics desacoplada del dominio.
 - La composición de infraestructura se mantiene fuera de Presentation mediante `apps/web/lib/analyticsApplication.ts`.
 - Pruebas unitarias y de infraestructura cubren validación sensible e idempotencia.
 
-### Verificación pendiente para cerrar 10.2
+### Verificación automatizada de producción
 
-La implementación está en el repositorio, pero **10.2 no se declara cerrada todavía**. Falta ejecutar el pipeline oficial, aplicar la migración D1 en producción y verificar el flujo real HTTP → Queue → D1 en producción. No se debe marcar como certificada por compilación estática.
+El cierre de 10.2 queda integrado al pipeline oficial de Cloudflare mediante `verify:phase10.2:production`, ejecutado después de migración, deploy y verificaciones 08/09.
+
+La verificación realiza automáticamente:
+
+- `POST /api/analytics/events` contra la URL productiva.
+- Reenvío del mismo `eventId` para comprobar idempotencia de ingestión.
+- Consulta remota de D1 para esperar el procesamiento real `HTTP → EVENTS_QUEUE → D1`.
+- Validación de tipo, versión, sesión, visitante, request ID, source y payload persistidos.
+- Consulta de la metadata de retención `expires_at`.
+- Eliminación del evento de prueba al finalizar para no dejar datos de verificación persistentes.
+
+El evento usado por esta prueba es un **probe técnico controlado**, no un evento comercial ni revenue ficticio. La prueba no sustituye los eventos reales que implementarán las subfases 10.3–10.5.
+
+**10.2 continúa sin certificarse hasta que un deploy real produzca PASS explícito de este gate en producción.** El éxito de compilación, tests locales o deploy por sí solos no cierra la subfase.
 
 ### Eventos base
 
