@@ -39,7 +39,6 @@ export async function POST(request: Request) {
         active: value.active,
         adminId: admin.id,
       });
-      revalidateTag("seo-route-override");
       return NextResponse.json({ saved: true });
     }
 
