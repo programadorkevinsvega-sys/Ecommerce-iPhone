@@ -86,6 +86,22 @@ Crear una capa de analytics desacoplada del dominio.
 - Definir idempotencia de eventos cuando sea necesaria.
 - Definir retención.
 
+### Implementación realizada
+
+- `AnalyticsEvent` con versión 1 y allow-list de los nueve eventos base.
+- `AnalyticsService` como caso de aplicación, con validación de identificadores, timestamp, tamaño de payload y exclusión de campos sensibles.
+- `AnalyticsPort` desacopla el caso de uso de Cloudflare.
+- `CloudflareAnalyticsQueuePublisher` publica de forma asíncrona sobre el `EVENTS_QUEUE` existente.
+- `D1AnalyticsRepository` persiste con `event_id` como clave primaria e idempotencia mediante `INSERT OR IGNORE`.
+- Retención de 180 días mediante `expires_at` y limpieza periódica desde el scheduled Worker.
+- `POST /api/analytics/events` valida JSON/content-type/tamaño y devuelve `202` únicamente después de publicar el evento en Queue.
+- La composición de infraestructura se mantiene fuera de Presentation mediante `apps/web/lib/analyticsApplication.ts`.
+- Pruebas unitarias y de infraestructura cubren validación sensible e idempotencia.
+
+### Verificación pendiente para cerrar 10.2
+
+La implementación está en el repositorio, pero **10.2 no se declara cerrada todavía**. Falta ejecutar el pipeline oficial, aplicar la migración D1 en producción y verificar el flujo real HTTP → Queue → D1 en producción. No se debe marcar como certificada por compilación estática.
+
 ### Eventos base
 
 - VisitorStarted
