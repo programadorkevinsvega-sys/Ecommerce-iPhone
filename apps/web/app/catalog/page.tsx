@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { listPublicCategories, searchCatalog } from "../../lib/catalog";
 import { normalizeSearchQuery } from "../../lib/inputValidation";
-import { publicMetadata } from "../../lib/seo";
+import { publicMetadataWithOverrides } from "../../lib/seo";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata({
@@ -17,7 +17,7 @@ export async function generateMetadata({
     if (key === "page" && (value === "1" || value === undefined)) return false;
     return value !== undefined && value !== "";
   });
-  return publicMetadata({
+  return publicMetadataWithOverrides({
     title: "Catálogo de smartphones | Ecommerce iPhone",
     description: "Explora smartphones por categoría, marca, condición y precio.",
     path: "/catalog",
