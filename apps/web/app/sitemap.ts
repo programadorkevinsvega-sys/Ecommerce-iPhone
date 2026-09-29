@@ -93,8 +93,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   for (const item of landing) {
     if (entries.length >= MAX_URLS) break;
-    const canonical = item.canonicalUrl ? new URL(item.canonicalUrl) : null;
-    if (canonical && canonical.origin !== new URL(config.origin).origin) continue;
+    const canonical = safeCanonical(item.canonicalUrl, config.origin);
+    if (item.canonicalUrl && !canonical) continue;
     addEntry(canonical ? canonical.pathname + canonical.search : "/landing/" + item.slug, {
       ...(item.publishedAt ? { lastModified: new Date(item.publishedAt) } : {}),
       changeFrequency: "weekly",
