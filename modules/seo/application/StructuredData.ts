@@ -78,7 +78,9 @@ export function productSchema(input: {
             itemCondition:
               input.itemCondition === "NEW"
                 ? "https://schema.org/NewCondition"
-                : "https://schema.org/UsedCondition",
+                : input.itemCondition === "REFURBISHED"
+                  ? "https://schema.org/RefurbishedCondition"
+                  : "https://schema.org/UsedCondition",
           }
         : {}),
     },
