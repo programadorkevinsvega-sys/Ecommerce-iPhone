@@ -22,7 +22,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: canonicalUrl("/blog", config), changeFrequency: "weekly", priority: 0.7 },
     { url: canonicalUrl("/faq", config), changeFrequency: "monthly", priority: 0.6 },
     { url: canonicalUrl("/contacto", config), changeFrequency: "monthly", priority: 0.5 },
-    { url: canonicalUrl("/reparaciones", config), changeFrequency: "weekly", priority: 0.7 },
   ];
 
   const addEntry = (path: string, defaults: Omit<MetadataRoute.Sitemap[number], "url">) => {
