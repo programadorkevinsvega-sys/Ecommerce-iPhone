@@ -46,7 +46,7 @@ export async function POST(request: Request) {
     const occurredAt = typeof body.occurredAt === "string" ? body.occurredAt : new Date().toISOString();
     const requestId = request.headers.get("x-request-id")?.trim() || undefined;
 
-    await analyticsApplication(cloudflareEnv().ANALYTICS_QUEUE).record({
+    await analyticsApplication(cloudflareEnv().EVENTS_QUEUE).record({
       eventId,
       eventType: body.eventType,
       occurredAt,
