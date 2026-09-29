@@ -84,6 +84,12 @@ export class D1SqliteTestDatabase {
         FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id)
       );
+      CREATE TABLE analytics_events (
+        event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, event_version INTEGER NOT NULL,
+        occurred_at TEXT NOT NULL, received_at TEXT NOT NULL, session_id TEXT NOT NULL,
+        visitor_id TEXT NOT NULL, request_id TEXT, source TEXT NOT NULL, payload_json TEXT NOT NULL,
+        expires_at TEXT NOT NULL
+      );
     `);
   }
 
