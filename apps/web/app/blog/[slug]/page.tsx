@@ -55,8 +55,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         {p.excerpt && <p>{p.excerpt}</p>}
         <div className="content-body">{p.content}</div>
       </article>
-      <script id="article-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(article) }} />
-      <script id="article-breadcrumb-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbs) }} />
+      <script id="article-jsonld" type="application/ld+json">{serializeJsonLd(article)}</script>
+      <script id="article-breadcrumb-jsonld" type="application/ld+json">{serializeJsonLd(breadcrumbs)}</script>
     </main>
   );
 }
