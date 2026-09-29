@@ -1494,3 +1494,12 @@ div {
     padding: 12px;
   }
 }
+
+
+@media (max-width: 760px) {
+  .home-carousel {
+    margin-left: auto;
+    margin-right: auto;
+    justify-self: center;
+  }
+}
