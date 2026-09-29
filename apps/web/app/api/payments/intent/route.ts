@@ -2,6 +2,10 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { paymentContext, parsePaymentProvider } from "../../../../lib/payments";
 import { commerceContext } from "../../../../lib/commerce";
+import { analyticsApp } from "../../../../lib/analyticsApplication";
+import { analyticsSetCookie, ANALYTICS_SESSION_COOKIE, ANALYTICS_VISITOR_COOKIE, ensureAnalyticsContext } from "../../../../lib/analyticsContext";
+import { cloudflareEnv } from "../../../../lib/cloudflareContext";
+import { waitUntil } from "cloudflare:workers";
 
 const ERROR_GENERIC = "No pudimos completar la operación.";
 const ERROR_VALIDATION = "Revisa los datos ingresados e inténtalo nuevamente.";
@@ -36,7 +40,25 @@ export async function POST(request: Request) {
       idempotencyKey, customerEmail: order.email, customerName: order.shippingAddress.recipientName, customerPhone: order.shippingAddress.phone,
       shippingAddress: { addressLine1: order.shippingAddress.addressLine1, ...(order.shippingAddress.addressLine2 ? { addressLine2: order.shippingAddress.addressLine2 } : {}), city: order.shippingAddress.city, state: order.shippingAddress.state, countryCode: order.shippingAddress.countryCode, phone: order.shippingAddress.phone },
     });
-    return NextResponse.json({ payment: result.payment, checkout: { provider: result.checkout.provider, reference: result.checkout.providerReference, publicKey: result.checkout.publicKey, currency: result.checkout.currency, amountInCents: result.checkout.amountInCents, integritySignature: result.checkout.integritySignature, checkoutUrl: result.checkout.checkoutUrl, ...(result.checkout.clientSecret ? { clientSecret: result.checkout.clientSecret } : {}) } }, { status: 201, headers: { "cache-control": "no-store" } });
+    const analytics=ensureAnalyticsContext(request);
+    waitUntil(
+      analyticsApp(cloudflareEnv()).record({
+        eventId: `payment-started:${result.payment.id}`,
+        eventType: "PaymentStarted",
+        occurredAt: new Date().toISOString(),
+        sessionId: analytics.sessionId,
+        visitorId: analytics.visitorId,
+        requestId: request.headers.get("x-request-id")?.trim() || undefined,
+        payload: {
+          orderId: order.id,
+          paymentId: result.payment.id,
+          provider: result.payment.provider,
+          amountInCents: result.payment.amountInCents,
+          currency: result.payment.currency,
+        },
+      }).catch(() => undefined),
+    );
+    const response = NextResponse.json({ payment: result.payment, checkout: { provider: result.checkout.provider, reference: result.checkout.providerReference, publicKey: result.checkout.publicKey, currency: result.checkout.currency, amountInCents: result.checkout.amountInCents, integritySignature: result.checkout.integritySignature, checkoutUrl: result.checkout.checkoutUrl, ...(result.checkout.clientSecret ? { clientSecret: result.checkout.clientSecret } : {}) } }, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {
     return safePaymentError(error);
   }
