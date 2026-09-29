@@ -10,7 +10,10 @@ export const ANALYTICS_EVENT_TYPES = [
   "ProductVariantSelected",
   "RelatedProductClicked",
   "CartItemAdded",
+  "CartItemRemoved",
+  "CartAbandoned",
   "CheckoutStarted",
+  "ShippingMethodSelected",
   "PaymentStarted",
   "PurchaseCompleted",
   "RevenueRecorded",
@@ -19,6 +22,7 @@ export const ANALYTICS_EVENT_TYPES = [
 export type AnalyticsEventType = (typeof ANALYTICS_EVENT_TYPES)[number];
 export type AnalyticsScalar = string | number | boolean | null;
 export type AnalyticsPayload = Readonly<Record<string, AnalyticsScalar>>;
+export type AnalyticsSource = "web" | "server";
 
 export type AnalyticsEvent = Readonly<{
   eventId: string;
@@ -29,7 +33,7 @@ export type AnalyticsEvent = Readonly<{
   sessionId: string;
   visitorId: string;
   requestId?: string | undefined;
-  source: "web";
+  source: AnalyticsSource;
   payload: AnalyticsPayload;
 }>;
 
