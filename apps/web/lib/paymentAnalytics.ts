@@ -1,7 +1,6 @@
 import { analyticsApp } from "./analyticsApplication";
 import { cloudflareEnv } from "./cloudflareContext";
 import type { ProviderTransaction } from "../../../modules/payments/application/PaymentPorts";
-import type { Payment } from "../../../modules/payments/domain/Payment";
 import type { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
 import type { D1PaymentRepository } from "../../../modules/payments/infrastructure/D1PaymentRepository";
 import { waitUntil } from "cloudflare:workers";
