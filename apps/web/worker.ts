@@ -341,9 +341,23 @@ const worker = {
   },
 
   async queue(batch: MessageBatch<string>, env: Env) {
-    if (batch.queue === "ecommerce-iphone-analytics") {
+    if (batch.queue === "ecommerce-iphone-events") {
       for (const message of batch.messages) {
-        try { await processAnalyticsMessage(message, env); } catch { message.retry(); }
+        try {
+          const analytics = parseAnalyticsMessage(message.body);
+          if (analytics) {
+            await processAnalyticsMessage(message, env);
+            continue;
+          }
+          await processNotificationMessage(message, env, true);
+        } catch (error) {
+          if (error instanceof NotificationTerminalError) {
+            await env.NOTIFICATIONS_DLQ_QUEUE.send(message.body);
+            message.ack();
+            continue;
+          }
+          message.retry();
+        }
       }
       return;
     }
