@@ -9,7 +9,7 @@ import { ProductReviews } from "../../../components/ProductReviews";
 import { getProductBySlug, getProductVariants, searchCatalog } from "../../../lib/catalog";
 import { serializeJsonLd } from "../../../lib/jsonLd";
 import { publicMetadataWithOverrides, canonicalForPath } from "../../../lib/seo";
-import { breadcrumbSchema, productSchema } from "../../../../modules/seo/application/StructuredData";
+import { breadcrumbSchema, productSchema } from "../../../../../modules/seo/application/StructuredData";
 import { listProductReviews } from "../../../lib/storefrontReviews";
 
 export const revalidate = 30;
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: p.seoTitle ?? p.name,
     description: p.seoDescription ?? p.description,
     path: "/iphone/" + p.slug,
-    image: p.images[0],
+    ...(p.images[0] ? { image: p.images[0] } : {}),
   });
 }
 export default async function IphoneProductPage({ params }: { params: Promise<{ slug: string }> }) {
