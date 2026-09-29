@@ -8,7 +8,7 @@ import { ProductPurchasePanel } from "../../../components/ProductPurchasePanel";
 import { ProductReviews } from "../../../components/ProductReviews";
 import { getProductBySlug, getProductVariants, searchCatalog } from "../../../lib/catalog";
 import { serializeJsonLd } from "../../../lib/jsonLd";
-import { publicMetadata, canonicalForPath } from "../../../lib/seo";
+import { publicMetadataWithOverrides, canonicalForPath } from "../../../lib/seo";
 import { breadcrumbSchema, productSchema } from "../../../../modules/seo/application/StructuredData";
 import { listProductReviews } from "../../../lib/storefrontReviews";
 
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const product = await getProductBySlug(slug);
   if (!product) return { title: "Producto no encontrado", robots: { index: false, follow: false } };
   const p = product.toPrimitives();
-  return publicMetadata({
+  return publicMetadataWithOverrides({
     title: p.seoTitle ?? p.name,
     description: p.seoDescription ?? p.description,
     path: "/iphone/" + p.slug,
