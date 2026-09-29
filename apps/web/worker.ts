@@ -253,7 +253,18 @@ export default {
     }
 
     const response = await nextWorker.fetch(request, env, ctx);
-    return withHeaders(response, { "X-Request-Id": id });
+    const publicContentResponse =
+      response.status === 200 &&
+      (url.pathname === "/api/content" || url.pathname.startsWith("/api/content/"));
+    return withHeaders(
+      response,
+      publicContentResponse
+        ? {
+            "X-Request-Id": id,
+            "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+          }
+        : { "X-Request-Id": id },
+    );
   },
 
   async scheduled(_event: ScheduledEvent, env: Env) {
