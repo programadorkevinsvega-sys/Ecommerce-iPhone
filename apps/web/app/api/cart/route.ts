@@ -46,12 +46,13 @@ async function authorizedCartContext() {
   return { id, context };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const { id, context } = await authorizedCartContext();
     const result = await context.cart.get(id);
     const response = NextResponse.json(result, { headers: { "cache-control": "no-store" } });
     if (!(await cookies()).get("cart_id")) setCartCookie(response, id);
+    const analytics = ensureAnalyticsContext(request);
     if (analytics.setCookies) {
       response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_VISITOR_COOKIE, analytics.visitorId, 31536000));
       response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_SESSION_COOKIE, analytics.sessionId, 1800));
