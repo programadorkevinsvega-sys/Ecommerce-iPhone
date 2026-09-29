@@ -3,11 +3,11 @@
 import type { ReactNode } from "react";
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
-import type { AnalyticsEventType, AnalyticsPayload } from "../../../../modules/analytics/domain/AnalyticsEvent";
+import type { AnalyticsClientEventType, AnalyticsClientPayload } from "../../../../modules/analytics/application/AnalyticsClientContract";
 
 type AnalyticsInteractionProps = Readonly<{
-  eventType: AnalyticsEventType;
-  payload: AnalyticsPayload;
+  eventType: AnalyticsClientEventType;
+  payload: AnalyticsClientPayload;
   children: ReactNode;
   className?: string | undefined;
   href?: string | undefined;
@@ -24,11 +24,11 @@ function browserAnalyticsContext(): { visitorId: string; sessionId: string } {
 }
 
 type AnalyticsEventOnMountProps = Readonly<{
-  eventType: AnalyticsEventType;
-  payload: AnalyticsPayload;
+  eventType: AnalyticsClientEventType;
+  payload: AnalyticsClientPayload;
 }>;
 
-export function trackAnalyticsEvent(eventType: AnalyticsEventType, payload: AnalyticsPayload): void {
+export function trackAnalyticsEvent(eventType: AnalyticsClientEventType, payload: AnalyticsClientPayload): void {
   const body = JSON.stringify({
     eventId: crypto.randomUUID(),
     eventType,
@@ -49,7 +49,7 @@ export function AnalyticsEventOnMount({ eventType, payload }: AnalyticsEventOnMo
   const serializedPayload = useMemo(() => JSON.stringify(payload), [payload]);
 
   useEffect(() => {
-    trackAnalyticsEvent(eventType, JSON.parse(serializedPayload) as AnalyticsPayload);
+    trackAnalyticsEvent(eventType, JSON.parse(serializedPayload) as AnalyticsClientPayload);
   }, [eventType, serializedPayload]);
 
   return null;
