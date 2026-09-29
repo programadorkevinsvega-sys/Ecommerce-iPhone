@@ -44,6 +44,7 @@ export interface SeoRepository {
     adminId: string;
   }): Promise<void>;
   findActiveRedirect(sourcePath: string): Promise<SeoRedirectRecord | null>;
+  findRouteOverride(path: string): Promise<SeoRouteOverrideRecord | null>;
 }
 
 export class SeoManagement {
@@ -67,5 +68,9 @@ export class SeoManagement {
 
   resolveRedirect(sourcePath: string) {
     return this.repository.findActiveRedirect(sourcePath);
+  }
+
+  resolveRouteOverride(path: string) {
+    return this.repository.findRouteOverride(path);
   }
 }
