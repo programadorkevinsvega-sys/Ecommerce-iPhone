@@ -29,6 +29,7 @@ export const PERMISSIONS = {
   reviewsWrite: "reviews:write",
   promotionsWrite: "promotions:write",
   cmsWrite: "cms:write",
+  seoWrite: "seo:write",
   settingsWrite: "settings:write",
   techniciansManage: "technicians:manage",
   notificationsReplay: "notifications:replay",
@@ -59,6 +60,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     PERMISSIONS.reviewsWrite,
     PERMISSIONS.promotionsWrite,
     PERMISSIONS.cmsWrite,
+    PERMISSIONS.seoWrite,
     PERMISSIONS.auditRead,
     PERMISSIONS.techniciansManage,
   ],
@@ -106,6 +108,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly Permission[]> = {
     PERMISSIONS.reviewsWrite,
     PERMISSIONS.promotionsWrite,
     PERMISSIONS.cmsWrite,
+    PERMISSIONS.seoWrite,
   ],
 };
 
