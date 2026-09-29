@@ -24,13 +24,13 @@ describe("SEO policy", () => {
 
   it("normalizes public canonical paths", () => {
     expect(canonicalPath("https://iphone.jnmtortas.com/iphone/test/")).toBe("/iphone/test");
-    expect(canonicalUrl("/iphone/test")).toBe("http://localhost:3000/iphone/test");
+    expect(canonicalUrl("/iphone/test")).toBe("https://iphone.jnmtortas.com/iphone/test");
   });
 
   it("never accepts a foreign canonical origin", () => {
-    expect(canonicalUrl("https://evil.example/path")).toBe("http://localhost:3000/path");
+    expect(canonicalUrl("https://evil.example/path")).toBe("https://iphone.jnmtortas.com/path");
     expect(contentCanonical({ path: "/blog/test", storedCanonicalUrl: "https://evil.example/test" })).toEqual({
-      canonical: "http://localhost:3000/blog/test",
+      canonical: "https://iphone.jnmtortas.com/blog/test",
       noindex: true,
     });
   });
