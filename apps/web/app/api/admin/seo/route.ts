@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireAdmin, PERMISSIONS } from "../../../../lib/adminAuth";
 import { seoManagementApplication } from "../../../../lib/seoApplication";
 import { validateSeoRedirect, validateSeoRouteOverride } from "../../../../../modules/seo/domain/SeoRedirect";
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
         active: value.active,
         adminId: admin.id,
       });
+      revalidateTag("seo-route-override");
       return NextResponse.json({ saved: true });
     }
 
@@ -64,6 +66,7 @@ export async function POST(request: Request) {
         ...(optional("ogImageUrl") ? { ogImageUrl: optional("ogImageUrl") } : {}),
         adminId: admin.id,
       });
+      revalidateTag("seo-route-override");
       return NextResponse.json({ saved: true });
     }
 
