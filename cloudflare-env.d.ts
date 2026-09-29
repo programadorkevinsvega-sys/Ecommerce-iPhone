@@ -5,7 +5,6 @@ declare global {
     DB: D1Database;
     MEDIA_BUCKET: R2Bucket;
     EVENTS_QUEUE: Queue;
-    ANALYTICS_QUEUE: Queue;
     NOTIFICATIONS_QUEUE: Queue;
     NOTIFICATIONS_DLQ_QUEUE: Queue;
     NOTIFICATION_HUB: DurableObjectNamespace;
