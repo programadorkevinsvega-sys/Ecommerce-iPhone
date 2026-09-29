@@ -68,10 +68,11 @@ export async function publicMetadataWithOverrides(input: {
 }): Promise<Metadata> {
   const override = await getRouteOverride(input.path);
   const metadata = publicMetadata({
-    ...input,
     title: override?.seoTitle ?? input.title,
-    description: override?.seoDescription ?? input.description,
-    image: override?.ogImageUrl ?? input.image,
+    ...(override?.seoDescription ?? input.description ? { description: override?.seoDescription ?? input.description } : {}),
+    ...(override?.ogImageUrl ?? input.image ? { image: override?.ogImageUrl ?? input.image } : {}),
+    path: input.path,
+    ...(input.type ? { type: input.type } : {}),
     noindex: input.noindex || override?.indexable === false,
   });
   const selectedCanonical = override?.canonicalUrl ?? input.canonical;
