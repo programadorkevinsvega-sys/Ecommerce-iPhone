@@ -42,7 +42,7 @@ export default async function CmsPage({ params }: { params: Promise<{ slug: stri
       <article className="content-article">
         <p className="eyebrow">Contenido</p><h1>{p.title}</h1><div className="content-body">{p.content}</div>
       </article>
-      <script id="cms-breadcrumb-jsonld" type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(breadcrumbs) }} />
+      <script id="cms-breadcrumb-jsonld" type="application/ld+json">{serializeJsonLd(breadcrumbs)}</script>
     </main>
   );
 }
