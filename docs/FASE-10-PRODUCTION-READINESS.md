@@ -145,7 +145,7 @@ No se deben generar eventos de compra o revenue sin una operación real confirma
 - Los eventos continúan usando `EVENTS_QUEUE` y la persistencia D1 idempotente de 10.2.
 - `verify:phase10.3:production` comprueba un producto publicado real, una búsqueda real, persistencia `HTTP → EVENTS_QUEUE → D1`, versión/source/contexto y ausencia de la consulta textual en el payload.
 
-**Estado:** 🟡 implementada en código y conectada; certificación productiva pendiente de un deploy que pase el gate 10.3.
+**Estado:** 🟢 implementada, conectada y certificada en producción el 2026-09-29 mediante `verify:phase10.3:production`.
 
 ### Validaciones
 
