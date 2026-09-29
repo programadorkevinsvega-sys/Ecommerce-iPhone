@@ -98,7 +98,7 @@ try {
 
   const unauthenticatedPaymentResponse = await request("/api/payments/intent", {
     method: "POST",
-    headers: { "content-type": "application/json", "x-request-id": requestId },
+    headers: { "content-type": "application/json", "x-request-id": requestId, "Idempotency-Key": `phase10-4-payment-${probe}` },
     body: JSON.stringify({ orderId: "phase10-4-not-a-real-order", paymentProvider: "WOMPI" }),
   });
   assert(
