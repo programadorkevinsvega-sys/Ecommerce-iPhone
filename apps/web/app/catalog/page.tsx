@@ -4,13 +4,26 @@ import Image from "next/image";
 import Link from "next/link";
 import { listPublicCategories, searchCatalog } from "../../lib/catalog";
 import { normalizeSearchQuery } from "../../lib/inputValidation";
+import { publicMetadata } from "../../lib/seo";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = {
-  title: "Catálogo de smartphones | Ecommerce iPhone",
-  description: "Explora smartphones por categoría, marca, condición y precio.",
-  alternates: { canonical: "/catalog" },
-};
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const hasFilters = Object.entries(params).some(([key, value]) => {
+    if (key === "page" && (value === "1" || value === undefined)) return false;
+    return value !== undefined && value !== "";
+  });
+  return publicMetadata({
+    title: "Catálogo de smartphones | Ecommerce iPhone",
+    description: "Explora smartphones por categoría, marca, condición y precio.",
+    path: "/catalog",
+    noindex: hasFilters,
+  });
+}
 
 const money = (cents: number, currency: string) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(
