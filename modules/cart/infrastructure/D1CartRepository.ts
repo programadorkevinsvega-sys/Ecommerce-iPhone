@@ -83,7 +83,7 @@ export class D1CartRepository {
       .all<CartItemRow>();
     return {
       id: cartId,
-      customerId: row.customer_id ?? undefined,
+      ...(row.customer_id ? { customerId: row.customer_id } : {}),
       currency: row.currency,
       items: result.results.map((x) => ({
         productId: x.product_id,
@@ -93,8 +93,8 @@ export class D1CartRepository {
         unitPriceInCents: x.unit_price_in_cents,
         currency: x.currency,
         stock: x.stock,
-        variantId: x.variant_id ?? undefined,
-        variantName: x.variant_name ?? undefined,
+        ...(x.variant_id ? { variantId: x.variant_id } : {}),
+        ...(x.variant_name ? { variantName: x.variant_name } : {}),
       })),
     };
   }
