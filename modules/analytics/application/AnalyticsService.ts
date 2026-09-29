@@ -56,6 +56,7 @@ export class AnalyticsService {
     visitorId: string;
     requestId?: string | undefined;
     payload: AnalyticsPayload;
+    source?: "web" | "server" | undefined;
   }): Promise<void> {
     assertIdentifier(input.eventId, "event_id");
     const eventType = input.eventType;
@@ -78,7 +79,7 @@ export class AnalyticsService {
       sessionId: input.sessionId,
       visitorId: input.visitorId,
       ...(input.requestId === undefined ? {} : { requestId: input.requestId }),
-      source: "web",
+      source: input.source ?? "web",
       eventVersion: 1,
       payload: input.payload,
     };
