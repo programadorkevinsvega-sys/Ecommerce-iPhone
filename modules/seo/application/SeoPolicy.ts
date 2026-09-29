@@ -16,7 +16,7 @@ export function siteConfig(): SeoSiteConfig {
   const origin =
     configured &&
     (configured === PRODUCTION_SITE_URL ||
-      /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\\d+)?$/iu.test(configured))
+      /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?$/iu.test(configured))
       ? configured.replace(/\/$/, "")
       : PRODUCTION_SITE_URL;
 
