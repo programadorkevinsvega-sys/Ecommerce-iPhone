@@ -5,6 +5,7 @@ import { analyticsApp } from "../../../lib/analyticsApplication";
 import { ensureAnalyticsContext, analyticsSetCookie, ANALYTICS_SESSION_COOKIE, ANALYTICS_VISITOR_COOKIE } from "../../../lib/analyticsContext";
 import { cloudflareEnv } from "../../../lib/cloudflareContext";
 import { cloudflareWaitUntil } from "../../../lib/cloudflareContext";
+import { logServerError } from "../../../lib/serverLogger";
 
 const GENERIC_ERROR = "No pudimos completar la operación.";
 const VALIDATION_ERROR = "Revisa los datos ingresados e inténtalo nuevamente.";
@@ -59,6 +60,9 @@ export async function GET(request: Request) {
     }
     return response;
   } catch (error) {
+    logServerError("cart.get", error, {
+      requestId: request.headers.get("x-request-id")?.trim() || undefined,
+    });
     return errorResponse(error);
   }
 }
@@ -89,6 +93,10 @@ export async function POST(request: Request) {
     if (!(await cookies()).get("cart_id")) setCartCookie(response, id);
     return response;
   } catch (error) {
+    logServerError("cart.add_item", error, {
+      requestId: request.headers.get("x-request-id")?.trim() || undefined,
+      productId: undefined,
+    });
     return errorResponse(error);
   }
 }
@@ -121,6 +129,9 @@ export async function DELETE(request: Request) {
     }
     return response;
   } catch (error) {
+    logServerError("cart.remove_item", error, {
+      requestId: request.headers.get("x-request-id")?.trim() || undefined,
+    });
     return errorResponse(error);
   }
 }
