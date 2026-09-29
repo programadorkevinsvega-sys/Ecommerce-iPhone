@@ -50,10 +50,10 @@ export async function POST(request: Request) {
         id: typeof value.id === "string" && value.id ? value.id : crypto.randomUUID(),
         path: value.path,
         indexable: value.indexable,
-        ...(optional("seoTitle") ? { seoTitle: optional("seoTitle") } : {}),
-        ...(optional("seoDescription") ? { seoDescription: optional("seoDescription") } : {}),
-        ...(optional("canonicalUrl") ? { canonicalUrl: optional("canonicalUrl") } : {}),
-        ...(optional("ogImageUrl") ? { ogImageUrl: optional("ogImageUrl") } : {}),
+        ...(optional("seoTitle") ? { seoTitle: optional("seoTitle") as string } : {}),
+        ...(optional("seoDescription") ? { seoDescription: optional("seoDescription") as string } : {}),
+        ...(optional("canonicalUrl") ? { canonicalUrl: optional("canonicalUrl") as string } : {}),
+        ...(optional("ogImageUrl") ? { ogImageUrl: optional("ogImageUrl") as string } : {}),
         adminId: admin.id,
       });
       revalidateTag("seo-route-override");
