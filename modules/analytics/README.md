@@ -25,3 +25,17 @@ The catalog storefront emits real analytics events from rendered catalog/product
 - Browser interaction events use an in-memory anonymous context and the server establishes HttpOnly, Secure, SameSite=Lax first-party analytics identifiers through the analytics endpoint.
 - Product and search rendering remains server-side; interactive events are emitted only from client interaction components.
 - Production verification exercises a real published product route, a real catalog search route, Queue → D1 persistence and event-id idempotency.
+
+
+## Phase 10.4 — Cart and checkout
+
+The commerce funnel now records real cart and checkout transitions:
+
+- CartItemAdded / CartItemRemoved after successful cart mutations.
+- CartAbandoned server-side from the existing minute Cron Trigger for carts with items inactive for at least 30 minutes, with deterministic idempotency keys.
+- CheckoutStarted after a real order is created server-side.
+- ShippingMethodSelected from the real checkout form.
+- PaymentStarted after a real payment intent is created/recovered from the server-side order.
+- PurchaseCompleted only after payment webhook processing leaves both payment and order in PAID state across Wompi, Stripe, Mercado Pago, PayPal and Binance Pay.
+
+Financial payloads for PaymentStarted and PurchaseCompleted are sourced from server-side order/payment/provider state. HTTP analytics publication uses Cloudflare waitUntil so analytics failures do not turn a successful commerce mutation into a failed transaction.
