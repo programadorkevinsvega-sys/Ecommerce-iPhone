@@ -1,10 +1,24 @@
 import type { MetadataRoute } from "next";
-
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://example.com";
+import { siteConfig } from "../../modules/seo/application/SeoPolicy";
 
 export default function robots(): MetadataRoute.Robots {
+  const { origin } = siteConfig();
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/admin", "/api/"] }],
-    sitemap: `${baseUrl}/sitemap.xml`,
+    rules: [
+      {
+        userAgent: "*",
+        allow: ["/", "/_next/"],
+        disallow: [
+          "/admin",
+          "/api",
+          "/cart",
+          "/checkout",
+          "/cuenta",
+          "/orders",
+          "/technician",
+        ],
+      },
+    ],
+    sitemap: origin + "/sitemap.xml",
   };
 }
