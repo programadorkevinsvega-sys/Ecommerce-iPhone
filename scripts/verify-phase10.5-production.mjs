@@ -1,4 +1,3 @@
-const timeoutMs = Number(process.env.PHASE10_5_TIMEOUT_MS ?? "15000");
 const pollIntervalMs = Number(process.env.PHASE10_5_POLL_INTERVAL_MS ?? "5000");
 const pollAttempts = Number(process.env.PHASE10_5_POLL_ATTEMPTS ?? "24");
 
