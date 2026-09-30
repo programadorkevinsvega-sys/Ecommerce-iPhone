@@ -5,6 +5,7 @@ type LedgerRow = Readonly<{
   ledgerId: string;
   paymentId: string;
   orderId: string;
+  customerId: string;
   entryType: RevenueLedgerEntry["entryType"];
   amountInCents: number;
   currency: string;
@@ -35,6 +36,7 @@ export class D1RevenueAnalyticsRepository implements RevenueAnalyticsPort {
         pl.id AS ledgerId,
         pl.payment_id AS paymentId,
         p.order_id AS orderId,
+        p.customer_id AS customerId,
         pl.entry_type AS entryType,
         pl.amount_in_cents AS amountInCents,
         pl.currency AS currency,
