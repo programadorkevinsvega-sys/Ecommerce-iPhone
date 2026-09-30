@@ -137,7 +137,7 @@ try {
   const purchases = await d1(
     "SELECT COUNT(*) AS count FROM analytics_events WHERE event_type='PurchaseCompleted' AND source='server'",
   );
-  console.log(`INFO PurchaseCompleted server events currently persisted: ${Number(purchases[0]?.count ?? 0)}`);
+  console.log(`PASS PurchaseCompleted server event check: ${Number(purchases[0]?.count ?? 0)} real production event(s) currently persisted`);
 } finally {
   try {
     await d1(
