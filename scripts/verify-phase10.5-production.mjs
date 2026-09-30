@@ -5,6 +5,15 @@ const { execFile } = await import("node:child_process");
 const { promisify } = await import("node:util");
 const execFileAsync = promisify(execFile);
 
+const BASE_URL = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
+
+async function request(path) {
+  return fetch(`${BASE_URL}${path}`, {
+    redirect: "manual",
+    headers: { accept: "application/json" },
+  });
+}
+
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -42,6 +51,10 @@ async function waitForRevenueProjection() {
 }
 
 try {
+  const adminResponse = await request("/api/admin/analytics/revenue");
+  assert(adminResponse.status === 401, `admin revenue authorization guard: expected HTTP 401, got ${adminResponse.status}`);
+  console.log("PASS admin revenue authorization guard: HTTP 401");
+
   await waitForRevenueProjection();
 
   const ledger = await d1(
