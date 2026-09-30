@@ -8,6 +8,7 @@ import { notificationDeadLetterApplication, notificationProcessingApplication, n
 import { seoManagementApplication } from "./lib/seoApplication";
 import { D1ReservationRepository } from "../../modules/orders/infrastructure/D1ReservationRepository";
 import { analyticsPersistence } from "../../modules/analytics/infrastructure/analyticsComposition";
+import { revenueAnalyticsApp } from "./lib/analyticsApplication";
 import type { AnalyticsEvent } from "../../modules/analytics/domain/AnalyticsEvent";
 import { NotificationTerminalError } from "../../modules/notifications/application/NotificationProcessingError";
 import type { NotificationEvent, NotificationInboxItem } from "../../modules/notifications/domain/NotificationEvent";
@@ -338,6 +339,7 @@ const worker = {
   async scheduled(_event: ScheduledEvent, env: Env) {
     const now = new Date().toISOString();
     await analyticsPersistence(env.DB).purgeExpired(500);
+    await revenueAnalyticsApp(env).reconcile(500);
     await recordAbandonedCarts(env);
     await env.DB.batch([
       env.DB.prepare("UPDATE cms_blog_posts SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
