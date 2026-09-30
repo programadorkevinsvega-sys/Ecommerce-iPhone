@@ -20,6 +20,7 @@ describe("RevenueAnalyticsService", () => {
           ledgerId: "ledger-refund-12345678",
           paymentId: "payment-12345678",
           orderId: "order-12345678",
+          customerId: "customer-12345678",
           entryType: "PAYMENT_REFUNDED",
           amountInCents: 250000,
           currency: "COP",
