@@ -182,21 +182,27 @@ Los valores financieros definitivos deben proceder del estado server-side, no de
 
 ## 10.5 — Analytics de revenue y conversion
 
-### Trabajo
+### Implementación realizada
 
-- Definir fuente canónica de revenue.
-- Asociar purchase con order/payment.
-- Evitar doble contabilización.
-- Manejar refunds/voids cuando afecten métricas.
-- Definir conversion rate.
-- Definir métricas por periodo.
-- Definir trazabilidad order → payment → revenue event.
+- La fuente canónica de revenue es `payment_ledger`, no los eventos del navegador.
+- `PAYMENT_CONFIRMED` representa revenue bruto confirmado por el flujo real de pago.
+- `PAYMENT_REFUNDED` representa una reducción real de revenue después de que el proveedor confirma el refund.
+- `RevenueRecorded` se proyecta desde cada entrada canónica del ledger con `eventId=revenue:<ledgerId>`, evitando doble contabilización mediante la idempotencia de `analytics_events`.
+- Cada evento conserva trazabilidad server-side `ledgerId → paymentId → orderId` y correlación con el cliente mediante el customer asociado al payment.
+- Los voids no generan revenue porque no existe un `PAYMENT_CONFIRMED` válido.
+- Los refunds se proyectan únicamente desde entradas `PAYMENT_REFUNDED` realmente persistidas por el flujo de refund.
+- El Worker ejecuta reconciliación de revenue en el Cron existente de cada minuto; la reconciliación solo proyecta entradas del ledger que todavía no tienen su `RevenueRecorded`.
+- Se implementó reporte por periodo con revenue bruto, refunds, net revenue, pagos confirmados, refunds, `CheckoutStarted`, `PurchaseCompleted`, conversion rate y desglose por moneda.
+- El reporte está protegido por autorización administrativa `dashboardRead` y utiliza `Cache-Control: no-store`.
+- La conversión se define explícitamente como `PurchaseCompleted / CheckoutStarted` para el periodo consultado.
+- El payload de `RevenueRecorded` no incluye email, teléfono, dirección, tokens, secretos, tarjeta, IMEI o serial.
+- `verify:phase10.5:production` comprueba que el ledger canónico y `RevenueRecorded` coinciden en bruto, refunds, conteos y trazabilidad, además de validar conversión y ausencia de campos sensibles.
 
 ### Criterio
 
-No debe existir revenue analítico ficticio ni derivado exclusivamente de eventos frontend.
+No existe revenue analítico ficticio ni derivado exclusivamente de eventos frontend. La proyección nace de operaciones financieras server-side persistidas en `payment_ledger`.
 
----
+**Estado:** 🟡 implementación completada; pendiente certificación productiva mediante deploy y `verify:phase10.5:production`.
 
 # 5. Observabilidad
 
@@ -1017,6 +1023,8 @@ Antes de cada bloque:
 
 **10.1:** 🟢 Completada. Evidencia: `docs/FASE-10.1-PRODUCTION-READINESS-AUDIT.md`.
 
-**Siguiente tarea:** 10.2 — Analytics Foundation.
+**10.5:** 🟡 implementación completada; certificación productiva pendiente del deploy/gate 10.5.
+
+**Siguiente tarea:** certificar 10.5 en producción.
 
 Las subfases posteriores continúan sin implementar hasta cerrar sus gaps con código, pruebas e integración real.
