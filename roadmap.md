@@ -808,4 +808,6 @@ La auditoría profunda de rutas frontend/API detectó y corrigió los defectos c
 
 Hallazgos principales: analytics existe solo como bounded context/documentación inicial; observabilidad tiene base de Cloudflare/request IDs/health pero requiere correlación, structured logging, error tracking y métricas; seguridad cuenta con headers/CSP/CORS/rate limiting pero requiere auditoría transversal y verificación externa de WAF/bot/MFA/webhooks/PII; testing tiene Vitest/Playwright y verificaciones productivas pero requiere integración, contract, security, concurrency y regression suites completas; CI/CD tiene gates y verificación Cloudflare pero debe consolidar evidencia sin duplicar el deploy automático; rollback/recovery existe como base pero requiere validación ejecutable.
 
-**Siguiente subfase:** 10.4 — certificar el funnel real de carrito/checkout; después 10.5 — Analytics de revenue y conversión.
+**10.4:** 🟢 certificada en producción el 2026-09-29.
+
+**10.5:** 🟡 implementación completada; pendiente certificación productiva mediante el gate `verify:phase10.5:production`.
