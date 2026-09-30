@@ -10,6 +10,7 @@ describe("RevenueAnalyticsService", () => {
           ledgerId: "ledger-sale-12345678",
           paymentId: "payment-12345678",
           orderId: "order-12345678",
+          customerId: "customer-12345678",
           entryType: "PAYMENT_CONFIRMED",
           amountInCents: 250000,
           currency: "COP",
