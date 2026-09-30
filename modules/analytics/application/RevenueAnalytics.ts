@@ -4,6 +4,7 @@ export type RevenueLedgerEntry = Readonly<{
   ledgerId: string;
   paymentId: string;
   orderId: string;
+  customerId: string;
   entryType: "PAYMENT_CONFIRMED" | "PAYMENT_REFUNDED";
   amountInCents: number;
   currency: string;
@@ -59,7 +60,7 @@ export class RevenueAnalyticsService {
         eventType: "RevenueRecorded",
         occurredAt: entry.occurredAt,
         sessionId: `order:${entry.orderId}`,
-        visitorId: `customer:${entry.paymentId}`,
+        visitorId: `customer:${entry.customerId}`,
         source: "server",
         payload: {
           ledgerId: entry.ledgerId,
