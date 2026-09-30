@@ -48,6 +48,37 @@ describe("RevenueAnalyticsService", () => {
     }));
   });
 
+  it("returns the canonical period report", async () => {
+    const source: RevenueAnalyticsPort = {
+      pendingRevenueEntries: vi.fn(),
+      report: vi.fn().mockResolvedValue({
+        period: { from: "2026-09-01T00:00:00.000Z", to: "2026-10-01T00:00:00.000Z" },
+        grossRevenueInCents: 300000,
+        refundedRevenueInCents: 50000,
+        netRevenueInCents: 250000,
+        confirmedPaymentCount: 3,
+        refundCount: 1,
+        checkoutStartedCount: 10,
+        purchaseCompletedCount: 2,
+        conversionRate: 0.2,
+        currencyBreakdown: [{
+          currency: "COP",
+          grossRevenueInCents: 300000,
+          refundedRevenueInCents: 50000,
+          netRevenueInCents: 250000,
+        }],
+      }),
+    };
+    const service = new RevenueAnalyticsService(source, {} as AnalyticsService);
+
+    await expect(service.report("2026-09-01", "2026-10-01")).resolves.toMatchObject({
+      grossRevenueInCents: 300000,
+      refundedRevenueInCents: 50000,
+      netRevenueInCents: 250000,
+      conversionRate: 0.2,
+    });
+  });
+
   it("rejects invalid or oversized reporting periods", async () => {
     const source: RevenueAnalyticsPort = {
       pendingRevenueEntries: vi.fn(),
