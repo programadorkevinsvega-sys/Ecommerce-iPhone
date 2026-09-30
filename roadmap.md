@@ -811,3 +811,5 @@ Hallazgos principales: analytics existe solo como bounded context/documentación
 **10.4:** 🟢 certificada en producción el 2026-09-29.
 
 **10.5:** 🟡 implementación completada; pendiente certificación productiva mediante el gate `verify:phase10.5:production`.
+
+Implementación 10.5: `payment_ledger` es la fuente canónica; `RevenueRecorded` se proyecta server-side con idempotencia por `revenue:<ledgerId>`; refunds reducen revenue; voids no generan revenue; existe reconciliación periódica, reporte administrativo por periodo, conversion rate `PurchaseCompleted / CheckoutStarted`, desglose por moneda y gate productivo de trazabilidad.
