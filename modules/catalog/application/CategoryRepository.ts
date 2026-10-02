@@ -9,4 +9,5 @@ export interface CategoryRepository {
   findBySlug(slug: string, criteria?: { includeInactive?: boolean }): Promise<Category | null>;
   save(category: Category): Promise<void>;
   deactivate(id: string): Promise<boolean>;
+  delete(id: string): Promise<boolean>;
 }
