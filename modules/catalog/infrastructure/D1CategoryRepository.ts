@@ -67,6 +67,11 @@ export class D1CategoryRepository implements CategoryRepository {
     ).bind(p.id, p.name, p.slug, p.imageUrl ?? null, p.active ? 1 : 0, p.createdAt, p.updatedAt).run();
   }
 
+  async delete(id: string): Promise<boolean> {
+    const result = await this.db.prepare("DELETE FROM categories WHERE id=?").bind(id).run();
+    return result.meta.changes === 1;
+  }
+
   async deactivate(id: string): Promise<boolean> {
     const result = await this.db.prepare("UPDATE categories SET active=0, updated_at=CURRENT_TIMESTAMP WHERE id=?").bind(id).run();
     return result.meta.changes === 1;
