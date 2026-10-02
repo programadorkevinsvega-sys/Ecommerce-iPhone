@@ -39,3 +39,8 @@ function parseInput(body: Record<string, unknown>) {
   if (!customerId || !brand || !model) throw new Error("INVALID_DEVICE");
   return { customerId, deviceType: String(body.deviceType ?? "PHONE").trim().toUpperCase(), brand, model, serialLast4: text("serialLast4", 4), imeiLast4: text("imeiLast4", 4), color: text("color", 60), capacity: text("capacity", 40), physicalCondition: text("physicalCondition", 1000), notes: text("notes", 1000) };
 }
+
+export async function restoreAdminCustomerDevice(id: string) {
+  await requireAdmin(PERMISSIONS.customersWrite);
+  return application().restore(id);
+}
