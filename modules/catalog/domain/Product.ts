@@ -1,5 +1,6 @@
 import { AggregateRoot, DomainError, type DomainEvent } from "../../shared-kernel";
 import { ProductId } from "./ProductId";
+import { normalizeProductImageUrl } from "./ProductImageUrl";
 
 export type ProductCondition = "NEW" | "USED" | "REFURBISHED";
 export type ProductProps = Readonly<{
@@ -74,15 +75,10 @@ function validateImages(value: unknown): readonly string[] {
   return value.map((image) => {
     const url = stringField(image, "image", PRODUCT_TEXT_LIMITS.imageUrl);
     try {
-      const parsed = new URL(url, "https://same-origin.invalid");
-      const isLegacyImage = parsed.pathname.startsWith("/products/");
-      const isManagedImage = /^\/api\/media\/product-images\/[a-z0-9-]+\.(?:jpg|png|webp)$/i.test(parsed.pathname);
-      if (parsed.origin !== "https://same-origin.invalid" || (!isLegacyImage && !isManagedImage)) throw new Error();
-      if (parsed.search || parsed.hash || parsed.pathname.includes("\\")) throw new Error();
+      return normalizeProductImageUrl(url);
     } catch {
       throw new DomainError("Invalid product image URL");
     }
-    return new URL(url, "https://same-origin.invalid").pathname;
   });
 }
 
