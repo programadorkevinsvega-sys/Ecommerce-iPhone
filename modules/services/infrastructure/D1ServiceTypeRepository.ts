@@ -34,6 +34,10 @@ export class D1ServiceTypeRepository implements ServiceTypeRepository {
   }
 
   async delete(code: string): Promise<boolean> {
+    const exists = await this.db.prepare("SELECT 1 FROM service_types WHERE code=? LIMIT 1").bind(code).first();
+    if (!exists) return false;
+    const references = await this.db.prepare("SELECT 1 FROM service_requests WHERE service_type_code=? LIMIT 1").bind(code).first();
+    if (references) throw new Error("SERVICE_TYPE_IN_USE");
     const result = await this.db.prepare("DELETE FROM service_types WHERE code=?").bind(code).run();
     return result.meta.changes === 1;
   }
