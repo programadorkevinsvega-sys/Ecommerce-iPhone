@@ -15,5 +15,6 @@ export interface AdminCustomerDeviceRepository {
   create(device: CustomerDevice): Promise<CustomerDevice>;
   update(id: string, props: CustomerDeviceProps): Promise<CustomerDevice | null>;
   archive(id: string): Promise<boolean>;
-  recordEvent(customerId: string, deviceId: string, eventType: "CREATED" | "UPDATED" | "ARCHIVED", metadata?: Record<string, unknown>): Promise<void>;
+  restore(id: string): Promise<boolean>;
+  recordEvent(customerId: string, deviceId: string, eventType: "CREATED" | "UPDATED" | "ARCHIVED" | "RESTORED", metadata?: Record<string, unknown>): Promise<void>;
 }
