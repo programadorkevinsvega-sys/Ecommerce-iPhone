@@ -93,6 +93,17 @@ export class AdminCategories {
     return updated;
   }
 
+  async activate(input: { actor: CategoryActor; id: string }): Promise<void> {
+    this.authorize(input.actor, CATEGORY_WRITE_PERMISSION);
+    const category = await this.repository.findById(input.id);
+    if (!category) throw new Error("CATEGORY_NOT_FOUND");
+    if (category.toPrimitives().active) return;
+    const payload = category.toPrimitives();
+    const updated = Category.create(input.id, { ...payload, active: true, updatedAt: new Date().toISOString() });
+    await this.repository.save(updated);
+    await this.audit.audit(input.actor.id, "ADMIN_CATEGORY_ACTIVATED", "category", input.id, {});
+  }
+
   async deactivate(input: { actor: CategoryActor; id: string }): Promise<void> {
     this.authorize(input.actor, CATEGORY_WRITE_PERMISSION);
     const changed = await this.repository.deactivate(input.id);
