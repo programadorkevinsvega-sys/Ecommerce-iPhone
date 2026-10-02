@@ -41,12 +41,17 @@ export class D1AdminCustomerDeviceRepository implements AdminCustomerDeviceRepos
     return this.find(id);
   }
 
+  async restore(id: string): Promise<boolean> {
+    const result = await this.db.prepare("UPDATE customer_devices SET archived_at=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=? AND archived_at IS NOT NULL").bind(id).run();
+    return result.meta.changes === 1;
+  }
+
   async archive(id: string): Promise<boolean> {
     const result = await this.db.prepare("UPDATE customer_devices SET archived_at=CURRENT_TIMESTAMP,updated_at=CURRENT_TIMESTAMP WHERE id=? AND archived_at IS NULL").bind(id).run();
     return result.meta.changes === 1;
   }
 
-  async recordEvent(customerId: string, deviceId: string, eventType: "CREATED" | "UPDATED" | "ARCHIVED", metadata?: Record<string, unknown>): Promise<void> {
+  async recordEvent(customerId: string, deviceId: string, eventType: "CREATED" | "UPDATED" | "ARCHIVED" | "RESTORED", metadata?: Record<string, unknown>): Promise<void> {
     await this.db.prepare("INSERT INTO customer_device_events(id,customer_device_id,customer_id,event_type,metadata_json) VALUES(?,?,?,?,?)").bind(crypto.randomUUID(),deviceId,customerId,eventType,metadata ? JSON.stringify(metadata) : null).run();
   }
 }
