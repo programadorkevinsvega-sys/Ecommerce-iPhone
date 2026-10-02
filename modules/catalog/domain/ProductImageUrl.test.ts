@@ -13,7 +13,7 @@ describe("ProductImageUrl", () => {
     expect(isTrustedExternalImageUrl(trusted)).toBe(true);
     expect(isTrustedExternalImageUrl("http://commons.wikimedia.org/image.jpg")).toBe(false);
     expect(isTrustedExternalImageUrl("https://attacker.example/image.jpg")).toBe(false);
-    expect(isTrustedExternalImageUrl("https://commons.wikimedia.org:443/image.jpg")).toBe(false);
+    expect(isTrustedExternalImageUrl("https://commons.wikimedia.org:444/image.jpg")).toBe(false);
   });
 
   it("builds and validates the internal proxy representation", () => {
