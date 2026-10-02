@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { disableAdminServiceType, updateAdminServiceType } from "../../../../../lib/api/adminServiceTypes";
+import { deleteAdminServiceType, disableAdminServiceType, enableAdminServiceType, updateAdminServiceType } from "../../../../../lib/api/adminServiceTypes";
 
 function bodyError(error: unknown) {
   const code = error instanceof Error ? error.message : "UNKNOWN";
@@ -22,10 +22,27 @@ export async function PATCH(request: Request, context: { params: Promise<{ code:
   }
 }
 
+export async function POST(request: Request, context: { params: Promise<{ code: string }> }) {
+  try {
+    const { code } = await context.params;
+    const body = await request.json().catch(() => ({}));
+    if (body && typeof body === "object" && !Array.isArray(body) && body.action === "activate") {
+      return NextResponse.json({ activated: true, serviceType: await enableAdminServiceType(code) }, { headers: { "cache-control": "no-store" } });
+    }
+    if (body && typeof body === "object" && !Array.isArray(body) && body.action === "deactivate") {
+      return NextResponse.json({ deactivated: true, serviceType: await disableAdminServiceType(code) }, { headers: { "cache-control": "no-store" } });
+    }
+    return NextResponse.json({ error: "Invalid service type action" }, { status: 400, headers: { "cache-control": "no-store" } });
+  } catch (error) {
+    const result = bodyError(error);
+    return NextResponse.json({ error: result.error }, { status: result.status, headers: { "cache-control": "no-store" } });
+  }
+}
+
 export async function DELETE(_request: Request, context: { params: Promise<{ code: string }> }) {
   try {
     const { code } = await context.params;
-    return NextResponse.json({ archived: true, serviceType: await disableAdminServiceType(code) }, { headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ deleted: true, serviceType: await deleteAdminServiceType(code) }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     const result = bodyError(error);
     return NextResponse.json({ error: result.error }, { status: result.status, headers: { "cache-control": "no-store" } });
