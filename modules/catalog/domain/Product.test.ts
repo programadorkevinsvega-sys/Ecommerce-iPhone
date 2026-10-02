@@ -17,11 +17,21 @@ describe("Product", () => {
     const product = Product.create(new ProductId("product-1"), { ...valid().toPrimitives(), id: undefined as never, images: ["/products/iphone-17-pro-max.webp"] });
     expect(product.toPrimitives().images).toEqual(["/products/iphone-17-pro-max.webp"]);
   });
+  it("accepts trusted external images only through the internal proxy", () => {
+    const source = "https://commons.wikimedia.org/wiki/Special:Redirect/file/IPhone_17_Pro_Max.jpg";
+    const proxy = `/api/media/proxy?url=${encodeURIComponent(source)}`;
+    const product = Product.create(new ProductId("product-1"), { ...valid().toPrimitives(), id: undefined as never, images: [proxy] });
+    expect(product.toPrimitives().images).toEqual([proxy]);
+  });
   it("rejects external image hosts", () => expect(() => Product.create(new ProductId("product-1"), { ...valid().toPrimitives(), id: undefined as never, images: ["https://attacker.example/image.webp"] })).toThrow());
   it("rejects dangerous image schemes", () => {
     for (const image of ["javascript:alert(1)", "data:image/svg+xml;base64,PHN2Zz4=", "file:///etc/passwd", "//attacker.example/image.webp"]) {
       expect(() => Product.create(new ProductId("product-1"), { ...valid().toPrimitives(), id: undefined as never, images: [image] })).toThrow();
     }
+  });
+  it("rejects untrusted proxy targets", () => {
+    const proxy = `/api/media/proxy?url=${encodeURIComponent("https://attacker.example/image.webp")}`;
+    expect(() => Product.create(new ProductId("product-1"), { ...valid().toPrimitives(), id: undefined as never, images: [proxy] })).toThrow();
   });
   it("rejects image query and fragment injection", () => {
     expect(() => Product.create(new ProductId("product-1"), { ...valid().toPrimitives(), id: undefined as never, images: ["/products/image.webp?url=https://attacker.example"] })).toThrow();
