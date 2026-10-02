@@ -13,12 +13,36 @@ const emptyForm = {
   enabled: true, compatibility: "", requirements: "",
 };
 
-type Service = Record<string, any>;
+type ServiceType = {
+  code: string;
+  slug: string;
+  name: string;
+  description: string;
+  imageUrl?: string;
+  category: string;
+  enabled: boolean;
+  workflow: {
+    quoteRequired: boolean;
+    paymentRequired: boolean;
+    technicianApprovalRequired: boolean;
+    adminApprovalRequired: boolean;
+    customerOwnershipProofRequired: boolean;
+    allowedStatuses: readonly string[];
+  };
+  priceFromInCents?: number;
+  fixedPriceInCents?: number;
+  estimatedMinutes?: number;
+  warrantyDays?: number;
+  requiresDiagnosis?: boolean;
+  requiresApproval?: boolean;
+  compatibility?: { brand: string; model?: string }[];
+  requirements?: { description: string; required: boolean }[];
+};
 
 function money(value: unknown) { return value === undefined || value === null ? "" : String(value); }
 
 export default function ServiceTypesPage() {
-  const [items, setItems] = useState<Service[]>([]), [form, setForm] = useState(emptyForm), [editing, setEditing] = useState<string | null>(null);
+  const [items, setItems] = useState<ServiceType[]>([]), [form, setForm] = useState(emptyForm), [editing, setEditing] = useState<string | null>(null);
   const [loading, setLoading] = useState(true), [saving, setSaving] = useState(false), [error, setError] = useState("");
 
   async function load() {
@@ -29,12 +53,12 @@ export default function ServiceTypesPage() {
   }
   useEffect(() => { void load(); }, []);
 
-  function edit(item: Service) {
+  function edit(item: ServiceType) {
     setEditing(item.code); setForm({ ...emptyForm, code: item.code, slug: item.slug, name: item.name, description: item.description, imageUrl: item.imageUrl ?? "", category: item.category,
       priceFromInCents: money(item.priceFromInCents), fixedPriceInCents: money(item.fixedPriceInCents), estimatedMinutes: money(item.estimatedMinutes), warrantyDays: money(item.warrantyDays),
       requiresDiagnosis: Boolean(item.requiresDiagnosis), requiresApproval: Boolean(item.requiresApproval), quoteRequired: Boolean(item.workflow?.quoteRequired), paymentRequired: Boolean(item.workflow?.paymentRequired),
       technicianApprovalRequired: Boolean(item.workflow?.technicianApprovalRequired), adminApprovalRequired: Boolean(item.workflow?.adminApprovalRequired), customerOwnershipProofRequired: Boolean(item.workflow?.customerOwnershipProofRequired),
-      enabled: Boolean(item.enabled), compatibility: (item.compatibility ?? []).map((x: any) => `${x.brand}${x.model ? `|${x.model}` : ""}`).join("\n"), requirements: (item.requirements ?? []).map((x: any) => `${x.required ? "*" : ""}${x.description}`).join("\n") });
+      enabled: Boolean(item.enabled), compatibility: (item.compatibility ?? []).map((x: { brand: string; model?: string }) => `${x.brand}${x.model ? `|${x.model}` : ""}`).join("\n"), requirements: (item.requirements ?? []).map((x: { description: string; required: boolean }) => `${x.required ? "*" : ""}${x.description}`).join("\n") });
   }
   function reset() { setEditing(null); setForm(emptyForm); }
   function value(key: keyof typeof emptyForm) { return form[key]; }
