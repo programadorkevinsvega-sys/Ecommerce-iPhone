@@ -8,6 +8,7 @@ function repository(): AdminResourceRepository {
     list: vi.fn().mockResolvedValue([]),
     createProduct: vi.fn().mockResolvedValue("product-1"),
     updateProduct: vi.fn().mockResolvedValue(undefined),
+    deleteProduct: vi.fn().mockResolvedValue(undefined),
     getServiceForMutation: vi.fn().mockResolvedValue({
       status: "PENDING",
       email: "customer@example.com",
@@ -77,6 +78,27 @@ describe("AdminResources", () => {
     expect(result).toEqual({ id: "product-1" });
     expect(repo.createProduct).toHaveBeenCalledOnce();
     expect(auditPort.audit).toHaveBeenCalledOnce();
+  });
+
+  it("deletes a product through the repository and records an audit event", async () => {
+    const repo = repository();
+    const auditPort = audit();
+    const service = new AdminResources({
+      repository: repo,
+      audit: auditPort,
+      publishNotification: vi.fn().mockResolvedValue(undefined),
+    });
+
+    await service.delete({ actor: actor(), resource: "products", id: "product-1" });
+
+    expect(repo.deleteProduct).toHaveBeenCalledWith("product-1");
+    expect(auditPort.audit).toHaveBeenCalledWith(
+      "admin-1",
+      "ADMIN_PRODUCT_DELETED",
+      "product",
+      "product-1",
+      {},
+    );
   });
 
   it("honors an explicit permission grant outside the base role", async () => {
