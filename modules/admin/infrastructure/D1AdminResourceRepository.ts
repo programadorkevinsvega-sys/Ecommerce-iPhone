@@ -92,9 +92,9 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
 
     const references = await this.db
       .prepare(
-        "SELECT CASE WHEN EXISTS (SELECT 1 FROM cart_items WHERE product_id=?) OR EXISTS (SELECT 1 FROM cart_items_v2 WHERE product_id=?) OR EXISTS (SELECT 1 FROM inventory_reservations WHERE product_id=?) OR EXISTS (SELECT 1 FROM order_items WHERE product_id=?) OR EXISTS (SELECT 1 FROM product_reviews WHERE product_id=?) THEN 1 ELSE 0 END AS in_use",
+        "SELECT CASE WHEN EXISTS (SELECT 1 FROM cart_items WHERE product_id=?) OR EXISTS (SELECT 1 FROM inventory_reservations WHERE product_id=?) OR EXISTS (SELECT 1 FROM order_items WHERE product_id=?) OR EXISTS (SELECT 1 FROM product_reviews WHERE product_id=?) THEN 1 ELSE 0 END AS in_use",
       )
-      .bind(id, id, id, id, id)
+      .bind(id, id, id, id)
       .first<{ in_use: number }>();
     if (Number(references?.in_use ?? 0) === 1) throw new Error("PRODUCT_IN_USE");
 
