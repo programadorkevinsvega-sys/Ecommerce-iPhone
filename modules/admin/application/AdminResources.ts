@@ -120,6 +120,14 @@ export class AdminResources {
     if (resource === "services") return this.updateService(input.actor, input.id, input.body);
     throw new Error("UNSUPPORTED_UPDATE");
   }
+  async delete(input: { actor: AdminActor; resource: unknown; id: string }): Promise<void> {
+    const resource = normalizeResource(input.resource);
+    this.authorize(input.actor, permissionFor(resource, true));
+    if (resource !== "products") throw new Error("UNSUPPORTED_DELETE");
+    await this.deps.repository.deleteProduct(input.id);
+    await this.deps.audit.audit(input.actor.id, "ADMIN_PRODUCT_DELETED", "product", input.id, {});
+  }
+
   async getProductCategoryIds(input: {
     actor: AdminActor;
     productId: string;
