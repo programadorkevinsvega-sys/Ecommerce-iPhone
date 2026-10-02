@@ -86,6 +86,22 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
     return product.id;
   }
 
+  async deleteProduct(id: string): Promise<void> {
+    const exists = await this.db.prepare("SELECT 1 FROM products WHERE id=? LIMIT 1").bind(id).first();
+    if (!exists) throw new Error("PRODUCT_NOT_FOUND");
+
+    const references = await this.db
+      .prepare(
+        "SELECT CASE WHEN EXISTS (SELECT 1 FROM cart_items WHERE product_id=?) OR EXISTS (SELECT 1 FROM cart_items_v2 WHERE product_id=?) OR EXISTS (SELECT 1 FROM inventory_reservations WHERE product_id=?) OR EXISTS (SELECT 1 FROM order_items WHERE product_id=?) OR EXISTS (SELECT 1 FROM product_reviews WHERE product_id=?) THEN 1 ELSE 0 END AS in_use",
+      )
+      .bind(id, id, id, id, id)
+      .first<{ in_use: number }>();
+    if (Number(references?.in_use ?? 0) === 1) throw new Error("PRODUCT_IN_USE");
+
+    const result = await this.db.prepare("DELETE FROM products WHERE id=?").bind(id).run();
+    if (result.meta.changes !== 1) throw new Error("PRODUCT_NOT_FOUND");
+  }
+
   async updateProduct(id: string, fields: string[], values: unknown[]): Promise<void> {
     const assignments = fields.map((field) => `${field}=?`).join(",");
     const result = await this.db
