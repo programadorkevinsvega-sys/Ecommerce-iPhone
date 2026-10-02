@@ -25,6 +25,7 @@ export interface AdminResourceRepository {
   list(resource: ResourceName, query: string): Promise<unknown[]>;
   createProduct(product: ProductCreation): Promise<string>;
   updateProduct(id: string, fields: string[], values: unknown[]): Promise<void>;
+  deleteProduct(id: string): Promise<void>;
   getProductCategoryIds(productId: string): Promise<string[]>;
   replaceProductCategories(productId: string, categoryIds: readonly string[]): Promise<void>;
   replaceProductImages(productId: string, imageUrls: readonly string[]): Promise<void>;
