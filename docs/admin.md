@@ -204,3 +204,15 @@ La capacidad está reservada por defecto a SUPER_ADMIN y ADMIN porque permite re
 - La eliminación de servicios ofrecidos está protegida contra solicitudes históricas que usen ese código; en ese caso se conserva el servicio y se debe utilizar Desactivar.
 - La eliminación de categorías elimina la entidad y sus relaciones dependientes mediante las restricciones ON DELETE CASCADE.
 - Activar/desactivar y eliminar requieren los permisos administrativos de escritura correspondientes y registran auditoría.
+
+
+## Reversibilidad del backoffice — 2026-10-02
+
+La regla de UX administrativa es que una entidad con estado operativo reversible debe exponer siempre la acción inversa:
+
+- Activo → **Desactivar**; Inactivo → **Activar**.
+- Publicado → **Ocultar/Desactivar**; Oculto → **Publicar/Activar**.
+- Archivado → **Restaurar** cuando el archivado sea reversible.
+- Campañas y cupones conservan su historial y usan activación/desactivación, no eliminación destructiva.
+- Dispositivos de clientes usan archivado reversible y ahora permiten **Restaurar** desde el mismo listado.
+- Entidades transaccionales o con historial (pedidos, pagos, órdenes de reparación y otros registros operativos) no deben exponerse a eliminación destructiva cuando eso comprometa integridad histórica; se conserva el registro y se cambia su estado según el flujo de negocio.
