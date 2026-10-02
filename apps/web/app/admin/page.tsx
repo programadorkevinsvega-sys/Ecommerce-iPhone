@@ -655,31 +655,22 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
     await load();
   }
   async function toggleServiceType(type: ServiceType) {
-    const response = await fetch("/api/admin/service-types", {
-      method: "POST",
+    const active = type.enabled;
+    if (!window.confirm(active ? "¿Desactivar este servicio ofrecido?" : "¿Activar este servicio ofrecido?")) return;
+    const response = await fetch(`/api/admin/service-types/${encodeURIComponent(type.code)}`, {
+      method: "PATCH",
       headers: { "Content-Type": "application/json" },
       cache: "no-store",
-      body: JSON.stringify({
-        code: type.code,
-        slug: type.slug,
-        name: type.name,
-        description: type.description,
-        imageUrl: type.imageUrl ?? "",
-        category: type.category,
-        enabled: !type.enabled,
-        workflow: type.workflow,
-        priceFromInCents: type.priceFromInCents,
-        fixedPriceInCents: type.fixedPriceInCents,
-        estimatedMinutes: type.estimatedMinutes,
-        warrantyDays: type.warrantyDays,
-        requiresDiagnosis: type.requiresDiagnosis,
-        requiresApproval: type.requiresApproval,
-        compatibility: type.compatibility ?? [],
-        requirements: type.requirements ?? [],
-      }),
+      credentials: "same-origin",
+      body: JSON.stringify({ enabled: !active }),
     });
-    if (!response.ok) setError("No se pudo actualizar el servicio.");
-    else await load();
+    if (!response.ok) {
+      const data = await json<{ error?: string }>(response);
+      setError(safeFormError(response.status, data.error ?? "No se pudo actualizar el servicio."));
+      return;
+    }
+    await load();
+    setNotice(active ? "Servicio desactivado correctamente." : "Servicio activado correctamente.");
   }
   if (!admin)
     return (
@@ -1260,7 +1251,7 @@ function ServiceTypeTable({
             <td>{item.fixedPriceInCents !== undefined ? money(item.fixedPriceInCents) : item.priceFromInCents !== undefined ? `Desde ${money(item.priceFromInCents)}` : "Por definir"}{item.estimatedMinutes !== undefined ? ` · ${item.estimatedMinutes} min` : ""}</td>
             <td>
               <span className={`status ${item.enabled ? "success" : "muted-status"}`}>
-                {item.enabled ? "Publicado" : "Oculto"}
+                {item.enabled ? "Activo" : "Inactivo"}
               </span>
             </td>
             <td className="align-right">
