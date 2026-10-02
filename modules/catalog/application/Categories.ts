@@ -111,6 +111,13 @@ export class AdminCategories {
     await this.audit.audit(input.actor.id, "ADMIN_CATEGORY_DEACTIVATED", "category", input.id, {});
   }
 
+  async delete(input: { actor: CategoryActor; id: string }): Promise<void> {
+    this.authorize(input.actor, CATEGORY_WRITE_PERMISSION);
+    const changed = await this.repository.delete(input.id);
+    if (!changed) throw new Error("CATEGORY_NOT_FOUND");
+    await this.audit.audit(input.actor.id, "ADMIN_CATEGORY_DELETED", "category", input.id, {});
+  }
+
   private authorize(actor: CategoryActor, permission: Permission): void {
     if (!actor.permissions.includes(permission)) throw new Error("FORBIDDEN");
   }
