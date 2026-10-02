@@ -25,3 +25,15 @@ export async function disableAdminServiceType(code: string) {
   const { env } = getCloudflareContext();
   return adminServiceTypesApplication(env).disable(code, admin.id);
 }
+
+export async function enableAdminServiceType(code: string) {
+  const { admin } = await requireAdmin(PERMISSIONS.serviceTypesWrite);
+  const { env } = getCloudflareContext();
+  return adminServiceTypesApplication(env).enable(code, admin.id);
+}
+
+export async function deleteAdminServiceType(code: string) {
+  const { admin } = await requireAdmin(PERMISSIONS.serviceTypesWrite);
+  const { env } = getCloudflareContext();
+  return adminServiceTypesApplication(env).delete(code, admin.id);
+}
