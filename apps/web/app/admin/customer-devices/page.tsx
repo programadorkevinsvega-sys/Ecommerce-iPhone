@@ -186,6 +186,7 @@ export default function AdminCustomerDevicesPage() {
         method: archived ? "DELETE" : "POST",
         credentials: "same-origin",
         cache: "no-store",
+        ...(archived ? {} : { headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "restore" }) }),
       });
       if (!response.ok) {
         const data = (await response.json()) as { error?: string };
