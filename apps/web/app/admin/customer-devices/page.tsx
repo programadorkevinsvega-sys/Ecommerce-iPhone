@@ -176,25 +176,26 @@ export default function AdminCustomerDevicesPage() {
     }
   }
 
-  async function archive(id: string) {
+  async function setArchived(id: string, archived: boolean) {
+
     setBusy(true);
     setError("");
     setNotice("");
     try {
       const response = await fetch(`/api/admin/customer-devices/${encodeURIComponent(id)}`, {
-        method: "DELETE",
+        method: archived ? "DELETE" : "POST",
         credentials: "same-origin",
         cache: "no-store",
       });
       if (!response.ok) {
         const data = (await response.json()) as { error?: string };
-        setError(data.error ?? "No se pudo archivar el dispositivo.");
+        setError(data.error ?? (archived ? "No se pudo archivar el dispositivo." : "No se pudo restaurar el dispositivo."));
         return;
       }
-      setNotice("Dispositivo archivado.");
+      setNotice(archived ? "Dispositivo archivado." : "Dispositivo restaurado.");
       await load();
     } catch {
-      setError("No se pudo archivar el dispositivo.");
+      setError(archived ? "No se pudo archivar el dispositivo." : "No se pudo restaurar el dispositivo.");
     } finally {
       setBusy(false);
     }
@@ -353,8 +354,11 @@ export default function AdminCustomerDevicesPage() {
                         <button className="table-action" type="button" onClick={() => edit(device)} disabled={Boolean(device.archivedAt)}>
                           Editar
                         </button>
-                        <button className="table-action danger" type="button" onClick={() => void archive(device.id)} disabled={Boolean(device.archivedAt)}>
-                          Archivar
+                        <button className="table-action danger" type="button" onClick={() => {
+                            if (!window.confirm(device.archivedAt ? "¿Restaurar este dispositivo?" : "¿Archivar este dispositivo?")) return;
+                            void setArchived(device.id, !device.archivedAt);
+                          }} disabled={busy}>
+                          {device.archivedAt ? "Restaurar" : "Archivar"}
                         </button>
                       </td>
                     </tr>
