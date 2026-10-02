@@ -39,6 +39,10 @@ class MemoryCategoryRepository implements CategoryRepository {
     category.deactivate();
     return true;
   }
+
+  async delete(id: string) {
+    return this.items.delete(id);
+  }
 }
 
 const actor = { id: "admin-1", email: "admin@example.com", role: "ADMIN" as const, permissions: ROLE_PERMISSIONS.ADMIN };
@@ -83,6 +87,17 @@ describe("AdminCategories", () => {
     await admin.deactivate({ actor, id: category.id });
     expect(await publicCategories.list()).toEqual([]);
     expect((await admin.list({ actor })).at(0)?.active).toBe(false);
+  });
+
+  it("reactivates an inactive category and deletes it", async () => {
+    const repo = new MemoryCategoryRepository();
+    const admin = new AdminCategories(repo, audit());
+    const category = await admin.create({ actor, body: { name: "Smartphones", slug: "smartphones" } });
+    await admin.deactivate({ actor, id: category.id });
+    await admin.activate({ actor, id: category.id });
+    expect((await admin.list({ actor })).at(0)?.active).toBe(true);
+    await admin.delete({ actor, id: category.id });
+    expect(await repo.findById(category.id)).toBeNull();
   });
 
   it("returns 403 for admins without write permission", async () => {
