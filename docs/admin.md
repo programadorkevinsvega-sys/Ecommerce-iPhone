@@ -194,3 +194,13 @@ notifications:replay
 
 La capacidad está reservada por defecto a SUPER_ADMIN y ADMIN porque permite reenviar mensajes terminales del DLQ mediante el pipeline real. La consulta del monitor de notificaciones continúa bajo dashboard:read.
 
+
+
+## Catálogo — acciones administrativas 2026-10-02
+
+- Productos, categorías y servicios ofrecidos muestran la acción de estado según el valor persistido: **Desactivar** cuando están activos y **Activar** cuando están inactivos.
+- Las tres superficies incluyen **Editar**, cambio de estado y **Eliminar**.
+- La eliminación de productos está protegida contra referencias de carritos, reservas, pedidos o reseñas; si existe historial comercial, la API responde conflicto y se conserva el registro.
+- La eliminación de servicios ofrecidos está protegida contra solicitudes históricas que usen ese código; en ese caso se conserva el servicio y se debe utilizar Desactivar.
+- La eliminación de categorías elimina la entidad y sus relaciones dependientes mediante las restricciones ON DELETE CASCADE.
+- Activar/desactivar y eliminar requieren los permisos administrativos de escritura correspondientes y registran auditoría.
