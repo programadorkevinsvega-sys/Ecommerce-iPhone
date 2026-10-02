@@ -6,5 +6,6 @@ export interface ServiceTypeRepository {
   listAll(): Promise<ServiceTypeDefinition[]>;
   save(type: ServiceTypeDefinition): Promise<void>;
   disable(code: string): Promise<boolean>;
+  enable(code: string): Promise<boolean>;
   delete(code: string): Promise<boolean>;
 }
