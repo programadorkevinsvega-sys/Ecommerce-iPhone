@@ -7,6 +7,7 @@ function bodyError(error: unknown) {
   if (code === "FORBIDDEN") return { status: 403, error: "Forbidden" };
   if (code === "SERVICE_TYPE_NOT_FOUND") return { status: 404, error: "Service type not found" };
   if (code === "SERVICE_TYPE_NOT_FOUND_OR_DISABLED") return { status: 404, error: "Service type not found or already disabled" };
+  if (code === "SERVICE_TYPE_IN_USE") return { status: 409, error: "Service type cannot be deleted because it has service request history" };
   return { status: 400, error: "Invalid service type" };
 }
 
