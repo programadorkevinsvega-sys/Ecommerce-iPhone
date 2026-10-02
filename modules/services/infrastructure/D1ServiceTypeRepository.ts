@@ -28,6 +28,16 @@ export class D1ServiceTypeRepository implements ServiceTypeRepository {
     await this.db.batch(statements);
   }
 
+  async enable(code: string): Promise<boolean> {
+    const result = await this.db.prepare("UPDATE service_types SET enabled=1, updated_at=CURRENT_TIMESTAMP WHERE code=? AND enabled=0").bind(code).run();
+    return result.meta.changes === 1;
+  }
+
+  async delete(code: string): Promise<boolean> {
+    const result = await this.db.prepare("DELETE FROM service_types WHERE code=?").bind(code).run();
+    return result.meta.changes === 1;
+  }
+
   async disable(code: string): Promise<boolean> {
     const result = await this.db.prepare("UPDATE service_types SET enabled=0, updated_at=CURRENT_TIMESTAMP WHERE code=? AND enabled=1").bind(code).run();
     return result.meta.changes === 1;
