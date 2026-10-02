@@ -211,6 +211,7 @@ export class AdminServiceTypes {
     return { code: serviceCode, enabled: false };
   }
   async delete(code: string, adminUserId: string) {
+
     const adminId = adminUserId.trim();
     const serviceCode = code.trim().toUpperCase();
     if (!adminId) throw new Error("ADMIN_ID_REQUIRED");
