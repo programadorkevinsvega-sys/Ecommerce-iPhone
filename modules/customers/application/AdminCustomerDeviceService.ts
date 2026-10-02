@@ -26,6 +26,14 @@ export class AdminCustomerDeviceService {
     return updated;
   }
 
+  async restore(id: string): Promise<boolean> {
+    const current = await this.repository.find(id);
+    if (!current) return false;
+    const restored = await this.repository.restore(id);
+    if (restored) await this.repository.recordEvent(current.getCustomerId(), id, "RESTORED", { source: "ADMIN" });
+    return restored;
+  }
+
   async archive(id: string): Promise<boolean> {
     const current = await this.repository.find(id);
     if (!current) return false;
