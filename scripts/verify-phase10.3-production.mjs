@@ -72,13 +72,21 @@ const eventIds = [productEventId, searchEventId];
 let completed = false;
 
 try {
-  const productResponse = await request("/iphone/iphone-17-pro-max", {
+  const preferredProductRows = await d1(
+    "SELECT id,slug,stock FROM products WHERE slug='iphone-17-pro-max' AND active=1 LIMIT 1",
+  );
+  const productRows = preferredProductRows.length > 0
+    ? preferredProductRows
+    : await d1("SELECT id,slug,stock FROM products WHERE active=1 ORDER BY updated_at DESC LIMIT 1");
+  assert(productRows.length === 1, "no active production product available for real catalog verification");
+  const verificationSlug = productRows[0].slug;
+  const productResponse = await request(`/iphone/${encodeURIComponent(verificationSlug)}`, {
     headers: { "x-request-id": requestId },
   });
   const productHtml = await productResponse.text();
   assert(productResponse.status === 200, `catalog product route: expected HTTP 200, got ${productResponse.status}`);
   const product = extractProduct(productHtml);
-  console.log("PASS real product route: /iphone/iphone-17-pro-max HTTP 200");
+  console.log(`PASS real product route: /iphone/${verificationSlug} HTTP 200${preferredProductRows.length === 0 ? " (fallback because iphone-17-pro-max is inactive)" : ""}`);
 
   const searchResponse = await request(`/catalog?q=${encodeURIComponent("phase10-3-verification")}`);
   assert(searchResponse.status === 200, `catalog search route: expected HTTP 200, got ${searchResponse.status}`);
