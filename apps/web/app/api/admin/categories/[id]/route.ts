@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { deactivateAdminCategory, getAdminCategory, updateAdminCategory } from "../../../../../lib/api/adminCategories";
+import { activateAdminCategory, deactivateAdminCategory, deleteAdminCategory, getAdminCategory, updateAdminCategory } from "../../../../../lib/api/adminCategories";
 import { normalizeIdentifier } from "../../../../../lib/inputValidation";
 
 type Params = { params: Promise<{ id: string }> };
@@ -53,10 +53,29 @@ export async function PUT(request: Request, context: Params): Promise<Response> 
   return PATCH(request, context);
 }
 
-export async function DELETE(_request: Request, { params }: Params): Promise<Response> {
+export async function POST(request: Request, { params }: Params): Promise<Response> {
   try {
-    await deactivateAdminCategory(await idFrom(params));
-    return noStore(NextResponse.json({ deactivated: true }));
+    const body = await request.json().catch(() => ({}));
+    if (body && typeof body === "object" && !Array.isArray(body) && body.action === "activate") {
+      await activateAdminCategory(await idFrom(params));
+      return noStore(NextResponse.json({ activated: true }));
+    }
+    return noStore(NextResponse.json({ error: "Invalid category action" }, { status: 400 }));
+  } catch (error) {
+    return errorResponse(error);
+  }
+}
+
+export async function DELETE(request: Request, { params }: Params): Promise<Response> {
+  try {
+    const id = await idFrom(params);
+    const body = await request.json().catch(() => ({}));
+    if (body && typeof body === "object" && !Array.isArray(body) && body.action === "deactivate") {
+      await deactivateAdminCategory(id);
+      return noStore(NextResponse.json({ deactivated: true }));
+    }
+    await deleteAdminCategory(id);
+    return noStore(NextResponse.json({ deleted: true }));
   } catch (error) {
     return errorResponse(error);
   }
