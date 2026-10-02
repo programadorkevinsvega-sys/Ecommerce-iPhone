@@ -210,4 +210,15 @@ export class AdminServiceTypes {
     await this.audit.audit(adminId, "ADMIN_SERVICE_TYPE_DISABLED", "service_type", serviceCode, { enabled: false });
     return { code: serviceCode, enabled: false };
   }
+  async delete(code: string, adminUserId: string) {
+    const adminId = adminUserId.trim();
+    const serviceCode = code.trim().toUpperCase();
+    if (!adminId) throw new Error("ADMIN_ID_REQUIRED");
+    if (!serviceCode) throw new Error("SERVICE_TYPE_CODE_REQUIRED");
+    const changed = await this.repository.delete(serviceCode);
+    if (!changed) throw new Error("SERVICE_TYPE_NOT_FOUND");
+    await this.audit.audit(adminId, "ADMIN_SERVICE_TYPE_DELETED", "service_type", serviceCode, {});
+    return { code: serviceCode, deleted: true };
+  }
+
 }
