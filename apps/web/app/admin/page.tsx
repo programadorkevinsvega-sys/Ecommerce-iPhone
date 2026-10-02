@@ -519,15 +519,52 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
     }
     setCategoryBusy(false);
   }
-  async function deactivateCategory(id: string) {
-    if (!window.confirm("¿Desactivar esta categoría?")) return;
+  async function setCategoryActive(id: string, active: boolean) {
+    const action = active ? "activate" : "deactivate";
+    if (!window.confirm(active ? "¿Activar esta categoría?" : "¿Desactivar esta categoría?")) return;
     setCategoryBusy(true);
-    await fetch(`/api/admin/categories/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-      cache: "no-store",
-    });
-    await load();
-    setCategoryBusy(false);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/categories/${encodeURIComponent(id)}`, {
+        method: active ? "POST" : "DELETE",
+        cache: "no-store",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (!response.ok) {
+        const data = await json<{ error?: string }>(response);
+        throw new Error(data.error ?? "No se pudo actualizar la categoría.");
+      }
+      await load();
+      setNotice(active ? "Categoría activada correctamente." : "Categoría desactivada correctamente.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudo actualizar la categoría.");
+    } finally {
+      setCategoryBusy(false);
+    }
+  }
+  async function deleteCategory(id: string) {
+    if (!window.confirm("¿Eliminar definitivamente esta categoría? Esta acción no se puede deshacer.")) return;
+    setCategoryBusy(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/admin/categories/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        const data = await json<{ error?: string }>(response);
+        throw new Error(data.error ?? "No se pudo eliminar la categoría.");
+      }
+      await load();
+      setNotice("Categoría eliminada correctamente.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudo eliminar la categoría.");
+    } finally {
+      setCategoryBusy(false);
+    }
   }
   async function serviceActionRequest(
     id: string,
@@ -852,20 +889,42 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
                   setCategoryForm({ id: category.id, name: category.name, slug: category.slug, imageUrl: category.imageUrl ?? "", imageFile: null })
                 }
                 onView={setCategoryPreview}
-                onDeactivate={(id) => void deactivateCategory(id)}
+                onToggle={(id, active) => void setCategoryActive(id, active)}
+                onDelete={(id) => void deleteCategory(id)}
               />
             ) : resource === "products" ? (
               <ProductTable
                 loading={resourceLoading}
                 items={items}
                 onEdit={(item) => void openProduct(item)}
-                onDeactivate={(item) =>
+                onToggle={(item) => {
+                  const active = item.active === 1 || item.active === true;
+                  if (!window.confirm(active ? "¿Desactivar este producto?" : "¿Activar este producto?")) return;
                   void mutate("/api/admin/resources", "PATCH", {
                     resource: "products",
                     id: String(item.id),
-                    active: false,
-                  })
-                }
+                    active: !active,
+                  });
+                }}
+                onDelete={(item) => {
+                  if (!window.confirm("¿Eliminar definitivamente este producto? Solo se permite si no tiene historial comercial o referencias activas.")) return;
+                  void (async () => {
+                    const response = await fetch("/api/admin/resources", {
+                      method: "DELETE",
+                      cache: "no-store",
+                      credentials: "same-origin",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ resource: "products", id: String(item.id) }),
+                    });
+                    if (!response.ok) {
+                      const data = await json<{ error?: string }>(response);
+                      setError(safeFormError(response.status, data.error ?? "No se pudo eliminar el producto."));
+                      return;
+                    }
+                    await load();
+                    setNotice("Producto eliminado correctamente.");
+                  })();
+                }}
               />
             ) : resource === "customers" ? (
               <CustomerTable
@@ -908,6 +967,23 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
                   })
                 }
                 onToggle={(type) => void toggleServiceType(type)}
+                onDelete={(type) => {
+                  if (!window.confirm("¿Eliminar definitivamente este servicio ofrecido? Esta acción no se puede deshacer.")) return;
+                  void (async () => {
+                    const response = await fetch(`/api/admin/service-types/${encodeURIComponent(type.code)}`, {
+                      method: "DELETE",
+                      cache: "no-store",
+                      credentials: "same-origin",
+                    });
+                    if (!response.ok) {
+                      const data = await json<{ error?: string }>(response);
+                      setError(safeFormError(response.status, data.error ?? "No se pudo eliminar el servicio."));
+                      return;
+                    }
+                    await load();
+                    setNotice("Servicio eliminado correctamente.");
+                  })();
+                }}
               />
             ) : resource === "home-carousel" ? (
               <HomeCarouselManager
@@ -1055,14 +1131,16 @@ function CategoryTable({
   categories,
   onEdit,
   onView,
-  onDeactivate,
+  onToggle,
+  onDelete,
   busy,
   loading,
 }: {
   categories: Category[];
   onEdit: (category: Category) => void;
   onView: (category: Category) => void;
-  onDeactivate: (id: string) => void;
+  onToggle: (id: string, active: boolean) => void;
+  onDelete: (id: string) => void;
   busy: boolean;
 
   loading: boolean;}) {
@@ -1097,11 +1175,19 @@ function CategoryTable({
               </button>
               <button
                 className="table-action danger"
-                disabled={busy || !category.active}
+                disabled={busy}
                 type="button"
-                onClick={() => onDeactivate(category.id)}
+                onClick={() => onToggle(category.id, !category.active)}
               >
-                Desactivar
+                {category.active ? "Desactivar" : "Activar"}
+              </button>
+              <button
+                className="table-action danger"
+                disabled={busy}
+                type="button"
+                onClick={() => onDelete(category.id)}
+              >
+                Eliminar
               </button>
             </td>
           </tr>
@@ -1139,11 +1225,13 @@ function ServiceTypeTable({
   items,
   onEdit,
   onToggle,
+  onDelete,
   loading,
 }: {
   items: ServiceType[];
   onEdit: (item: ServiceType) => void;
   onToggle: (item: ServiceType) => void;
+  onDelete: (item: ServiceType) => void;
 
   loading: boolean;}) {
   return (
@@ -1180,7 +1268,10 @@ function ServiceTypeTable({
                 Editar
               </button>
               <button className="table-action danger" type="button" onClick={() => onToggle(item)}>
-                {item.enabled ? "Ocultar" : "Publicar"}
+                {item.enabled ? "Desactivar" : "Activar"}
+              </button>
+              <button className="table-action danger" type="button" onClick={() => onDelete(item)}>
+                Eliminar
               </button>
             </td>
           </tr>
@@ -1192,12 +1283,14 @@ function ServiceTypeTable({
 function ProductTable({
   items,
   onEdit,
-  onDeactivate,
+  onToggle,
+  onDelete,
   loading,
 }: {
   items: Item[];
   onEdit: (item: Item) => void;
-  onDeactivate: (item: Item) => void;
+  onToggle: (item: Item) => void;
+  onDelete: (item: Item) => void;
 
   loading: boolean;}) {
   return (
@@ -1246,9 +1339,16 @@ function ProductTable({
               <button
                 className="table-action danger"
                 type="button"
-                onClick={() => onDeactivate(item)}
+                onClick={() => onToggle(item)}
               >
-                Desactivar
+                {item.active === 1 || item.active === true ? "Desactivar" : "Activar"}
+              </button>
+              <button
+                className="table-action danger"
+                type="button"
+                onClick={() => onDelete(item)}
+              >
+                Eliminar
               </button>
             </td>
           </tr>
