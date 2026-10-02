@@ -11,6 +11,8 @@ function repository(initial?: ReturnType<ServiceTypeDefinition["toPrimitives"]>)
     listAll: vi.fn(async () => current ? [current] : []),
     save: vi.fn(async (value: ServiceTypeDefinition) => { current = value; }),
     disable: vi.fn(async (code: string) => { if (!current || current.toPrimitives().code !== code || !current.toPrimitives().enabled) return false; current = ServiceTypeDefinition.create({ ...current.toPrimitives(), enabled: false }); return true; }),
+    enable: vi.fn(async (code: string) => { if (!current || current.toPrimitives().code !== code || current.toPrimitives().enabled) return false; current = ServiceTypeDefinition.create({ ...current.toPrimitives(), enabled: true }); return true; }),
+    delete: vi.fn(async (code: string) => { if (!current || current.toPrimitives().code !== code) return false; current = null; return true; }),
   };
 }
 
@@ -65,6 +67,18 @@ describe("AdminServiceTypes", () => {
     await expect(service.disable("SCREEN_REPAIR", "admin-1")).resolves.toEqual({ code: "SCREEN_REPAIR", enabled: false });
     expect(repositoryMock.disable).toHaveBeenCalledWith("SCREEN_REPAIR");
     expect(audit.audit).toHaveBeenCalledWith("admin-1", "ADMIN_SERVICE_TYPE_DISABLED", "service_type", "SCREEN_REPAIR", { enabled: false });
+  });
+
+  it("activates and deletes a service type", async () => {
+    const repositoryMock = repository();
+    const audit = { audit: vi.fn().mockResolvedValue(undefined) };
+    const service = new AdminServiceTypes(repositoryMock, audit);
+    await service.create(validInput(), "admin-1");
+    await service.disable("SCREEN_REPAIR", "admin-1");
+    await expect(service.enable("SCREEN_REPAIR", "admin-1")).resolves.toEqual({ code: "SCREEN_REPAIR", enabled: true });
+    await expect(service.delete("SCREEN_REPAIR", "admin-1")).resolves.toEqual({ code: "SCREEN_REPAIR", deleted: true });
+    expect(repositoryMock.delete).toHaveBeenCalledWith("SCREEN_REPAIR");
+    expect(audit.audit).toHaveBeenCalledWith("admin-1", "ADMIN_SERVICE_TYPE_DELETED", "service_type", "SCREEN_REPAIR", {});
   });
 
   it("rejects an invalid price range", async () => {
