@@ -189,6 +189,17 @@ export class AdminServiceTypes {
     return primitives;
   }
 
+  async enable(code: string, adminUserId: string) {
+    const adminId = adminUserId.trim();
+    const serviceCode = code.trim().toUpperCase();
+    if (!adminId) throw new Error("ADMIN_ID_REQUIRED");
+    if (!serviceCode) throw new Error("SERVICE_TYPE_CODE_REQUIRED");
+    const changed = await this.repository.enable(serviceCode);
+    if (!changed) throw new Error("SERVICE_TYPE_NOT_FOUND");
+    await this.audit.audit(adminId, "ADMIN_SERVICE_TYPE_ENABLED", "service_type", serviceCode, { enabled: true });
+    return { code: serviceCode, enabled: true };
+  }
+
   async disable(code: string, adminUserId: string) {
     const adminId = adminUserId.trim();
     const serviceCode = code.trim().toUpperCase();
