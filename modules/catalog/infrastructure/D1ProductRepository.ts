@@ -3,11 +3,20 @@ import type { ProductSearch, ProductSearchRepository, ProductSearchResult } from
 import type { ProductRepository } from "../application/ProductRepository";
 import { Product, type ProductCondition } from "../domain/Product";
 import { ProductId } from "../domain/ProductId";
-import { isTrustedExternalImageUrl, toProductImageProxyUrl } from "../domain/ProductImageUrl";
+import { isTrustedExternalImageUrl, normalizeProductImageUrl, toProductImageProxyUrl } from "../domain/ProductImageUrl";
 
 type ProductRow = { id:string; name:string; slug:string; brand:string; model:string; description:string; condition:ProductCondition; price_in_cents:number; currency:string; stock:number; active:number; seo_title:string|null; seo_description:string|null; warranty_months:number; battery_health:number|null; storage_gb:number|null; color:string|null; specs_json:string; primary_image_url?:string|null };
-type ImageRow = { url:string; alt_text:string };\n\nconst normalizeImage = (url:string):string => isTrustedExternalImageUrl(url) ? toProductImageProxyUrl(url) : url;
-const hydrate = (row:ProductRow, images:readonly ImageRow[]=[]):Product => Product.create(ProductId.create(row.id), { name:row.name, slug:row.slug, brand:row.brand, model:row.model, description:row.description, condition:row.condition, priceInCents:row.price_in_cents, currency:row.currency, stock:row.stock, images:images.length?images.map((image)=>normalizeImage(image.url)):(row.primary_image_url?[normalizeImage(row.primary_image_url)]:[]), active:row.active===1, seoTitle:row.seo_title??undefined, seoDescription:row.seo_description??undefined, warrantyMonths:row.warranty_months, batteryHealth:row.battery_health??undefined, storageGb:row.storage_gb??undefined, color:row.color??undefined, specs:JSON.parse(row.specs_json||"{}") as Record<string,string> });
+type ImageRow = { url:string; alt_text:string };\n\nexport function normalizeInfrastructureImageUrl(url:string):string|undefined {
+  const normalized = url.trim();
+  if (!normalized) return undefined;
+  if (isTrustedExternalImageUrl(normalized)) return toProductImageProxyUrl(normalized);
+  try {
+    return normalizeProductImageUrl(normalized);
+  } catch {
+    return undefined;
+  }
+}
+const hydrate = (row:ProductRow, images:readonly ImageRow[]=[]):Product => Product.create(ProductId.create(row.id), { name:row.name, slug:row.slug, brand:row.brand, model:row.model, description:row.description, condition:row.condition, priceInCents:row.price_in_cents, currency:row.currency, stock:row.stock, images:images.length?images.map((image)=>normalizeInfrastructureImageUrl(image.url)).filter((url):url is string=>url!==undefined):(row.primary_image_url?[normalizeInfrastructureImageUrl(row.primary_image_url)].filter((url):url is string=>url!==undefined):[]), active:row.active===1, seoTitle:row.seo_title??undefined, seoDescription:row.seo_description??undefined, warrantyMonths:row.warranty_months, batteryHealth:row.battery_health??undefined, storageGb:row.storage_gb??undefined, color:row.color??undefined, specs:JSON.parse(row.specs_json||"{}") as Record<string,string> });
 
 export class D1ProductRepository implements ProductSearchRepository, ProductRepository {
   constructor(private readonly db:D1Database) {}
