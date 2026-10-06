@@ -6773,7 +6773,7 @@ snapshots:
   miniflare@5.20260911.0-alpha(@types/node@22.20.2):
     dependencies:
       '@cspotcode/source-map-support': 0.8.1
-      sharp: 0.35.4(@types/node@22.20.2)
+      sharp: 0.35.5(@types/node@22.20.2)
       undici: 7.29.0
       workerd: 1.20260911.1
       ws: 8.21.0
@@ -6838,7 +6838,7 @@ snapshots:
       '@next/swc-win32-arm64-msvc': 15.5.25
       '@next/swc-win32-x64-msvc': 15.5.25
       '@playwright/test': 1.63.0
-      sharp: 0.35.4(@types/node@22.20.2)
+      sharp: 0.35.5(@types/node@22.20.2)
     transitivePeerDependencies:
       - '@babel/core'
       - '@types/node'
