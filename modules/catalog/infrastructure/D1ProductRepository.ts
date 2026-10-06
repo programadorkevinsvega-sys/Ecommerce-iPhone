@@ -6,7 +6,9 @@ import { ProductId } from "../domain/ProductId";
 import { isTrustedExternalImageUrl, normalizeProductImageUrl, toProductImageProxyUrl } from "../domain/ProductImageUrl";
 
 type ProductRow = { id:string; name:string; slug:string; brand:string; model:string; description:string; condition:ProductCondition; price_in_cents:number; currency:string; stock:number; active:number; seo_title:string|null; seo_description:string|null; warranty_months:number; battery_health:number|null; storage_gb:number|null; color:string|null; specs_json:string; primary_image_url?:string|null };
-type ImageRow = { url:string; alt_text:string };\n\nexport function normalizeInfrastructureImageUrl(url:string):string|undefined {
+type ImageRow = { url:string; alt_text:string };
+
+export function normalizeInfrastructureImageUrl(url:string):string|undefined {
   const normalized = url.trim();
   if (!normalized) return undefined;
   if (isTrustedExternalImageUrl(normalized)) return toProductImageProxyUrl(normalized);
