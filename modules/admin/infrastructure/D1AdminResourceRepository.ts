@@ -7,7 +7,7 @@ import type {
   StatusTransitionValidator,
 } from "../application/AdminResourceRepository";
 import type { ResourceName } from "../application/AdminResources";
-import { mediaKeyFromUrl } from "../../media/application/MediaReference";
+import { mediaKeyFromUrl } from "../../shared-kernel/MediaReference";
 
 type Db = D1Database;
 const like = (query: string) => `%${query}%`;
