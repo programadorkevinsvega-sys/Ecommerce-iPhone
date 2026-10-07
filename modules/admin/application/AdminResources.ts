@@ -245,7 +245,7 @@ export class AdminResources {
     id: string,
     body: Record<string, unknown>,
   ): Promise<void> {
-    const allowed = [
+    const allowed = new Set([
       "name",
       "slug",
       "brand",
@@ -262,7 +262,7 @@ export class AdminResources {
       "storage_gb",
       "color",
       "specs_json",
-    ];
+    ]);
     const images = body.images === undefined ? undefined : parseProductImages(body.images);
     const fields = Object.keys(body).filter((key) => allowed.has(key));
     if (!fields.length) throw new Error("NO_EDITABLE_FIELDS");
