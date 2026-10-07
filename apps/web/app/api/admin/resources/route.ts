@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireAdmin } from "../../../../lib/adminAuth";
 import { adminResources } from "../../../../lib/adminResources";
 import { normalizeIdentifier, normalizeSearchQuery } from "../../../../lib/inputValidation";
@@ -62,6 +63,9 @@ export async function POST(request: Request): Promise<Response> {
     const { admin } = await requireAdmin();
     const { service } = adminResources();
     const result = await service.create({ actor: admin, resource, body });
+    if (resource === "products" && typeof result.slug === "string") {
+      revalidatePath(`/iphone/${result.slug}`);
+    }
     return NextResponse.json(
       { created: Boolean(result.id), ...result },
       { status: result.id ? 201 : 200 },
@@ -80,6 +84,9 @@ export async function PATCH(request: Request): Promise<Response> {
     const { admin } = await requireAdmin();
     const { service } = adminResources();
     await service.update({ actor: admin, resource, id, body });
+    if (resource === "products" && typeof body.slug === "string") {
+      revalidatePath(`/iphone/${body.slug}`);
+    }
     return NextResponse.json({ updated: true });
   } catch (error) {
     return errorResponse(error);
