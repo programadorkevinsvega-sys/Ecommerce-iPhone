@@ -5,8 +5,8 @@ import type { ReactNode } from "react";
 import NotificationBell from "./NotificationBell";
 
 type StoreNavigationProps = {
-  activeHref?: string | undefined;
-  children?: ReactNode | undefined;
+  activeHref?: string;
+  children?: ReactNode;
 };
 
 type StoreHeaderProps = StoreNavigationProps;
