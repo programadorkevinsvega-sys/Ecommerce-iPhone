@@ -12,6 +12,7 @@ import { revenueAnalyticsApp } from "./lib/analyticsApplication";
 import type { AnalyticsEvent } from "../../modules/analytics/domain/AnalyticsEvent";
 import { NotificationTerminalError } from "../../modules/notifications/application/NotificationProcessingError";
 import type { NotificationEvent, NotificationInboxItem } from "../../modules/notifications/domain/NotificationEvent";
+import { mediaKeyFromUrl } from "../../modules/media/application/MediaReference";
 
 export class NotificationHub extends DurableObject {
   async fetch(request: Request): Promise<Response> {
@@ -203,6 +204,31 @@ async function processAnalyticsMessage(message: Message<string>, env: Env): Prom
   message.ack();
 }
 
+async function processMediaCleanup(env: Env): Promise<void> {
+  const rows = await env.DB.prepare(
+    "SELECT object_key,attempts FROM media_cleanup_queue WHERE available_at<=CURRENT_TIMESTAMP ORDER BY created_at ASC LIMIT 100",
+  ).all<{ object_key:string; attempts:number }>();
+  for (const row of rows.results) {
+    const key = row.object_key;
+    const url = "/api/media/" + key;
+    const referenced = await env.DB.prepare(
+      "SELECT CASE WHEN EXISTS (SELECT 1 FROM product_images WHERE url=?) OR EXISTS (SELECT 1 FROM categories WHERE image_url=?) OR EXISTS (SELECT 1 FROM service_types WHERE image_url=?) OR EXISTS (SELECT 1 FROM cms_blog_posts WHERE cover_image_url=?) OR EXISTS (SELECT 1 FROM marketing_banners WHERE image_url=?) OR EXISTS (SELECT 1 FROM seo_route_overrides WHERE og_image_url=?) OR EXISTS (SELECT 1 FROM cms_pages WHERE content LIKE ?) OR EXISTS (SELECT 1 FROM cms_landing_pages WHERE content LIKE ?) THEN 1 ELSE 0 END AS referenced",
+    ).bind(url,url,url,url,url,url,"%"+url+"%","%"+url+"%").first<{referenced:number}>();
+    if (Number(referenced?.referenced ?? 0) === 1) {
+      await env.DB.prepare("DELETE FROM media_cleanup_queue WHERE object_key=?").bind(key).run();
+      continue;
+    }
+    try {
+      await env.MEDIA_BUCKET.delete(key);
+      await env.DB.prepare("DELETE FROM media_cleanup_queue WHERE object_key=?").bind(key).run();
+    } catch (error) {
+      const attempts = Number(row.attempts) + 1;
+      const delaySeconds = Math.min(3600, 2 ** Math.min(attempts, 10));
+      await env.DB.prepare("UPDATE media_cleanup_queue SET attempts=?,available_at=datetime('now', '+' || ? || ' seconds'),last_error=?,updated_at=CURRENT_TIMESTAMP WHERE object_key=?").bind(attempts,delaySeconds,error instanceof Error ? error.message : String(error),key).run();
+    }
+  }
+}
+
 async function recordAbandonedCarts(env: Env): Promise<void> {
   const rows = await env.DB.prepare(
     "SELECT c.id,c.updated_at,COUNT(ci.product_id) AS item_count FROM carts c INNER JOIN cart_items ci ON ci.cart_id=c.id WHERE c.updated_at<=datetime('now','-30 minutes') GROUP BY c.id,c.updated_at LIMIT 200",
@@ -338,6 +364,7 @@ const worker = {
 
   async scheduled(_event: ScheduledEvent, env: Env) {
     const now = new Date().toISOString();
+    await processMediaCleanup(env);
     await analyticsPersistence(env.DB).purgeExpired(500);
     await revenueAnalyticsApp(env).reconcile(500);
     await recordAbandonedCarts(env);
