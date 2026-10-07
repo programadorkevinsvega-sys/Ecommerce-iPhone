@@ -2203,6 +2203,122 @@ function ServiceTypeModal({
 function ServiceActionModal({
   actionValue,
   onClose,
+  onSubmit,
+}: {
+  actionValue: string;
+  onClose: () => void;
+  onSubmit: (id: string, action: string, body?: Record<string, unknown>) => void;
+}) {
+  const parts = actionValue.split(":");
+  const id = parts[0] ?? "";
+  const action = parts[1] ?? "";
+  const status = parts.slice(2).join(":");
+  const [amount, setAmount] = useState("");
+  const [notes, setNotes] = useState("");
+  const transition = action === "transition";
+  const quote = action === "quote";
+  return (
+    <Modal
+      title={transition ? "Actualizar servicio" : quote ? "Cotizar servicio" : "Acción de servicio"}
+      onClose={onClose}
+    >
+      <form
+        className="admin-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (transition) onSubmit(id, "transition", { status });
+          else if (quote) onSubmit(id, "quote", { amountInCents: Number(amount) });
+          else onSubmit(id, action, { notes });
+        }}
+      >
+        <label>
+          {transition
+            ? "Estado nuevo"
+            : quote
+              ? "Valor de cotización en COP"
+              : "Notas de finalización"}
+          {transition ? (
+            <input value={status.replaceAll("_", " ")} readOnly />
+          ) : quote ? (
+            <input
+              required
+              min="0"
+              type="number"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          ) : (
+            <textarea required rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          )}
+        </label>
+        <div className="modal-actions">
+          <button className="admin-button" type="button" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="admin-button primary" type="submit">
+            Aplicar
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function HomeCarouselManager({
+  slides,
+  onEdit,
+  onView,
+  onToggle,
+  loading,
+}: {
+  slides: HomeSlide[];
+  onEdit: (slide: HomeSlideForm) => void;
+  onView: (slide: HomeSlide) => void;
+  onToggle: (id: string) => void;
+
+  loading: boolean;}) {
+  return (
+    <TableFrame empty={!slides.length} loading={loading} label="Cargando promociones…">
+      <table className="admin-table">
+        <thead>
+          <tr>
+            <th>Promoción</th>
+            <th>Enlace</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {slides.map((slide) => (
+            <tr key={slide.id}>
+              <td>
+                <strong>{slide.title}</strong>
+                <span className="table-subtext">{slide.eyebrow}</span>
+              </td>
+              <td>{slide.href}</td>
+              <td>
+                <span className={`status ${slide.active ? "success" : "muted-status"}`}>
+                  {slide.active ? "Publicado" : "Oculto"}
+                </span>
+              </td>
+              <td>
+                <button className="table-action" type="button" onClick={() => onView(slide)}>
+                  Ver
+                </button>
+                <button className="table-action" type="button" onClick={() => onEdit(slide)}>
+                  Editar
+                </button>
+                <button className="table-action" type="button" onClick={() => onToggle(slide.id)}>
+                  {slide.active ? "Ocultar" : "Publicar"}
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </TableFrame>
+  );
+}
 
 function HomeSlidePreviewModal({ slide, onClose }: { slide: HomeSlide; onClose: () => void }) {
   return (
