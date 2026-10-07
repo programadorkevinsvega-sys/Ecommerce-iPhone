@@ -1,4 +1,4 @@
-import { isTrustedExternalImageUrl } from "../../../../../modules/catalog/domain/ProductImageUrl";
+import { isTrustedProductImageSource } from "../../../../../../modules/catalog/application/ProductImagePolicy";
 
 const MAX_REDIRECTS = 3;
 
@@ -16,7 +16,7 @@ async function fetchTrustedImage(initial: URL): Promise<Response | null> {
   let target = initial;
 
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
-    if (!isTrustedExternalImageUrl(target.toString())) return null;
+    if (!isTrustedProductImageSource(target.toString())) return null;
 
     const response = await fetch(target, { redirect: "manual" });
     if (response.status < 300 || response.status >= 400) return response;
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     return new Response("Not found", { status: 404 });
   }
 
-  if (!isTrustedExternalImageUrl(target.toString())) return new Response("Not found", { status: 404 });
+  if (!isTrustedProductImageSource(target.toString())) return new Response("Not found", { status: 404 });
 
   const response = await fetchTrustedImage(target);
   if (!response?.ok) return new Response("Not found", { status: 404 });
