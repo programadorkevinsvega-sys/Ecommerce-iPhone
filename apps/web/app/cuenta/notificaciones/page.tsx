@@ -1,10 +1,15 @@
-"use client";
-
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import NotificationInbox from "../../components/NotificationInbox";
 import { StoreNavigation } from "../../components/StoreHeader";
+import { currentCustomerId } from "../../../lib/customerSession";
 
-export default function CustomerNotificationsPage() {
+export default async function CustomerNotificationsPage() {
+  const customerId = await currentCustomerId();
+  if (!customerId) {
+    redirect("/cuenta/login?next=%2Fcuenta%2Fnotificaciones");
+  }
+
   return (
     <main className="account-page notification-account-page">
       <header className="account-topbar">
