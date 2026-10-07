@@ -1,7 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { ServiceTypeDefinition, type ServiceCategory, type ServiceTypeDefinitionProps } from "../domain/ServiceTypeDefinition";
 import type { ServiceTypeRepository } from "../application/ServiceTypeRepository";
-import { mediaKeyFromUrl } from "../../media/application/MediaReference";
+import { mediaKeyFromUrl } from "../../shared-kernel/MediaReference";
 
 export class D1ServiceTypeRepository implements ServiceTypeRepository {
   constructor(private readonly db: D1Database) {}
