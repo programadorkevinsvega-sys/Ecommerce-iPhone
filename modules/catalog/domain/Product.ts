@@ -24,6 +24,8 @@ export type ProductProps = Readonly<{
   seoDescription?: string | undefined;
 }>;
 
+const MAX_PRODUCT_IMAGES = 5;
+
 const PRODUCT_TEXT_LIMITS = {
   name: 180,
   slug: 180,
@@ -71,7 +73,7 @@ function validateSpecs(value: unknown): Readonly<Record<string, string>> {
 }
 
 function validateImages(value: unknown): readonly string[] {
-  if (!Array.isArray(value) || value.length > 50) throw new DomainError("Invalid product images");
+  if (!Array.isArray(value) || value.length > MAX_PRODUCT_IMAGES) throw new DomainError("Invalid product images");
   return value.map((image) => {
     const url = stringField(image, "image", PRODUCT_TEXT_LIMITS.imageUrl);
     try {
