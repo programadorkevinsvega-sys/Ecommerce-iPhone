@@ -63,8 +63,9 @@ export async function POST(request: Request): Promise<Response> {
     const { admin } = await requireAdmin();
     const { service } = adminResources();
     const result = await service.create({ actor: admin, resource, body });
-    if (resource === "products" && typeof result.slug === "string") {
-      revalidatePath(`/iphone/${result.slug}`);
+    if (resource === "products") {
+      const slug = typeof body.slug === "string" ? body.slug : undefined;
+      if (slug) revalidatePath(`/iphone/${slug}`);
     }
     return NextResponse.json(
       { created: Boolean(result.id), ...result },
