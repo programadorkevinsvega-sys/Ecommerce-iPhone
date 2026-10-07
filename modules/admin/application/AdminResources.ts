@@ -6,6 +6,7 @@ import {
   validateProductProps,
   type ProductCondition,
 } from "../../catalog/domain/Product";
+import { normalizeProductImageInput } from "../../catalog/application/ProductImagePolicy";
 
 export type AdminActor = { id: string; email: string; role: AdminRole; permissions: readonly Permission[] };
 export type ResourceName = "products" | "customers" | "services" | "orders";
@@ -80,11 +81,10 @@ function parseProductImages(value: unknown): string[] {
   if (value === undefined) return [];
   if (!Array.isArray(value) || value.length > MAX_PRODUCT_IMAGES)
     throw new Error("INVALID_PRODUCT_IMAGES");
-  const images = value.map((item) => clean(item, 2048));
-  if (
-    images.some((url) => !/^\/api\/media\/product-images\/[a-z0-9-]+\.(?:jpg|png|webp)$/i.test(url))
-  )
-    throw new Error("INVALID_PRODUCT_IMAGES");
+  const normalized = value.map((item) => normalizeProductImageInput(clean(item, 2048)));
+  if (normalized.some((url) => url === undefined)) throw new Error("INVALID_PRODUCT_IMAGES");
+  const images = normalized.filter((url): url is string => url !== undefined);
+  if (images.length !== value.length) throw new Error("INVALID_PRODUCT_IMAGES");
   return [...new Set(images)];
 }
 
@@ -245,7 +245,7 @@ export class AdminResources {
     id: string,
     body: Record<string, unknown>,
   ): Promise<void> {
-    const allowed = new Set([
+    const allowed = [
       "name",
       "slug",
       "brand",
