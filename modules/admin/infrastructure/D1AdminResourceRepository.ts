@@ -187,9 +187,6 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
           .bind(crypto.randomUUID(), productId, url, "Imagen del producto", index),
       ),
     );
-    statements.push(...imageUrls.map((url, index) =>
-      this.db.prepare("INSERT INTO product_images (id,product_id,url,alt_text,sort_order) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), productId, url, "Imagen del producto", index),
-    ));
     await this.db.batch(statements);
   }
 
