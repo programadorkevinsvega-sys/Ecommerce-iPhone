@@ -1,6 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { CmsPageInput,CmsRepository } from "../application/AdminCms";
-import { mediaKeysFromText } from "../../media/application/MediaReference";
+import { mediaKeysFromText } from "../../shared-kernel/MediaReference";
 
 export class D1CmsRepository implements CmsRepository{
  constructor(private readonly db:D1Database){}
