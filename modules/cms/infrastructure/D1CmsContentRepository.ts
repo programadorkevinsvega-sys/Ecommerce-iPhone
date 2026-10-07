@@ -1,11 +1,25 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { CmsContentRepository,CmsKind,CmsValue } from "../application/CmsContentPorts";
 import type { Banner,BlogCategory,BlogPost,Faq,FeaturedContent,LandingPage } from "../domain/Content";
+import { mediaKeyFromUrl } from "../../media/application/MediaReference";
 
 export class D1CmsContentRepository implements CmsContentRepository{
  constructor(private readonly db:D1Database){}
  async list(kind:CmsKind):Promise<readonly CmsValue[]>{return (await this.db.prepare(this.query(kind)).all()).results as unknown as readonly CmsValue[];}
- async save(kind:CmsKind,v:CmsValue):Promise<string>{const id=v.id||crypto.randomUUID();const r=await this.db.batch(this.statements(kind,{...v,id}));if(r[0]?.meta.changes!==1)throw new Error("CONTENT_NOT_SAVED");return id;}
+ async save(kind:CmsKind,v:CmsValue):Promise<string>{
+  const id=v.id||crypto.randomUUID();
+  const previous = kind==="BLOG_POST" ? await this.db.prepare("SELECT cover_image_url FROM cms_blog_posts WHERE id=?").bind(id).first<{cover_image_url:string|null}>()
+    : kind==="BANNER" ? await this.db.prepare("SELECT image_url FROM marketing_banners WHERE id=?").bind(id).first<{image_url:string|null}>()
+    : null;
+  const nextImage = kind==="BLOG_POST" ? (v as BlogPost).coverImageUrl : kind==="BANNER" ? (v as Banner).imageUrl : undefined;
+  const oldUrl = previous && ("cover_image_url" in previous ? previous.cover_image_url : previous.image_url);
+  const oldKey = oldUrl && oldUrl !== (nextImage ?? null) ? mediaKeyFromUrl(oldUrl) : undefined;
+  const statements=[...this.statements(kind,{...v,id})];
+  if(oldKey) statements.push(this.db.prepare("INSERT OR IGNORE INTO media_cleanup_queue (object_key) VALUES (?)").bind(oldKey));
+  const r=await this.db.batch(statements);
+  if(r[0]?.meta.changes!==1)throw new Error("CONTENT_NOT_SAVED");
+  return id;
+ }
  async setActive(kind:CmsKind,id:string,active:boolean){const map:Record<CmsKind,string>={BLOG_CATEGORY:"cms_blog_categories",BLOG_POST:"cms_blog_posts",FAQ:"cms_faqs",LANDING_PAGE:"cms_landing_pages",BANNER:"marketing_banners",FEATURED:"marketing_featured_content"};const r=await this.db.prepare(`UPDATE ${map[kind]} SET active=?,updated_at=CURRENT_TIMESTAMP WHERE id=?`).bind(active?1:0,id).run();return r.meta.changes===1;}
  private query(k:CmsKind){return ({BLOG_CATEGORY:"SELECT id,slug,name,description,active,created_at AS createdAt,updated_at AS updatedAt FROM cms_blog_categories ORDER BY name",BLOG_POST:"SELECT id,category_id AS categoryId,slug,title,excerpt,content,seo_title AS seoTitle,seo_description AS seoDescription,canonical_url AS canonicalUrl,cover_image_url AS coverImageUrl,status,published_at AS publishedAt,scheduled_at AS scheduledAt,author_admin_id AS authorAdminId,created_at AS createdAt,updated_at AS updatedAt FROM cms_blog_posts ORDER BY created_at DESC",FAQ:"SELECT id,question,answer,sort_order AS sortOrder,active,published_at AS publishedAt,created_at AS createdAt,updated_at AS updatedAt FROM cms_faqs ORDER BY sort_order,id",LANDING_PAGE:"SELECT id,slug,title,content,seo_title AS seoTitle,seo_description AS seoDescription,canonical_url AS canonicalUrl,status,scheduled_at AS scheduledAt,published_at AS publishedAt,created_at AS createdAt,updated_at AS updatedAt FROM cms_landing_pages ORDER BY created_at DESC",BANNER:"SELECT id,name,placement,image_url AS imageUrl,alt_text AS altText,href,starts_at AS startsAt,ends_at AS endsAt,priority,active,created_at AS createdAt,updated_at AS updatedAt FROM marketing_banners ORDER BY priority DESC,created_at DESC",FEATURED:"SELECT id,content_type AS contentType,content_id AS contentId,placement,starts_at AS startsAt,ends_at AS endsAt,priority,active,created_at AS createdAt,updated_at AS updatedAt FROM marketing_featured_content ORDER BY priority DESC,created_at DESC"})[k];}
  private statements(k:CmsKind,v:CmsValue):ReturnType<D1Database["prepare"]>[]{

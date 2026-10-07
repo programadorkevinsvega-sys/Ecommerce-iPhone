@@ -1,6 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { ServiceTypeDefinition, type ServiceCategory, type ServiceTypeDefinitionProps } from "../domain/ServiceTypeDefinition";
 import type { ServiceTypeRepository } from "../application/ServiceTypeRepository";
+import { mediaKeyFromUrl } from "../../media/application/MediaReference";
 
 export class D1ServiceTypeRepository implements ServiceTypeRepository {
   constructor(private readonly db: D1Database) {}
@@ -22,6 +23,8 @@ export class D1ServiceTypeRepository implements ServiceTypeRepository {
 
   async save(type: ServiceTypeDefinition): Promise<void> {
     const p = type.toPrimitives();
+    const previous = await this.db.prepare("SELECT image_url FROM service_types WHERE code=?").bind(p.code).first<{ image_url: string | null }>();
+    const oldKey = previous?.image_url && previous.image_url !== (p.imageUrl ?? null) ? mediaKeyFromUrl(previous.image_url) : undefined;
     const statements = [this.db.prepare(`INSERT INTO service_types (code,slug,name,description,image_url,category,workflow_json,enabled,metadata_json,sort_order,price_from_in_cents,fixed_price_in_cents,estimated_minutes,warranty_days,requires_diagnosis,requires_approval,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(code) DO UPDATE SET slug=excluded.slug,name=excluded.name,description=excluded.description,image_url=excluded.image_url,category=excluded.category,workflow_json=excluded.workflow_json,enabled=excluded.enabled,metadata_json=excluded.metadata_json,sort_order=excluded.sort_order,price_from_in_cents=excluded.price_from_in_cents,fixed_price_in_cents=excluded.fixed_price_in_cents,estimated_minutes=excluded.estimated_minutes,warranty_days=excluded.warranty_days,requires_diagnosis=excluded.requires_diagnosis,requires_approval=excluded.requires_approval,updated_at=excluded.updated_at`).bind(p.code,p.slug,p.name,p.description,p.imageUrl ?? null,p.category,JSON.stringify(p.workflow),p.enabled?1:0,JSON.stringify(p.metadata),0,p.priceFromInCents ?? null,p.fixedPriceInCents ?? null,p.estimatedMinutes ?? null,p.warrantyDays ?? null,p.requiresDiagnosis?1:0,p.requiresApproval?1:0,p.createdAt,p.updatedAt), this.db.prepare("DELETE FROM service_type_compatibility WHERE service_type_code=?").bind(p.code), this.db.prepare("DELETE FROM service_type_requirements WHERE service_type_code=?").bind(p.code)];
     for (const item of p.compatibility ?? []) statements.push(this.db.prepare("INSERT INTO service_type_compatibility (id,service_type_code,brand,model) VALUES (?,?,?,?)").bind(crypto.randomUUID(),p.code,item.brand,item.model ?? null));
     for (const [index, item] of (p.requirements ?? []).entries()) statements.push(this.db.prepare("INSERT INTO service_type_requirements (id,service_type_code,description,required,sort_order) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(),p.code,item.description,item.required?1:0,index));
@@ -38,8 +41,12 @@ export class D1ServiceTypeRepository implements ServiceTypeRepository {
     if (!exists) return false;
     const references = await this.db.prepare("SELECT 1 FROM service_requests WHERE service_type_code=? LIMIT 1").bind(code).first();
     if (references) throw new Error("SERVICE_TYPE_IN_USE");
+    const current = await this.db.prepare("SELECT image_url FROM service_types WHERE code=?").bind(code).first<{ image_url: string | null }>();
     const result = await this.db.prepare("DELETE FROM service_types WHERE code=?").bind(code).run();
-    return result.meta.changes === 1;
+    if (result.meta.changes !== 1) return false;
+    const key = mediaKeyFromUrl(current?.image_url);
+    if (key) await this.db.prepare("INSERT OR IGNORE INTO media_cleanup_queue (object_key) VALUES (?)").bind(key).run();
+    return true;
   }
 
   async disable(code: string): Promise<boolean> {
