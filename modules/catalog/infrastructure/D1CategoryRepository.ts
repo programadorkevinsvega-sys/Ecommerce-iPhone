@@ -1,6 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { Category } from "../domain/Category";
 import type { CategoryListCriteria, CategoryPrimitives, CategoryRepository } from "../application/CategoryRepository";
+import { mediaKeyFromUrl } from "../../media/application/MediaReference";
 
 type CategoryRow = {
   id: string;
@@ -55,7 +56,9 @@ export class D1CategoryRepository implements CategoryRepository {
 
   async save(category: Category): Promise<void> {
     const p = category.toPrimitives();
-    await this.db.prepare(
+    const previous = await this.db.prepare("SELECT image_url FROM categories WHERE id=?").bind(p.id).first<{ image_url: string | null }>();
+    const cleanup = previous?.image_url && previous.image_url !== (p.imageUrl ?? null) ? mediaKeyFromUrl(previous.image_url) : undefined;
+    const statements = [this.db.prepare(
       `INSERT INTO categories (id,name,slug,image_url,active,created_at,updated_at)
        VALUES (?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET
@@ -64,12 +67,19 @@ export class D1CategoryRepository implements CategoryRepository {
          image_url=excluded.image_url,
          active=excluded.active,
          updated_at=CURRENT_TIMESTAMP`,
-    ).bind(p.id, p.name, p.slug, p.imageUrl ?? null, p.active ? 1 : 0, p.createdAt, p.updatedAt).run();
+    ).bind(p.id, p.name, p.slug, p.imageUrl ?? null, p.active ? 1 : 0, p.createdAt, p.updatedAt),
+      ...(cleanup ? [this.db.prepare("INSERT OR IGNORE INTO media_cleanup_queue (object_key) VALUES (?)").bind(cleanup)] : []),
+    ];
+    await this.db.batch(statements);
   }
 
   async delete(id: string): Promise<boolean> {
+    const current = await this.db.prepare("SELECT image_url FROM categories WHERE id=?").bind(id).first<{ image_url: string | null }>();
     const result = await this.db.prepare("DELETE FROM categories WHERE id=?").bind(id).run();
-    return result.meta.changes === 1;
+    if (result.meta.changes !== 1) return false;
+    const key = mediaKeyFromUrl(current?.image_url);
+    if (key) await this.db.prepare("INSERT OR IGNORE INTO media_cleanup_queue (object_key) VALUES (?)").bind(key).run();
+    return true;
   }
 
   async deactivate(id: string): Promise<boolean> {
