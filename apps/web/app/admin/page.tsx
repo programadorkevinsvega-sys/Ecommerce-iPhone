@@ -351,21 +351,25 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
     if (!productForm) return;
     const form = productForm;
     const uploadedUrls: string[] = [];
-    for (const file of form.imageFiles) {
+    if (form.imageFiles.length > 0) {
       const upload = new FormData();
-      upload.set("file", file);
+      for (const file of form.imageFiles) upload.append("file", file);
       const uploadResponse = await fetch("/api/admin/media?scope=product", {
         method: "POST",
         body: upload,
         credentials: "same-origin",
         cache: "no-store",
       });
-      const uploadData = await json<{ url?: string; error?: string }>(uploadResponse);
-      if (!uploadResponse.ok || !uploadData.url) {
-        setError(uploadData.error ?? "No se pudo cargar una imagen del producto.");
+      const uploadData = await json<{ urls?: string[]; error?: string }>(uploadResponse);
+      if (
+        !uploadResponse.ok ||
+        !Array.isArray(uploadData.urls) ||
+        uploadData.urls.length !== form.imageFiles.length
+      ) {
+        setError(uploadData.error ?? "No se pudieron cargar todas las imágenes del producto.");
         return;
       }
-      uploadedUrls.push(uploadData.url);
+      uploadedUrls.push(...uploadData.urls);
     }
     const images = [...form.imageUrls, ...uploadedUrls];
     if (images.length > 5) {
