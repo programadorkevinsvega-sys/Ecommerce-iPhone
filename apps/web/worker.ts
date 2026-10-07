@@ -12,7 +12,7 @@ import { revenueAnalyticsApp } from "./lib/analyticsApplication";
 import type { AnalyticsEvent } from "../../modules/analytics/domain/AnalyticsEvent";
 import { NotificationTerminalError } from "../../modules/notifications/application/NotificationProcessingError";
 import type { NotificationEvent, NotificationInboxItem } from "../../modules/notifications/domain/NotificationEvent";
-import { mediaKeyFromUrl } from "../../modules/media/application/MediaReference";
+import { mediaKeyFromUrl } from "../../modules/shared-kernel/MediaReference";
 
 export class NotificationHub extends DurableObject {
   async fetch(request: Request): Promise<Response> {
