@@ -45,7 +45,7 @@ function NavigationLinks({
           href={item.href}
           key={item.href}
           aria-current={isActive(item.href, activeHref) ? "page" : undefined}
-          onClick={onNavigate}
+          {...(onNavigate ? { onClick: onNavigate } : {})}
         >
           {item.label}
         </Link>
@@ -61,7 +61,9 @@ export function StoreNavigation({
 }: StoreNavigationProps) {
   return (
     <nav aria-label="Principal" className={className}>
-      <NavigationLinks activeHref={activeHref} />
+      <NavigationLinks
+        {...(activeHref !== undefined ? { activeHref } : {})}
+      />
       {children}
       <NotificationBell scope="customer" href="/cuenta/notificaciones" />
     </nav>
@@ -104,7 +106,10 @@ export default function StoreHeader({ activeHref }: StoreHeaderProps) {
       </Link>
 
       <div className="store-header-desktop">
-        <StoreNavigation activeHref={activeHref} className="store-navigation-desktop" />
+        <StoreNavigation
+          className="store-navigation-desktop"
+          {...(activeHref !== undefined ? { activeHref } : {})}
+        />
       </div>
 
       <div className="store-header-mobile-actions">
@@ -158,7 +163,7 @@ export default function StoreHeader({ activeHref }: StoreHeaderProps) {
 
           <nav aria-label="Navegación móvil" className="mobile-store-menu-links">
             <NavigationLinks
-              activeHref={activeHref}
+              {...(activeHref !== undefined ? { activeHref } : {})}
               onNavigate={() => setMenuOpen(false)}
             />
             <Link href="/cuenta/notificaciones" onClick={() => setMenuOpen(false)}>
