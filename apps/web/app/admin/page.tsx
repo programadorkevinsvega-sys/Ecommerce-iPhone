@@ -620,6 +620,40 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
     setHomeCmsId(data.id ?? homeCmsId);
     setNotice("Cambios guardados correctamente.");
   }
+  async function deleteHomeSlide(id: string) {
+    if (!window.confirm("¿Eliminar definitivamente esta promoción? Esta acción no se puede deshacer.")) return;
+    setBusy(true);
+    setError("");
+    try {
+      const nextSlides = homeSlides.filter((slide) => slide.id !== id);
+      const response = await fetch("/api/admin/cms", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: homeCmsId || undefined,
+          slug: "home-carousel",
+          title: "Carrusel de inicio",
+          content: JSON.stringify({ slides: nextSlides }),
+          active: true,
+        }),
+      });
+      const data = await json<{ id?: string; error?: string }>(response);
+      if (!response.ok || !data.id) {
+        setError(safeFormError(response.status, data.error ?? "No se pudo eliminar la promoción."));
+        return;
+      }
+      setHomeSlides(nextSlides);
+      setHomeCmsId(data.id);
+      setNotice("Promoción eliminada correctamente.");
+    } catch {
+      setError("No se pudo completar la eliminación de la promoción.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveServiceType(event: FormEvent) {
     event.preventDefault();
     if (!serviceTypeForm) return;
@@ -1000,6 +1034,7 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
                 onEdit={setHomeSlideForm}
                 onView={setHomeSlidePreview}
                 onToggle={(id) => void toggleHomeSlide(id)}
+                onDelete={(id) => void deleteHomeSlide(id)}
               />
             ) : resource === "services" ? (
               <ServiceTable
@@ -2274,12 +2309,14 @@ function HomeCarouselManager({
   onEdit,
   onView,
   onToggle,
+  onDelete,
   loading,
 }: {
   slides: HomeSlide[];
   onEdit: (slide: HomeSlideForm) => void;
   onView: (slide: HomeSlide) => void;
   onToggle: (id: string) => void;
+  onDelete: (id: string) => void;
 
   loading: boolean;}) {
   return (
@@ -2315,6 +2352,9 @@ function HomeCarouselManager({
                 </button>
                 <button className="table-action" type="button" onClick={() => onToggle(slide.id)}>
                   {slide.active ? "Ocultar" : "Publicar"}
+                </button>
+                <button className="table-action danger" type="button" onClick={() => onDelete(slide.id)}>
+                  Eliminar
                 </button>
               </td>
             </tr>
