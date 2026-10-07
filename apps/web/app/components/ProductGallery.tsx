@@ -24,6 +24,7 @@ export function ProductGallery({ name, brand, images }: ProductGalleryProps) {
 
   const safeIndex = Math.min(selectedIndex, images.length - 1);
   const selectedImage = images[safeIndex];
+  if (!selectedImage) return null;
 
   return (
     <div className="product-gallery" aria-label={`Galería de ${name}`}>
