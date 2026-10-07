@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import StoreHeader from "../components/StoreHeader";
 import { searchCatalog } from "../../lib/catalog";
@@ -29,8 +30,19 @@ export default async function IphoneCategoryPage() {
       <section className="product-grid category-products" aria-label="Productos iPhone">
         {result.items.map((p) => (
           <Link href={"/iphone/" + p.slug} className="product-card" key={p.id}>
-            <div className="product-image">
-              {p.images[0] ? <span>{p.name}</span> : <span>Apple</span>}
+            <div className="product-image" aria-hidden={p.images.length === 0}>
+              {p.images[0] ? (
+                <Image
+                  src={p.images[0]}
+                  alt={p.name}
+                  width={640}
+                  height={640}
+                  sizes="(max-width: 520px) 100vw, (max-width: 800px) 50vw, 33vw"
+                  unoptimized={p.images[0].startsWith("/api/media/")}
+                />
+              ) : (
+                <span aria-hidden="true">Apple</span>
+              )}
             </div>
             <p className="eyebrow">Apple</p>
             <h2>{p.name}</h2>
