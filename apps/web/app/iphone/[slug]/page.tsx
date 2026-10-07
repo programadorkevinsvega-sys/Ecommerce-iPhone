@@ -12,7 +12,6 @@ import { publicMetadataWithOverrides, canonicalForPath } from "../../../lib/seo"
 import { breadcrumbSchema, productSchema } from "../../../../../modules/seo/application/StructuredData";
 import { listProductReviews } from "../../../lib/storefrontReviews";
 import { ProductGallery } from "../../components/ProductGallery";
-import { ProductGallery } from "./ProductGallery";
 
 export const revalidate = 30;
 const money = (cents: number, currency: string) => new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(cents / 100);
