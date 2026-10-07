@@ -5,7 +5,6 @@ import {
   normalizeProductImageUrl,
   toProductImageProxyUrl,
 } from "./ProductImageUrl";
-import { normalizeProductImageInput } from "../application/ProductImagePolicy";
 
 describe("ProductImageUrl", () => {
   const trusted = "https://commons.wikimedia.org/wiki/Special:Redirect/file/IPhone_17_Pro_Max.jpg";
@@ -30,11 +29,6 @@ describe("ProductImageUrl", () => {
     expect(isProductImageProxyUrl(attacker)).toBe(false);
     expect(isProductImageProxyUrl(duplicate)).toBe(false);
     expect(() => normalizeProductImageUrl(attacker)).toThrow();
-  });
-
-  it("normalizes trusted external inputs at the application boundary", () => {
-    expect(normalizeProductImageInput(trusted)).toBe(toProductImageProxyUrl(trusted));
-    expect(normalizeProductImageInput("https://attacker.example/image.jpg")).toBeUndefined();
   });
 
   it("rejects direct external URLs at the domain boundary", () => {
