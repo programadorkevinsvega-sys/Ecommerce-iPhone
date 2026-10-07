@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import StoreHeader from "../../components/StoreHeader";
 import { searchCatalog } from "../../../lib/catalog";
@@ -48,8 +49,19 @@ export default async function BrandPage({ params }: { params: Promise<{ brand: s
         <section className="product-grid category-products" aria-label={"Productos " + name}>
           {result.items.map((product) => (
             <Link href={"/iphone/" + product.slug} className="product-card" key={product.id}>
-              <div className="product-image">
-                {product.images[0] ? <span>{product.name}</span> : <span>{product.brand}</span>}
+              <div className="product-image" aria-hidden={product.images.length === 0}>
+                {product.images[0] ? (
+                  <Image
+                    src={product.images[0]}
+                    alt={product.name}
+                    width={640}
+                    height={640}
+                    sizes="(max-width: 520px) 100vw, (max-width: 800px) 50vw, 33vw"
+                    unoptimized={product.images[0].startsWith("/api/media/")}
+                  />
+                ) : (
+                  <span aria-hidden="true">{product.brand}</span>
+                )}
               </div>
               <p className="eyebrow">{product.brand}</p>
               <h2>{product.name}</h2>
