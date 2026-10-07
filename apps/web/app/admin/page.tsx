@@ -1810,13 +1810,13 @@ function ProductModal({
               multiple
               onChange={(event) => {
                 const selected = Array.from(event.target.files ?? []);
-                const available = Math.max(0, 5 - form.imageUrls.length);
-                const nextFiles = selected.slice(0, available);
+                const available = Math.max(0, 5 - form.imageUrls.length - form.imageFiles.length);
+                if (available === 0) return;
+                const nextFiles = [...form.imageFiles, ...selected.slice(0, available)];
                 setForm({
                   ...form,
                   imageFiles: nextFiles,
-                  primaryImageIndex:
-                    form.primaryImageIndex ?? (form.imageUrls.length > 0 ? 0 : 0),
+                  primaryImageIndex: form.primaryImageIndex ?? (form.imageUrls.length > 0 ? 0 : 0),
                 });
               }}
               disabled={imageCount >= 5}
