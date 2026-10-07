@@ -77,6 +77,24 @@ export default function ServiceTypesPage() {
     finally { setSaving(false); }
   }
 
+  async function deleteServiceType(item: ServiceType) {
+    if (!window.confirm("¿Eliminar definitivamente este servicio ofrecido? Esta acción no se puede deshacer.")) return;
+    setError("");
+    try {
+      const r = await fetch(`/api/admin/service-types/${encodeURIComponent(item.code)}`, {
+        method: "DELETE",
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const b = await r.json();
+      if (!r.ok) throw new Error(b.error);
+      if (editing === item.code) reset();
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo eliminar el servicio");
+    }
+  }
+
   async function toggleEnabled(item: ServiceType) {
     const next = !item.enabled;
     if (!window.confirm(next ? "¿Activar este servicio?" : "¿Desactivar este servicio?")) return;
@@ -164,6 +182,7 @@ export default function ServiceTypesPage() {
                       <td className="align-right">
                         <button className="table-action" type="button" onClick={() => edit(item)}>Editar</button>
                         <button className="table-action danger" type="button" onClick={() => void toggleEnabled(item)}>{item.enabled ? "Desactivar" : "Activar"}</button>
+                        <button className="table-action danger" type="button" onClick={() => void deleteServiceType(item)}>Eliminar</button>
                       </td>
                     </tr>
                   ))}
