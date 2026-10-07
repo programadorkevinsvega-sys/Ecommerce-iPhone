@@ -2203,4 +2203,219 @@ function ServiceTypeModal({
 function ServiceActionModal({
   actionValue,
   onClose,
-  onSubmit,
+
+function HomeSlidePreviewModal({ slide, onClose }: { slide: HomeSlide; onClose: () => void }) {
+  return (
+    <Modal title="Vista previa de promoción" onClose={onClose}>
+      <article className="home-slide-preview">
+        <Image
+          src={adminImageSrc(slide.imageUrl)}
+          alt={slide.title}
+          width={1280}
+          height={720}
+          sizes="(max-width: 760px) 100vw, 620px"
+          unoptimized={slide.imageUrl.startsWith("blob:")}
+        />
+        <div>
+          <p className="eyebrow">{slide.eyebrow}</p>
+          <h3>{slide.title}</h3>
+          <p>{slide.description}</p>
+          <strong>Enlace: {slide.href}</strong>
+          <span className={`status ${slide.active ? "success" : "muted-status"}`}>
+            {slide.active ? "Publicado" : "Oculto"}
+          </span>
+        </div>
+      </article>
+    </Modal>
+  );
+}
+
+function HomeSlideModal({
+  form,
+  setForm,
+  cmsId,
+  slides,
+  onSaved,
+  onClose,
+}: {
+  form: HomeSlideForm;
+  setForm: (form: HomeSlideForm) => void;
+  cmsId: string;
+  slides: HomeSlide[];
+  onSaved: (slides: HomeSlide[], cmsId: string) => void;
+  onClose: () => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  useEffect(
+    () => () => {
+      if (previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
+    },
+    [previewUrl],
+  );
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      let imageUrl = form.imageUrl;
+      if (file) {
+        const upload = new FormData();
+        upload.set("file", file);
+        const uploadResponse = await fetch("/api/admin/media?scope=home", {
+          method: "POST",
+          body: upload,
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        const uploadData = await json<{ url?: string; error?: string }>(uploadResponse);
+        if (!uploadResponse.ok || !uploadData.url)
+          throw new Error(uploadData.error ?? "No se pudo cargar la imagen.");
+        imageUrl = uploadData.url;
+      }
+      if (!imageUrl) throw new Error("Selecciona una imagen para la promoción.");
+      const next = { ...form, imageUrl };
+      const nextSlides = slides.some((slide) => slide.id === form.id)
+        ? slides.map((slide) => (slide.id === form.id ? next : slide))
+        : [...slides, next];
+      const response = await fetch("/api/admin/cms", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: cmsId || undefined,
+          slug: "home-carousel",
+          title: "Carrusel de inicio",
+          content: JSON.stringify({ slides: nextSlides }),
+          active: true,
+        }),
+      });
+      const data = await json<{ id?: string; error?: string }>(response);
+      if (!response.ok || !data.id)
+        throw new Error(data.error ?? "No se pudo guardar la promoción.");
+      onSaved(nextSlides, data.id);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudo guardar la promoción.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const preview = previewUrl || form.imageUrl;
+  return (
+    <>
+      <Modal
+        title={
+          form.id && slides.some((slide) => slide.id === form.id)
+            ? "Editar promoción"
+            : "Nueva promoción"
+        }
+        onClose={onClose}
+      >
+        <form className="admin-form" onSubmit={submit}>
+          {error && (
+            <p className="admin-error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="form-grid">
+            <label>
+              Etiqueta
+              <input
+                required
+                maxLength={80}
+                value={form.eyebrow}
+                onChange={(e) => setForm({ ...form, eyebrow: e.target.value })}
+              />
+            </label>
+            <label>
+              Enlace
+              <input
+                required
+                maxLength={300}
+                value={form.href}
+                onChange={(e) => setForm({ ...form, href: e.target.value })}
+              />
+            </label>
+          </div>
+          <label>
+            Título
+            <input
+              required
+              maxLength={180}
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+            />
+          </label>
+          <label>
+            Descripción
+            <textarea
+              required
+              maxLength={500}
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+          </label>
+          <label>
+            Imagen de la promoción
+            <input
+              type="url"
+              placeholder="https://drive.google.com/..."
+              value={file ? "" : form.imageUrl}
+              onChange={(e) => {
+                setFile(null);
+                setForm({ ...form, imageUrl: e.target.value });
+              }}
+            />
+            <span className="form-help">
+              Puedes subir un archivo o usar una URL pública de Google Drive.
+            </span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+            {form.imageUrl && (
+              <span className="form-help">
+                Imagen actual cargada. Selecciona otra para reemplazarla.
+              </span>
+            )}
+          </label>
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={form.active}
+              onChange={(e) => setForm({ ...form, active: e.target.checked })}
+            />{" "}
+            Publicada en el inicio
+          </label>
+          <div className="modal-actions">
+            <button
+              className="admin-button"
+              type="button"
+              disabled={!preview}
+              onClick={() => setPreviewUrl(file ? URL.createObjectURL(file) : form.imageUrl)}
+            >
+              Vista previa
+            </button>
+            <button className="admin-button" type="button" onClick={onClose}>
+              Cancelar
+            </button>
+            <button className="admin-button primary" disabled={busy} type="submit">
+              {busy ? "Guardando…" : "Guardar promoción"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+      {previewUrl && (
+        <HomeSlidePreviewModal
+          slide={{ ...form, imageUrl: previewUrl }}
+          onClose={() => setPreviewUrl("")}
+        />
+      )}
+    </>
+  );
+}
