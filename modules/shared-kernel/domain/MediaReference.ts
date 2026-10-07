@@ -4,7 +4,7 @@ export function mediaKeyFromUrl(value: string | null | undefined): string | unde
   const match = normalized.match(/^\/api\/media\/(.+)$/);
   if (!match) return undefined;
   const key = match[1];
-  if (typeof key !== "string") return undefined;
+  if (typeof key !== "string" || !/^[a-z0-9-]+\/[a-z0-9-]+\.(?:jpg|png|webp)$/i.test(key)) return undefined;
   if (!/^[a-z0-9-]+\/[a-z0-9-]+\.(?:jpg|png|webp)$/i.test(key)) return undefined;
   return key;
 }
