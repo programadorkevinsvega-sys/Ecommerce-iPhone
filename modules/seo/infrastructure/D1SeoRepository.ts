@@ -1,6 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { SeoRepository, SeoRedirectRecord, SeoRouteOverrideRecord } from "../application/SeoRepository";
 import type { SeoRedirectStatus } from "../domain/SeoRedirect";
+import { mediaKeyFromUrl } from "../../media/application/MediaReference";
 
 type RedirectRow = {
   id: string;
@@ -85,22 +86,11 @@ export class D1SeoRepository implements SeoRepository {
     ogImageUrl?: string;
     adminId: string;
   }): Promise<void> {
-    await this.db
-      .prepare(
-        "INSERT INTO seo_route_overrides(id,path,seo_title,seo_description,canonical_url,indexable,og_image_url,created_by_admin_id,updated_by_admin_id) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(path) DO UPDATE SET seo_title=excluded.seo_title,seo_description=excluded.seo_description,canonical_url=excluded.canonical_url,indexable=excluded.indexable,og_image_url=excluded.og_image_url,updated_by_admin_id=excluded.updated_by_admin_id,updated_at=CURRENT_TIMESTAMP",
-      )
-      .bind(
-        input.id,
-        input.path,
-        input.seoTitle ?? null,
-        input.seoDescription ?? null,
-        input.canonicalUrl ?? null,
-        input.indexable ? 1 : 0,
-        input.ogImageUrl ?? null,
-        input.adminId,
-        input.adminId,
-      )
-      .run();
+    const previous = await this.db.prepare("SELECT og_image_url FROM seo_route_overrides WHERE path=? LIMIT 1").bind(input.path).first<{ og_image_url:string|null }>();
+    const oldKey = previous?.og_image_url && previous.og_image_url !== (input.ogImageUrl ?? null) ? mediaKeyFromUrl(previous.og_image_url) : undefined;
+    const statements = [this.db.prepare("INSERT INTO seo_route_overrides(id,path,seo_title,seo_description,canonical_url,indexable,og_image_url,created_by_admin_id,updated_by_admin_id) VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(path) DO UPDATE SET seo_title=excluded.seo_title,seo_description=excluded.seo_description,canonical_url=excluded.canonical_url,indexable=excluded.indexable,og_image_url=excluded.og_image_url,updated_by_admin_id=excluded.updated_by_admin_id,updated_at=CURRENT_TIMESTAMP").bind(input.id,input.path,input.seoTitle??null,input.seoDescription??null,input.canonicalUrl??null,input.indexable?1:0,input.ogImageUrl??null,input.adminId,input.adminId)];
+    if (oldKey) statements.push(this.db.prepare("INSERT OR IGNORE INTO media_cleanup_queue (object_key) VALUES (?)").bind(oldKey));
+    await this.db.batch(statements);
   }
 
   async findRouteOverride(path: string): Promise<SeoRouteOverrideRecord | null> {
