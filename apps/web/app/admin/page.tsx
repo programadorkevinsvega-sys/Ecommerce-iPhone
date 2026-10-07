@@ -1837,6 +1837,7 @@ function ProductModal({
                       width={144}
                       height={144}
                       sizes="144px"
+                      unoptimized={image.src.startsWith("/api/media/")}
                     />
                   ) : (
                     <div className="product-image-file-preview" aria-label={`Archivo ${image.label}`}>
