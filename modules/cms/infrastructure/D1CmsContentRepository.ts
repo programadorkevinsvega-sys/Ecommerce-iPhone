@@ -1,7 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { CmsContentRepository,CmsKind,CmsValue } from "../application/CmsContentPorts";
 import type { Banner,BlogCategory,BlogPost,Faq,FeaturedContent,LandingPage } from "../domain/Content";
-import { mediaKeyFromUrl } from "../../media/application/MediaReference";
+import { mediaKeyFromUrl } from "../../shared-kernel";
 
 export class D1CmsContentRepository implements CmsContentRepository{
  constructor(private readonly db:D1Database){}
