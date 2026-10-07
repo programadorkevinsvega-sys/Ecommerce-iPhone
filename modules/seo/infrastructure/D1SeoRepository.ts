@@ -1,7 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { SeoRepository, SeoRedirectRecord, SeoRouteOverrideRecord } from "../application/SeoRepository";
 import type { SeoRedirectStatus } from "../domain/SeoRedirect";
-import { mediaKeyFromUrl } from "../../media/application/MediaReference";
+import { mediaKeyFromUrl } from "../../shared-kernel";
 
 type RedirectRow = {
   id: string;
