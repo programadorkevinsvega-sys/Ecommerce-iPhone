@@ -7,9 +7,14 @@ import type {
   StatusTransitionValidator,
 } from "../application/AdminResourceRepository";
 import type { ResourceName } from "../application/AdminResources";
+import { mediaKeyFromUrl } from "../../media/application/MediaReference";
 
 type Db = D1Database;
 const like = (query: string) => `%${query}%`;
+const cleanupStatement = (db: Db, url: string) => {
+  const key = mediaKeyFromUrl(url);
+  return key ? db.prepare("INSERT OR IGNORE INTO media_cleanup_queue (object_key) VALUES (?)").bind(key) : null;
+};
 
 export class D1AdminResourceRepository implements AdminResourceRepository {
   constructor(
@@ -98,8 +103,11 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
       .first<{ in_use: number }>();
     if (Number(references?.in_use ?? 0) === 1) throw new Error("PRODUCT_IN_USE");
 
-    const result = await this.db.prepare("DELETE FROM products WHERE id=?").bind(id).run();
-    if (result.meta.changes !== 1) throw new Error("PRODUCT_NOT_FOUND");
+    const images = await this.db.prepare("SELECT url FROM product_images WHERE product_id=?").bind(id).all<{ url: string }>();
+    const statements = images.results.map((image) => cleanupStatement(this.db, image.url)).filter((statement): statement is NonNullable<typeof statement> => statement !== null);
+    statements.push(this.db.prepare("DELETE FROM products WHERE id=?").bind(id));
+    const results = await this.db.batch(statements);
+    if (results.at(-1)?.meta.changes !== 1) throw new Error("PRODUCT_NOT_FOUND");
   }
 
   async updateProduct(id: string, fields: string[], values: unknown[]): Promise<void> {
@@ -163,9 +171,13 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
       .bind(productId)
       .first<{ id: string }>();
     if (!product) throw new Error("PRODUCT_NOT_FOUND");
-    const statements = [
-      this.db.prepare("DELETE FROM product_images WHERE product_id=?").bind(productId),
-    ];
+    const current = await this.db.prepare("SELECT url FROM product_images WHERE product_id=?").bind(productId).all<{ url: string }>();
+    const next = new Set(imageUrls);
+    const statements = current.results
+      .filter((image) => !next.has(image.url))
+      .map((image) => cleanupStatement(this.db, image.url))
+      .filter((statement): statement is NonNullable<typeof statement> => statement !== null);
+    statements.push(this.db.prepare("DELETE FROM product_images WHERE product_id=?").bind(productId));
     statements.push(
       ...imageUrls.map((url, index) =>
         this.db
@@ -175,6 +187,9 @@ export class D1AdminResourceRepository implements AdminResourceRepository {
           .bind(crypto.randomUUID(), productId, url, "Imagen del producto", index),
       ),
     );
+    statements.push(...imageUrls.map((url, index) =>
+      this.db.prepare("INSERT INTO product_images (id,product_id,url,alt_text,sort_order) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), productId, url, "Imagen del producto", index),
+    ));
     await this.db.batch(statements);
   }
 
