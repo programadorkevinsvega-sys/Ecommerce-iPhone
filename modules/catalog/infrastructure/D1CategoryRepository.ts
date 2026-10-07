@@ -1,7 +1,7 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import { Category } from "../domain/Category";
 import type { CategoryListCriteria, CategoryPrimitives, CategoryRepository } from "../application/CategoryRepository";
-import { mediaKeyFromUrl } from "../../media/application/MediaReference";
+import { mediaKeyFromUrl } from "../../shared-kernel";
 
 type CategoryRow = {
   id: string;
