@@ -1597,10 +1597,16 @@ function ProductModal({
       return;
     }
     if (imageCount >= 5 || form.imageUrls.includes(normalized)) return;
+    const nextPrimary =
+      form.primaryImageIndex === null
+        ? form.imageUrls.length
+        : form.primaryImageIndex >= form.imageUrls.length
+          ? form.primaryImageIndex + 1
+          : form.primaryImageIndex;
     setForm({
       ...form,
       imageUrls: [...form.imageUrls, normalized],
-      primaryImageIndex: form.primaryImageIndex ?? form.imageUrls.length,
+      primaryImageIndex: nextPrimary,
     });
     setImageUrlInput("");
   };
@@ -2198,13 +2204,3 @@ function ServiceActionModal({
   actionValue,
   onClose,
   onSubmit,
-}: {
-  actionValue: string;
-  onClose: () => void;
-  onSubmit: (id: string, action: string, body?: Record<string, unknown>) => void;
-}) {
-  const parts = actionValue.split(":");
-  const id = parts[0] ?? "";
-  const action = parts[1] ?? "";
-  const status = parts.slice(2).join(":");
-  const [amount, setAmount] = useState("");
