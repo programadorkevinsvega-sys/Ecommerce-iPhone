@@ -1,5 +1,6 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { CmsPageInput,CmsRepository } from "../application/AdminCms";
+import { mediaKeysFromText } from "../../media/application/MediaReference";
 export class D1CmsRepository implements CmsRepository{
  constructor(private readonly db:D1Database){}
  async list(){return(await this.db.prepare("SELECT id,slug,title,content,seo_title AS seoTitle,seo_description AS seoDescription,canonical_url AS canonicalUrl,active,updated_by AS updatedBy,created_at AS createdAt,updated_at AS updatedAt FROM cms_pages ORDER BY updated_at DESC").all()).results;}
