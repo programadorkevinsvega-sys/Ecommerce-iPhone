@@ -40,8 +40,14 @@ export function isProductImageProxyUrl(value: string): boolean {
       url.password ||
       url.port
     ) return false;
+
     const targets = url.searchParams.getAll("url");
-    return targets.length === 1 && isTrustedExternalImageUrl(targets[0]);
+    if (targets.length !== 1) return false;
+
+    const target = targets[0];
+    if (target === undefined) return false;
+
+    return isTrustedExternalImageUrl(target);
   } catch {
     return false;
   }
@@ -61,10 +67,13 @@ export function normalizeProductImageUrl(value: string): string {
       !parsed.hash &&
       !parsed.pathname.includes("\\")
     ) return parsed.pathname;
+
     if (isProductImageProxyUrl(normalized)) {
-      const target = new URL(parsed.searchParams.get("url") as string);
-      return toProductImageProxyUrl(target.toString());
+      const target = parsed.searchParams.get("url");
+      if (target === null) throw new Error("Invalid product image URL");
+      return toProductImageProxyUrl(target);
     }
+
     throw new Error("Invalid product image URL");
   }
 
