@@ -16,21 +16,33 @@ export async function POST(request: Request) {
     const prefix = scope === "product" ? "product-images" : scope === "home" ? "home-carousel" : scope === "category" ? "category-images" : scope === "service" ? "service-images" : "";
     if (!prefix) return NextResponse.json({ error: "Invalid media scope" }, { status: 400 });
     const form = await request.formData();
-    const file = form.get("file");
+    const files = form.getAll("file");
     if (
-      !(file instanceof File) ||
-      !TYPES.has(file.type) ||
-      file.size < 1 ||
-      file.size > 5 * 1024 * 1024
+      files.length < 1 ||
+      files.length > 5 ||
+      files.some(
+        (file) =>
+          !(file instanceof File) ||
+          !TYPES.has(file.type) ||
+          file.size < 1 ||
+          file.size > 5 * 1024 * 1024,
+      )
     ) {
-      return NextResponse.json({ error: "Archivo de imagen inválido" }, { status: 400 });
+      return NextResponse.json({ error: "Archivos de imagen inválidos" }, { status: 400 });
     }
-    const key = `${prefix}/${crypto.randomUUID()}.${TYPES.get(file.type)}`;
-    await env.MEDIA_BUCKET.put(key, await file.arrayBuffer(), {
-      httpMetadata: { contentType: file.type },
-    });
+    const urls: string[] = [];
+    for (const file of files) {
+      if (!(file instanceof File)) {
+        return NextResponse.json({ error: "Archivo de imagen inválido" }, { status: 400 });
+      }
+      const key = `${prefix}/${crypto.randomUUID()}.${TYPES.get(file.type)}`;
+      await env.MEDIA_BUCKET.put(key, await file.arrayBuffer(), {
+        httpMetadata: { contentType: file.type },
+      });
+      urls.push(`/api/media/${key}`);
+    }
     return NextResponse.json(
-      { url: `/api/media/${key}` },
+      { urls },
       { status: 201, headers: { "cache-control": "no-store" } },
     );
   } catch (error) {
