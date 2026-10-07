@@ -42,7 +42,7 @@ export async function POST(request: Request) {
       urls.push(`/api/media/${key}`);
     }
     return NextResponse.json(
-      { urls },
+      { url: urls[0], urls },
       { status: 201, headers: { "cache-control": "no-store" } },
     );
   } catch (error) {
