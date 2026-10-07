@@ -59,6 +59,7 @@ type ProductForm = {
   categoryIds: string[];
   imageUrls: string[];
   imageFiles: File[];
+  primaryImageIndex: number | null;
   specs: Array<{ key: string; value: string }>;
 };
 type CustomerForm = { id: string; firstName: string; lastName: string; phone: string };
@@ -143,6 +144,7 @@ const EMPTY_PRODUCT: ProductForm = {
   categoryIds: [],
   imageUrls: [],
   imageFiles: [],
+  primaryImageIndex: null,
   specs: [],
 };
 const money = (cents: number) =>
@@ -370,6 +372,15 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
       setError("Un producto puede tener máximo 5 imágenes.");
       return;
     }
+    if (images.length > 0 && (form.primaryImageIndex === null || form.primaryImageIndex >= images.length)) {
+      setError("Selecciona una imagen principal.");
+      return;
+    }
+    const primaryIndex = form.primaryImageIndex ?? 0;
+    const orderedImages =
+      images.length === 0
+        ? []
+        : [images[primaryIndex], ...images.filter((_, index) => index !== primaryIndex)];
     const body = {
       resource: "products",
       name: normalizeSingleLine(form.name),
@@ -386,7 +397,7 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
       color: form.color.trim() || null,
       active: form.active,
       category_ids: form.categoryIds,
-      images,
+      images: orderedImages,
       specs_json: Object.fromEntries(
         form.specs
           .map((spec) => [normalizeSingleLine(spec.key).slice(0, 80), spec.value.trim()] as const)
@@ -420,12 +431,14 @@ export function AdminPageContent({ fixedResource }: { fixedResource?: Resource }
           categoryIds: [],
           imageUrls: (() => {
             try {
-              return JSON.parse(value(item, "image_urls"));
+              const parsed = JSON.parse(value(item, "image_urls"));
+              return Array.isArray(parsed) ? parsed.filter((url): url is string => typeof url === "string") : [];
             } catch {
               return [];
             }
           })(),
           imageFiles: [],
+          primaryImageIndex: 0,
           specs: (() => {
             try {
               const parsed = JSON.parse(value(item, "specs_json"));
@@ -1570,8 +1583,57 @@ function ProductModal({
   onClose: () => void;
   busy: boolean;
 }) {
+  const [imageUrlInput, setImageUrlInput] = useState("");
   const set = (key: keyof ProductForm, next: string | boolean) =>
     setForm({ ...form, [key]: next } as ProductForm);
+  const imageCount = form.imageUrls.length + form.imageFiles.length;
+  const addImageUrl = () => {
+    const normalized = imageUrlInput.trim();
+    if (!normalized) return;
+    try {
+      const parsed = new URL(normalized);
+      if (parsed.protocol !== "https:") throw new Error("HTTPS_REQUIRED");
+    } catch {
+      return;
+    }
+    if (imageCount >= 5 || form.imageUrls.includes(normalized)) return;
+    setForm({
+      ...form,
+      imageUrls: [...form.imageUrls, normalized],
+      primaryImageIndex: form.primaryImageIndex ?? form.imageUrls.length,
+    });
+    setImageUrlInput("");
+  };
+  const removeImage = (index: number) => {
+    const existingCount = form.imageUrls.length;
+    if (index < existingCount) {
+      const imageUrls = form.imageUrls.filter((_, itemIndex) => itemIndex !== index);
+      setForm({
+        ...form,
+        imageUrls,
+        primaryImageIndex:
+          form.primaryImageIndex === index
+            ? imageUrls.length + form.imageFiles.length > 0 ? 0 : null
+            : form.primaryImageIndex !== null && form.primaryImageIndex > index
+              ? form.primaryImageIndex - 1
+              : form.primaryImageIndex,
+      });
+      return;
+    }
+    const fileIndex = index - existingCount;
+    const imageFiles = form.imageFiles.filter((_, itemIndex) => itemIndex !== fileIndex);
+    setForm({
+      ...form,
+      imageFiles,
+      primaryImageIndex:
+        form.primaryImageIndex === index
+          ? form.imageUrls.length + imageFiles.length > 0 ? 0 : null
+          : form.primaryImageIndex !== null && form.primaryImageIndex > index
+            ? form.primaryImageIndex - 1
+            : form.primaryImageIndex,
+    });
+  };
+  const makePrimary = (index: number) => setForm({ ...form, primaryImageIndex: index });
   return (
     <Modal title={form.id ? "Editar producto" : "Nuevo producto"} onClose={onClose}>
       <form className="admin-form" onSubmit={onSubmit}>
@@ -1705,51 +1767,99 @@ function ProductModal({
             </div>
           )}
         </fieldset>
-        <label>
-          Imágenes del producto (máximo 5)
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            multiple
-            onChange={(event) => {
-              const selected = Array.from(event.target.files ?? []);
-              setForm({
-                ...form,
-                imageFiles: selected.slice(0, Math.max(0, 5 - form.imageUrls.length)),
-              });
-            }}
-          />
-          <span className="form-help">
-            JPG, PNG o WebP. Las imágenes se almacenan en Cloudflare R2.
-          </span>
-          {form.imageUrls.length > 0 && (
+        <fieldset className="admin-category-picker">
+          <legend>Imágenes del producto (máximo 5)</legend>
+          <p className="form-help">
+            Puedes combinar imágenes subidas a R2 con URLs HTTPS de imágenes que ya tengas hospedadas. La primera imagen es la principal.
+          </p>
+          <div className="form-grid">
+            <label>
+              URL de imagen externa
+              <input
+                type="url"
+                inputMode="url"
+                placeholder="https://..."
+                value={imageUrlInput}
+                onChange={(event) => setImageUrlInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addImageUrl();
+                  }
+                }}
+                disabled={imageCount >= 5}
+              />
+            </label>
+            <div className="modal-actions">
+              <button className="admin-button" type="button" onClick={addImageUrl} disabled={imageCount >= 5 || !imageUrlInput.trim()}>
+                + Añadir URL
+              </button>
+            </div>
+          </div>
+          <label>
+            Subir imágenes a R2
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              onChange={(event) => {
+                const selected = Array.from(event.target.files ?? []);
+                const available = Math.max(0, 5 - form.imageUrls.length);
+                const nextFiles = selected.slice(0, available);
+                setForm({
+                  ...form,
+                  imageFiles: nextFiles,
+                  primaryImageIndex:
+                    form.primaryImageIndex ?? (form.imageUrls.length > 0 ? 0 : 0),
+                });
+              }}
+              disabled={imageCount >= 5}
+            />
+            <span className="form-help">JPG, PNG o WebP. Máximo 5 imágenes por producto.</span>
+          </label>
+          {imageCount > 0 && (
             <div className="product-image-list">
-              {form.imageUrls.map((url, index) => (
-                <div className="product-image-item" key={url}>
-                  <Image
-                    src={adminImageSrc(url)}
-                    alt={`Imagen ${index + 1} del producto`}
-                    width={144}
-                    height={144}
-                    sizes="144px"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm({
-                        ...form,
-                        imageUrls: form.imageUrls.filter((_, itemIndex) => itemIndex !== index),
-                      })
-                    }
-                    aria-label={`Quitar imagen ${index + 1}`}
-                  >
-                    ×
-                  </button>
+              {[
+                ...form.imageUrls.map((url) => ({ kind: "url" as const, label: url, src: adminImageSrc(url) })),
+                ...form.imageFiles.map((file) => ({ kind: "file" as const, label: file.name, src: "" })),
+              ].map((image, index) => (
+                <div className={`product-image-item${form.primaryImageIndex === index ? " primary" : ""}`} key={`${image.kind}-${image.label}-${index}`}>
+                  {image.src ? (
+                    <Image
+                      src={image.src}
+                      alt={`Imagen ${index + 1} del producto`}
+                      width={144}
+                      height={144}
+                      sizes="144px"
+                    />
+                  ) : (
+                    <div className="product-image-file-preview" aria-label={`Archivo ${image.label}`}>
+                      {image.label}
+                    </div>
+                  )}
+                  <div>
+                    <button
+                      className="table-action"
+                      type="button"
+                      onClick={() => makePrimary(index)}
+                      disabled={form.primaryImageIndex === index}
+                    >
+                      {form.primaryImageIndex === index ? "Principal" : "Hacer principal"}
+                    </button>
+                    <button
+                      className="table-action danger"
+                      type="button"
+                      onClick={() => removeImage(index)}
+                      aria-label={`Quitar imagen ${index + 1}`}
+                    >
+                      Quitar
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
-        </label>
+        </fieldset>
         <label>
           Descripción
           <textarea
@@ -2098,324 +2208,3 @@ function ServiceActionModal({
   const action = parts[1] ?? "";
   const status = parts.slice(2).join(":");
   const [amount, setAmount] = useState("");
-  const [notes, setNotes] = useState("");
-  const transition = action === "transition";
-  const quote = action === "quote";
-  return (
-    <Modal
-      title={transition ? "Actualizar servicio" : quote ? "Cotizar servicio" : "Acción de servicio"}
-      onClose={onClose}
-    >
-      <form
-        className="admin-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (transition) onSubmit(id, "transition", { status });
-          else if (quote) onSubmit(id, "quote", { amountInCents: Number(amount) });
-          else onSubmit(id, action, { notes });
-        }}
-      >
-        <label>
-          {transition
-            ? "Estado nuevo"
-            : quote
-              ? "Valor de cotización en COP"
-              : "Notas de finalización"}
-          {transition ? (
-            <input value={status.replaceAll("_", " ")} readOnly />
-          ) : quote ? (
-            <input
-              required
-              min="0"
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          ) : (
-            <textarea required rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          )}
-        </label>
-        <div className="modal-actions">
-          <button className="admin-button" type="button" onClick={onClose}>
-            Cancelar
-          </button>
-          <button className="admin-button primary" type="submit">
-            Aplicar
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-
-function HomeCarouselManager({
-  slides,
-  onEdit,
-  onView,
-  onToggle,
-  loading,
-}: {
-  slides: HomeSlide[];
-  onEdit: (slide: HomeSlideForm) => void;
-  onView: (slide: HomeSlide) => void;
-  onToggle: (id: string) => void;
-
-  loading: boolean;}) {
-  return (
-    <TableFrame empty={!slides.length} loading={loading} label="Cargando promociones…">
-      <table className="admin-table">
-        <thead>
-          <tr>
-            <th>Promoción</th>
-            <th>Enlace</th>
-            <th>Estado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {slides.map((slide) => (
-            <tr key={slide.id}>
-              <td>
-                <strong>{slide.title}</strong>
-                <span className="table-subtext">{slide.eyebrow}</span>
-              </td>
-              <td>{slide.href}</td>
-              <td>
-                <span className={`status ${slide.active ? "success" : "muted-status"}`}>
-                  {slide.active ? "Publicado" : "Oculto"}
-                </span>
-              </td>
-              <td>
-                <button className="table-action" type="button" onClick={() => onView(slide)}>
-                  Ver
-                </button>
-                <button className="table-action" type="button" onClick={() => onEdit(slide)}>
-                  Editar
-                </button>
-                <button className="table-action" type="button" onClick={() => onToggle(slide.id)}>
-                  {slide.active ? "Ocultar" : "Publicar"}
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </TableFrame>
-  );
-}
-
-function HomeSlidePreviewModal({ slide, onClose }: { slide: HomeSlide; onClose: () => void }) {
-  return (
-    <Modal title="Vista previa de promoción" onClose={onClose}>
-      <article className="home-slide-preview">
-        <Image
-          src={adminImageSrc(slide.imageUrl)}
-          alt={slide.title}
-          width={1280}
-          height={720}
-          sizes="(max-width: 760px) 100vw, 620px"
-          unoptimized={slide.imageUrl.startsWith("blob:")}
-        />
-        <div>
-          <p className="eyebrow">{slide.eyebrow}</p>
-          <h3>{slide.title}</h3>
-          <p>{slide.description}</p>
-          <strong>Enlace: {slide.href}</strong>
-          <span className={`status ${slide.active ? "success" : "muted-status"}`}>
-            {slide.active ? "Publicado" : "Oculto"}
-          </span>
-        </div>
-      </article>
-    </Modal>
-  );
-}
-
-function HomeSlideModal({
-  form,
-  setForm,
-  cmsId,
-  slides,
-  onSaved,
-  onClose,
-}: {
-  form: HomeSlideForm;
-  setForm: (form: HomeSlideForm) => void;
-  cmsId: string;
-  slides: HomeSlide[];
-  onSaved: (slides: HomeSlide[], cmsId: string) => void;
-  onClose: () => void;
-}) {
-  const [file, setFile] = useState<File | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [previewUrl, setPreviewUrl] = useState("");
-  useEffect(
-    () => () => {
-      if (previewUrl.startsWith("blob:")) URL.revokeObjectURL(previewUrl);
-    },
-    [previewUrl],
-  );
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      let imageUrl = form.imageUrl;
-      if (file) {
-        const upload = new FormData();
-        upload.set("file", file);
-        const uploadResponse = await fetch("/api/admin/media?scope=home", {
-          method: "POST",
-          body: upload,
-          credentials: "same-origin",
-          cache: "no-store",
-        });
-        const uploadData = await json<{ url?: string; error?: string }>(uploadResponse);
-        if (!uploadResponse.ok || !uploadData.url)
-          throw new Error(uploadData.error ?? "No se pudo cargar la imagen.");
-        imageUrl = uploadData.url;
-      }
-      if (!imageUrl) throw new Error("Selecciona una imagen para la promoción.");
-      const next = { ...form, imageUrl };
-      const nextSlides = slides.some((slide) => slide.id === form.id)
-        ? slides.map((slide) => (slide.id === form.id ? next : slide))
-        : [...slides, next];
-      const response = await fetch("/api/admin/cms", {
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: cmsId || undefined,
-          slug: "home-carousel",
-          title: "Carrusel de inicio",
-          content: JSON.stringify({ slides: nextSlides }),
-          active: true,
-        }),
-      });
-      const data = await json<{ id?: string; error?: string }>(response);
-      if (!response.ok || !data.id)
-        throw new Error(data.error ?? "No se pudo guardar la promoción.");
-      onSaved(nextSlides, data.id);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No se pudo guardar la promoción.");
-    } finally {
-      setBusy(false);
-    }
-  }
-  const preview = previewUrl || form.imageUrl;
-  return (
-    <>
-      <Modal
-        title={
-          form.id && slides.some((slide) => slide.id === form.id)
-            ? "Editar promoción"
-            : "Nueva promoción"
-        }
-        onClose={onClose}
-      >
-        <form className="admin-form" onSubmit={submit}>
-          {error && (
-            <p className="admin-error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="form-grid">
-            <label>
-              Etiqueta
-              <input
-                required
-                maxLength={80}
-                value={form.eyebrow}
-                onChange={(e) => setForm({ ...form, eyebrow: e.target.value })}
-              />
-            </label>
-            <label>
-              Enlace
-              <input
-                required
-                maxLength={300}
-                value={form.href}
-                onChange={(e) => setForm({ ...form, href: e.target.value })}
-              />
-            </label>
-          </div>
-          <label>
-            Título
-            <input
-              required
-              maxLength={180}
-              value={form.title}
-              onChange={(e) => setForm({ ...form, title: e.target.value })}
-            />
-          </label>
-          <label>
-            Descripción
-            <textarea
-              required
-              maxLength={500}
-              rows={3}
-              value={form.description}
-              onChange={(e) => setForm({ ...form, description: e.target.value })}
-            />
-          </label>
-          <label>
-            Imagen de la promoción
-            <input
-              type="url"
-              placeholder="https://drive.google.com/..."
-              value={file ? "" : form.imageUrl}
-              onChange={(e) => {
-                setFile(null);
-                setForm({ ...form, imageUrl: e.target.value });
-              }}
-            />
-            <span className="form-help">
-              Puedes subir un archivo o usar una URL pública de Google Drive.
-            </span>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            />
-            {form.imageUrl && (
-              <span className="form-help">
-                Imagen actual cargada. Selecciona otra para reemplazarla.
-              </span>
-            )}
-          </label>
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={form.active}
-              onChange={(e) => setForm({ ...form, active: e.target.checked })}
-            />{" "}
-            Publicada en el inicio
-          </label>
-          <div className="modal-actions">
-            <button
-              className="admin-button"
-              type="button"
-              disabled={!preview}
-              onClick={() => setPreviewUrl(file ? URL.createObjectURL(file) : form.imageUrl)}
-            >
-              Vista previa
-            </button>
-            <button className="admin-button" type="button" onClick={onClose}>
-              Cancelar
-            </button>
-            <button className="admin-button primary" disabled={busy} type="submit">
-              {busy ? "Guardando…" : "Guardar promoción"}
-            </button>
-          </div>
-        </form>
-      </Modal>
-      {previewUrl && (
-        <HomeSlidePreviewModal
-          slide={{ ...form, imageUrl: previewUrl }}
-          onClose={() => setPreviewUrl("")}
-        />
-      )}
-    </>
-  );
-}
