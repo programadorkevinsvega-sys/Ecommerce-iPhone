@@ -555,12 +555,17 @@ export class PaymentService {
     let order = await this.orders.findById(orderId);
     if (!order) throw new Error("Order not found while finalizing refund");
 
-    if (order.status === "PAID") {
-      const movedToPending = await this.orders.transitionStatus(orderId, "PAID", "REFUND_PENDING");
+    if (order.status === "PAID" || order.status === "DELIVERED") {
+      const previousStatus = order.status;
+      const movedToPending = await this.orders.transitionStatus(
+        orderId,
+        previousStatus,
+        "REFUND_PENDING",
+      );
       if (!movedToPending) {
         order = await this.orders.findById(orderId);
         if (order?.status !== "REFUND_PENDING" && order?.status !== "REFUNDED") {
-          throw new Error("Order transition to REFUND_PENDING failed");
+          throw new Error(`Order transition from ${previousStatus} to REFUND_PENDING failed`);
         }
       } else {
         order = { ...order, status: "REFUND_PENDING" };
