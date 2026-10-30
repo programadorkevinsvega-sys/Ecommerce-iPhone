@@ -122,11 +122,9 @@ Required final regression matrix:
 - [ ] secrets/dependencies
 - [ ] production smoke/security verification
 
-
 ## Technician security surface — current state
 
 The technician identity remains isolated from Admin/RBAC. Technician APIs enforce technician session authentication and assignment ownership for technician order operations. Remaining work is regression evidence, production certification and visual hardening around the existing security model; no second authorization model should be introduced in the UI.
-
 
 ## Dependency vulnerability policy
 
@@ -137,7 +135,6 @@ Every dependency in the workspace must be included in the security audit: produc
 - Keep `pnpm-lock.yaml` committed and install with `--frozen-lockfile`.
 - Upgrade affected direct dependencies to a patched release, then audit the complete resolved dependency graph again.
 - A green audit means no advisories were returned by the configured npm registry at that time; it does not prove the absence of undisclosed or future vulnerabilities. Re-run it continuously and after security advisories are published.
-
 
 ## Remediación de Next.js — 2026-10-30
 

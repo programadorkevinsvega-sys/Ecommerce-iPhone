@@ -75,7 +75,10 @@ class MemoryPayments implements PaymentRepository {
 
   async attachProviderTransaction(id: string, transactionId: string) {
     if (id !== this.payment.id) return false;
-    if (this.payment.providerTransactionId && this.payment.providerTransactionId !== transactionId) {
+    if (
+      this.payment.providerTransactionId &&
+      this.payment.providerTransactionId !== transactionId
+    ) {
       return false;
     }
     this.payment = { ...this.payment, providerTransactionId: transactionId };
@@ -295,9 +298,9 @@ describe("PaymentService critical invariants", () => {
     const payments = new MemoryPayments();
     const { service: sut } = service(payments);
 
-    await expect(
-      sut.processProviderTransaction(approved(9999), "tampered"),
-    ).rejects.toThrow("does not match payment intent");
+    await expect(sut.processProviderTransaction(approved(9999), "tampered")).rejects.toThrow(
+      "does not match payment intent",
+    );
     expect(payments.payment.status).toBe("PENDING");
   });
 
@@ -349,9 +352,9 @@ describe("PaymentService critical invariants", () => {
     payments.payment = { ...payments.payment, providerTransactionId: "different-tx" };
     const { service: sut } = service(payments);
 
-    await expect(
-      sut.processProviderTransaction(approved(), "wrong-transaction"),
-    ).rejects.toThrow("does not match the payment");
+    await expect(sut.processProviderTransaction(approved(), "wrong-transaction")).rejects.toThrow(
+      "does not match the payment",
+    );
     expect(payments.payment.status).toBe("PENDING");
   });
 

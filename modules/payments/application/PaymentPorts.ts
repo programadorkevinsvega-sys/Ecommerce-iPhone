@@ -48,56 +48,29 @@ export type ProviderRefund = Readonly<{
 
 export interface PaymentProviderPort {
   readonly provider: PaymentProvider;
-  createPaymentIntent(
-    input: CreatePaymentInput,
-  ): Promise<ProviderPaymentIntent>;
-  recoverPaymentIntent(
-    payment: Payment,
-    input: CreatePaymentInput,
-  ): Promise<ProviderPaymentIntent>;
+  createPaymentIntent(input: CreatePaymentInput): Promise<ProviderPaymentIntent>;
+  recoverPaymentIntent(payment: Payment, input: CreatePaymentInput): Promise<ProviderPaymentIntent>;
   getTransaction(transactionId: string): Promise<ProviderTransaction>;
-  capturePayment?(
-    transactionId: string,
-  ): Promise<ProviderTransaction>;
+  capturePayment?(transactionId: string): Promise<ProviderTransaction>;
   refundPayment?(
     transactionId: string,
     amountInCents: number,
     idempotencyKey: string,
   ): Promise<ProviderRefund>;
-  getRefund?(
-    transactionId: string,
-    providerRefundId: string,
-  ): Promise<ProviderRefund>;
-  voidPayment?(
-    transactionId: string,
-    idempotencyKey: string,
-  ): Promise<ProviderTransaction>;
+  getRefund?(transactionId: string, providerRefundId: string): Promise<ProviderRefund>;
+  voidPayment?(transactionId: string, idempotencyKey: string): Promise<ProviderTransaction>;
 }
 
 export interface PaymentRepository {
   findById(id: string): Promise<Payment | null>;
   findByOrderId(orderId: string): Promise<Payment | null>;
-  findByIdempotencyKey(
-    customerId: string,
-    key: string,
-  ): Promise<Payment | null>;
+  findByIdempotencyKey(customerId: string, key: string): Promise<Payment | null>;
   findByProviderReference(reference: string): Promise<Payment | null>;
   findByProviderTransactionId(transactionId: string): Promise<Payment | null>;
   create(payment: Payment): Promise<void>;
-  attachProviderTransaction(
-    id: string,
-    transactionId: string,
-  ): Promise<boolean>;
-  transition(
-    id: string,
-    from: PaymentStatus,
-    to: PaymentStatus,
-  ): Promise<boolean>;
-  recordWebhook(
-    provider: PaymentProvider,
-    eventId: string,
-    payload: string,
-  ): Promise<boolean>;
+  attachProviderTransaction(id: string, transactionId: string): Promise<boolean>;
+  transition(id: string, from: PaymentStatus, to: PaymentStatus): Promise<boolean>;
+  recordWebhook(provider: PaymentProvider, eventId: string, payload: string): Promise<boolean>;
   recordLedger(
     paymentId: string,
     entryType: string,
@@ -105,10 +78,7 @@ export interface PaymentRepository {
     currency: string,
     metadata: string,
   ): Promise<void>;
-  acquireRefundLock(
-    paymentId: string,
-    idempotencyKey: string,
-  ): Promise<boolean>;
+  acquireRefundLock(paymentId: string, idempotencyKey: string): Promise<boolean>;
   findRefundLock(paymentId: string): Promise<string | null>;
   releaseRefundLock(paymentId: string, idempotencyKey: string): Promise<void>;
   recordRefund(
@@ -127,33 +97,23 @@ export interface PaymentRepository {
   findRefund(
     paymentId: string,
     idempotencyKey: string,
-  ): Promise<
-    Readonly<{
-      providerRefundId: string;
-      amountInCents: number;
-      currency: string;
-      status: "SUCCEEDED" | "PENDING" | "FAILED";
-    }> | null
-  >;
+  ): Promise<Readonly<{
+    providerRefundId: string;
+    amountInCents: number;
+    currency: string;
+    status: "SUCCEEDED" | "PENDING" | "FAILED";
+  }> | null>;
 }
 
 export interface OrderPaymentPort {
-  findById(
-    id: string,
-  ): Promise<
-    Readonly<{
-      id: string;
-      customerId?: string | undefined;
-      status: string;
-      totalInCents: number;
-      currency: string;
-    }> | null
-  >;
-  transitionStatus(
-    id: string,
-    from: string,
-    to: string,
-  ): Promise<boolean>;
+  findById(id: string): Promise<Readonly<{
+    id: string;
+    customerId?: string | undefined;
+    status: string;
+    totalInCents: number;
+    currency: string;
+  }> | null>;
+  transitionStatus(id: string, from: string, to: string): Promise<boolean>;
 }
 
 export interface ReservationPaymentPort {

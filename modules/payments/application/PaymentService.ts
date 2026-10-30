@@ -36,7 +36,10 @@ export class PaymentService {
     }>
   > {
     const provider = this.providers.resolve(providerName);
-    const existing = await this.payments.findByIdempotencyKey(input.customerId, input.idempotencyKey);
+    const existing = await this.payments.findByIdempotencyKey(
+      input.customerId,
+      input.idempotencyKey,
+    );
 
     if (existing) {
       this.assertOrderMatches(existing, input);
@@ -95,7 +98,10 @@ export class PaymentService {
     try {
       await this.payments.create(payment);
     } catch (error) {
-      const raced = await this.payments.findByIdempotencyKey(input.customerId, input.idempotencyKey);
+      const raced = await this.payments.findByIdempotencyKey(
+        input.customerId,
+        input.idempotencyKey,
+      );
       if (!raced) throw error;
       this.assertOrderMatches(raced, input);
       if (raced.provider !== provider.provider) {
@@ -328,7 +334,8 @@ export class PaymentService {
   ): Promise<void> {
     let payment = await this.payments.findByProviderReference(transaction.reference);
     if (!payment) payment = await this.payments.findByOrderId(transaction.reference);
-    if (!payment) payment = await this.payments.findByProviderTransactionId(transaction.transactionId);
+    if (!payment)
+      payment = await this.payments.findByProviderTransactionId(transaction.transactionId);
     if (!payment) return;
 
     if (payment.provider !== transaction.provider) throw new Error("Provider mismatch");
@@ -341,7 +348,10 @@ export class PaymentService {
         "SECURITY_MISMATCH",
         transaction.amountInCents,
         transaction.currency,
-        JSON.stringify({ transactionId: transaction.transactionId, provider: transaction.provider }),
+        JSON.stringify({
+          transactionId: transaction.transactionId,
+          provider: transaction.provider,
+        }),
       );
       throw new Error("Provider transaction does not match payment intent");
     }
@@ -445,7 +455,11 @@ export class PaymentService {
   private async markFailed(payment: Payment): Promise<void> {
     const current = await this.payments.findById(payment.id);
     if (!current) throw new Error("Payment disappeared while recording failure");
-    if (current.status === "CANCELLED" || current.status === "PAID" || current.status === "REFUNDED") {
+    if (
+      current.status === "CANCELLED" ||
+      current.status === "PAID" ||
+      current.status === "REFUNDED"
+    ) {
       return;
     }
 
@@ -582,7 +596,11 @@ export class PaymentService {
     }
 
     if (order?.status === "REFUND_PENDING") {
-      const movedToRefunded = await this.orders.transitionStatus(orderId, "REFUND_PENDING", "REFUNDED");
+      const movedToRefunded = await this.orders.transitionStatus(
+        orderId,
+        "REFUND_PENDING",
+        "REFUNDED",
+      );
       if (!movedToRefunded) {
         order = await this.orders.findById(orderId);
         if (order?.status !== "REFUNDED") {
@@ -619,10 +637,7 @@ export class PaymentService {
   }
 
   private assertRefundMatchesPayment(refund: StoredRefund, payment: Payment): void {
-    if (
-      refund.amountInCents !== payment.amountInCents ||
-      refund.currency !== payment.currency
-    ) {
+    if (refund.amountInCents !== payment.amountInCents || refund.currency !== payment.currency) {
       throw new Error("Recorded refund does not match payment amount or currency");
     }
   }
