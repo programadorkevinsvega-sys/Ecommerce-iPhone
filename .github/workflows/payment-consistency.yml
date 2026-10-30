@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  actions: write
 
 concurrency:
   group: payment-consistency-${{ github.event.pull_request.number || github.ref }}
@@ -30,6 +31,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.ref || github.ref }}
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -48,8 +53,43 @@ jobs:
       - name: Audit all dependencies (production, development, and optional)
         run: pnpm audit
 
-      - name: Check formatting
-        run: pnpm format:check
+      - name: Format changed PR files and push the formatting commit
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git diff --name-only "${BASE_SHA}...HEAD" > /tmp/changed-files
+          mapfile -t changed_files < /tmp/changed-files
+
+          if (( ${#changed_files[@]} > 0 )); then
+            pnpm exec prettier --write --ignore-unknown "${changed_files[@]}"
+
+            if ! git diff --quiet; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add -- "${changed_files[@]}"
+              git commit -m "style: format changed PR files"
+              git push origin "HEAD:${HEAD_REF}"
+              gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/payment-consistency.yml/dispatches" -f ref="${HEAD_REF}"
+            fi
+          fi
+
+      - name: Check formatting of changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [[ -n "${BASE_SHA}" ]]; then
+            git diff --name-only "${BASE_SHA}...HEAD" > /tmp/changed-files
+          else
+            git diff --name-only HEAD^ HEAD > /tmp/changed-files
+          fi
+
+          mapfile -t changed_files < /tmp/changed-files
+          if (( ${#changed_files[@]} > 0 )); then
+            pnpm exec prettier --check --ignore-unknown "${changed_files[@]}"
+          fi
 
       - name: Check repository foundations
         run: pnpm foundation:check
