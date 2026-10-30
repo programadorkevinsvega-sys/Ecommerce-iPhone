@@ -32,7 +32,7 @@
     "format": "node scripts/format-repository.mjs",
     "format:check": "prettier --check .",
     "verify:admin:production": "node scripts/verify-admin-production.mjs",
-    "cloudflare:build": "pnpm audit --prod && pnpm foundation:check && pnpm frontend:data:check && pnpm architecture:check && pnpm format && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build:cloudflare",
+    "cloudflare:build": "pnpm audit && pnpm foundation:check && pnpm frontend:data:check && pnpm architecture:check && pnpm format && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build:cloudflare",
     "cloudflare:deploy": "pnpm db:migrate:production && pnpm db:verify:production && pnpm exec wrangler deploy --env=\"\" && pnpm verify:production && pnpm verify:phase08:production && pnpm verify:phase09:production && pnpm verify:phase10.2:production && pnpm verify:phase10.3:production && pnpm verify:phase10.4:production && pnpm verify:phase10.5:production",
     "cloudflare:version": "pnpm exec wrangler --version",
     "verify:notifications:production": "node scripts/verify-notifications-production.mjs",
@@ -47,6 +47,6 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260908.1",
     "prettier": "^3.6.2",
-    "wrangler": "^4.130.0"
+    "wrangler": "4.155.0"
   }
 }
