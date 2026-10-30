@@ -4,15 +4,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - "modules/payments/**"
-      - "modules/orders/**"
-      - "migrations/**"
-      - "apps/web/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - ".github/workflows/payment-consistency.yml"
   workflow_dispatch:
 
 permissions:
