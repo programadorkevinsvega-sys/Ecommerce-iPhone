@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: repository-ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   runner-diagnostics:
@@ -139,6 +139,14 @@ jobs:
         env:
           CI: "true"
 
+      - name: Verify production deployment is blocked outside main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          if node scripts/assert-main-deploy.mjs; then
+            echo "::error::Production deployment guard unexpectedly allowed a non-main ref."
+            exit 1
+          fi
+
       - name: Build Cloudflare Worker
         run: pnpm build:cloudflare
 
@@ -172,7 +180,7 @@ jobs:
       - name: Checkout merged main
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Setup pnpm
@@ -209,3 +217,15 @@ jobs:
 
       - name: Verify notification authorization boundaries
         run: pnpm verify:notifications:production
+
+      - name: Verify Phase 10.2 analytics ingestion and idempotency
+        run: pnpm verify:phase10.2:production
+
+      - name: Verify Phase 10.3 catalog and search analytics
+        run: pnpm verify:phase10.3:production
+
+      - name: Verify Phase 10.4 cart, checkout and analytics
+        run: pnpm verify:phase10.4:production
+
+      - name: Verify Phase 10.5 canonical revenue projection
+        run: pnpm verify:phase10.5:production
