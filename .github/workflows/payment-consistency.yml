@@ -10,7 +10,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  actions: write
 
 concurrency:
   group: repository-ci-${{ github.event.pull_request.number || github.ref }}
@@ -52,6 +53,33 @@ jobs:
 
       - name: Audit all dependencies
         run: pnpm audit
+
+      - name: Format changed PR files and push the formatting commit
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --name-only "${BASE_SHA}...HEAD" > /tmp/changed-files
+          while IFS= read -r file; do
+            [[ -f "${file}" ]] && printf '%s\\0' "${file}"
+          done < /tmp/changed-files > /tmp/existing-changed-files
+          mapfile -d '' -t changed_files < /tmp/existing-changed-files
+
+          if (( ${#changed_files[@]} > 0 )); then
+            pnpm exec prettier --write --ignore-unknown "${changed_files[@]}"
+            if ! git diff --quiet; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add -- "${changed_files[@]}"
+              git commit -m "style: format changed PR files"
+              git push origin "HEAD:${HEAD_REF}"
+              gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/payment-consistency.yml/dispatches" -f ref="${HEAD_REF}"
+            fi
+          fi
 
       - name: Check formatting of changed files
         env:
