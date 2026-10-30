@@ -263,6 +263,24 @@ describe("PaymentService critical invariants", () => {
     expect(payments.ledger.has("PAYMENT_CONFIRMED:10000")).toBe(true);
   });
 
+  it("keeps an approval replay idempotent after fulfillment advances the order", async () => {
+    const payments = new MemoryPayments();
+    payments.payment = {
+      ...payments.payment,
+      status: "PAID",
+      providerTransactionId: "tx-1",
+    };
+    const { service: sut, orders, reservations } = service(payments);
+    orders.status = "PROCESSING";
+
+    await sut.processProviderTransaction(approved(), "approval-after-fulfillment");
+
+    expect(payments.payment.status).toBe("PAID");
+    expect(orders.status).toBe("PROCESSING");
+    expect(reservations.consumed).toBeGreaterThan(0);
+    expect(payments.ledger.has("PAYMENT_CONFIRMED:10000")).toBe(true);
+  });
+
   it("does not allow a later declined event to move a paid payment backwards", async () => {
     const payments = new MemoryPayments();
     const { service: sut } = service(payments);
