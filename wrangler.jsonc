@@ -4,27 +4,27 @@
   "main": "apps/web/worker.ts",
   "compatibility_date": "2026-09-09",
   "compatibility_flags": [
-    "nodejs_compat"
+    "nodejs_compat",
   ],
   "observability": {
-    "enabled": true
+    "enabled": true,
   },
   "assets": {
     "directory": "apps/web/.open-next/assets",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
   },
   "vars": {
     "APP_ENV": "production",
     "ADMIN_EMAIL": "yesidvegamar@gmail.com",
     "ALLOWED_ORIGIN": "https://iphone.jnmtortas.com",
-    "ADMIN_RBAC_DENIED_EMAIL": "medellinpublico12@gmail.com"
+    "ADMIN_RBAC_DENIED_EMAIL": "medellinpublico12@gmail.com",
   },
   "routes": [
     {
       "pattern": "iphone.jnmtortas.com",
       "zone_name": "jnmtortas.com",
-      "custom_domain": true
-    }
+      "custom_domain": true,
+    },
   ],
   "ratelimits": [
     {
@@ -32,57 +32,57 @@
       "namespace_id": "10001",
       "simple": {
         "limit": 120,
-        "period": 60
-      }
+        "period": 60,
+      },
     },
     {
       "name": "SENSITIVE_RATE_LIMITER",
       "namespace_id": "10002",
       "simple": {
         "limit": 20,
-        "period": 60
-      }
-    }
+        "period": 60,
+      },
+    },
   ],
   "triggers": {
     "crons": [
-      "* * * * *"
-    ]
+      "* * * * *",
+    ],
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "ecommerce-iphone",
-      "database_id": "39074683-f121-4841-ad80-3759aa739dde"
-    }
+      "database_id": "39074683-f121-4841-ad80-3759aa739dde",
+    },
   ],
   "r2_buckets": [
     {
       "binding": "MEDIA_BUCKET",
-      "bucket_name": "ecommerce-iphone-media"
-    }
+      "bucket_name": "ecommerce-iphone-media",
+    },
   ],
   "queues": {
     "producers": [
       {
         "binding": "EVENTS_QUEUE",
-        "queue": "ecommerce-iphone-events"
+        "queue": "ecommerce-iphone-events",
       },
       {
         "binding": "NOTIFICATIONS_QUEUE",
-        "queue": "ecommerce-iphone-notifications"
+        "queue": "ecommerce-iphone-notifications",
       },
       {
         "binding": "NOTIFICATIONS_DLQ_QUEUE",
-        "queue": "ecommerce-iphone-notifications-dlq"
-      }
+        "queue": "ecommerce-iphone-notifications-dlq",
+      },
     ],
     "consumers": [
       {
         "queue": "ecommerce-iphone-events",
         "max_batch_size": 10,
         "max_batch_timeout": 5,
-        "max_retries": 5
+        "max_retries": 5,
       },
       {
         "queue": "ecommerce-iphone-notifications",
@@ -91,31 +91,31 @@
         "max_retries": 5,
         "dead_letter_queue": "ecommerce-iphone-notifications-dlq",
         "max_concurrency": 10,
-        "retry_delay": 30
+        "retry_delay": 30,
       },
       {
         "queue": "ecommerce-iphone-notifications-dlq",
         "max_batch_size": 10,
         "max_batch_timeout": 5,
-        "max_retries": 1
-      }
-    ]
+        "max_retries": 1,
+      },
+    ],
   },
   "durable_objects": {
     "bindings": [
       {
         "name": "NOTIFICATION_HUB",
-        "class_name": "NotificationHub"
-      }
-    ]
+        "class_name": "NotificationHub",
+      },
+    ],
   },
   "migrations": [
     {
       "tag": "notifications-v1",
       "new_sqlite_classes": [
-        "NotificationHub"
-      ]
-    }
+        "NotificationHub",
+      ],
+    },
   ],
-  "previews": {}
+  "previews": {},
 }
