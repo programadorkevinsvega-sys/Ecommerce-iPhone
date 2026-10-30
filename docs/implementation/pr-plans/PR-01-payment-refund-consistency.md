@@ -37,7 +37,7 @@ The audit command now runs as `pnpm audit` (not `pnpm audit --prod`) both in the
 
 ## Verification
 
-The new Actions workflow is configured to run formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. The latest GitHub Actions run (`41134644250`) also failed before runner allocation: both jobs report `runner_id=0`, empty runner name, and `steps=[]`; therefore the audit/test/typecheck steps did not start. Cloudflare build `d92671ff-fe3d-4078-a5ab-5f41bb5ed10b` failed on the latest dependency-update commit and exposes no annotations or output through the GitHub check. The private Cloudflare dashboard logs are required to determine whether frozen installation or the full audit failed. This environment cannot execute dependency installation or local test commands, so no local test result is claimed.
+The new Actions workflow is configured to run formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. The latest GitHub Actions run (`41134814098`, run #20) also failed before runner allocation: both jobs report `runner_id=0`, empty runner name, and `steps=[]`; therefore the audit/test/typecheck steps did not start. Cloudflare build `d92671ff-fe3d-4078-a5ab-5f41bb5ed10b` failed on the latest dependency-update commit and exposes no annotations or output through the GitHub check. The private Cloudflare dashboard logs are required to determine whether frozen installation or the full audit failed. This environment cannot execute dependency installation or local test commands, so no local test result is claimed.
 
 ## Operational note
 
