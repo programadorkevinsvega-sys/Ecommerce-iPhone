@@ -491,6 +491,15 @@ export class PaymentService {
     if (!order) throw new Error("Order not found while finalizing payment");
     if (order.status === target) return;
 
+    // Provider approval replays can arrive after fulfillment has advanced the order.
+    // Those downstream states already imply that payment was accepted; never move them back.
+    if (
+      target === "PAID" &&
+      ["PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED"].includes(order.status)
+    ) {
+      return;
+    }
+
     if (order.status !== "PENDING_PAYMENT" && order.status !== "PAYMENT_PROCESSING") {
       throw new Error(`Cannot finalize order from status ${order.status} to ${target}`);
     }
