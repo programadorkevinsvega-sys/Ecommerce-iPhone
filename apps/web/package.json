@@ -29,7 +29,7 @@
     "eslint": "^9.35.0",
     "eslint-config-next": "15.5.28",
     "typescript": "^5.9.0",
-    "vitest": "^4.1.11",
+    "vitest": "^4.1.12",
     "wrangler": "^4.130.0"
   }
 }
