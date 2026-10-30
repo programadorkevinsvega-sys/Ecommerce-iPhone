@@ -70,8 +70,9 @@ export class D1PaymentRepository implements PaymentRepository {
     return row?.idempotency_key ?? null;
   }
 
-  async releaseRefundLock(paymentId: string): Promise<void> {
-    await this.db.prepare("DELETE FROM payment_refund_locks WHERE payment_id=?").bind(paymentId).run();
+  async releaseRefundLock(paymentId: string, idempotencyKey: string): Promise<void> {
+    await this.db.prepare("DELETE FROM payment_refund_locks WHERE payment_id=? AND idempotency_key=?")
+      .bind(paymentId, idempotencyKey).run();
   }
 
   async recordRefund(paymentId: string, idempotencyKey: string, amountInCents: number, currency: string, providerRefundId: string, status: "SUCCEEDED" | "PENDING" | "FAILED"): Promise<boolean> {
@@ -81,7 +82,7 @@ export class D1PaymentRepository implements PaymentRepository {
   }
 
   async updateRefundStatus(paymentId: string, idempotencyKey: string, status: "SUCCEEDED" | "PENDING" | "FAILED"): Promise<boolean> {
-    const result = await this.db.prepare("UPDATE payment_refunds SET status=?,updated_at=CURRENT_TIMESTAMP WHERE payment_id=? AND idempotency_key=?").bind(status, paymentId, idempotencyKey).run();
+    const result = await this.db.prepare("UPDATE payment_refunds SET status=?,updated_at=CURRENT_TIMESTAMP WHERE payment_id=? AND idempotency_key=? AND (status=? OR status='PENDING')").bind(status, paymentId, idempotencyKey, status).run();
     return result.meta.changes === 1;
   }
 
