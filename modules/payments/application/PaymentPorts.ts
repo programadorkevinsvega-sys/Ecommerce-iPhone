@@ -110,7 +110,7 @@ export interface PaymentRepository {
     idempotencyKey: string,
   ): Promise<boolean>;
   findRefundLock(paymentId: string): Promise<string | null>;
-  releaseRefundLock(paymentId: string): Promise<void>;
+  releaseRefundLock(paymentId: string, idempotencyKey: string): Promise<void>;
   recordRefund(
     paymentId: string,
     idempotencyKey: string,
