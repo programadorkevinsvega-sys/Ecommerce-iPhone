@@ -151,6 +151,7 @@ class MemoryPayments implements PaymentRepository {
 
 class MemoryOrders implements OrderPaymentPort {
   status = "PENDING_PAYMENT";
+  readonly failedTransitions = new Map<string, number>();
 
   async findById(id: string) {
     return id === "o1"
@@ -160,6 +161,11 @@ class MemoryOrders implements OrderPaymentPort {
 
   async transitionStatus(_id: string, from: string, to: string) {
     if (this.status !== from) return false;
+    const failures = this.failedTransitions.get(to) ?? 0;
+    if (failures > 0) {
+      this.failedTransitions.set(to, failures - 1);
+      return false;
+    }
     this.status = to;
     return true;
   }
@@ -338,13 +344,15 @@ describe("PaymentService critical invariants", () => {
       status: "PAID",
       providerTransactionId: "tx-1",
     };
-    const { service: sut } = service(payments);
+    const { service: sut, orders } = service(payments);
+    orders.status = "PAID";
 
     const first = await sut.refundPayment("p1", "refund-1");
     const second = await sut.refundPayment("p1", "refund-1");
 
     expect(first.status).toBe("REFUNDED");
     expect(second.status).toBe("REFUNDED");
+    expect(orders.status).toBe("REFUNDED");
     expect(payments.refunds.size).toBe(1);
     expect(payments.refundCalls).toBe(1);
     expect(payments.ledger.has("PAYMENT_REFUNDED:10000")).toBe(true);
@@ -358,7 +366,8 @@ describe("PaymentService critical invariants", () => {
       status: "PAID",
       providerTransactionId: "tx-1",
     };
-    const { service: sut } = service(payments);
+    const { service: sut, orders } = service(payments);
+    orders.status = "PAID";
 
     const results = await Promise.allSettled([
       sut.refundPayment("p1", "refund-a"),
@@ -377,7 +386,8 @@ describe("PaymentService critical invariants", () => {
       status: "PAID",
       providerTransactionId: "tx-1",
     };
-    const { service: sut } = service(payments, true);
+    const { service: sut, orders } = service(payments, true);
+    orders.status = "PAID";
 
     const pending = await sut.refundPayment("p1", "refund-pending");
     expect(pending.status).toBe("PAID");
@@ -387,6 +397,7 @@ describe("PaymentService critical invariants", () => {
     const reconciled = await sut.reconcileRefund("p1", "refund-pending");
 
     expect(reconciled.status).toBe("REFUNDED");
+    expect(orders.status).toBe("REFUNDED");
     expect(payments.refunds.get("p1:refund-pending")?.status).toBe("SUCCEEDED");
     expect(payments.lockOwner).toBeNull();
     expect(payments.ledger.has("PAYMENT_REFUNDED:10000")).toBe(true);
@@ -400,12 +411,41 @@ describe("PaymentService critical invariants", () => {
       providerTransactionId: "tx-1",
     };
     payments.failNextLedger.add("PAYMENT_REFUNDED");
-    const { service: sut } = service(payments);
+    const { service: sut, orders } = service(payments);
+    orders.status = "PAID";
 
     const result = await sut.refundPayment("p1", "refund-ledger-retry");
 
     expect(result.status).toBe("REFUNDED");
     expect(payments.payment.status).toBe("REFUNDED");
+    expect(orders.status).toBe("REFUNDED");
+    expect(payments.ledger.has("PAYMENT_REFUNDED:10000")).toBe(true);
+    expect(payments.lockOwner).toBeNull();
+    expect(payments.refundCalls).toBe(1);
+  });
+
+  it("repairs the order refund transition when a partial finalization fails", async () => {
+    const payments = new MemoryPayments();
+    payments.payment = {
+      ...payments.payment,
+      status: "PAID",
+      providerTransactionId: "tx-1",
+    };
+    const { service: sut, orders } = service(payments);
+    orders.status = "PAID";
+    orders.failedTransitions.set("REFUNDED", 2);
+
+    await expect(sut.refundPayment("p1", "refund-order-retry")).rejects.toThrow(
+      "Order transition to REFUNDED failed",
+    );
+    expect(payments.payment.status).toBe("REFUNDED");
+    expect(orders.status).toBe("REFUND_PENDING");
+    expect(payments.lockOwner).toBe("refund-order-retry");
+
+    const retried = await sut.refundPayment("p1", "refund-order-retry");
+
+    expect(retried.status).toBe("REFUNDED");
+    expect(orders.status).toBe("REFUNDED");
     expect(payments.ledger.has("PAYMENT_REFUNDED:10000")).toBe(true);
     expect(payments.lockOwner).toBeNull();
     expect(payments.refundCalls).toBe(1);
