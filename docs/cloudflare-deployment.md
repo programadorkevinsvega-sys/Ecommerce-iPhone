@@ -1,17 +1,19 @@
 # Cloudflare deployment
 
-## Entorno y recursos de producción
+## Production environment
 
-El dominio canónico es https://iphone.jnmtortas.com. El repositorio utiliza un único entorno remoto de producción en Cloudflare Workers; no existe un entorno remoto de staging configurado.
+Canonical production domain: https://iphone.jnmtortas.com.
 
-| Recurso | Nombre |
+The repository uses one remote production environment in Cloudflare Workers. There is no remote staging environment yet.
+
+| Resource | Name |
 |---|---|
 | Worker | `ecommerce-iphone` |
 | D1 | `ecommerce-iphone` |
 | R2 | `ecommerce-iphone-media` |
-| Queue de eventos | `ecommerce-iphone-events` |
+| Events Queue | `ecommerce-iphone-events` |
 
-Toolchain fijada:
+Toolchain:
 
 - Node.js `24.18.0`
 - pnpm `12.4.1`
@@ -20,74 +22,77 @@ Toolchain fijada:
 - Wrangler `4.155.0`
 - workerd compatibility date `2026-09-09`
 
-## Separación CI/CD
+## CI/CD ownership
 
-**GitHub Actions es la autoridad para validar el código. Cloudflare Workers Builds solo compila y despliega.**
+**GitHub Actions owns all validation and production deployment. Cloudflare Workers Builds is build-only.**
 
-### GitHub Actions — CI antes del merge
+### GitHub Actions — CI before merge
 
-El workflow `.github/workflows/payment-consistency.yml` se ejecuta en Pull Requests hacia `main` y en pushes a `main`. Ejecuta:
+The workflow `.github/workflows/payment-consistency.yml` runs on pull requests to `main` and pushes to `main`. It performs:
 
-1. Instalación reproducible con `pnpm install --frozen-lockfile`.
-2. Auditoría completa `pnpm audit` (producción, desarrollo y dependencias opcionales).
-3. Prettier sobre los archivos cambiados.
-4. Checks de foundations, datos de producción del frontend y arquitectura.
-5. ESLint y TypeScript.
-6. Suite completa Vitest.
-7. Migraciones D1 **locales** y aisladas para las pruebas E2E.
-8. Playwright contra Wrangler local usando `wrangler dev --local`.
-9. Build de Cloudflare como comprobación de compilación, sin publicar.
+1. Reproducible install with `pnpm install --frozen-lockfile`.
+2. Complete dependency audit with `pnpm audit` (production, development and optional dependencies).
+3. Prettier on changed files.
+4. Repository foundations, frontend production-data and architecture checks.
+5. ESLint and TypeScript.
+6. Complete Vitest unit/integration suite.
+7. Local D1 migrations for E2E.
+8. Playwright against local Wrangler using `wrangler dev --local`.
+9. Cloudflare Worker build as a CI gate, without deploying.
 
-No se entregan credenciales de Cloudflare ni de producción al job de CI de Pull Requests. El D1 de E2E se crea localmente y usa las migraciones del repositorio, incluida la semilla de catálogo existente.
+Pull-request CI has no Cloudflare or production credentials. The E2E database is local, initialized from repository migrations and their test/catalog seed data.
 
-### GitHub Actions — verificaciones posteriores al despliegue
+### GitHub Actions — CD after merge
 
-`.github/workflows/production-verification.yml` ejecuta los smoke tests contra el dominio de producción desde GitHub Actions: salud, rate limiting, contenido público, SEO y límites de autorización de notificaciones.
+The `deploy-production` job in the same workflow runs **only** when:
 
-Las pruebas profundas Phase 10.2–10.5 modifican temporalmente registros sintéticos de analytics/carrito y consultan D1 remoto; por seguridad son opt-in mediante `workflow_dispatch` con `run_deep_checks=true`. Requieren los GitHub Secrets `CLOUDFLARE_ACCOUNT_ID` y `CLOUDFLARE_API_TOKEN`. Los scripts generan identificadores únicos y realizan cleanup. La validación administrativa autenticada es opt-in con `run_admin_checks=true` y requiere `ADMIN_RBAC_ALLOWED_EMAIL`, `ADMIN_RBAC_ALLOWED_PASSWORD`, `ADMIN_RBAC_DENIED_EMAIL` y `ADMIN_RBAC_DENIED_PASSWORD`.
+- the event is `push`;
+- the ref is `refs/heads/main`;
+- runner diagnostics and the complete quality job both succeeded.
 
-El workflow `.github/workflows/performance.yml` ya ejecuta las pruebas de rendimiento con Playwright desde GitHub Actions, contra la URL productiva, en ejecución programada o manual.
+The deployment job rebuilds the Worker, then runs `pnpm cloudflare:deploy:production`. This command checks that the active Git branch/ref is `main`, applies production D1 migrations and runs `wrangler deploy`. After deployment, GitHub Actions verifies D1 migration state, health/rate limiting, Phase 08 public content and authorization boundaries, Phase 09 SEO, and notification authorization boundaries.
 
-### Cloudflare Workers Builds — build y deploy únicamente
+The job requires GitHub Repository Secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Configure an optional required reviewer on the GitHub `production` environment if a human approval gate is desired.
 
-Configuración esperada en **Workers & Pages → ecommerce-iphone → Settings → Build**:
+The workflow `.github/workflows/production-verification.yml` separately runs scheduled/manual post-deploy smoke checks. Deeper Phase 10.2–10.5 probes, which write synthetic analytics/cart rows and clean them up, are opt-in via `workflow_dispatch`. Authenticated admin/RBAC verification is also opt-in and uses dedicated GitHub Secrets.
 
-| Campo | Valor |
+The existing `.github/workflows/performance.yml` runs Playwright performance smoke checks from GitHub Actions on a schedule or manually.
+
+### Cloudflare Workers Builds — build only, no deploy
+
+Configure **Workers & Pages → ecommerce-iphone → Settings → Build**:
+
+| Field | Value |
 |---|---|
 | Production branch | `main` |
 | Build command | `pnpm install --frozen-lockfile && pnpm build:cloudflare` |
 | Deploy command | `pnpm cloudflare:deploy` |
-| Root directory | vacío (raíz del monorepo) |
+| Root directory | empty (monorepo root) |
 
-El build ejecuta únicamente `opennextjs-cloudflare build`. No ejecuta auditorías, linters, TypeScript, Vitest, Playwright ni smoke tests.
+The Cloudflare Build command only invokes `opennextjs-cloudflare build`. It does not run audits, lint, typecheck, Vitest, Playwright, E2E or smoke tests.
 
-El deploy ejecuta únicamente:
-```bash
-pnpm db:migrate:production
-pnpm exec wrangler deploy --env=""
-```
+The Cloudflare Deploy command `pnpm cloudflare:deploy` is intentionally a no-op. It exists as a safe hook for Workers Builds and cannot apply migrations or publish a Worker. The real deployment is performed by the guarded GitHub Actions `deploy-production` job after successful CI on `main`.
 
-Las migraciones D1 y la publicación del Worker son operaciones de release, no pruebas de calidad. La consulta de estado de migraciones (`pnpm db:verify:production`), los smoke tests y las pruebas funcionales posteriores se ejecutan desde GitHub Actions.
+This prevents a Cloudflare Workers Builds run for a feature branch or Pull Request from publishing to production, even if the dashboard branch setting is temporarily incorrect. Still configure `main` as the production branch in the dashboard.
 
-### Previews de ramas no productivas
+### Previews for non-production branches
 
-La rama de producción de Workers Builds debe ser `main`. Los builds de ramas distintas no deben ejecutar `wrangler deploy`.
+The repository currently has no isolated remote staging resources. Therefore, keep Cloudflare Preview Builds disabled until separate Preview bindings exist for D1, R2, Queues, Durable Objects and any required secrets. Never connect preview code to production resources.
 
-Worker Previews pueden usar `pnpm exec wrangler preview`, pero **no se deben habilitar hasta configurar bindings de Preview aislados**: una base D1 diferente, un bucket R2 diferente, colas y cualquier otro recurso necesario. Este repositorio no dispone actualmente de un staging remoto; nunca se deben conectar previews a D1/R2/colas de producción.
+Pull-request E2E runs locally in GitHub Actions with `wrangler dev --local`; a remote preview is not required to validate each PR.
 
-Las pruebas E2E de Pull Requests se ejecutan localmente en GitHub Actions con `wrangler dev --local`, de modo que no necesitan un preview remoto ni tocan recursos productivos.
+## Versioned commands
 
-## Comandos versionados
-
-- `pnpm build:cloudflare`: compila la aplicación Worker; no ejecuta tests ni despliega.
-- `pnpm cloudflare:build`: alias build-only para Workers Builds.
-- `pnpm cloudflare:deploy`: aplica las migraciones remotas y publica el Worker. Se usa después del build de Cloudflare.
-- `pnpm deploy:production`: compila y después ejecuta el deploy de producción.
-- `pnpm db:migrate:local`: aplica migraciones a D1 local para E2E.
+- `pnpm build:cloudflare`: compile the Worker bundle; no tests and no deploy.
+- `pnpm cloudflare:build`: build-only alias for Workers Builds.
+- `pnpm cloudflare:deploy`: intentionally does not deploy; safe no-op for Workers Builds.
+- `pnpm cloudflare:deploy:production`: main-only guard, production D1 migrations, then Wrangler deploy.
+- `pnpm deploy:production`: local/manual build followed by the same main-only guarded production deploy.
+- `pnpm db:migrate:local`: apply migrations to local D1 for E2E.
 - `pnpm test`: Vitest.
-- `pnpm test:e2e`: Playwright con Wrangler local.
+- `pnpm test:e2e`: Playwright against local Wrangler.
 
-## Bindings de producción
+## Production bindings
 
 - `DB` → `ecommerce-iphone`
 - `MEDIA_BUCKET` → `ecommerce-iphone-media`
@@ -100,19 +105,16 @@ Las pruebas E2E de Pull Requests se ejecutan localmente en GitHub Actions con `w
 
 ## Secrets
 
-Los secretos operativos deben permanecer fuera de GitHub y del código:
+Keep Worker secrets out of Git and CI logs:
 
 - `RESEND_API_KEY`
 - `ADMIN_BOOTSTRAP_TOKEN`
-- credenciales de Wompi, Stripe, Mercado Pago, PayPal y otros proveedores.
-- tokens de operación de Cloudflare.
+- payment provider credentials.
 
-Configurar los secretos del Worker con `wrangler secret put <SECRET_NAME>` y los secretos que necesitan Actions mediante GitHub Repository Secrets, limitados a los workflows que los usan.
+Configure Worker secrets with `wrangler secret put <SECRET_NAME>`. Configure secrets used by the Actions deploy/verification jobs as repository secrets, available only to workflows that need them.
 
-## Migraciones y rollback
+## Migrations and rollback
 
-Las migraciones de producción se aplican antes de publicar el Worker con `pnpm db:migrate:production`. El estado de las migraciones se verifica desde GitHub Actions mediante `pnpm db:verify:production`.
+Production migrations are applied as part of the GitHub Actions deployment job immediately before publishing the Worker. Never edit an applied migration; add a new numbered migration.
 
-Nunca edites una migración ya aplicada; agrega una nueva migración numerada.
-
-El rollback se ejecuta manualmente mediante `.github/workflows/rollback.yml` y debe terminar con `pnpm verify:production` satisfactorio.
+Rollback remains manual through `.github/workflows/rollback.yml` and must be followed by a passing `pnpm verify:production`.
