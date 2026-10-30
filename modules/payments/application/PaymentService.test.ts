@@ -444,7 +444,7 @@ describe("PaymentService critical invariants", () => {
     expect(payments.ledger.has("PAYMENT_REFUNDED:10000")).toBe(true);
   });
 
-  it("recovers a provider-approved refund when the first ledger write fails", async () => {
+  it("recovers a provider-approved refund on retry when the first ledger write fails", async () => {
     const payments = new MemoryPayments();
     payments.payment = {
       ...payments.payment,
@@ -455,17 +455,22 @@ describe("PaymentService critical invariants", () => {
     const { service: sut, orders } = service(payments);
     orders.status = "PAID";
 
+    await expect(sut.refundPayment("p1", "refund-ledger-retry")).rejects.toThrow(
+      "ledger unavailable",
+    );
+    expect(payments.payment.status).toBe("REFUNDED");
+    expect(orders.status).toBe("REFUNDED");
+    expect(payments.lockOwner).toBe("refund-ledger-retry");
+
     const result = await sut.refundPayment("p1", "refund-ledger-retry");
 
     expect(result.status).toBe("REFUNDED");
-    expect(payments.payment.status).toBe("REFUNDED");
-    expect(orders.status).toBe("REFUNDED");
     expect(payments.ledger.has("PAYMENT_REFUNDED:10000")).toBe(true);
     expect(payments.lockOwner).toBeNull();
     expect(payments.refundCalls).toBe(1);
   });
 
-  it("repairs the order refund transition when a partial finalization fails", async () => {
+  it("repairs the order refund transition across retries after partial finalization", async () => {
     const payments = new MemoryPayments();
     payments.payment = {
       ...payments.payment,
@@ -480,6 +485,12 @@ describe("PaymentService critical invariants", () => {
       "Order transition to REFUNDED failed",
     );
     expect(payments.payment.status).toBe("REFUNDED");
+    expect(orders.status).toBe("REFUND_PENDING");
+    expect(payments.lockOwner).toBe("refund-order-retry");
+
+    await expect(sut.refundPayment("p1", "refund-order-retry")).rejects.toThrow(
+      "Order transition to REFUNDED failed",
+    );
     expect(orders.status).toBe("REFUND_PENDING");
     expect(payments.lockOwner).toBe("refund-order-retry");
 
