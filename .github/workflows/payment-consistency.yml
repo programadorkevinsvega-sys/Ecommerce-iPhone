@@ -7,8 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  actions: write
+  contents: read
 
 concurrency:
   group: payment-consistency-${{ github.event.pull_request.number || github.ref }}
@@ -47,51 +46,11 @@ jobs:
           node-version: 24.18.0
           cache: pnpm
 
-      - name: Refresh pnpm lockfile for dependency manifest changes
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          pnpm install --lockfile-only --no-frozen-lockfile
-
-          if ! git diff --quiet -- pnpm-lock.yaml; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add pnpm-lock.yaml
-            git commit -m "chore: refresh pnpm lockfile for patched build adapter"
-            git push origin "HEAD:${HEAD_REF}"
-            gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/payment-consistency.yml/dispatches" -f ref="${HEAD_REF}"
-          fi
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Audit all dependencies (production, development, and optional)
         run: pnpm audit
-
-      - name: Format changed PR files and push the formatting commit
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git diff --name-only "${BASE_SHA}...HEAD" > /tmp/changed-files
-          mapfile -t changed_files < /tmp/changed-files
-
-          if (( ${#changed_files[@]} > 0 )); then
-            pnpm exec prettier --write --ignore-unknown "${changed_files[@]}"
-
-            if ! git diff --quiet; then
-              git config user.name "github-actions[bot]"
-              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-              git add -- "${changed_files[@]}"
-              git commit -m "style: format changed PR files"
-              git push origin "HEAD:${HEAD_REF}"
-              gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/payment-consistency.yml/dispatches" -f ref="${HEAD_REF}"
-            fi
-          fi
 
       - name: Check formatting of changed files
         env:
