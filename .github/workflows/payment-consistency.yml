@@ -129,7 +129,7 @@ jobs:
         run: pnpm test
 
       - name: Prepare isolated local D1 database for E2E
-        run: pnpm db:migrate:local
+        run: pnpm db:prepare:e2e
 
       - name: Install Playwright Chromium
         run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
