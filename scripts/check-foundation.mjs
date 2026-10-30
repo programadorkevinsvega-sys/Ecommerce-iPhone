@@ -16,10 +16,12 @@ const requiredFiles = [
   "scripts/check-foundation.mjs",
   "scripts/verify-install.mjs",
   "scripts/verify-production.mjs",
+  "scripts/assert-main-deploy.mjs",
   "apps/web/next.config.ts",
   "apps/web/middleware.ts",
   "apps/web/worker.ts",
   "apps/web/app/api/admin/resources/route.ts",
+  ".github/workflows/payment-consistency.yml",
   ".github/workflows/production-verification.yml",
   ".github/workflows/rollback.yml",
 ];
@@ -62,8 +64,21 @@ for (const entry of [".env", ".env.*", ".dev.vars", ".dev.vars.*"]) {
 
 const productionVerification = await readFile(".github/workflows/production-verification.yml", "utf8");
 if (!productionVerification.includes("pnpm verify:production")) failures.push("production verification workflow must execute runtime verification");
-if (!packageJson.scripts?.["cloudflare:deploy"]?.includes("db:migrate:production")) failures.push("Cloudflare production deploy must apply remote D1 migrations");
-if (!packageJson.scripts?.["cloudflare:deploy"]?.includes("db:verify:production")) failures.push("Cloudflare production deploy must verify remote D1 review hardening migration");
+const workerBuildDeploy = packageJson.scripts?.["cloudflare:deploy"] ?? "";
+if (!workerBuildDeploy.includes("intentionally disabled")) {
+  failures.push("Cloudflare Workers Builds deploy hook must remain a no-op; production is deployed by GitHub Actions");
+}
+
+const guardedProductionDeploy = packageJson.scripts?.["cloudflare:deploy:production"] ?? "";
+if (!guardedProductionDeploy.includes("assert-main-deploy.mjs")) failures.push("production deploy must enforce the main-only branch guard");
+if (!guardedProductionDeploy.includes("db:migrate:production")) failures.push("GitHub production deploy must apply remote D1 migrations");
+if (!guardedProductionDeploy.includes("wrangler deploy")) failures.push("GitHub production deploy must publish the Worker");
+
+const ciWorkflow = await readFile(".github/workflows/payment-consistency.yml", "utf8");
+if (!ciWorkflow.includes("if: github.event_name == 'push' && github.ref == 'refs/heads/main'")) failures.push("production deployment must run only on pushes to main");
+if (!ciWorkflow.includes("needs:\\n      - runner-diagnostics\\n      - payment-quality")) failures.push("production deployment must depend on successful CI quality jobs");
+if (!ciWorkflow.includes("pnpm cloudflare:deploy:production")) failures.push("GitHub Actions must own the guarded production deploy");
+if (!ciWorkflow.includes("pnpm db:verify:production")) failures.push("GitHub Actions must verify remote D1 migration state after deployment");
 
 const adminRoute = await readFile("apps/web/app/api/admin/resources/route.ts", "utf8");
 if (/\.prepare\s*\(/.test(adminRoute)) failures.push("admin presentation route must not execute SQL directly");
