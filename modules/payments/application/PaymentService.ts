@@ -536,6 +536,10 @@ export class PaymentService {
       throw new Error(`Cannot finalize refund while payment is ${current.status}`);
     }
 
+    // Keep the order lifecycle aligned with the provider-confirmed refund.
+    // The payment transition is persisted first so a retry can finish the order transition.
+    await this.ensureRefundedOrderStatus(payment.orderId);
+
     await this.payments.recordLedger(
       payment.id,
       "PAYMENT_REFUNDED",
@@ -545,6 +549,39 @@ export class PaymentService {
     );
     await this.payments.releaseRefundLock(payment.id, idempotencyKey);
     return current;
+  }
+
+  private async ensureRefundedOrderStatus(orderId: string): Promise<void> {
+    let order = await this.orders.findById(orderId);
+    if (!order) throw new Error("Order not found while finalizing refund");
+
+    if (order.status === "PAID") {
+      const movedToPending = await this.orders.transitionStatus(orderId, "PAID", "REFUND_PENDING");
+      if (!movedToPending) {
+        order = await this.orders.findById(orderId);
+        if (order?.status !== "REFUND_PENDING" && order?.status !== "REFUNDED") {
+          throw new Error("Order transition to REFUND_PENDING failed");
+        }
+      } else {
+        order = { ...order, status: "REFUND_PENDING" };
+      }
+    }
+
+    if (order?.status === "REFUND_PENDING") {
+      const movedToRefunded = await this.orders.transitionStatus(orderId, "REFUND_PENDING", "REFUNDED");
+      if (!movedToRefunded) {
+        order = await this.orders.findById(orderId);
+        if (order?.status !== "REFUNDED") {
+          throw new Error("Order transition to REFUNDED failed");
+        }
+      } else {
+        order = { ...order, status: "REFUNDED" };
+      }
+    }
+
+    if (order?.status !== "REFUNDED") {
+      throw new Error(`Cannot finalize refund while order is ${order?.status ?? "missing"}`);
+    }
   }
 
   private async recordPendingRefundLedger(payment: Payment, refund: StoredRefund): Promise<void> {
