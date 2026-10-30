@@ -6,11 +6,11 @@ Canonical production domain: https://iphone.jnmtortas.com.
 
 The repository uses one remote production environment in Cloudflare Workers. There is no remote staging environment yet.
 
-| Resource | Name |
-|---|---|
-| Worker | `ecommerce-iphone` |
-| D1 | `ecommerce-iphone` |
-| R2 | `ecommerce-iphone-media` |
+| Resource     | Name                      |
+| ------------ | ------------------------- |
+| Worker       | `ecommerce-iphone`        |
+| D1           | `ecommerce-iphone`        |
+| R2           | `ecommerce-iphone-media`  |
 | Events Queue | `ecommerce-iphone-events` |
 
 Toolchain:
@@ -62,12 +62,12 @@ The existing `.github/workflows/performance.yml` runs Playwright performance smo
 
 Configure **Workers & Pages → ecommerce-iphone → Settings → Build**:
 
-| Field | Value |
-|---|---|
-| Production branch | `main` |
-| Build command | `pnpm install --frozen-lockfile && pnpm build:cloudflare` |
-| Deploy command | `pnpm cloudflare:deploy` |
-| Root directory | empty (monorepo root) |
+| Field             | Value                                                     |
+| ----------------- | --------------------------------------------------------- |
+| Production branch | `main`                                                    |
+| Build command     | `pnpm install --frozen-lockfile && pnpm build:cloudflare` |
+| Deploy command    | `pnpm cloudflare:deploy`                                  |
+| Root directory    | empty (monorepo root)                                     |
 
 The Cloudflare Build command only invokes `opennextjs-cloudflare build`. It does not run audits, lint, typecheck, Vitest, Playwright, E2E or smoke tests.
 
