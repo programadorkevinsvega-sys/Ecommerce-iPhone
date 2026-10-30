@@ -14,7 +14,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "next": "^15.5.24",
+    "next": "15.5.28",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
@@ -27,7 +27,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "eslint": "^9.35.0",
-    "eslint-config-next": "^15.5.24",
+    "eslint-config-next": "15.5.28",
     "typescript": "^5.9.0",
     "vitest": "^4.1.11",
     "wrangler": "^4.130.0"
