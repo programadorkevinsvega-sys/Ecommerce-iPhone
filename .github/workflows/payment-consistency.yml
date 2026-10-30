@@ -1,0 +1,69 @@
+name: Payment consistency
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "modules/payments/**"
+      - "modules/orders/**"
+      - "migrations/**"
+      - "apps/web/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/payment-consistency.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: payment-consistency-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  payment-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Check repository foundations
+        run: pnpm foundation:check
+
+      - name: Check frontend production data
+        run: pnpm frontend:data:check
+
+      - name: Check architecture boundaries
+        run: pnpm architecture:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Run complete test suite
+        run: pnpm test
+
+      - name: Build Cloudflare application
+        run: pnpm build:cloudflare
