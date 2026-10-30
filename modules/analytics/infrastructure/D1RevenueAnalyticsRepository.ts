@@ -1,5 +1,9 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import type { RevenueAnalyticsPort, RevenueLedgerEntry, RevenueReport } from "../application/RevenueAnalytics";
+import type {
+  RevenueAnalyticsPort,
+  RevenueLedgerEntry,
+  RevenueReport,
+} from "../application/RevenueAnalytics";
 
 type LedgerRow = Readonly<{
   ledgerId: string;
@@ -31,8 +35,9 @@ export class D1RevenueAnalyticsRepository implements RevenueAnalyticsPort {
   constructor(private readonly db: D1Database) {}
 
   async pendingRevenueEntries(limit: number): Promise<readonly RevenueLedgerEntry[]> {
-    const rows = await this.db.prepare(
-      `SELECT
+    const rows = await this.db
+      .prepare(
+        `SELECT
         pl.id AS ledgerId,
         pl.payment_id AS paymentId,
         p.order_id AS orderId,
@@ -51,15 +56,18 @@ export class D1RevenueAnalyticsRepository implements RevenueAnalyticsPort {
         )
       ORDER BY pl.created_at ASC, pl.id ASC
       LIMIT ?`,
-    ).bind(limit).all<LedgerRow>();
+      )
+      .bind(limit)
+      .all<LedgerRow>();
 
     return rows.results;
   }
 
   async report(from: string, to: string): Promise<RevenueReport> {
     const [aggregate, currencies] = await Promise.all([
-      this.db.prepare(
-        `SELECT
+      this.db
+        .prepare(
+          `SELECT
           COALESCE(SUM(CASE WHEN pl.entry_type='PAYMENT_CONFIRMED' THEN pl.amount_in_cents ELSE 0 END), 0) AS grossRevenueInCents,
           COALESCE(SUM(CASE WHEN pl.entry_type='PAYMENT_REFUNDED' THEN pl.amount_in_cents ELSE 0 END), 0) AS refundedRevenueInCents,
           COUNT(DISTINCT CASE WHEN pl.entry_type='PAYMENT_CONFIRMED' THEN pl.payment_id END) AS confirmedPaymentCount,
@@ -75,9 +83,12 @@ export class D1RevenueAnalyticsRepository implements RevenueAnalyticsPort {
         WHERE pl.entry_type IN ('PAYMENT_CONFIRMED', 'PAYMENT_REFUNDED')
           AND pl.created_at >= ?
           AND pl.created_at < ?`,
-      ).bind(from, to, from, to).first<AggregateRow>(),
-      this.db.prepare(
-        `SELECT
+        )
+        .bind(from, to, from, to)
+        .first<AggregateRow>(),
+      this.db
+        .prepare(
+          `SELECT
           pl.currency AS currency,
           COALESCE(SUM(CASE WHEN pl.entry_type='PAYMENT_CONFIRMED' THEN pl.amount_in_cents ELSE 0 END), 0) AS grossRevenueInCents,
           COALESCE(SUM(CASE WHEN pl.entry_type='PAYMENT_REFUNDED' THEN pl.amount_in_cents ELSE 0 END), 0) AS refundedRevenueInCents
@@ -87,7 +98,9 @@ export class D1RevenueAnalyticsRepository implements RevenueAnalyticsPort {
           AND pl.created_at < ?
         GROUP BY pl.currency
         ORDER BY pl.currency ASC`,
-      ).bind(from, to).all<CurrencyRow>(),
+        )
+        .bind(from, to)
+        .all<CurrencyRow>(),
     ]);
 
     const grossRevenueInCents = Number(aggregate?.grossRevenueInCents ?? 0);
@@ -104,9 +117,10 @@ export class D1RevenueAnalyticsRepository implements RevenueAnalyticsPort {
       refundCount: Number(aggregate?.refundCount ?? 0),
       checkoutStartedCount,
       purchaseCompletedCount,
-      conversionRate: checkoutStartedCount === 0
-        ? 0
-        : Number((purchaseCompletedCount / checkoutStartedCount).toFixed(6)),
+      conversionRate:
+        checkoutStartedCount === 0
+          ? 0
+          : Number((purchaseCompletedCount / checkoutStartedCount).toFixed(6)),
       currencyBreakdown: currencies.results.map((row) => {
         const gross = Number(row.grossRevenueInCents ?? 0);
         const refunded = Number(row.refundedRevenueInCents ?? 0);

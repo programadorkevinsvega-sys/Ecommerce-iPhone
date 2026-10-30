@@ -34,12 +34,8 @@ export const SERVER_OWNED_ANALYTICS_EVENT_TYPES = [
   "RevenueRecorded",
 ] as const satisfies readonly AnalyticsEventType[];
 
-export type ServerOwnedAnalyticsEventType =
-  (typeof SERVER_OWNED_ANALYTICS_EVENT_TYPES)[number];
-export type ClientAnalyticsEventType = Exclude<
-  AnalyticsEventType,
-  ServerOwnedAnalyticsEventType
->;
+export type ServerOwnedAnalyticsEventType = (typeof SERVER_OWNED_ANALYTICS_EVENT_TYPES)[number];
+export type ClientAnalyticsEventType = Exclude<AnalyticsEventType, ServerOwnedAnalyticsEventType>;
 
 export type AnalyticsEvent = Readonly<{
   eventId: string;
@@ -67,8 +63,6 @@ export function isServerOwnedAnalyticsEventType(
   );
 }
 
-export function isClientAnalyticsEventType(
-  value: unknown,
-): value is ClientAnalyticsEventType {
+export function isClientAnalyticsEventType(value: unknown): value is ClientAnalyticsEventType {
   return isAnalyticsEventType(value) && !isServerOwnedAnalyticsEventType(value);
 }

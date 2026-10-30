@@ -7,7 +7,9 @@ describe("D1RevenueAnalyticsRepository", () => {
     const database = new D1SqliteTestDatabase();
 
     try {
-      database.exec("ALTER TABLE orders ADD COLUMN created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP");
+      database.exec(
+        "ALTER TABLE orders ADD COLUMN created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP",
+      );
       database.exec(
         "CREATE TABLE payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, customer_id TEXT NOT NULL)",
       );
