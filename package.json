@@ -14,8 +14,8 @@
     "preview:cloudflare": "pnpm --filter @ecommerce/web preview:cloudflare",
     "start": "pnpm --filter @ecommerce/web start",
     "deploy": "pnpm deploy:production",
-    "deploy:cloudflare": "pnpm build:cloudflare && pnpm cloudflare:deploy",
-    "deploy:production": "pnpm build:cloudflare && pnpm cloudflare:deploy",
+    "deploy:cloudflare": "pnpm build:cloudflare && pnpm cloudflare:deploy:production",
+    "deploy:production": "pnpm build:cloudflare && pnpm cloudflare:deploy:production",
     "verify:production": "node scripts/verify-production.mjs",
     "performance:production": "pnpm --filter @ecommerce/web exec node ../../scripts/performance-smoke.mjs",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
@@ -33,7 +33,7 @@
     "format:check": "prettier --check .",
     "verify:admin:production": "node scripts/verify-admin-production.mjs",
     "cloudflare:build": "pnpm build:cloudflare",
-    "cloudflare:deploy": "pnpm db:migrate:production && pnpm exec wrangler deploy --env=\"\"",
+    "cloudflare:deploy": "echo 'Production deployment is managed by GitHub Actions; Workers Builds deployment is intentionally disabled.'",
     "cloudflare:version": "pnpm exec wrangler --version",
     "verify:notifications:production": "node scripts/verify-notifications-production.mjs",
     "db:verify:production": "pnpm exec wrangler d1 migrations list DB --remote",
@@ -42,7 +42,8 @@
     "verify:phase10.2:production": "node scripts/verify-phase10.2-production.mjs",
     "verify:phase10.3:production": "node scripts/verify-phase10.3-production.mjs",
     "verify:phase10.4:production": "node scripts/verify-phase10.4-production.mjs",
-    "verify:phase10.5:production": "node scripts/verify-phase10.5-production.mjs"
+    "verify:phase10.5:production": "node scripts/verify-phase10.5-production.mjs",
+    "cloudflare:deploy:production": "node scripts/assert-main-deploy.mjs && pnpm db:migrate:production && pnpm exec wrangler deploy --env=\"\""
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260908.1",
