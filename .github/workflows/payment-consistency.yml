@@ -14,6 +14,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  runner-diagnostics:
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
+    steps:
+      - name: Verify GitHub-hosted runner availability
+        run: |
+          echo "GitHub-hosted runner acquired successfully."
+          node --version
+          git --version
+
   payment-quality:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
