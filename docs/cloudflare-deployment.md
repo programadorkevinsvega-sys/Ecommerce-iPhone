@@ -64,11 +64,10 @@ El build ejecuta únicamente `opennextjs-cloudflare build`. No ejecuta auditorí
 El deploy ejecuta únicamente:
 ```bash
 pnpm db:migrate:production
-pnpm db:verify:production
 pnpm exec wrangler deploy --env=""
 ```
 
-Las migraciones D1 y la publicación del Worker son operaciones de release, no pruebas de calidad. Todos los smoke tests y pruebas funcionales posteriores se ejecutan desde GitHub Actions.
+Las migraciones D1 y la publicación del Worker son operaciones de release, no pruebas de calidad. La consulta de estado de migraciones (`pnpm db:verify:production`), los smoke tests y las pruebas funcionales posteriores se ejecutan desde GitHub Actions.
 
 ### Previews de ramas no productivas
 
@@ -82,7 +81,7 @@ Las pruebas E2E de Pull Requests se ejecutan localmente en GitHub Actions con `w
 
 - `pnpm build:cloudflare`: compila la aplicación Worker; no ejecuta tests ni despliega.
 - `pnpm cloudflare:build`: alias build-only para Workers Builds.
-- `pnpm cloudflare:deploy`: aplica/verifica migraciones remotas y publica el Worker. Se usa después del build de Cloudflare.
+- `pnpm cloudflare:deploy`: aplica las migraciones remotas y publica el Worker. Se usa después del build de Cloudflare.
 - `pnpm deploy:production`: compila y después ejecuta el deploy de producción.
 - `pnpm db:migrate:local`: aplica migraciones a D1 local para E2E.
 - `pnpm test`: Vitest.
@@ -112,12 +111,7 @@ Configurar los secretos del Worker con `wrangler secret put <SECRET_NAME>` y los
 
 ## Migraciones y rollback
 
-Las migraciones de producción se aplican antes de publicar el Worker:
-
-```bash
-pnpm db:migrate:production
-pnpm db:verify:production
-```
+Las migraciones de producción se aplican antes de publicar el Worker con `pnpm db:migrate:production`. El estado de las migraciones se verifica desde GitHub Actions mediante `pnpm db:verify:production`.
 
 Nunca edites una migración ya aplicada; agrega una nueva migración numerada.
 
