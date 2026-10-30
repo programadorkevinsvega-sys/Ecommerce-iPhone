@@ -1,4 +1,4 @@
-name: Repository CI
+name: Repository CI and Production CD
 
 on:
   pull_request:
@@ -64,17 +64,20 @@ jobs:
         run: |
           set -euo pipefail
           git diff --name-only "${BASE_SHA}...HEAD" > /tmp/changed-files
-          while IFS= read -r file; do
-            [[ -f "${file}" ]] && printf '%s\\0' "${file}"
-          done < /tmp/changed-files > /tmp/existing-changed-files
-          mapfile -d '' -t changed_files < /tmp/existing-changed-files
+          mapfile -t changed_files < /tmp/changed-files
+          existing_files=()
+          for file in "${changed_files[@]}"; do
+            if [[ -f "${file}" ]]; then
+              existing_files+=("${file}")
+            fi
+          done
 
-          if (( ${#changed_files[@]} > 0 )); then
-            pnpm exec prettier --write --ignore-unknown "${changed_files[@]}"
+          if (( ${#existing_files[@]} > 0 )); then
+            pnpm exec prettier --write --ignore-unknown "${existing_files[@]}"
             if ! git diff --quiet; then
               git config user.name "github-actions[bot]"
               git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-              git add -- "${changed_files[@]}"
+              git add -- "${existing_files[@]}"
               git commit -m "style: format changed PR files"
               git push origin "HEAD:${HEAD_REF}"
               gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/payment-consistency.yml/dispatches" -f ref="${HEAD_REF}"
@@ -87,20 +90,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           if [[ -n "${BASE_SHA}" && "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]]; then
             git diff --name-only "${BASE_SHA}...HEAD" > /tmp/changed-files
           else
             git diff --name-only HEAD^ HEAD > /tmp/changed-files
           fi
 
-          while IFS= read -r file; do
-            [[ -f "${file}" ]] && printf '%s\0' "${file}"
-          done < /tmp/changed-files > /tmp/existing-changed-files
+          mapfile -t changed_files < /tmp/changed-files
+          existing_files=()
+          for file in "${changed_files[@]}"; do
+            if [[ -f "${file}" ]]; then
+              existing_files+=("${file}")
+            fi
+          done
 
-          mapfile -d '' -t changed_files < /tmp/existing-changed-files
-          if (( ${#changed_files[@]} > 0 )); then
-            pnpm exec prettier --check --ignore-unknown "${changed_files[@]}"
+          if (( ${#existing_files[@]} > 0 )); then
+            pnpm exec prettier --check --ignore-unknown "${existing_files[@]}"
           fi
 
       - name: Check repository foundations
@@ -143,3 +148,62 @@ jobs:
           path: apps/web/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
+
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - runner-diagnostics
+      - payment-quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    environment: production
+    concurrency:
+      group: ecommerce-iphone-production-deployment
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PRODUCTION_URL: https://iphone.jnmtortas.com
+    steps:
+      - name: Checkout merged main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build production Worker
+        run: pnpm build:cloudflare
+
+      - name: Deploy production Worker (main-only guard)
+        run: pnpm cloudflare:deploy:production
+
+      - name: Verify production D1 migrations
+        run: pnpm db:verify:production
+
+      - name: Verify production Worker health and rate limiting
+        run: pnpm verify:production
+
+      - name: Verify Phase 08 content and authorization boundaries
+        run: pnpm verify:phase08:production
+
+      - name: Verify Phase 09 SEO
+        run: pnpm verify:phase09:production
+
+      - name: Verify notification authorization boundaries
+        run: pnpm verify:notifications:production
