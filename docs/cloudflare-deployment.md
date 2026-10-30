@@ -50,7 +50,7 @@ The `deploy-production` job in the same workflow runs **only** when:
 - the ref is `refs/heads/main`;
 - runner diagnostics and the complete quality job both succeeded.
 
-The deployment job rebuilds the Worker, then runs `pnpm cloudflare:deploy:production`. This command checks that the active Git branch/ref is `main`, applies production D1 migrations and runs `wrangler deploy`. After deployment, GitHub Actions verifies D1 migration state, health/rate limiting, Phase 08 public content and authorization boundaries, Phase 09 SEO, and notification authorization boundaries.
+The deployment job rebuilds the exact commit SHA whose CI passed, then runs `pnpm cloudflare:deploy:production`. This command checks that the active Git branch/ref is `main`, applies production D1 migrations and runs `wrangler deploy`. After deployment, GitHub Actions verifies D1 migration state, health/rate limiting, Phase 08 public content and authorization boundaries, Phase 09 SEO, notification authorization boundaries, and the Phase 10.2–10.5 analytics, cart/checkout and revenue-projection probes. Those production probes use unique synthetic identifiers and clean up records they create. Main deployments are serialized and a later push cannot cancel a deployment already in progress.
 
 The job requires GitHub Repository Secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Configure an optional required reviewer on the GitHub `production` environment if a human approval gate is desired.
 
