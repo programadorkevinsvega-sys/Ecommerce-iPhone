@@ -214,18 +214,9 @@ export class PaymentService {
       await this.recordPendingRefundLedger(payment, stored);
       return (await this.payments.findById(payment.id)) ?? payment;
     } catch (error) {
-      // The provider may have completed the refund even if a later D1 write failed.
-      // Keep the lock unless finalization succeeds; a retry with the same key is safe.
-      const persisted = await this.payments.findRefund(payment.id, key).catch(() => null);
-      if (persisted?.status === "SUCCEEDED") {
-        return this.completeRefund(
-          payment,
-          persisted.amountInCents,
-          persisted.currency,
-          persisted.providerRefundId,
-          key,
-        );
-      }
+      // Keep the lock after a partial finalization. The next request with this
+      // idempotency key resumes from the persisted SUCCEEDED refund and repairs
+      // the remaining order/ledger effects without calling the provider again.
       throw error;
     }
   }
