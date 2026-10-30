@@ -36,7 +36,7 @@ The workflow `.github/workflows/payment-consistency.yml` runs on pull requests t
 4. Repository foundations, frontend production-data and architecture checks.
 5. ESLint and TypeScript.
 6. Complete Vitest unit/integration suite.
-7. Local D1 migrations for E2E.
+7. A local-only fixture bootstrap for legacy product parent rows required by migration `0009`, then the complete D1 migration history in local mode.
 8. Playwright against local Wrangler using `wrangler dev --local`.
 9. Cloudflare Worker build as a CI gate, without deploying.
 
@@ -88,7 +88,8 @@ Pull-request E2E runs locally in GitHub Actions with `wrangler dev --local`; a r
 - `pnpm cloudflare:deploy`: intentionally does not deploy; safe no-op for Workers Builds.
 - `pnpm cloudflare:deploy:production`: main-only guard, production D1 migrations, then Wrangler deploy.
 - `pnpm deploy:production`: local/manual build followed by the same main-only guarded production deploy.
-- `pnpm db:migrate:local`: apply migrations to local D1 for E2E.
+- `pnpm db:migrate:local`: apply migrations to local D1.
+- `pnpm db:prepare:e2e`: create local-only legacy parent rows needed by historical migrations, then apply the complete D1 migration history for E2E.
 - `pnpm test`: Vitest.
 - `pnpm test:e2e`: Playwright against local Wrangler.
 
