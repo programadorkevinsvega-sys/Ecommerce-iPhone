@@ -3,9 +3,7 @@
   "name": "ecommerce-iphone",
   "main": "apps/web/worker.ts",
   "compatibility_date": "2026-09-09",
-  "compatibility_flags": [
-    "nodejs_compat",
-  ],
+  "compatibility_flags": ["nodejs_compat"],
   "observability": {
     "enabled": true,
   },
@@ -45,9 +43,7 @@
     },
   ],
   "triggers": {
-    "crons": [
-      "* * * * *",
-    ],
+    "crons": ["* * * * *"],
   },
   "d1_databases": [
     {
@@ -112,9 +108,7 @@
   "migrations": [
     {
       "tag": "notifications-v1",
-      "new_sqlite_classes": [
-        "NotificationHub",
-      ],
+      "new_sqlite_classes": ["NotificationHub"],
     },
   ],
   "previews": {},
