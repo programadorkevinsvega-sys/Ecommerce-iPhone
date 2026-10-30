@@ -1,7 +1,10 @@
-name: Payment consistency
+name: Repository CI and Production CD
 
 on:
   pull_request:
+    branches:
+      - main
+  push:
     branches:
       - main
   workflow_dispatch:
@@ -11,7 +14,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: payment-consistency-${{ github.event.pull_request.number || github.ref }}
+  group: repository-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -27,13 +30,11 @@ jobs:
 
   payment-quality:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
 
       - name: Setup pnpm
@@ -47,27 +48,10 @@ jobs:
           node-version: 24.18.0
           cache: pnpm
 
-      - name: Refresh pnpm lockfile for dependency manifest changes
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          pnpm install --lockfile-only --no-frozen-lockfile
-
-          if ! git diff --quiet -- pnpm-lock.yaml; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add pnpm-lock.yaml
-            git commit -m "chore: refresh pnpm lockfile for patched build adapter"
-            git push origin "HEAD:${HEAD_REF}"
-            gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/payment-consistency.yml/dispatches" -f ref="${HEAD_REF}"
-          fi
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Audit all dependencies (production, development, and optional)
+      - name: Audit all dependencies
         run: pnpm audit
 
       - name: Format changed PR files and push the formatting commit
@@ -76,17 +60,24 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
+          set -euo pipefail
           git diff --name-only "${BASE_SHA}...HEAD" > /tmp/changed-files
           mapfile -t changed_files < /tmp/changed-files
+          existing_files=()
+          for file in "${changed_files[@]}"; do
+            if [[ -f "${file}" ]]; then
+              existing_files+=("${file}")
+            fi
+          done
 
-          if (( ${#changed_files[@]} > 0 )); then
-            pnpm exec prettier --write --ignore-unknown "${changed_files[@]}"
-
+          if (( ${#existing_files[@]} > 0 )); then
+            pnpm exec prettier --write --ignore-unknown "${existing_files[@]}"
             if ! git diff --quiet; then
               git config user.name "github-actions[bot]"
               git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-              git add -- "${changed_files[@]}"
+              git add -- "${existing_files[@]}"
               git commit -m "style: format changed PR files"
               git push origin "HEAD:${HEAD_REF}"
               gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/payment-consistency.yml/dispatches" -f ref="${HEAD_REF}"
@@ -95,17 +86,26 @@ jobs:
 
       - name: Check formatting of changed files
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        shell: bash
         run: |
-          if [[ -n "${BASE_SHA}" ]]; then
+          set -euo pipefail
+          if [[ -n "${BASE_SHA}" && "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]]; then
             git diff --name-only "${BASE_SHA}...HEAD" > /tmp/changed-files
           else
             git diff --name-only HEAD^ HEAD > /tmp/changed-files
           fi
 
           mapfile -t changed_files < /tmp/changed-files
-          if (( ${#changed_files[@]} > 0 )); then
-            pnpm exec prettier --check --ignore-unknown "${changed_files[@]}"
+          existing_files=()
+          for file in "${changed_files[@]}"; do
+            if [[ -f "${file}" ]]; then
+              existing_files+=("${file}")
+            fi
+          done
+
+          if (( ${#existing_files[@]} > 0 )); then
+            pnpm exec prettier --check --ignore-unknown "${existing_files[@]}"
           fi
 
       - name: Check repository foundations
@@ -123,8 +123,87 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Run complete test suite
+      - name: Run complete unit and integration test suite
         run: pnpm test
 
-      - name: Build Cloudflare application
+      - name: Prepare isolated local D1 database for E2E
+        run: pnpm db:migrate:local
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
+
+      - name: Run end-to-end tests against local Wrangler
+        run: pnpm test:e2e
+        env:
+          CI: "true"
+
+      - name: Build Cloudflare Worker
         run: pnpm build:cloudflare
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - runner-diagnostics
+      - payment-quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    environment: production
+    concurrency:
+      group: ecommerce-iphone-production-deployment
+      cancel-in-progress: false
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PRODUCTION_URL: https://iphone.jnmtortas.com
+    steps:
+      - name: Checkout merged main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build production Worker
+        run: pnpm build:cloudflare
+
+      - name: Deploy production Worker (main-only guard)
+        run: pnpm cloudflare:deploy:production
+
+      - name: Verify production D1 migrations
+        run: pnpm db:verify:production
+
+      - name: Verify production Worker health and rate limiting
+        run: pnpm verify:production
+
+      - name: Verify Phase 08 content and authorization boundaries
+        run: pnpm verify:phase08:production
+
+      - name: Verify Phase 09 SEO
+        run: pnpm verify:phase09:production
+
+      - name: Verify notification authorization boundaries
+        run: pnpm verify:notifications:production
