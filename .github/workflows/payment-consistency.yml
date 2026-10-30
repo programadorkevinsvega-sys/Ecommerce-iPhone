@@ -52,6 +52,9 @@ jobs:
       - name: Audit all dependencies (production, development, and optional)
         run: pnpm audit
 
+      - name: Print Prettier canonical Wrangler configuration (temporary diagnostic)
+        run: pnpm exec prettier wrangler.jsonc
+
       - name: Check formatting of changed files
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
