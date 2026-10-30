@@ -2,7 +2,12 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { commerceContext } from "../../../lib/commerce";
 import { analyticsApp } from "../../../lib/analyticsApplication";
-import { ensureAnalyticsContext, analyticsSetCookie, ANALYTICS_SESSION_COOKIE, ANALYTICS_VISITOR_COOKIE } from "../../../lib/analyticsContext";
+import {
+  ensureAnalyticsContext,
+  analyticsSetCookie,
+  ANALYTICS_SESSION_COOKIE,
+  ANALYTICS_VISITOR_COOKIE,
+} from "../../../lib/analyticsContext";
 import { cloudflareEnv } from "../../../lib/cloudflareContext";
 import { cloudflareWaitUntil } from "../../../lib/cloudflareContext";
 import { logServerError } from "../../../lib/serverLogger";
@@ -12,21 +17,38 @@ const VALIDATION_ERROR = "Revisa los datos ingresados e inténtalo nuevamente.";
 
 function errorResponse(error: unknown): Response {
   const code = error instanceof Error ? error.message.toUpperCase() : "UNKNOWN";
-  const status = code.includes("RATE_LIMIT") || code.includes("TOO_MANY") ? 429
-    : code.includes("UNAUTHORIZED") || code.includes("SESSION") ? 401
-    : code.includes("FORBIDDEN") || code.includes("PERMISSION") ? 403
-    : code.includes("NOT_FOUND") || code.includes("NOT FOUND") ? 404
-    : code.includes("CONFLICT") || code.includes("ALREADY") ? 409
-    : code.includes("INVALID") || code.includes("VALIDATION") ? 422
-    : 500;
-  const message = status === 401 ? "Tu sesión ya no es válida. Inicia sesión nuevamente."
-    : status === 403 ? "No tienes autorización para realizar esta operación."
-    : status === 404 ? "No encontramos el recurso solicitado."
-    : status === 409 ? "La operación entra en conflicto con el estado actual."
-    : status === 422 ? VALIDATION_ERROR
-    : status === 429 ? "Demasiadas solicitudes. Inténtalo nuevamente en unos minutos."
-    : GENERIC_ERROR;
-  return NextResponse.json({ error: message }, { status, headers: { "cache-control": "no-store" } });
+  const status =
+    code.includes("RATE_LIMIT") || code.includes("TOO_MANY")
+      ? 429
+      : code.includes("UNAUTHORIZED") || code.includes("SESSION")
+        ? 401
+        : code.includes("FORBIDDEN") || code.includes("PERMISSION")
+          ? 403
+          : code.includes("NOT_FOUND") || code.includes("NOT FOUND")
+            ? 404
+            : code.includes("CONFLICT") || code.includes("ALREADY")
+              ? 409
+              : code.includes("INVALID") || code.includes("VALIDATION")
+                ? 422
+                : 500;
+  const message =
+    status === 401
+      ? "Tu sesión ya no es válida. Inicia sesión nuevamente."
+      : status === 403
+        ? "No tienes autorización para realizar esta operación."
+        : status === 404
+          ? "No encontramos el recurso solicitado."
+          : status === 409
+            ? "La operación entra en conflicto con el estado actual."
+            : status === 422
+              ? VALIDATION_ERROR
+              : status === 429
+                ? "Demasiadas solicitudes. Inténtalo nuevamente en unos minutos."
+                : GENERIC_ERROR;
+  return NextResponse.json(
+    { error: message },
+    { status, headers: { "cache-control": "no-store" } },
+  );
 }
 
 async function cartId() {
@@ -35,7 +57,13 @@ async function cartId() {
 }
 
 function setCartCookie(response: NextResponse, id: string) {
-  response.cookies.set("cart_id", id, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  response.cookies.set("cart_id", id, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
 }
 
 async function authorizedCartContext() {
@@ -55,8 +83,14 @@ export async function GET(request: Request) {
     if (!(await cookies()).get("cart_id")) setCartCookie(response, id);
     const analytics = ensureAnalyticsContext(request);
     if (analytics.setCookies) {
-      response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_VISITOR_COOKIE, analytics.visitorId, 31536000));
-      response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_SESSION_COOKIE, analytics.sessionId, 1800));
+      response.headers.append(
+        "Set-Cookie",
+        analyticsSetCookie(ANALYTICS_VISITOR_COOKIE, analytics.visitorId, 31536000),
+      );
+      response.headers.append(
+        "Set-Cookie",
+        analyticsSetCookie(ANALYTICS_SESSION_COOKIE, analytics.sessionId, 1800),
+      );
     }
     return response;
   } catch (error) {
@@ -69,25 +103,38 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { productId?: string; quantity?: number; variantId?: string };
-    if (!body.productId || body.quantity === undefined) return NextResponse.json({ error: VALIDATION_ERROR }, { status: 422 });
+    const body = (await request.json()) as {
+      productId?: string;
+      quantity?: number;
+      variantId?: string;
+    };
+    if (!body.productId || body.quantity === undefined)
+      return NextResponse.json({ error: VALIDATION_ERROR }, { status: 422 });
     const { id, context } = await authorizedCartContext();
-    const result = await context.cart.addItem({ cartId: id, productId: body.productId, quantity: body.quantity, ...(body.variantId ? { variantId: body.variantId } : {}) });
+    const result = await context.cart.addItem({
+      cartId: id,
+      productId: body.productId,
+      quantity: body.quantity,
+      ...(body.variantId ? { variantId: body.variantId } : {}),
+    });
     const analytics = ensureAnalyticsContext(request);
     cloudflareWaitUntil(
-      analyticsApp(cloudflareEnv()).record({
-        eventId: crypto.randomUUID(),
-        eventType: "CartItemAdded",
-        occurredAt: new Date().toISOString(),
-        sessionId: analytics.sessionId,
-        visitorId: analytics.visitorId,
-        requestId: request.headers.get("x-request-id")?.trim() || undefined,
-        payload: {
-          productId: body.productId,
-          quantity: body.quantity,
-          ...(body.variantId ? { variantId: body.variantId } : {}),
-        },
-      }).catch(() => undefined),
+      analyticsApp(cloudflareEnv())
+        .record({
+          eventId: crypto.randomUUID(),
+          eventType: "CartItemAdded",
+          source: "server",
+          occurredAt: new Date().toISOString(),
+          sessionId: analytics.sessionId,
+          visitorId: analytics.visitorId,
+          requestId: request.headers.get("x-request-id")?.trim() || undefined,
+          payload: {
+            productId: body.productId,
+            quantity: body.quantity,
+            ...(body.variantId ? { variantId: body.variantId } : {}),
+          },
+        })
+        .catch(() => undefined),
     );
     const response = NextResponse.json(result, { headers: { "cache-control": "no-store" } });
     if (!(await cookies()).get("cart_id")) setCartCookie(response, id);
@@ -106,26 +153,39 @@ export async function DELETE(request: Request) {
     const body = (await request.json()) as { productId?: string; variantId?: string };
     if (!body.productId) return NextResponse.json({ error: VALIDATION_ERROR }, { status: 422 });
     const { id, context } = await authorizedCartContext();
-    const result = await context.cart.removeItem({ cartId: id, productId: body.productId, ...(body.variantId ? { variantId: body.variantId } : {}) });
+    const result = await context.cart.removeItem({
+      cartId: id,
+      productId: body.productId,
+      ...(body.variantId ? { variantId: body.variantId } : {}),
+    });
     const analytics = ensureAnalyticsContext(request);
     cloudflareWaitUntil(
-      analyticsApp(cloudflareEnv()).record({
-        eventId: crypto.randomUUID(),
-        eventType: "CartItemRemoved",
-        occurredAt: new Date().toISOString(),
-        sessionId: analytics.sessionId,
-        visitorId: analytics.visitorId,
-        requestId: request.headers.get("x-request-id")?.trim() || undefined,
-        payload: {
-          productId: body.productId,
-          ...(body.variantId ? { variantId: body.variantId } : {}),
-        },
-      }).catch(() => undefined),
+      analyticsApp(cloudflareEnv())
+        .record({
+          eventId: crypto.randomUUID(),
+          eventType: "CartItemRemoved",
+          source: "server",
+          occurredAt: new Date().toISOString(),
+          sessionId: analytics.sessionId,
+          visitorId: analytics.visitorId,
+          requestId: request.headers.get("x-request-id")?.trim() || undefined,
+          payload: {
+            productId: body.productId,
+            ...(body.variantId ? { variantId: body.variantId } : {}),
+          },
+        })
+        .catch(() => undefined),
     );
     const response = NextResponse.json(result, { headers: { "cache-control": "no-store" } });
     if (analytics.setCookies) {
-      response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_VISITOR_COOKIE, analytics.visitorId, 31536000));
-      response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_SESSION_COOKIE, analytics.sessionId, 1800));
+      response.headers.append(
+        "Set-Cookie",
+        analyticsSetCookie(ANALYTICS_VISITOR_COOKIE, analytics.visitorId, 31536000),
+      );
+      response.headers.append(
+        "Set-Cookie",
+        analyticsSetCookie(ANALYTICS_SESSION_COOKIE, analytics.sessionId, 1800),
+      );
     }
     return response;
   } catch (error) {
