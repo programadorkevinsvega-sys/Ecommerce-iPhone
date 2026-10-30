@@ -1,20 +1,20 @@
 # PR 01 — Payment and refund consistency
 
 **Priority:** P0  
-**Status:** Implementation committed; validation is blocked by runner provisioning. Both the full quality job and an isolated `ubuntu-slim` runner probe fail before assigning a runner or starting a step; no test result is available.
+**Status:** Implementation committed; automated validation remains blocked before runner allocation. Neither the full quality job nor the isolated `ubuntu-slim` probe has executed a step, so no test or build result is inferred from those runs.
 
 ## Implemented in this PR
 
-- Payment approval finalization is replayable: an already-PAID payment still repairs the order status, consumes outstanding reservations, and records the idempotent confirmation ledger entry.
+- Payment approval finalization is replayable: an already-PAID payment repairs missing effects without trying to move an order backwards after it has advanced to `PROCESSING`, `READY_TO_SHIP`, `SHIPPED`, or `DELIVERED`.
 - Failed/cancelled payment finalization is replayable: an already terminal payment still repairs order cancellation, inventory release, and ledger recording.
 - Payment state is transitioned before dependent order/inventory/ledger effects, making the payment state the concurrency gate and allowing later deliveries to repair incomplete effects.
 - Provider transaction attachment is checked; a conflicting transaction ID is rejected rather than silently ignored.
-- A provider-approved refund is persisted/reconciled before finalization; retries with a recorded SUCCEEDED refund complete payment state, order state (`PAID → REFUND_PENDING → REFUNDED`), and ledger instead of returning a synthetic REFUNDED result.
-- Successful refunds also complete the order lifecycle `PAID → REFUND_PENDING → REFUNDED`; this transition is retryable if either order update fails.
+- A provider-approved refund is persisted/reconciled before finalization; retries with a recorded SUCCEEDED refund complete payment state, order state, and ledger instead of returning a synthetic REFUNDED result.
+- Successful refunds complete either supported order lifecycle `PAID → REFUND_PENDING → REFUNDED` or `DELIVERED → REFUND_PENDING → REFUNDED`; the transitions are retryable if either order update fails.
 - Refund lock release is ownership-checked using the payment ID and idempotency key.
 - Refund status updates cannot downgrade SUCCEEDED or FAILED records.
 - Payment-intent ledger recording is retried when an idempotent intent request is replayed.
-- Added regression tests for replay repair, partial ledger failure, provider transaction mismatch, refund concurrency, pending refund reconciliation, and lock ownership.
+- Added regression tests for replay repair after fulfillment advances, delivered-order refunds, partial ledger failure, provider transaction mismatch, refund concurrency, pending refund reconciliation, and lock ownership.
 - Added `.github/workflows/payment-consistency.yml` to run repository checks, the full test suite, and the Cloudflare build on relevant pull requests.
 
 ## Acceptance criteria
@@ -29,7 +29,7 @@
 
 ## Verification
 
-The new Actions workflow is configured to run formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. The latest GitHub Actions job ended in failure after 3 seconds with runner_id=0, runner_name empty, and steps=[]; its logs are unavailable. The Cloudflare Workers Builds check also concluded failure without exposing a build log through the connected GitHub interface. This environment cannot execute dependency installation or local test commands, so no test result is claimed.
+The new Actions workflow is configured to run formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. Twelve `payment-quality` attempts and four `runner-diagnostics` attempts have now failed without executing a step (`steps=[]`); GitHub exposes no job logs for these attempts (`BlobNotFound`). The last Cloudflare deployment comment reports a failed build for the previous head `9829da0`; no Cloudflare result is yet available for the latest amended head, and its build logs are only visible in the private Cloudflare dashboard. This environment cannot execute dependency installation or local test commands, so no test result is claimed.
 
 ## Operational note
 
