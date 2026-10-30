@@ -1,7 +1,7 @@
 # PR 01 — Payment and refund consistency
 
 **Priority:** P0  
-**Status:** Implementation committed; local execution is unavailable in this environment. GitHub Actions validation is pending.
+**Status:** Implementation committed; validation is blocked. The latest GitHub Actions job failed before assigning a runner or starting any step; no test result is available.
 
 ## Implemented in this PR
 
@@ -23,12 +23,12 @@
 - [x] Successful refund records can recover payment and ledger finalization after a partial failure.
 - [x] Refund lock release cannot delete a lock owned by another idempotency key.
 - [x] Tests cover success, retries, lock contention, and failures at persistence boundaries.
-- [ ] GitHub Actions checks pass on this PR.
+- [ ] GitHub Actions can acquire a runner and all checks pass on this PR.
 - [ ] Review of D1 migration/runtime compatibility and final diff is complete.
 
 ## Verification
 
-The new Actions workflow runs formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. This environment cannot execute the repository's dependency installation or local test commands, so no local test result is claimed.
+The new Actions workflow is configured to run formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. The latest GitHub Actions job ended in failure after 3 seconds with runner_id=0, runner_name empty, and steps=[]; its logs are unavailable. The Cloudflare Workers Builds check also concluded failure without exposing a build log through the connected GitHub interface. This environment cannot execute dependency installation or local test commands, so no test result is claimed.
 
 ## Operational note
 
