@@ -1,7 +1,7 @@
 # PR 01 — Payment and refund consistency
 
 **Priority:** P0  
-**Status:** Implementation committed; validation is blocked. The latest GitHub Actions job failed before assigning a runner or starting any step; no test result is available.
+**Status:** Implementation committed; validation is blocked by runner provisioning. Both the full quality job and an isolated `ubuntu-slim` runner probe fail before assigning a runner or starting a step; no test result is available.
 
 ## Implemented in this PR
 
@@ -10,6 +10,7 @@
 - Payment state is transitioned before dependent order/inventory/ledger effects, making the payment state the concurrency gate and allowing later deliveries to repair incomplete effects.
 - Provider transaction attachment is checked; a conflicting transaction ID is rejected rather than silently ignored.
 - A provider-approved refund is persisted/reconciled before finalization; retries with a recorded SUCCEEDED refund complete payment state, order state (`PAID → REFUND_PENDING → REFUNDED`), and ledger instead of returning a synthetic REFUNDED result.
+- Successful refunds also complete the order lifecycle `PAID → REFUND_PENDING → REFUNDED`; this transition is retryable if either order update fails.
 - Refund lock release is ownership-checked using the payment ID and idempotency key.
 - Refund status updates cannot downgrade SUCCEEDED or FAILED records.
 - Payment-intent ledger recording is retried when an idempotent intent request is replayed.
