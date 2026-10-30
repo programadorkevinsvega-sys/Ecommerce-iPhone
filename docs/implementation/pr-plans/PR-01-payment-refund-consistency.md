@@ -15,7 +15,15 @@
 - Refund status updates cannot downgrade SUCCEEDED or FAILED records.
 - Payment-intent ledger recording is retried when an idempotent intent request is replayed.
 - Added regression tests for replay repair after fulfillment advances, delivered-order refunds, partial ledger failure, provider transaction mismatch, refund concurrency, pending refund reconciliation, and lock ownership.
-- Added `.github/workflows/payment-consistency.yml` to run repository checks, the full test suite, and the Cloudflare build on relevant pull requests.
+- Added `.github/workflows/payment-consistency.yml` to run repository checks, the full test suite, dependency audit, and Cloudflare build on relevant pull requests.
+- Fixed the four Next.js advisories from the Cloudflare production audit by pinning `next` and `eslint-config-next` to `15.5.28` and updating their package, SWC, and peer-reference lock entries.
+- Replaced the production-only audit with full `pnpm audit`, covering production, development, and optional dependencies; no advisory suppressions were added.
+
+## Dependency security review
+
+The Cloudflare build log from 2026-10-30 reported four advisories on the locked `next@15.5.25`: critical `GHSA-2464-fhr4-w9xw`, high `GHSA-p3m5-59mp-jv5r`, and moderate `GHSA-4jqv-mc3x-m676` / `GHSA-mcj8-r9mp-w47p`. The web workspace and lockfile now pin Next.js and eslint-config-next to `15.5.28`, which includes the patched 15.5 line.
+
+The audit command now runs as `pnpm audit` (not `pnpm audit --prod`) both in the Cloudflare build script and the PR workflow. A successful full audit has **not** yet been observed: Cloudflare build `d92671ff-fe3d-4078-a5ab-5f41bb5ed10b` ended in failure, but its check exposes no compiler/audit output. The lockfile installation and the full development/optional dependency report must be confirmed from that build log before the security gate is considered green.
 
 ## Acceptance criteria
 
@@ -29,7 +37,7 @@
 
 ## Verification
 
-The new Actions workflow is configured to run formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. Fourteen `payment-quality` job executions (including one manual retry) and six `runner-diagnostics` executions have now failed without executing a step (`runner_id=0`, empty runner name, `steps=[]`); GitHub exposes no job logs for the latest attempt (`BlobNotFound`). The GitHub check `Workers Builds: ecommerce-iphone` reports `failure` for the latest code head `c81e2b5`, build `dda71918-5ade-4672-a754-3991d01853c3`. The check exposes no annotations or compiler output; the private Cloudflare dashboard is inaccessible from this connection, so the exact build error remains unknown. This environment cannot execute dependency installation or local test commands, so no test result is claimed.
+The new Actions workflow is configured to run formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. The latest GitHub Actions run (`41134644250`) also failed before runner allocation: both jobs report `runner_id=0`, empty runner name, and `steps=[]`; therefore the audit/test/typecheck steps did not start. Cloudflare build `d92671ff-fe3d-4078-a5ab-5f41bb5ed10b` failed on the latest dependency-update commit and exposes no annotations or output through the GitHub check. The private Cloudflare dashboard logs are required to determine whether frozen installation or the full audit failed. This environment cannot execute dependency installation or local test commands, so no local test result is claimed.
 
 ## Operational note
 
