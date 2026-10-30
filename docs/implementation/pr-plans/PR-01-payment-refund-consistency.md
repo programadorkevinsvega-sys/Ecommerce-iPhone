@@ -29,7 +29,7 @@
 
 ## Verification
 
-The new Actions workflow is configured to run formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. Fourteen `payment-quality` job executions (including one manual retry) and six `runner-diagnostics` executions have now failed without executing a step (`runner_id=0`, empty runner name, `steps=[]`); GitHub exposes no job logs for the latest attempt (`BlobNotFound`). The last Cloudflare deployment comment reports a failed build for the previous head `9829da0`; no Cloudflare result is yet available for the latest amended head, and its build logs are only visible in the private Cloudflare dashboard. This environment cannot execute dependency installation or local test commands, so no test result is claimed.
+The new Actions workflow is configured to run formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. Fourteen `payment-quality` job executions (including one manual retry) and six `runner-diagnostics` executions have now failed without executing a step (`runner_id=0`, empty runner name, `steps=[]`); GitHub exposes no job logs for the latest attempt (`BlobNotFound`). The GitHub check `Workers Builds: ecommerce-iphone` reports `failure` for the latest code head `c81e2b5`, build `dda71918-5ade-4672-a754-3991d01853c3`. The check exposes no annotations or compiler output; the private Cloudflare dashboard is inaccessible from this connection, so the exact build error remains unknown. This environment cannot execute dependency installation or local test commands, so no test result is claimed.
 
 ## Operational note
 
