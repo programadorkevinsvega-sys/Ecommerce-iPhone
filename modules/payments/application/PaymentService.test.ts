@@ -359,6 +359,26 @@ describe("PaymentService critical invariants", () => {
     expect(payments.lockOwner).toBeNull();
   });
 
+  it("refunds a delivered order through the domain-approved transition", async () => {
+    const payments = new MemoryPayments();
+    payments.payment = {
+      ...payments.payment,
+      status: "PAID",
+      providerTransactionId: "tx-1",
+    };
+    const { service: sut, orders } = service(payments);
+    orders.status = "DELIVERED";
+
+    const refunded = await sut.refundPayment("p1", "refund-delivered-order");
+
+    expect(refunded.status).toBe("REFUNDED");
+    expect(payments.payment.status).toBe("REFUNDED");
+    expect(orders.status).toBe("REFUNDED");
+    expect(payments.ledger.has("PAYMENT_REFUNDED:10000")).toBe(true);
+    expect(payments.lockOwner).toBeNull();
+    expect(payments.refundCalls).toBe(1);
+  });
+
   it("blocks concurrent refunds with different idempotency keys", async () => {
     const payments = new MemoryPayments();
     payments.payment = {
