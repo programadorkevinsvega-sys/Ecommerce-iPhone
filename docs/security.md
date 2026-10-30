@@ -137,3 +137,17 @@ Every dependency in the workspace must be included in the security audit: produc
 - Keep `pnpm-lock.yaml` committed and install with `--frozen-lockfile`.
 - Upgrade affected direct dependencies to a patched release, then audit the complete resolved dependency graph again.
 - A green audit means no advisories were returned by the configured npm registry at that time; it does not prove the absence of undisclosed or future vulnerabilities. Re-run it continuously and after security advisories are published.
+
+
+## Remediación de Next.js — 2026-10-30
+
+El audit inicial de Cloudflare encontró `next@15.5.25` en el lockfile y cuatro avisos:
+
+- `GHSA-2464-fhr4-w9xw` — crítico, ejecución remota de código en Image Optimization.
+- `GHSA-p3m5-59mp-jv5r` — alto, denegación de servicio en App Router / Server Actions.
+- `GHSA-4jqv-mc3x-m676` — moderado, cache poisoning de SSG/ISR en aplicaciones self-hosted.
+- `GHSA-mcj8-r9mp-w47p` — moderado, cache poisoning de SSG/ISR con sustitución de contenido entre usuarios.
+
+Se fijaron `next` y `eslint-config-next` en `15.5.28` y se actualizaron las integridades y referencias de Next/SWC en `pnpm-lock.yaml`. Next.js publica `15.5.28` como versión corregida para los avisos crítico y alto; incluye también las correcciones previas de la rama 15.5. `sharp` ya está fijado en `0.35.5`, que cumple la versión indicada por el aviso crítico como workaround upstream.
+
+La nueva auditoría cubre todas las dependencias, no solo producción. **La remediación no se declara certificada todavía:** el primer build de Cloudflare tras estos cambios terminó en fallo sin publicar la salida del audit o de la instalación. Se requiere revisar su log y conseguir un `pnpm audit` completo sin avisos.
