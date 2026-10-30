@@ -1,4 +1,9 @@
-import { isAnalyticsEventType, type AnalyticsEvent, type AnalyticsPayload } from "../domain/AnalyticsEvent";
+import {
+  isAnalyticsEventType,
+  isServerOwnedAnalyticsEventType,
+  type AnalyticsEvent,
+  type AnalyticsPayload,
+} from "../domain/AnalyticsEvent";
 import type { AnalyticsPort } from "./AnalyticsPort";
 
 const MAX_PAYLOAD_BYTES = 8192;
@@ -62,6 +67,9 @@ export class AnalyticsService {
     const eventType = input.eventType;
     if (!isAnalyticsEventType(eventType)) {
       throw new Error("INVALID_ANALYTICS_EVENT_TYPE");
+    }
+    if (isServerOwnedAnalyticsEventType(eventType) && input.source !== "server") {
+      throw new Error("SERVER_OWNED_ANALYTICS_EVENT");
     }
     assertIdentifier(input.sessionId, "session_id");
     assertIdentifier(input.visitorId, "visitor_id");

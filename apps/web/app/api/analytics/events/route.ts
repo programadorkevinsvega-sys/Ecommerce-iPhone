@@ -93,15 +93,24 @@ export async function POST(request: Request) {
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     const status =
-      code === "INVALID_ANALYTICS_EVENT_TYPE" ||
-      code === "INVALID_ANALYTICS_EVENT" ||
-      code === "INVALID_ANALYTICS_PAYLOAD"
-        ? 400
-        : code === "ANALYTICS_SENSITIVE_FIELD" || code === "ANALYTICS_PAYLOAD_TOO_LARGE"
-          ? 422
-          : 400;
+      code === "SERVER_OWNED_ANALYTICS_EVENT"
+        ? 403
+        : code === "INVALID_ANALYTICS_EVENT_TYPE" ||
+            code === "INVALID_ANALYTICS_EVENT" ||
+            code === "INVALID_ANALYTICS_PAYLOAD"
+          ? 400
+          : code === "ANALYTICS_SENSITIVE_FIELD" || code === "ANALYTICS_PAYLOAD_TOO_LARGE"
+            ? 422
+            : 400;
     return NextResponse.json(
-      { error: status === 400 ? "Invalid analytics event" : "Analytics payload rejected" },
+      {
+        error:
+          status === 403
+            ? "This event is recorded only after a trusted server-side transition"
+            : status === 400
+              ? "Invalid analytics event"
+              : "Analytics payload rejected",
+      },
       { status },
     );
   }

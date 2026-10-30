@@ -78,6 +78,7 @@ export async function POST(request: Request) {
       analyticsApp(cloudflareEnv()).record({
         eventId: crypto.randomUUID(),
         eventType: "CartItemAdded",
+        source: "server",
         occurredAt: new Date().toISOString(),
         sessionId: analytics.sessionId,
         visitorId: analytics.visitorId,
@@ -112,6 +113,7 @@ export async function DELETE(request: Request) {
       analyticsApp(cloudflareEnv()).record({
         eventId: crypto.randomUUID(),
         eventType: "CartItemRemoved",
+        source: "server",
         occurredAt: new Date().toISOString(),
         sessionId: analytics.sessionId,
         visitorId: analytics.visitorId,

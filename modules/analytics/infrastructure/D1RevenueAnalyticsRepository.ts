@@ -62,27 +62,20 @@ export class D1RevenueAnalyticsRepository implements RevenueAnalyticsPort {
         `SELECT
           COALESCE(SUM(CASE WHEN pl.entry_type='PAYMENT_CONFIRMED' THEN pl.amount_in_cents ELSE 0 END), 0) AS grossRevenueInCents,
           COALESCE(SUM(CASE WHEN pl.entry_type='PAYMENT_REFUNDED' THEN pl.amount_in_cents ELSE 0 END), 0) AS refundedRevenueInCents,
-          COUNT(CASE WHEN pl.entry_type='PAYMENT_CONFIRMED' THEN 1 END) AS confirmedPaymentCount,
+          COUNT(DISTINCT CASE WHEN pl.entry_type='PAYMENT_CONFIRMED' THEN pl.payment_id END) AS confirmedPaymentCount,
           COUNT(CASE WHEN pl.entry_type='PAYMENT_REFUNDED' THEN 1 END) AS refundCount,
           (
             SELECT COUNT(*)
-            FROM analytics_events
-            WHERE event_type='CheckoutStarted'
-              AND occurred_at >= ?
-              AND occurred_at < ?
+            FROM orders
+            WHERE created_at >= ?
+              AND created_at < ?
           ) AS checkoutStartedCount,
-          (
-            SELECT COUNT(*)
-            FROM analytics_events
-            WHERE event_type='PurchaseCompleted'
-              AND occurred_at >= ?
-              AND occurred_at < ?
-          ) AS purchaseCompletedCount
+          COUNT(DISTINCT CASE WHEN pl.entry_type='PAYMENT_CONFIRMED' THEN pl.payment_id END) AS purchaseCompletedCount
         FROM payment_ledger pl
         WHERE pl.entry_type IN ('PAYMENT_CONFIRMED', 'PAYMENT_REFUNDED')
           AND pl.created_at >= ?
           AND pl.created_at < ?`,
-      ).bind(from, to, from, to, from, to).first<AggregateRow>(),
+      ).bind(from, to, from, to).first<AggregateRow>(),
       this.db.prepare(
         `SELECT
           pl.currency AS currency,

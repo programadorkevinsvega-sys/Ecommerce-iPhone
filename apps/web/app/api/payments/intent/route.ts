@@ -45,6 +45,7 @@ export async function POST(request: Request) {
       analyticsApp(cloudflareEnv()).record({
         eventId: `payment-started:${result.payment.id}`,
         eventType: "PaymentStarted",
+        source: "server",
         occurredAt: new Date().toISOString(),
         sessionId: analytics.sessionId,
         visitorId: analytics.visitorId,

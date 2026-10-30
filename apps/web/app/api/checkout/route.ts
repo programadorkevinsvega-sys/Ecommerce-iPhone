@@ -70,6 +70,7 @@ export async function POST(request:Request){
     analyticsApp(cloudflareEnv()).record({
       eventId: `checkout-started:${order.id}`,
       eventType: "CheckoutStarted",
+      source: "server",
       occurredAt: new Date().toISOString(),
       sessionId: analytics.sessionId,
       visitorId: analytics.visitorId,
