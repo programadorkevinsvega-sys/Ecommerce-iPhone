@@ -29,7 +29,7 @@
 
 ## Verification
 
-The new Actions workflow is configured to run formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. Twelve `payment-quality` attempts and four `runner-diagnostics` attempts have now failed without executing a step (`steps=[]`); GitHub exposes no job logs for these attempts (`BlobNotFound`). The last Cloudflare deployment comment reports a failed build for the previous head `9829da0`; no Cloudflare result is yet available for the latest amended head, and its build logs are only visible in the private Cloudflare dashboard. This environment cannot execute dependency installation or local test commands, so no test result is claimed.
+The new Actions workflow is configured to run formatting, foundation, frontend data, architecture, lint, TypeScript, the complete Vitest suite, and the Cloudflare application build. Fourteen `payment-quality` job executions (including one manual retry) and six `runner-diagnostics` executions have now failed without executing a step (`runner_id=0`, empty runner name, `steps=[]`); GitHub exposes no job logs for the latest attempt (`BlobNotFound`). The last Cloudflare deployment comment reports a failed build for the previous head `9829da0`; no Cloudflare result is yet available for the latest amended head, and its build logs are only visible in the private Cloudflare dashboard. This environment cannot execute dependency installation or local test commands, so no test result is claimed.
 
 ## Operational note
 
