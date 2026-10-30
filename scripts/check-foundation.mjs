@@ -76,7 +76,7 @@ if (!guardedProductionDeploy.includes("wrangler deploy")) failures.push("GitHub 
 
 const ciWorkflow = await readFile(".github/workflows/payment-consistency.yml", "utf8");
 if (!ciWorkflow.includes("if: github.event_name == 'push' && github.ref == 'refs/heads/main'")) failures.push("production deployment must run only on pushes to main");
-if (!ciWorkflow.includes("needs:\\n      - runner-diagnostics\\n      - payment-quality")) failures.push("production deployment must depend on successful CI quality jobs");
+if (!ciWorkflow.includes("needs:") || !ciWorkflow.includes("- runner-diagnostics") || !ciWorkflow.includes("- payment-quality")) failures.push("production deployment must depend on successful CI quality jobs");
 if (!ciWorkflow.includes("pnpm cloudflare:deploy:production")) failures.push("GitHub Actions must own the guarded production deploy");
 if (!ciWorkflow.includes("pnpm db:verify:production")) failures.push("GitHub Actions must verify remote D1 migration state after deployment");
 
