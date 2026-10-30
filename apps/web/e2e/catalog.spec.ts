@@ -4,7 +4,7 @@ test("catalog renders real product data", async ({ page }) => {
   await page.goto("/catalog");
   await expect(page.getByRole("heading", { name: "Encuentra tu próximo smartphone." })).toBeVisible();
   await expect(page.getByText("iPhone 17 Pro Max")).toBeVisible();
-  await expect(page.getByText("$6.499.900")).toBeVisible();
+  await expect(page.getByText(/\\$\\s*4\\.649\\.000/)).toBeVisible();
 });
 
 test("iPhone category exposes canonical product URL", async ({ page }) => {

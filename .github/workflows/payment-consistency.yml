@@ -1,17 +1,19 @@
-name: Payment consistency
+name: Repository CI
 
 on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
-  contents: write
-  actions: write
+  contents: read
 
 concurrency:
-  group: payment-consistency-${{ github.event.pull_request.number || github.ref }}
+  group: repository-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -27,13 +29,11 @@ jobs:
 
   payment-quality:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.event.pull_request.head.ref || github.ref }}
           fetch-depth: 0
 
       - name: Setup pnpm
@@ -47,63 +47,30 @@ jobs:
           node-version: 24.18.0
           cache: pnpm
 
-      - name: Refresh pnpm lockfile for dependency manifest changes
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          pnpm install --lockfile-only --no-frozen-lockfile
-
-          if ! git diff --quiet -- pnpm-lock.yaml; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add pnpm-lock.yaml
-            git commit -m "chore: refresh pnpm lockfile for patched build adapter"
-            git push origin "HEAD:${HEAD_REF}"
-            gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/payment-consistency.yml/dispatches" -f ref="${HEAD_REF}"
-          fi
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Audit all dependencies (production, development, and optional)
+      - name: Audit all dependencies
         run: pnpm audit
-
-      - name: Format changed PR files and push the formatting commit
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          git diff --name-only "${BASE_SHA}...HEAD" > /tmp/changed-files
-          mapfile -t changed_files < /tmp/changed-files
-
-          if (( ${#changed_files[@]} > 0 )); then
-            pnpm exec prettier --write --ignore-unknown "${changed_files[@]}"
-
-            if ! git diff --quiet; then
-              git config user.name "github-actions[bot]"
-              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-              git add -- "${changed_files[@]}"
-              git commit -m "style: format changed PR files"
-              git push origin "HEAD:${HEAD_REF}"
-              gh api --method POST "repos/${GITHUB_REPOSITORY}/actions/workflows/payment-consistency.yml/dispatches" -f ref="${HEAD_REF}"
-            fi
-          fi
 
       - name: Check formatting of changed files
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        shell: bash
         run: |
-          if [[ -n "${BASE_SHA}" ]]; then
+          set -euo pipefail
+
+          if [[ -n "${BASE_SHA}" && "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]]; then
             git diff --name-only "${BASE_SHA}...HEAD" > /tmp/changed-files
           else
             git diff --name-only HEAD^ HEAD > /tmp/changed-files
           fi
 
-          mapfile -t changed_files < /tmp/changed-files
+          while IFS= read -r file; do
+            [[ -f "${file}" ]] && printf '%s\0' "${file}"
+          done < /tmp/changed-files > /tmp/existing-changed-files
+
+          mapfile -d '' -t changed_files < /tmp/existing-changed-files
           if (( ${#changed_files[@]} > 0 )); then
             pnpm exec prettier --check --ignore-unknown "${changed_files[@]}"
           fi
@@ -123,8 +90,28 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Run complete test suite
+      - name: Run complete unit and integration test suite
         run: pnpm test
 
-      - name: Build Cloudflare application
+      - name: Prepare isolated local D1 database for E2E
+        run: pnpm db:migrate:local
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
+
+      - name: Run end-to-end tests against local Wrangler
+        run: pnpm test:e2e
+        env:
+          CI: "true"
+
+      - name: Build Cloudflare Worker
         run: pnpm build:cloudflare
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
