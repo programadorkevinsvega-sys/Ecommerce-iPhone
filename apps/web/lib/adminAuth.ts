@@ -7,7 +7,11 @@ import type { CurrentAdmin } from "../../../modules/admin/application/ResolveCur
 import { D1AdminStepUpRepository } from "../../../modules/admin/infrastructure/D1AdminStepUpRepository";
 import { sha256 } from "../../../modules/admin/infrastructure/AdminSecurity";
 import { buildRequestFingerprint } from "./adminFingerprintComposition";
-import { buildBootstrapAdmin, buildLogoutAdmin, buildRequireAdmin } from "./adminAuthCompositionV2";
+import {
+  buildBootstrapAdmin,
+  buildLogoutAdmin,
+  buildRequireAdmin,
+} from "./adminAuthCompositionV2";
 
 export { PERMISSIONS };
 export const ADMIN_COOKIE = "admin_session";
@@ -53,13 +57,15 @@ export async function requireAdminStepUp(
   return { admin, env };
 }
 
-export async function createAdminStepUp(input: Readonly<{
-  adminUserId: string;
-  sessionToken: string;
-  password: string;
-  scope: AdminStepUpScope;
-  ipHash?: string;
-}>) {
+export async function createAdminStepUp(
+  input: Readonly<{
+    adminUserId: string;
+    sessionToken: string;
+    password: string;
+    scope: AdminStepUpScope;
+    ipHash?: string;
+  }>,
+) {
   const { env } = getCloudflareContext();
   return buildCreateAdminStepUp(env).execute(input);
 }
@@ -122,7 +128,10 @@ export async function logoutAdmin() {
   await clearAdminSession();
 }
 
-export async function bootstrapAdmin(body: Record<string, unknown>, suppliedToken: string | null) {
+export async function bootstrapAdmin(
+  body: Record<string, unknown>,
+  suppliedToken: string | null,
+) {
   const { env } = getCloudflareContext();
   const expected = (env as CloudflareEnv & { ADMIN_BOOTSTRAP_TOKEN?: string })
     .ADMIN_BOOTSTRAP_TOKEN;
