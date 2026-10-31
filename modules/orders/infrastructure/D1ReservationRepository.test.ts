@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { D1ReservationRepository } from "./D1ReservationRepository";
-import { D1SqliteTestDatabase } from "./D1SqliteTestDatabase";
+import { D1SqliteTestDatabase } from "../../shared-kernel/testing/D1SqliteTestDatabase";
 
 let database: D1SqliteTestDatabase;
 
@@ -14,8 +14,14 @@ describe("D1ReservationRepository concurrency", () => {
     const results = await Promise.all([repository.releaseExpired(), repository.releaseExpired()]);
 
     expect(results.reduce((sum, value) => sum + value, 0)).toBe(1);
-    expect(database.query<{ stock: number }>("SELECT stock FROM products WHERE id='product-1'")[0].stock).toBe(1);
-    expect(database.query<{ released_at: string | null }>("SELECT released_at FROM inventory_reservations WHERE id='reservation-1'")[0].released_at).not.toBeNull();
+    expect(
+      database.query<{ stock: number }>("SELECT stock FROM products WHERE id='product-1'")[0].stock,
+    ).toBe(1);
+    expect(
+      database.query<{ released_at: string | null }>(
+        "SELECT released_at FROM inventory_reservations WHERE id='reservation-1'",
+      )[0].released_at,
+    ).not.toBeNull();
   });
 
   it("does not return stock twice when order cancellation races with reservation cleanup", async () => {
@@ -28,8 +34,14 @@ describe("D1ReservationRepository concurrency", () => {
     ]);
 
     expect(results.reduce((sum, value) => sum + value, 0)).toBe(1);
-    expect(database.query<{ stock: number }>("SELECT stock FROM products WHERE id='product-1'")[0].stock).toBe(1);
-    expect(database.query<{ count: number }>("SELECT COUNT(*) AS count FROM inventory_reservations WHERE released_at IS NULL")[0].count).toBe(0);
+    expect(
+      database.query<{ stock: number }>("SELECT stock FROM products WHERE id='product-1'")[0].stock,
+    ).toBe(1);
+    expect(
+      database.query<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM inventory_reservations WHERE released_at IS NULL",
+      )[0].count,
+    ).toBe(0);
   });
 
   it("does not restore stock for a terminal paid reservation that has already been consumed", async () => {
@@ -37,8 +49,14 @@ describe("D1ReservationRepository concurrency", () => {
     const repository = new D1ReservationRepository(database.asD1());
 
     await expect(repository.releaseExpired()).resolves.toBe(1);
-    expect(database.query<{ stock: number }>("SELECT stock FROM products WHERE id='product-1'")[0].stock).toBe(0);
-    expect(database.query<{ released_at: string | null }>("SELECT released_at FROM inventory_reservations WHERE id='reservation-1'")[0].released_at).not.toBeNull();
+    expect(
+      database.query<{ stock: number }>("SELECT stock FROM products WHERE id='product-1'")[0].stock,
+    ).toBe(0);
+    expect(
+      database.query<{ released_at: string | null }>(
+        "SELECT released_at FROM inventory_reservations WHERE id='reservation-1'",
+      )[0].released_at,
+    ).not.toBeNull();
   });
 
   it("keeps a non-expired payment reservation untouched", async () => {
@@ -46,8 +64,14 @@ describe("D1ReservationRepository concurrency", () => {
     const repository = new D1ReservationRepository(database.asD1());
 
     await expect(repository.releaseExpired()).resolves.toBe(0);
-    expect(database.query<{ stock: number }>("SELECT stock FROM products WHERE id='product-1'")[0].stock).toBe(0);
-    expect(database.query<{ released_at: string | null }>("SELECT released_at FROM inventory_reservations WHERE id='reservation-1'")[0].released_at).toBeNull();
+    expect(
+      database.query<{ stock: number }>("SELECT stock FROM products WHERE id='product-1'")[0].stock,
+    ).toBe(0);
+    expect(
+      database.query<{ released_at: string | null }>(
+        "SELECT released_at FROM inventory_reservations WHERE id='reservation-1'",
+      )[0].released_at,
+    ).toBeNull();
   });
 });
 
