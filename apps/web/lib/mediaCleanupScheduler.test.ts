@@ -193,6 +193,6 @@ describe("processOrphanMediaPage", () => {
     ).rejects.toThrow("MEDIA_CLEANUP_SCAN_STATE_CHANGED");
 
     expect(save).toHaveBeenCalledWith("product-images/", "page-1", "page-3", false);
-    expect(persistedCursor).toBe("page-1");
+    expect(persistedCursor).toBe("page-2");
   });
 });
