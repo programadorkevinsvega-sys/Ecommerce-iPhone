@@ -38,7 +38,7 @@ A final job named **`CI required`** runs with `always()` and evaluates the resul
 - [x] Use the official non-mutating changed-file formatting check without creating unrelated repository-wide formatting churn.
 - [x] Publish one stable aggregate status check that rejects failed, cancelled and skipped prerequisite jobs.
 - [x] Keep production migrations and deployment owned by Cloudflare.
-- [x] GitHub Actions `Repository CI` and `CI required` passed on commit `efd8f94baa760af6316b16708050ee99aa039c0c` (run `41157442917`); a subsequent documentation commit will trigger a fresh run.
+- [x] GitHub Actions `Repository CI` and `CI required` passed on the latest implementation commit `12d8441e63af5ba0e95b1f99a7b0444ea9dc882d` (run `41157718606`).
 - [ ] Require **`CI required`** in the `main` branch ruleset / protection rule: manual repository-admin action. The last inspected GitHub branch metadata reported `main` as unprotected and no repository rulesets.
 
 ## Verification commands
