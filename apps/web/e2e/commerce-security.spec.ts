@@ -135,7 +135,7 @@ test.describe("critical commerce and security journeys", () => {
     resetCheckoutInventory(100);
   });
 
-  test.afterEach(() => {
+  test.afterEach(async () => {
     const emails = Array.from(createdEmails);
     const cartIds = Array.from(createdCartIds);
     createdEmails.clear();
@@ -143,22 +143,74 @@ test.describe("critical commerce and security journeys", () => {
 
     if (emails.length > 0) {
       const emailList = emails.map(sqlLiteral).join(", ");
-      const orderIds = `SELECT id FROM orders WHERE email IN (${emailList})`;
-      const outboxIds = `SELECT id FROM notification_outbox WHERE aggregate_id IN (${orderIds})`;
+      const orderIds = queryLocalD1<{ id: string }>(
+        `SELECT id FROM orders WHERE email IN (${emailList})`,
+      ).map((row) => row.id);
+      const orderIdList = orderIds.length > 0 ? orderIds.map(sqlLiteral).join(", ") : "''";
+      const outboxIds = queryLocalD1<{ id: string }>(
+        `SELECT id FROM notification_outbox WHERE aggregate_id IN (${orderIdList})`,
+      ).map((row) => row.id);
+      const outboxIdList =
+        outboxIds.length > 0 ? outboxIds.map(sqlLiteral).join(", ") : "''";
 
-      for (const statement of [
-        `DELETE FROM notification_deliveries WHERE outbox_id IN (${outboxIds})`,
-        `DELETE FROM notification_outbox WHERE aggregate_id IN (${orderIds})`,
-        `DELETE FROM orders WHERE email IN (${emailList})`,
-        `DELETE FROM customers WHERE email IN (${emailList})`,
-      ]) {
-        executeLocalD1(statement);
+      if (outboxIds.length > 0) {
+        // Stop reconciliation/retries from claiming these local-only events again.
+        // Preserve any active lease so an in-flight consumer can finish its D1 writes.
+        executeLocalD1(
+          `UPDATE notification_outbox
+           SET terminal_at=COALESCE(terminal_at,CURRENT_TIMESTAMP),
+               available_at=CURRENT_TIMESTAMP
+           WHERE id IN (${outboxIdList})`,
+        );
+
+        await expect
+          .poll(
+            () =>
+              queryLocalD1<{ active: number }>(
+                `SELECT COUNT(*) AS active FROM notification_outbox
+                 WHERE id IN (${outboxIdList})
+                   AND lease_expires_at IS NOT NULL
+                   AND lease_expires_at>CURRENT_TIMESTAMP`,
+              )[0]?.active ?? 0,
+            { timeout: 20_000, intervals: [100, 250, 500, 1000] },
+          )
+          .toBe(0);
+
+        executeLocalD1(
+          `DELETE FROM notification_deliveries WHERE outbox_id IN (${outboxIdList})`,
+        );
+        executeLocalD1(
+          `DELETE FROM notification_outbox WHERE id IN (${outboxIdList})`,
+        );
       }
+
+      if (orderIds.length > 0) {
+        executeLocalD1(`DELETE FROM orders WHERE id IN (${orderIdList})`);
+      }
+      executeLocalD1(`DELETE FROM customers WHERE email IN (${emailList})`);
+
+      const residual = queryLocalD1<{
+        customers: number;
+        orders: number;
+        outbox: number;
+        deliveries: number;
+      }>(
+        `SELECT
+          (SELECT COUNT(*) FROM customers WHERE email IN (${emailList})) AS customers,
+          (SELECT COUNT(*) FROM orders WHERE id IN (${orderIdList})) AS orders,
+          (SELECT COUNT(*) FROM notification_outbox WHERE id IN (${outboxIdList})) AS outbox,
+          (SELECT COUNT(*) FROM notification_deliveries WHERE outbox_id IN (${outboxIdList})) AS deliveries`,
+      )[0];
+      expect(residual).toEqual({ customers: 0, orders: 0, outbox: 0, deliveries: 0 });
     }
 
     if (cartIds.length > 0) {
       const cartList = cartIds.map(sqlLiteral).join(", ");
       executeLocalD1(`DELETE FROM carts WHERE id IN (${cartList})`);
+      const residualCarts = queryLocalD1<{ count: number }>(
+        `SELECT COUNT(*) AS count FROM carts WHERE id IN (${cartList})`,
+      )[0]?.count;
+      expect(residualCarts).toBe(0);
     }
   });
 
