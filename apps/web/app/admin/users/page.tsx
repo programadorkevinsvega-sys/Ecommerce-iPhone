@@ -293,7 +293,7 @@ export default function AdminUsersPage() {
     requestStepUp(savePermissionsAuthorized);
   }
 
-  async function savePermissionsAuthorized() {
+  async function savePermissionsAuthorized(): Promise<void> {
     if (!editing) return;
     const overrides = permissions
       .filter((item) => item.state !== "inherit")
@@ -308,11 +308,10 @@ export default function AdminUsersPage() {
     const data = (await response.json()) as { error?: string };
     if (!response.ok) {
       setMessage(data.error ?? "No se pudieron guardar los permisos.");
-      return false;
+      return;
     }
     setMessage("Permisos actualizados.");
     await loadPermissions(editing);
-    return true;
   }
 
   return (
