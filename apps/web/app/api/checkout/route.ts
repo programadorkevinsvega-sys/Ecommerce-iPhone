@@ -143,31 +143,18 @@ export async function POST(request: Request) {
         );
     }
 
-    // A successful checkout clears its cart. Resolve an authenticated retry before
-    // requiring cart contents so the same key returns the committed order, not a
-    // misleading "empty cart" failure or a second inventory decrement.
-    const previousCheckout = await context.db
-      .prepare(
-        "SELECT customer_id,order_id FROM checkout_idempotency WHERE idempotency_key=? AND expires_at>CURRENT_TIMESTAMP LIMIT 1",
-      )
-      .bind(idempotencyKey)
-      .first<{ customer_id: string; order_id: string }>();
-    if (previousCheckout) {
-      if (!currentSession || previousCheckout.customer_id !== currentSession.customerId)
-        return NextResponse.json(
-          { error: "La operación entra en conflicto con el estado actual." },
-          { status: 409, headers: { "cache-control": "no-store" } },
-        );
-      const previousOrder = await context.orderRepository.findById(previousCheckout.order_id);
-      if (!previousOrder)
-        return NextResponse.json(
-          { error: "No encontramos el pedido solicitado." },
-          { status: 404, headers: { "cache-control": "no-store" } },
-        );
-      return NextResponse.json(
-        { order: previousOrder },
-        { status: 200, headers: { "cache-control": "no-store" } },
+    // A successful checkout clears its cart, so resolve a retry before loading it again.
+    if (currentSession) {
+      const previousOrder = await context.orderRepository.findByIdempotencyKeyForCustomer(
+        idempotencyKey,
+        currentSession.customerId,
       );
+      if (previousOrder) {
+        return NextResponse.json(
+          { order: previousOrder },
+          { status: 200, headers: { "cache-control": "no-store" } },
+        );
+      }
     }
 
     const customerResult = await context.customer.save(

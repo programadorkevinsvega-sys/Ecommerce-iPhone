@@ -3,9 +3,8 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const workingDirectory = process.cwd();
-const repositoryRoot = existsSync(
-  resolve(workingDirectory, "pnpm-workspace.yaml"),
-)
+const workspaceConfig = resolve(workingDirectory, "pnpm-workspace.yaml");
+const repositoryRoot = existsSync(workspaceConfig)
   ? workingDirectory
   : resolve(workingDirectory, "../..");
 
@@ -60,12 +59,10 @@ export function resetCheckoutInventory(stock: number): void {
   }
 
   const statements = [
-    `UPDATE products SET stock=${stock},updated_at=CURRENT_TIMESTAMP ` +
-      "WHERE id='prod-iphone-17-pro-max' AND active=1",
-    "UPDATE products SET stock=0,updated_at=CURRENT_TIMESTAMP " +
-      "WHERE id='prod-iphone-18-pro-max' AND active=1",
+    `UPDATE products SET stock=${stock} WHERE id='prod-iphone-17-pro-max' AND active=1`,
+    "UPDATE products SET stock=0 WHERE id='prod-iphone-18-pro-max' AND active=1",
     "UPDATE product_variants SET price_in_cents=464900000 " +
-      "WHERE id='var-iphone-17-256-deep-blue' AND product_id='prod-iphone-17-pro-max'",
+      "WHERE id='var-iphone-17-256-deep-blue'",
   ];
   executeLocalD1(`${statements.join(";\n")};`);
 

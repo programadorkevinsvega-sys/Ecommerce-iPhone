@@ -273,6 +273,19 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     return this.hydrateOrder(row);
   }
 
+  async findByIdempotencyKeyForCustomer(
+    key: string,
+    customerId: string,
+  ): Promise<Order | null> {
+    const row = await this.db
+      .prepare(
+        "SELECT o.* FROM checkout_idempotency i JOIN orders o ON o.id=i.order_id WHERE i.idempotency_key=? AND i.customer_id=? AND i.expires_at>CURRENT_TIMESTAMP LIMIT 1",
+      )
+      .bind(key, customerId)
+      .first<OrderRow>();
+    return row ? this.hydrateOrder(row) : null;
+  }
+
   async listByCustomer(
     customerId: string,
     limit: number,

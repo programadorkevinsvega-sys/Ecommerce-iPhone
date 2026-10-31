@@ -31,6 +31,10 @@ class Orders implements OrderRepository {
     return order;
   }
 
+  async findByIdempotencyKeyForCustomer(): Promise<Order | null> {
+    return null;
+  }
+
   async listByCustomer(customerId: string, limit: number, offset: number): Promise<readonly Order[]> {
     expect(customerId).toBe("customer-1");
     expect(limit).toBe(50);
@@ -52,6 +56,7 @@ describe("ListOrdersForCustomer", () => {
   it("normalizes negative and fractional pagination", async () => {
     const repository: OrderRepository = {
       findById: async () => order,
+      findByIdempotencyKeyForCustomer: async () => null,
       listByCustomer: async (_customerId, limit, offset) => {
         expect(limit).toBe(1);
         expect(offset).toBe(0);
