@@ -1,6 +1,11 @@
 import { execFileSync } from "node:child_process";
 
 function currentBranch() {
+  const workersCiBranch = process.env.WORKERS_CI_BRANCH?.trim();
+  if (workersCiBranch) {
+    return workersCiBranch;
+  }
+
   const githubRef = process.env.GITHUB_REF?.trim();
   if (githubRef) {
     const match = githubRef.match(/^refs\/heads\/(.+)$/);

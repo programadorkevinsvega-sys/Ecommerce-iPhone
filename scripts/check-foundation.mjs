@@ -89,33 +89,39 @@ const productionVerification = await readFile(
 if (!productionVerification.includes("pnpm verify:production"))
   failures.push("production verification workflow must execute runtime verification");
 const workerBuildDeploy = packageJson.scripts?.["cloudflare:deploy"] ?? "";
-if (!workerBuildDeploy.includes("intentionally disabled")) {
-  failures.push(
-    "Cloudflare Workers Builds deploy hook must remain a no-op; production is deployed by GitHub Actions",
-  );
+if (workerBuildDeploy !== "pnpm cloudflare:deploy:production") {
+  failures.push("Cloudflare Workers Builds deploy hook must run the guarded production deploy");
 }
 
 const guardedProductionDeploy = packageJson.scripts?.["cloudflare:deploy:production"] ?? "";
 if (!guardedProductionDeploy.includes("assert-main-deploy.mjs"))
-  failures.push("production deploy must enforce the main-only branch guard");
+  failures.push("Cloudflare production deploy must enforce the main-only branch guard");
 if (!guardedProductionDeploy.includes("db:migrate:production"))
-  failures.push("GitHub production deploy must apply remote D1 migrations");
+  failures.push("Cloudflare production deploy must apply remote D1 migrations");
 if (!guardedProductionDeploy.includes("wrangler deploy"))
-  failures.push("GitHub production deploy must publish the Worker");
+  failures.push("Cloudflare production deploy must publish the Worker");
 
 const ciWorkflow = await readFile(".github/workflows/payment-consistency.yml", "utf8");
-if (!ciWorkflow.includes("if: github.event_name == 'push' && github.ref == 'refs/heads/main'"))
-  failures.push("production deployment must run only on pushes to main");
+if (ciWorkflow.includes("deploy-production:"))
+  failures.push("GitHub Actions CI must not own the production deployment job");
+if (ciWorkflow.includes("pnpm cloudflare:deploy:production"))
+  failures.push("GitHub Actions CI must not invoke the production deploy command");
+if (ciWorkflow.includes("pnpm db:verify:production"))
+  failures.push("GitHub Actions CI must not query remote D1 migrations");
+if (ciWorkflow.includes("CLOUDFLARE_API_TOKEN") || ciWorkflow.includes("CLOUDFLARE_ACCOUNT_ID"))
+  failures.push("GitHub Actions CI must not require Cloudflare deployment credentials");
 if (
-  !ciWorkflow.includes("needs:") ||
-  !ciWorkflow.includes("- runner-diagnostics") ||
-  !ciWorkflow.includes("- payment-quality")
+  !ciWorkflow.includes("WORKERS_CI_BRANCH=preview") ||
+  !ciWorkflow.includes("WORKERS_CI_BRANCH=main") ||
+  !ciWorkflow.includes("feature/test")
 )
-  failures.push("production deployment must depend on successful CI quality jobs");
-if (!ciWorkflow.includes("pnpm cloudflare:deploy:production"))
-  failures.push("GitHub Actions must own the guarded production deploy");
-if (!ciWorkflow.includes("pnpm db:verify:production"))
-  failures.push("GitHub Actions must verify remote D1 migration state after deployment");
+  failures.push("GitHub CI must test the main-only guard against GitHub and Cloudflare branches");
+
+const productionVerificationHasRemoteD1 = productionVerification.includes(
+  "pnpm db:verify:production",
+);
+if (productionVerificationHasRemoteD1)
+  failures.push("scheduled GitHub verification must not require remote D1 API credentials");
 
 const adminRoute = await readFile("apps/web/app/api/admin/resources/route.ts", "utf8");
 if (/\.prepare\s*\(/.test(adminRoute))
