@@ -1,0 +1,113 @@
+name: PR26 format normalization
+
+on:
+  push:
+    branches:
+      - chore/production-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR 26 branch
+        uses: actions/checkout@v4
+        with:
+          ref: chore/production-hardening
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply repository Prettier
+        run: |
+          pnpm exec prettier --write \
+            apps/web/app/admin/AdminStepUpDialog.tsx \
+            apps/web/app/admin/login/page.tsx \
+            apps/web/app/admin/payments/page.tsx \
+            apps/web/app/admin/products/[id]/categories/page.tsx \
+            apps/web/app/admin/settings/page.tsx \
+            apps/web/app/admin/users/page.tsx \
+            apps/web/app/api/admin/auth/step-up/route.ts \
+            apps/web/app/api/admin/payments/[id]/refund/route.ts \
+            apps/web/app/api/admin/payments/[id]/void/route.ts \
+            apps/web/app/api/admin/repair-orders/[id]/assign/route.ts \
+            apps/web/app/api/admin/repair-orders/[id]/operations/route.ts \
+            apps/web/app/api/admin/repair-orders/[id]/route.ts \
+            apps/web/app/api/admin/repair-orders/route.ts \
+            apps/web/app/api/admin/settings/route.ts \
+            apps/web/app/api/admin/users/[id]/permissions/route.ts \
+            apps/web/app/api/admin/users/route.ts \
+            apps/web/app/api/technician/devices/[orderId]/route.ts \
+            apps/web/app/api/technician/orders/[id]/route.ts \
+            apps/web/app/error.tsx \
+            apps/web/app/globals.css \
+            apps/web/app/page.tsx \
+            apps/web/e2e/platform-hardening.spec.ts \
+            apps/web/lib/adminApplication.ts \
+            apps/web/lib/adminAuth.ts \
+            modules/admin/application/AdminStepUpRepository.ts \
+            modules/admin/application/CreateAdminStepUp.ts \
+            modules/admin/infrastructure/D1AdminStepUpRepository.test.ts \
+            modules/admin/infrastructure/D1AdminStepUpRepository.ts \
+            modules/notifications/domain/NotificationEvent.ts \
+            modules/notifications/infrastructure/CloudflareNotificationQueuePublisher.ts \
+            modules/orders/infrastructure/D1OrderRepository.ts \
+            modules/repairs/infrastructure/D1RepairOperationsRepository.ts \
+            modules/repairs/infrastructure/D1RepairOrderRepository.ts \
+
+      - name: Commit formatting to the existing PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "apps/web/app/admin/AdminStepUpDialog.tsx" \
+            "apps/web/app/admin/login/page.tsx" \
+            "apps/web/app/admin/payments/page.tsx" \
+            "apps/web/app/admin/products/[id]/categories/page.tsx" \
+            "apps/web/app/admin/settings/page.tsx" \
+            "apps/web/app/admin/users/page.tsx" \
+            "apps/web/app/api/admin/auth/step-up/route.ts" \
+            "apps/web/app/api/admin/payments/[id]/refund/route.ts" \
+            "apps/web/app/api/admin/payments/[id]/void/route.ts" \
+            "apps/web/app/api/admin/repair-orders/[id]/assign/route.ts" \
+            "apps/web/app/api/admin/repair-orders/[id]/operations/route.ts" \
+            "apps/web/app/api/admin/repair-orders/[id]/route.ts" \
+            "apps/web/app/api/admin/repair-orders/route.ts" \
+            "apps/web/app/api/admin/settings/route.ts" \
+            "apps/web/app/api/admin/users/[id]/permissions/route.ts" \
+            "apps/web/app/api/admin/users/route.ts" \
+            "apps/web/app/api/technician/devices/[orderId]/route.ts" \
+            "apps/web/app/api/technician/orders/[id]/route.ts" \
+            "apps/web/app/error.tsx" \
+            "apps/web/app/globals.css" \
+            "apps/web/app/page.tsx" \
+            "apps/web/e2e/platform-hardening.spec.ts" \
+            "apps/web/lib/adminApplication.ts" \
+            "apps/web/lib/adminAuth.ts" \
+            "modules/admin/application/AdminStepUpRepository.ts" \
+            "modules/admin/application/CreateAdminStepUp.ts" \
+            "modules/admin/infrastructure/D1AdminStepUpRepository.test.ts" \
+            "modules/admin/infrastructure/D1AdminStepUpRepository.ts" \
+            "modules/notifications/domain/NotificationEvent.ts" \
+            "modules/notifications/infrastructure/CloudflareNotificationQueuePublisher.ts" \
+            "modules/orders/infrastructure/D1OrderRepository.ts" \
+            "modules/repairs/infrastructure/D1RepairOperationsRepository.ts" \
+            "modules/repairs/infrastructure/D1RepairOrderRepository.ts"
+          if git diff --cached --quiet; then
+            echo "All selected files were already formatted."
+            exit 0
+          fi
+          git commit -m "style(platform): format production hardening implementation"
+          git push origin HEAD:chore/production-hardening
