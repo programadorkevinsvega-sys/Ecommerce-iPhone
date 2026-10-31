@@ -73,7 +73,7 @@ The Cloudflare Build command compiles the OpenNext Worker. It does not run audit
 
 The Deploy command is the only production deployment path. It runs the main-branch guard, applies remote D1 migrations, and publishes the Worker. Keep `main` as the production branch in the Cloudflare dashboard. The guard reads the `WORKERS_CI_BRANCH` variable injected by Workers Builds, so builds from any other branch are rejected.
 
-**Important:** a no-op Deploy command does not disable non-production Preview builds. Cloudflare uses a separate Preview command when Preview Builds are enabled; it defaults to `npx wrangler preview`. Production Deploy and branch Preview are independent controls. See the [Cloudflare Build configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/) and [branch control guide](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/).
+**Important:** production Deploy and non-production Preview builds are independent controls. Cloudflare uses a separate Preview command when Preview Builds are enabled; it defaults to `npx wrangler preview`. See the [Cloudflare Build configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/) and [branch control guide](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/).
 
 ### Previews for non-production branches
 
