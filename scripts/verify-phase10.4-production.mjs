@@ -32,7 +32,17 @@ async function request(path, init = {}) {
 async function d1(sql) {
   const { stdout } = await execFileAsync(
     "pnpm",
-    ["exec", "wrangler", "d1", "execute", "DB", "--remote", "--json", "--command", sql],
+    [
+      "exec",
+      "wrangler",
+      "d1",
+      "execute",
+      "DB",
+      "--remote",
+      "--json",
+      "--command",
+      sql,
+    ],
     { env: process.env, maxBuffer: 1024 * 1024 },
   );
   const parsed = JSON.parse(stdout);
@@ -56,10 +66,16 @@ try {
   const preferredProductRows = await d1(
     "SELECT id,slug,stock FROM products WHERE slug='iphone-17-pro-max' AND active=1 AND stock>0 LIMIT 1",
   );
-  const productRows = preferredProductRows.length > 0
-    ? preferredProductRows
-    : await d1("SELECT id,slug,stock FROM products WHERE active=1 AND stock>0 ORDER BY updated_at DESC LIMIT 1");
-  assert(productRows.length === 1, "no active production product with stock available for real cart verification");
+  const productRows =
+    preferredProductRows.length > 0
+      ? preferredProductRows
+      : await d1(
+          "SELECT id,slug,stock FROM products WHERE active=1 AND stock>0 ORDER BY updated_at DESC LIMIT 1",
+        );
+  assert(
+    productRows.length === 1,
+    "no active production product with stock available for real cart verification",
+  );
   const productId = productRows[0].id;
   console.log(
     `PASS real verification product: ${productRows[0].slug} with stock ${Number(productRows[0].stock)}${preferredProductRows.length === 0 ? " (fallback because iphone-17-pro-max has no stock)" : ""}`,
@@ -77,7 +93,10 @@ try {
     },
     body: JSON.stringify({ productId, quantity: 1 }),
   });
-  assert(addResponse.status === 200, `real cart add: expected HTTP 200, got ${addResponse.status}`);
+  assert(
+    addResponse.status === 200,
+    `real cart add: expected HTTP 200, got ${addResponse.status}`,
+  );
   console.log("PASS real cart add: HTTP 200");
 
   const removeResponse = await request("/api/cart", {
@@ -89,17 +108,30 @@ try {
     },
     body: JSON.stringify({ productId }),
   });
-  assert(removeResponse.status === 200, `real cart remove: expected HTTP 200, got ${removeResponse.status}`);
+  assert(
+    removeResponse.status === 200,
+    `real cart remove: expected HTTP 200, got ${removeResponse.status}`,
+  );
   console.log("PASS real cart remove: HTTP 200");
 
   const checkoutResponse = await request("/checkout");
-  assert(checkoutResponse.status === 200, `checkout route: expected HTTP 200, got ${checkoutResponse.status}`);
+  assert(
+    checkoutResponse.status === 200,
+    `checkout route: expected HTTP 200, got ${checkoutResponse.status}`,
+  );
   console.log("PASS real checkout route: HTTP 200");
 
   const unauthenticatedPaymentResponse = await request("/api/payments/intent", {
     method: "POST",
-    headers: { "content-type": "application/json", "x-request-id": requestId, "Idempotency-Key": `phase10-4-payment-${probe}` },
-    body: JSON.stringify({ orderId: "phase10-4-not-a-real-order", paymentProvider: "WOMPI" }),
+    headers: {
+      "content-type": "application/json",
+      "x-request-id": requestId,
+      "Idempotency-Key": `phase10-4-payment-${probe}`,
+    },
+    body: JSON.stringify({
+      orderId: "phase10-4-not-a-real-order",
+      paymentProvider: "WOMPI",
+    }),
   });
   assert(
     unauthenticatedPaymentResponse.status === 401,
@@ -114,19 +146,41 @@ try {
     const added = rows.find((row) => row.event_type === "CartItemAdded");
     const removed = rows.find((row) => row.event_type === "CartItemRemoved");
     if (added && removed) {
-      assert(added.event_version === 1 && removed.event_version === 1, "cart analytics event version mismatch");
-      assert(added.visitor_id === visitorId && removed.visitor_id === visitorId, "cart analytics visitor mismatch");
-      assert(added.source === "server" && removed.source === "server", "cart analytics source mismatch");
-      assert(typeof added.payload_json === "string" && added.payload_json.includes(productId), "CartItemAdded payload does not reference the real product");
-      assert(typeof removed.payload_json === "string" && removed.payload_json.includes(productId), "CartItemRemoved payload does not reference the real product");
-      console.log(`PASS HTTP → EVENTS_QUEUE → D1: cart events persisted after ${attempt} poll(s)`);
+      assert(
+        added.event_version === 1 && removed.event_version === 1,
+        "cart analytics event version mismatch",
+      );
+      assert(
+        added.visitor_id === visitorId && removed.visitor_id === visitorId,
+        "cart analytics visitor mismatch",
+      );
+      assert(
+        added.source === "server" && removed.source === "server",
+        "cart analytics source mismatch",
+      );
+      assert(
+        typeof added.payload_json === "string" &&
+          added.payload_json.includes(productId),
+        "CartItemAdded payload does not reference the real product",
+      );
+      assert(
+        typeof removed.payload_json === "string" &&
+          removed.payload_json.includes(productId),
+        "CartItemRemoved payload does not reference the real product",
+      );
+      console.log(
+        `PASS HTTP → EVENTS_QUEUE → D1: cart events persisted after ${attempt} poll(s)`,
+      );
       completed = true;
       break;
     }
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 
-  assert(completed, `cart analytics queue persistence timeout after ${pollAttempts} polls`);
+  assert(
+    completed,
+    `cart analytics queue persistence timeout after ${pollAttempts} polls`,
+  );
 
   const abandoned = await d1(
     "SELECT COUNT(*) AS count FROM analytics_events WHERE event_type='CartAbandoned' AND source='server'",
@@ -137,7 +191,9 @@ try {
   const purchases = await d1(
     "SELECT COUNT(*) AS count FROM analytics_events WHERE event_type='PurchaseCompleted' AND source='server'",
   );
-  console.log(`PASS PurchaseCompleted server event check: ${Number(purchases[0]?.count ?? 0)} real production event(s) currently persisted`);
+  console.log(
+    `PASS PurchaseCompleted server event check: ${Number(purchases[0]?.count ?? 0)} real production event(s) currently persisted`,
+  );
 } finally {
   try {
     await d1(
@@ -147,7 +203,9 @@ try {
     await d1(`DELETE FROM carts WHERE id=${sqlString(cartId)}`);
     console.log("PASS production verification cleanup: cart probe removed from D1");
   } catch (error) {
-    console.error(`WARN production verification cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `WARN production verification cleanup failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
     if (completed) throw error;
   }
 }
