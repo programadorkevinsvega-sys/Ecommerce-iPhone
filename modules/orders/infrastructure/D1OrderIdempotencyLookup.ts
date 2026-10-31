@@ -12,10 +12,7 @@ export class D1OrderIdempotencyLookup implements OrderIdempotencyLookup {
     private readonly orders: OrderRepository,
   ) {}
 
-  async findByIdempotencyKeyForCustomer(
-    key: string,
-    customerId: string,
-  ) {
+  async findByIdempotencyKeyForCustomer(key: string, customerId: string) {
     const row = await this.db
       .prepare(
         "SELECT order_id FROM checkout_idempotency WHERE idempotency_key=? AND customer_id=? AND expires_at>CURRENT_TIMESTAMP LIMIT 1",
