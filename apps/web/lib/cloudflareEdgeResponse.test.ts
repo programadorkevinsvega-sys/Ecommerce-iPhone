@@ -26,7 +26,8 @@ describe("Cloudflare edge response detection", () => {
   });
 
   it("supports the Cloudflare signature returned by Fetch Headers", () => {
-    const response = new Response("Attention Required! Cloudflare Ray ID: abc", {
+    const body = "Attention Required! Cloudflare Ray ID: abc";
+    const response = new Response(body, {
       status: 403,
       headers: {
         server: "cloudflare",
@@ -34,7 +35,7 @@ describe("Cloudflare edge response detection", () => {
       },
     });
 
-    expect(isCloudflareEdgeBlock(response, await response.clone().text())).toBe(true);
+    expect(isCloudflareEdgeBlock(response, body)).toBe(true);
   });
 
   it("does not classify an application 403 carrying its request ID", () => {
