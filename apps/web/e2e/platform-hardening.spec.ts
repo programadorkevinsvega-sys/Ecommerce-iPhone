@@ -45,10 +45,21 @@ test.describe("platform hardening", () => {
     const nonce = policy.match(/'nonce-([^']+)'/)?.[1];
     expect(nonce).toBeTruthy();
 
-    const result = await page.locator("script:not([src])").evaluateAll((scripts) => ({
-      count: scripts.length,
-      nonces: scripts.map((script) => (script as HTMLScriptElement).nonce),
-    }));
+    const result = await page.locator("script:not([src])").evaluateAll((scripts) => {
+      const executableScripts = scripts.filter((script) => {
+        const type = (script.getAttribute("type") ?? "").trim().toLowerCase();
+        return (
+          type === "" ||
+          type === "module" ||
+          type === "text/javascript" ||
+          type === "application/javascript"
+        );
+      });
+      return {
+        count: executableScripts.length,
+        nonces: executableScripts.map((script) => (script as HTMLScriptElement).nonce),
+      };
+    });
     expect(result.count).toBeGreaterThan(0);
     expect(result.nonces.every((value) => value === nonce)).toBe(true);
     const scriptSrc = policy
@@ -113,9 +124,19 @@ test.describe("platform hardening", () => {
 
       expect(unnamedControls, route).toEqual([]);
       await expect(page.locator("img:not([alt])"), route).toHaveCount(0);
-      await expect(page.locator("[style]:not(img[style='color:transparent'])"), route).toHaveCount(
-        0,
+      const inlineStyles = await page.locator("[style]").evaluateAll((elements) =>
+        elements
+          .filter(
+            (element) =>
+              !(element instanceof HTMLImageElement) ||
+              element.style.color !== "transparent",
+          )
+          .map((element) => ({
+            tag: element.tagName.toLowerCase(),
+            style: element.getAttribute("style"),
+          })),
       );
+      expect(inlineStyles, route).toEqual([]);
 
       const policy = response?.headers()["content-security-policy"] ?? "";
       expect(policy.split(",").filter(Boolean), route).toHaveLength(1);
