@@ -53,6 +53,9 @@ jobs:
       - name: Audit all dependencies
         run: pnpm audit
 
+      - name: Print canonical Prettier output for foundation checker
+        run: pnpm exec prettier scripts/check-foundation.mjs
+
       - name: Check formatting of changed files
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
