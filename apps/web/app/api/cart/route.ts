@@ -16,6 +16,12 @@ const GENERIC_ERROR = "No pudimos completar la operación.";
 const VALIDATION_ERROR = "Revisa los datos ingresados e inténtalo nuevamente.";
 
 function errorResponse(error: unknown): Response {
+  if (error instanceof SyntaxError) {
+    return NextResponse.json(
+      { error: VALIDATION_ERROR },
+      { status: 400, headers: { "cache-control": "no-store" } },
+    );
+  }
   const code = error instanceof Error ? error.message.toUpperCase() : "UNKNOWN";
   const status =
     code.includes("RATE_LIMIT") || code.includes("TOO_MANY")
@@ -26,8 +32,11 @@ function errorResponse(error: unknown): Response {
           ? 403
           : code.includes("NOT_FOUND") || code.includes("NOT FOUND")
             ? 404
-            : code.includes("CONFLICT") || code.includes("ALREADY")
-              ? 409
+            : code.includes("CONFLICT") ||
+          code.includes("ALREADY") ||
+          code.includes("STOCK") ||
+          code.includes("UNAVAILABLE")
+        ? 409
               : code.includes("INVALID") || code.includes("VALIDATION")
                 ? 422
                 : 500;

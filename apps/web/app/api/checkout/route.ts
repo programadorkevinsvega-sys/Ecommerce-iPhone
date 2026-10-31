@@ -19,6 +19,12 @@ import { cloudflareEnv } from "../../../lib/cloudflareContext";
 import { cloudflareWaitUntil } from "../../../lib/cloudflareContext";
 
 function safeError(error: unknown): { error: string; status: number } {
+  if (error instanceof SyntaxError) {
+    return {
+      error: "Revisa los datos ingresados e inténtalo nuevamente.",
+      status: 400,
+    };
+  }
   const code = error instanceof Error ? error.message.toUpperCase() : "UNKNOWN";
   const known: Record<string, string> = {
     INVALID_EMAIL: "Revisa los datos ingresados e inténtalo nuevamente.",
@@ -38,7 +44,13 @@ function safeError(error: unknown): { error: string; status: number } {
     return { error: "No tienes autorización para realizar esta operación.", status: 403 };
   if (code.includes("NOT_FOUND") || code.includes("NOT FOUND"))
     return { error: "No encontramos el recurso solicitado.", status: 404 };
-  if (code.includes("CONFLICT") || code.includes("ALREADY") || code.includes("IDEMPOTENCY"))
+  if (
+    code.includes("CONFLICT") ||
+    code.includes("ALREADY") ||
+    code.includes("IDEMPOTENCY") ||
+    code.includes("STOCK") ||
+    code.includes("UNAVAILABLE")
+  )
     return { error: "La operación entra en conflicto con el estado actual.", status: 409 };
   if (code.includes("RATE_LIMIT") || code.includes("TOO_MANY"))
     return { error: "Demasiadas solicitudes. Inténtalo nuevamente en unos minutos.", status: 429 };
@@ -130,6 +142,34 @@ export async function POST(request: Request) {
           { status: 401 },
         );
     }
+
+    // A successful checkout clears its cart. Resolve an authenticated retry before
+    // requiring cart contents so the same key returns the committed order, not a
+    // misleading "empty cart" failure or a second inventory decrement.
+    const previousCheckout = await context.db
+      .prepare(
+        "SELECT customer_id,order_id FROM checkout_idempotency WHERE idempotency_key=? AND expires_at>CURRENT_TIMESTAMP LIMIT 1",
+      )
+      .bind(idempotencyKey)
+      .first<{ customer_id: string; order_id: string }>();
+    if (previousCheckout) {
+      if (!currentSession || previousCheckout.customer_id !== currentSession.customerId)
+        return NextResponse.json(
+          { error: "La operación entra en conflicto con el estado actual." },
+          { status: 409, headers: { "cache-control": "no-store" } },
+        );
+      const previousOrder = await context.orderRepository.findById(previousCheckout.order_id);
+      if (!previousOrder)
+        return NextResponse.json(
+          { error: "No encontramos el pedido solicitado." },
+          { status: 404, headers: { "cache-control": "no-store" } },
+        );
+      return NextResponse.json(
+        { order: previousOrder },
+        { status: 200, headers: { "cache-control": "no-store" } },
+      );
+    }
+
     const customerResult = await context.customer.save(
       { email, firstName, lastName, phone },
       { label: "Principal", ...shippingAddress, isDefault: true },

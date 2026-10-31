@@ -232,10 +232,28 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
           throw new Error("Idempotency key belongs to another customer");
         return raced;
       }
+      if (
+        error instanceof Error &&
+        error.message.toLowerCase().includes("checkout_guards.id") &&
+        (await this.hasInsufficientStock(effectiveCart))
+      ) {
+        throw new Error("INSUFFICIENT_STOCK");
+      }
       throw error;
     }
 
     return order;
+  }
+
+  private async hasInsufficientStock(cart: CheckoutCart): Promise<boolean> {
+    for (const item of cart.items) {
+      const product = await this.db
+        .prepare("SELECT active,stock FROM products WHERE id=?")
+        .bind(item.productId)
+        .first<{ active: number; stock: number }>();
+      if (!product || product.active !== 1 || product.stock < item.quantity) return true;
+    }
+    return false;
   }
 
   private async ensureOrderCreatedOutbox(order: Order): Promise<void> {

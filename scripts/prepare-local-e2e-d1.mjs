@@ -97,4 +97,20 @@ run("pnpm", [
 console.log("Applying the complete migration history to isolated local D1.");
 run("pnpm", ["db:migrate:local"]);
 
+console.log("Seeding deterministic inventory fixtures for local checkout E2E.");
+run("pnpm", [
+  "exec",
+  "wrangler",
+  "d1",
+  "execute",
+  "ecommerce-iphone",
+  "--local",
+  "--command",
+  [
+    "UPDATE products SET stock=100,updated_at=CURRENT_TIMESTAMP WHERE id='prod-iphone-17-pro-max' AND active=1;",
+    "UPDATE products SET stock=0,updated_at=CURRENT_TIMESTAMP WHERE id='prod-iphone-18-pro-max' AND active=1;",
+    "UPDATE product_variants SET price_in_cents=464900000 WHERE id='var-iphone-17-256-deep-blue' AND product_id='prod-iphone-17-pro-max';",
+  ].join("\n"),
+]);
+
 console.log("Local E2E D1 database is ready.");
