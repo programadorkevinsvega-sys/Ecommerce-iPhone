@@ -32,16 +32,28 @@ The workflow `.github/workflows/payment-consistency.yml` runs on pull requests t
 
 1. Reproducible install with `pnpm install --frozen-lockfile`; the install lifecycle runs `scripts/verify-install.mjs`, and CI runs it again as an explicit named gate.
 2. Complete dependency audit with `pnpm audit` (production, development and optional dependencies).
-3. Prettier on changed files.
+3. Changed-file Prettier validation through `pnpm format:check:changed` (the repository-wide `pnpm format:check` remains available for full-tree maintenance).
 4. Repository foundations, frontend production-data and architecture checks.
 5. ESLint and TypeScript as dedicated CI gates.
 6. Complete Vitest unit/integration suite.
 7. A local-only fixture bootstrap for legacy product parent rows required by migration `0009`, then the complete D1 migration history in local mode.
-8. Playwright against local Wrangler using `wrangler dev --local`.
-9. The exact OpenNext build command, `pnpm cloudflare:build`, as a CI gate before merge. This runs Next.js production compilation, static page generation and Worker bundling.
-10. `pnpm verify:cloudflare:build` checks that the build produced the Next.js prerender manifest, static HTML pages, OpenNext Worker bundle and assets directory.
+8. The single OpenNext build command, `pnpm cloudflare:build`, followed by `pnpm verify:cloudflare:build` to validate the prerender manifest, static HTML pages, Worker bundle and assets.
+9. Playwright against local Wrangler using the already-built Worker output. In CI the Playwright web server starts `wrangler dev --local` directly and does not invoke another OpenNext build.
 
 Pull-request CI has no Cloudflare or production credentials. The E2E database is local, initialized from repository migrations and their test/catalog seed data. CI never applies remote D1 migrations and never deploys a Worker.
+
+The workflow exposes one stable aggregate job check named **`CI required`**. It runs with `always()` and succeeds only when both `runner-diagnostics` and `payment-quality` succeed. A failed, cancelled or skipped upstream job makes the aggregate check fail.
+
+### Required merge protection for `main`
+
+The workflow triggers CI, but it cannot make its own result mandatory for merging. Configure this separately in **Settings → Rules → Rulesets** (or **Settings → Branches → Branch protection rules**) for the `main` branch:
+
+1. Require status checks to pass before merging.
+2. Add the exact GitHub Actions check **`CI required`** from **Repository CI** as a required check. Do not rely only on the individual `payment-quality` job.
+3. Do not grant bypass actors for this rule; include administrators / enable the ruleset's bypass protection.
+4. Block force pushes and branch deletion. Requiring the branch to be up to date before merging is recommended.
+
+This is repository administration state and is not configured by a workflow file. Until the rule is enabled in GitHub, CI will run on pull requests but a failing check is not guaranteed to block a merge.
 
 ### Cloudflare Workers Builds — production CD
 
@@ -78,22 +90,53 @@ The Deploy command is the only production deployment path. It runs the main-bran
 
 ### Previews for non-production branches
 
-The repository currently has no isolated remote staging resources. Therefore, in **Workers & Pages → ecommerce-iphone → Settings → Build → Branch control**, leave **Enable Preview Builds** unchecked until separate Preview bindings exist for D1, R2, Queues, Durable Objects and any required secrets. The current top-level Wrangler bindings point to production resources; do not enable remote previews against those bindings.
+**Operational state observed on 2026-10-31:** the Cloudflare GitHub App reported a
+successful Preview build for the current PR head
+`aab6f34f06cbe25d2e2aa403d887d49d4a7c5916` on branch
+`ci/mandatory-quality-gates` (Build ID
+`01575f42-9c04-4b5e-b754-0049a7222bc1`; check details URL under
+`/production/previews/ci-mandatory-quality-gates/builds/`). This confirms that
+Preview Builds are enabled for non-production branches. The PR comment did not
+provide a Preview URL ("No Preview URL"), so this is build evidence only, not
+a reachable application endpoint or a runtime health check.
 
-If remote previews are enabled in the future, configure the separate Preview command and Preview-specific bindings, variables and secrets first. Do not use the production resources as a fallback. The `previews` block in `wrangler.jsonc` defines Preview runtime settings; its presence alone does not turn the dashboard's Preview Builds switch off.
+A Cloudflare Preview is separate from a production Worker version or active
+deployment. Non-production branches run the Preview command, not the production
+Deploy command. The successful Preview build check is build evidence only: it
+does not prove the Preview runtime's resource isolation or application health.
 
-Pull-request E2E runs locally in GitHub Actions with `wrangler dev --local`; a remote preview is not required to validate each PR.
+**Isolation is not yet certified.** The repository's top-level Wrangler
+configuration binds production D1, R2 and Queues resources, while its
+`previews` block is empty and does not declare separate D1, R2 or Queue
+producer bindings. A successful Preview build must not be treated as evidence
+that the preview runtime is safely isolated. Cloudflare documents that
+Previews sharing the same D1 database ID, R2 bucket name or Queue name share
+those resources.
+
+Until dedicated non-production resources and Preview bindings are provisioned
+and verified, manually disable **Enable Preview Builds** in
+**Workers & Pages → ecommerce-iphone → Settings → Build → Branch control**.
+Alternatively, keep previews enabled only after configuring separate Preview
+D1, R2 and Queue resources, Preview-specific variables/secrets, and validating
+the Preview URL and its access boundaries. Do not point Preview traffic or
+producers at production resources. Queue consumers and production Cron/Routes
+remain separate platform concerns and must not be assumed to be preview-isolated.
+
+Pull-request E2E validation is performed in GitHub Actions against local
+Wrangler with local D1. A remote Cloudflare Preview is not required for CI.
 
 ## Versioned commands
 
 - `pnpm build:cloudflare`: compile the Worker bundle; no tests and no deploy.
-- `pnpm cloudflare:build`: OpenNext production build; run as a CI validation gate and again in Cloudflare to produce the deployable Worker artifact.
-- `pnpm verify:cloudflare:build`: verify that Next.js static-page output, the OpenNext Worker bundle and static assets were generated.
+- `pnpm cloudflare:build`: the single OpenNext production build in GitHub Actions; Cloudflare runs its own build in the deployment environment to produce the deployable Worker artifact.
+- `pnpm verify:cloudflare:build`: verify that Next.js static-page output, the OpenNext Worker bundle and static assets were generated before CI starts Playwright.
 - `pnpm cloudflare:deploy`: Workers Builds production hook; main-only guard, production D1 migrations, then Wrangler deploy.
 - `pnpm cloudflare:deploy:production`: main-only guard, production D1 migrations, then Wrangler deploy.
 - `pnpm deploy:production`: local/manual build followed by the same main-only guarded production deploy.
 - `pnpm db:migrate:local`: apply migrations to local D1.
 - `pnpm db:prepare:e2e`: create local-only legacy parent rows needed by historical migrations, then apply the complete D1 migration history for E2E.
+- `pnpm format:check:changed`: Prettier validation for files changed by the current Git diff.
+- `pnpm format:check`: full-repository Prettier check; existing baseline files may require separate cleanup.
 - `pnpm test`: Vitest.
 - `pnpm test:e2e`: Playwright against local Wrangler.
 

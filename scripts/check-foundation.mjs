@@ -15,6 +15,7 @@ const requiredFiles = [
   "scripts/check-architecture.mjs",
   "scripts/check-foundation.mjs",
   "scripts/verify-install.mjs",
+  "scripts/verify-changed-format.mjs",
   "scripts/verify-cloudflare-build.mjs",
   "scripts/verify-production.mjs",
   "scripts/assert-main-deploy.mjs",
@@ -68,6 +69,7 @@ for (const script of [
   "verify:cloudflare:build",
   "verify:production",
   "format:check",
+  "format:check:changed",
 ]) {
   if (!packageJson.scripts?.[script]) failures.push(`missing root quality script: ${script}`);
 }
@@ -126,6 +128,95 @@ if (!ciWorkflow.includes("pnpm cloudflare:build"))
   failures.push("GitHub CI must execute the OpenNext Cloudflare build");
 if (!ciWorkflow.includes("pnpm verify:cloudflare:build"))
   failures.push("GitHub CI must verify generated static pages and Worker artifacts");
+
+const requiredCiCommands = [
+  "pnpm install --frozen-lockfile",
+  "node scripts/verify-install.mjs",
+  "pnpm audit",
+  "pnpm format:check:changed",
+  "pnpm foundation:check",
+  "pnpm frontend:data:check",
+  "pnpm architecture:check",
+  "pnpm lint",
+  "pnpm typecheck",
+  "pnpm test",
+  "pnpm db:prepare:e2e",
+  "pnpm --filter @ecommerce/web exec playwright install --with-deps chromium",
+  "pnpm test:e2e",
+  "pnpm cloudflare:build",
+  "pnpm verify:cloudflare:build",
+];
+for (const command of requiredCiCommands) {
+  if (!ciWorkflow.includes(command)) {
+    failures.push(`GitHub CI is missing required quality command: ${command}`);
+  }
+}
+
+if (!/^  pull_request:\r?\n    branches:\r?\n      - main/m.test(ciWorkflow)) {
+  failures.push("GitHub CI must run for pull requests targeting main");
+}
+if (!/^  push:\r?\n    branches:\r?\n      - main/m.test(ciWorkflow)) {
+  failures.push("GitHub CI must run for pushes to main");
+}
+
+const auditStepStart = ciWorkflow.indexOf("      - name: Audit all dependencies");
+const auditStepEnd = ciWorkflow.indexOf("\n      - name:", auditStepStart + 1);
+const auditStep =
+  auditStepStart >= 0
+    ? ciWorkflow.slice(auditStepStart, auditStepEnd >= 0 ? auditStepEnd : undefined)
+    : "";
+
+if (!auditStep.includes("run: pnpm audit")) {
+  failures.push("GitHub CI must execute the complete pnpm audit");
+}
+if (auditStep.includes("continue-on-error")) {
+  failures.push("Dependency audit failures must not be ignored");
+}
+
+const requiredCheckJob = ciWorkflow.slice(ciWorkflow.indexOf("  ci-required:"));
+for (const requiredFragment of [
+  "    name: CI required",
+  "    if: ${{ always() }}",
+  "      - runner-diagnostics",
+  "      - payment-quality",
+  "needs.runner-diagnostics.result",
+  "needs.payment-quality.result",
+  '!= "success"',
+]) {
+  if (!requiredCheckJob.includes(requiredFragment)) {
+    failures.push(`The required CI aggregate job is missing: ${requiredFragment}`);
+  }
+}
+
+const playwrightConfig = await readFile("apps/web/playwright.config.ts", "utf8");
+if (
+  !playwrightConfig.includes("process.env.CI") ||
+  !playwrightConfig.includes("pnpm exec wrangler dev --config wrangler.jsonc --local") ||
+  !playwrightConfig.includes("pnpm preview:cloudflare")
+) {
+  failures.push(
+    "CI Playwright must reuse the prebuilt OpenNext output instead of triggering another build",
+  );
+}
+
+const buildStepIndex = ciWorkflow.indexOf("      - name: Build Cloudflare Worker with OpenNext");
+const artifactStepIndex = ciWorkflow.indexOf(
+  "      - name: Verify generated static pages and Worker bundle",
+);
+const e2eStepIndex = ciWorkflow.indexOf(
+  "      - name: Run end-to-end tests against local Wrangler",
+);
+if (
+  buildStepIndex < 0 ||
+  artifactStepIndex < 0 ||
+  e2eStepIndex < 0 ||
+  buildStepIndex > e2eStepIndex ||
+  artifactStepIndex > e2eStepIndex
+) {
+  failures.push(
+    "GitHub CI must build and verify OpenNext once before E2E reuses the local Worker artifact",
+  );
+}
 
 const productionVerificationHasRemoteD1 = productionVerification.includes(
   "pnpm db:verify:production",

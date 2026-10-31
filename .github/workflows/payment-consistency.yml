@@ -59,26 +59,7 @@ jobs:
       - name: Check formatting of changed files
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -n "${BASE_SHA}" && "${BASE_SHA}" != "0000000000000000000000000000000000000000" ]]; then
-            git diff --name-only "${BASE_SHA}...HEAD" > /tmp/changed-files
-          else
-            git diff --name-only HEAD^ HEAD > /tmp/changed-files
-          fi
-
-          mapfile -t changed_files < /tmp/changed-files
-          existing_files=()
-          for file in "${changed_files[@]}"; do
-            if [[ -f "${file}" ]]; then
-              existing_files+=("${file}")
-            fi
-          done
-
-          if (( ${#existing_files[@]} > 0 )); then
-            pnpm exec prettier --check --ignore-unknown "${existing_files[@]}"
-          fi
+        run: pnpm format:check:changed
 
       - name: Check repository foundations
         run: pnpm foundation:check
@@ -100,6 +81,12 @@ jobs:
 
       - name: Prepare isolated local D1 database for E2E
         run: pnpm db:prepare:e2e
+
+      - name: Build Cloudflare Worker with OpenNext
+        run: pnpm cloudflare:build
+
+      - name: Verify generated static pages and Worker bundle
+        run: pnpm verify:cloudflare:build
 
       - name: Install Playwright Chromium
         run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
@@ -126,12 +113,6 @@ jobs:
 
           env -u GITHUB_REF WORKERS_CI_BRANCH=main node scripts/assert-main-deploy.mjs
 
-      - name: Build Cloudflare Worker with OpenNext
-        run: pnpm cloudflare:build
-
-      - name: Verify generated static pages and Worker bundle
-        run: pnpm verify:cloudflare:build
-
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -140,3 +121,25 @@ jobs:
           path: apps/web/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
+  ci-required:
+    name: CI required
+    if: ${{ always() }}
+    needs:
+      - runner-diagnostics
+      - payment-quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Enforce all mandatory CI jobs
+        env:
+          RUNNER_DIAGNOSTICS_RESULT: ${{ needs.runner-diagnostics.result }}
+          PAYMENT_QUALITY_RESULT: ${{ needs.payment-quality.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${RUNNER_DIAGNOSTICS_RESULT}" != "success" || "${PAYMENT_QUALITY_RESULT}" != "success" ]]; then
+            echo "::error::Required CI gate failed or was skipped (runner-diagnostics=${RUNNER_DIAGNOSTICS_RESULT}, payment-quality=${PAYMENT_QUALITY_RESULT})."
+            exit 1
+          fi
+
+          echo "All mandatory CI quality gates passed."
