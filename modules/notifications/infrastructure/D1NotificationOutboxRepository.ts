@@ -26,6 +26,7 @@ function mapRow(row: Record<string, unknown>): OutboxRecord {
     aggregateId: String(row.aggregate_id),
     payload: JSON.parse(String(row.payload_json)),
     createdAt: String(row.created_at),
+    ...(typeof row.request_id === "string" && row.request_id ? { requestId: row.request_id } : {}),
     ...(row.recipients_json && JSON.parse(String(row.recipients_json)).length
       ? { recipients: JSON.parse(String(row.recipients_json)) }
       : {}),
@@ -42,7 +43,7 @@ export class D1NotificationOutboxRepository implements NotificationOutboxReposit
   prepareEnqueue(event: NotificationEvent): ReturnType<D1Database["prepare"]> {
     return this.db
       .prepare(
-        "INSERT OR IGNORE INTO notification_outbox (id,event_key,event_type,event_version,aggregate_id,payload_json,recipients_json,created_at) VALUES (?,?,?,?,?,?,?,?)",
+        "INSERT OR IGNORE INTO notification_outbox (id,event_key,event_type,event_version,aggregate_id,payload_json,recipients_json,created_at,request_id) VALUES (?,?,?,?,?,?,?,?,?)",
       )
       .bind(
         event.id,
@@ -53,6 +54,7 @@ export class D1NotificationOutboxRepository implements NotificationOutboxReposit
         JSON.stringify(event.payload),
         JSON.stringify(event.recipients ?? []),
         event.createdAt,
+        event.requestId ?? null,
       );
   }
 

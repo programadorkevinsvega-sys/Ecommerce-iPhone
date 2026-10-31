@@ -11,14 +11,14 @@ if (!baseUrl) {
   process.exit(1);
 }
 
-const routes = ["/", "/catalog", "/iphone/iphone-17-pro-max", "/cart", "/contacto"];
+const routes = ["/", "/catalog", "/iphone/iphone-17-pro-max", "/cart", "/checkout", "/contacto"];
 const browser = await chromium.launch({ headless: true });
 const results = [];
 try {
   for (const route of routes) {
     const page = await browser.newPage();
     await page.addInitScript(() => {
-      const metrics = { lcpMs: null, cls: 0, inpMs: null };
+      const metrics = { lcpMs: null, cls: 0, interactionP98Ms: null };
       const interactions = new Map();
       try {
         new PerformanceObserver((list) => {
@@ -46,7 +46,7 @@ try {
           const values = [...interactions.values()].sort((a, b) => a - b);
           if (values.length > 0) {
             const index = Math.min(values.length - 1, Math.ceil(values.length * 0.98) - 1);
-            metrics.inpMs = Math.round(values[index]);
+            metrics.interactionP98Ms = Math.round(values[index]);
           }
         }).observe({ type: "event", buffered: true, durationThreshold: 16 });
       } catch {}
@@ -59,7 +59,8 @@ try {
     });
     const domContentLoadedMs = Date.now() - started;
     await page.waitForLoadState("load").catch(() => undefined);
-    await page.waitForTimeout(750);
+    await page.keyboard.press("Tab").catch(() => undefined);
+    await page.waitForTimeout(1000);
     const status = response?.status() ?? 0;
     const headers = response ? await response.allHeaders() : {};
     const bodyText = status === 403 && response ? (await response.text()).slice(0, 1200) : "";
@@ -76,7 +77,7 @@ try {
         ),
         resourceCount: resources.length,
         lcpMs: window.__productionHardeningVitals?.lcpMs ?? null,
-        inpMs: window.__productionHardeningVitals?.inpMs ?? null,
+        interactionP98Ms: window.__productionHardeningVitals?.interactionP98Ms ?? null,
         cls: Number((window.__productionHardeningVitals?.cls ?? 0).toFixed(4)),
       };
     });
@@ -104,7 +105,14 @@ try {
 }
 
 console.table(results);
-const limits = { ttfbMs: 800, domContentLoadedMs: 2500, loadEventMs: 4000 };
+const limits = {
+  ttfbMs: 800,
+  domContentLoadedMs: 2500,
+  loadEventMs: 4000,
+  lcpMs: 2500,
+  cls: 0.1,
+  interactionP98Ms: 200,
+};
 const edgeBlockedRoutes = results.filter((result) => result.cloudflareEdgeBlocked);
 const measurableResults = results.filter((result) => !result.cloudflareEdgeBlocked);
 const failures = measurableResults.flatMap((r) =>

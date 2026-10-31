@@ -45,7 +45,7 @@ export async function PATCH(
     const { env, technician } = await requireTechnician();
     const id = (await params).id;
     const body = await request.json() as Record<string, unknown>;
-    const manager = technicianRepairOrderApplication(env);
+    const manager = technicianRepairOrderApplication(env, request.headers.get("x-request-id")?.trim() || undefined);
 
     if (typeof body.status === "string") {
       if (!allowed.includes(body.status)) {

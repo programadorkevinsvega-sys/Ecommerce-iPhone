@@ -116,10 +116,10 @@ export default async function HomePage() {
           </p>
         </div>
         <div className="hero-actions">
-          <Link className="button secondary" style={{ color: "#171715" }} href="/servicios">
+          <Link className="button secondary hero-actions-link" href="/servicios">
             Conocer servicios
           </Link>
-          <Link className="button secondary" style={{ color: "#171715" }} href="/contacto">
+          <Link className="button secondary hero-actions-link" href="/contacto">
             Contactarnos
           </Link>
         </div>

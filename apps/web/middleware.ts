@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveRequestId } from "./lib/requestCorrelation";
+import { buildContentSecurityPolicy } from "./lib/securityHeaders";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -11,11 +12,20 @@ function isPublicContentRequest(request: NextRequest): boolean {
   );
 }
 
-export function middleware(request: NextRequest): Response {
-  if (!request.nextUrl.pathname.startsWith("/api/")) {
-    return NextResponse.next();
-  }
+function pageResponse(request: NextRequest): Response {
+  const nonce = btoa(crypto.randomUUID()).replace(/=+$/g, "");
+  const policy = buildContentSecurityPolicy(nonce);
+  const forwardedHeaders = new Headers(request.headers);
+  forwardedHeaders.set("x-nonce", nonce);
+  forwardedHeaders.set("Content-Security-Policy", policy);
 
+  const response = NextResponse.next({ request: { headers: forwardedHeaders } });
+  response.headers.set("Content-Security-Policy", policy);
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
+}
+
+function apiResponse(request: NextRequest): Response {
   const id = resolveRequestId(request.headers);
   const currentOrigin = request.nextUrl.origin;
   const origin = request.headers.get("origin");
@@ -60,6 +70,12 @@ export function middleware(request: NextRequest): Response {
   return response;
 }
 
+export function middleware(request: NextRequest): Response {
+  return request.nextUrl.pathname.startsWith("/api/")
+    ? apiResponse(request)
+    : pageResponse(request);
+}
+
 export const config = {
-  matcher: ["/api/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)"],
 };

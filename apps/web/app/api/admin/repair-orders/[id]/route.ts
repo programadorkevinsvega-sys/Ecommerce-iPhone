@@ -28,7 +28,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const existing = await repairOrderManagementApplication(env).get(id);
     const body = await request.json() as Record<string, unknown>;
     const status = typeof body.status === "string" ? body.status as RepairOrderStatus : null;
-    const manager = repairOrderManagementApplication(env);
+    const manager = repairOrderManagementApplication(env, request.headers.get("x-request-id")?.trim() || undefined);
     if (!status) {
       const rawConditions = Array.isArray(body.conditions) ? body.conditions : [];
       const conditions = rawConditions.map((item) => { if (!item || typeof item !== "object") throw new Error("INVALID_REPAIR_CONDITIONS"); const value = item as Record<string, unknown>; return { component: String(value.component ?? ""), condition: String(value.condition ?? "NOT_TESTED") as "FUNCTIONAL" | "NOT_FUNCTIONAL" | "DAMAGED" | "NOT_TESTED" | "NOT_APPLICABLE", ...(value.notes ? { notes: String(value.notes) } : {}) }; });

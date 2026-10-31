@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdminStepUp } from "../../../../../../lib/adminAuth";
 import {
   getAdminUserPermissions,
   updateAdminUserPermissions,
@@ -12,7 +13,9 @@ function bodyRecord(value: unknown): Record<string, unknown> {
 function errorResponse(error: unknown) {
   const code = error instanceof Error ? error.message : "UNKNOWN";
   const status =
-    code === "FORBIDDEN" ||
+    code === "ADMIN_STEP_UP_REQUIRED"
+      ? 428
+      : code === "FORBIDDEN" ||
     code === "PERMISSION_ESCALATION_FORBIDDEN"
       ? 403
       : code === "UNAUTHORIZED"
@@ -21,6 +24,7 @@ function errorResponse(error: unknown) {
           ? 404
           : 400;
   const messages: Record<string, string> = {
+    ADMIN_STEP_UP_REQUIRED: "Vuelve a confirmar tu contraseña para autorizar esta operación.",
     UNAUTHORIZED: "Authentication required",
     FORBIDDEN: "Forbidden",
     ADMIN_NOT_FOUND: "Admin not found",
@@ -54,6 +58,7 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    await requireAdminStepUp("admins:manage", "admins:manage");
     const { id } = await context.params;
     const body = bodyRecord(await request.json());
     await updateAdminUserPermissions(id, body.overrides);

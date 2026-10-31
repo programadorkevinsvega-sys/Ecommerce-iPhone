@@ -152,17 +152,17 @@ export function adminPermissionManagementApplication(env: CloudflareEnv): AdminP
   );
 }
 
-export function repairOrderRepository(env: CloudflareEnv): D1RepairOrderRepository {
-  return new D1RepairOrderRepository(env.DB);
+export function repairOrderRepository(env: CloudflareEnv, requestId?: string): D1RepairOrderRepository {
+  return new D1RepairOrderRepository(env.DB, requestId);
 }
 
-export function createRepairOrderApplication(env: CloudflareEnv): CreateRepairOrder {
-  return new CreateRepairOrder(serviceRequestRepository(env), repairOrderRepository(env));
+export function createRepairOrderApplication(env: CloudflareEnv, requestId?: string): CreateRepairOrder {
+  return new CreateRepairOrder(serviceRequestRepository(env), repairOrderRepository(env, requestId));
 }
 
-export function repairOrderManagementApplication(env: CloudflareEnv): RepairOrderManagement {
-  return new RepairOrderManagement(repairOrderRepository(env));
+export function repairOrderManagementApplication(env: CloudflareEnv, requestId?: string): RepairOrderManagement {
+  return new RepairOrderManagement(repairOrderRepository(env, requestId));
 }
 export function repairTrackingApplication(env: CloudflareEnv): RepairTracking { return new RepairTracking(repairOrderRepository(env), new D1RepairOperationsRepository(env.DB)); }
 export function repairEvidenceApplication(env: CloudflareEnv): RepairEvidenceService { return new RepairEvidenceService(new D1RepairEvidenceRepository(env.DB)); }
-export function repairOperationsApplication(env: CloudflareEnv): RepairOperations { return new RepairOperations(new D1RepairOperationsRepository(env.DB)); }
+export function repairOperationsApplication(env: CloudflareEnv, requestId?: string): RepairOperations { return new RepairOperations(new D1RepairOperationsRepository(env.DB, requestId)); }

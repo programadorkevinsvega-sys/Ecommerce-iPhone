@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     const { env, admin } = await requireAdmin(PERMISSIONS.repairOrdersWrite);
     const body = bodyRecord(await request.json());
     const serviceRequestId = typeof body.serviceRequestId === "string" ? body.serviceRequestId : "";
-    const order = await createRepairOrderApplication(env).execute(serviceRequestId, admin.id);
+    const order = await createRepairOrderApplication(env, request.headers.get("x-request-id")?.trim() || undefined).execute(serviceRequestId, admin.id);
     return NextResponse.json(
       { order: order.toPrimitives() },
       { status: 201, headers: { "cache-control": "no-store" } },

@@ -29,6 +29,7 @@ export type NotificationEvent = Readonly<{
   payload: Readonly<Record<string, unknown>>;
   createdAt: string;
   recipients?: readonly NotificationRecipient[] | undefined;
+  requestId?: string | undefined;
 }>;
 
 export type EmailTemplate =

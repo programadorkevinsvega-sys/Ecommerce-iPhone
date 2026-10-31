@@ -9,7 +9,7 @@ export async function PATCH(
   try {
     const { env, technician } = await requireTechnician();
     const body = await request.json() as Record<string, unknown>;
-    const device = await technicianDeviceApplication(env).update(
+    const device = await technicianDeviceApplication(env, request.headers.get("x-request-id")?.trim() || undefined).update(
       technician.id,
       (await params).orderId,
       body,

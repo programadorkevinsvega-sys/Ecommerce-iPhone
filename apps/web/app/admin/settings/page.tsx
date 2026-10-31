@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import AdminPageShell from "../AdminPageShell";
 import AdminPanel from "../AdminPanel";
 import AdminSectionHeading from "../AdminSectionHeading";
 import AdminTable from "../AdminTable";
 import AdminEmptyState from "../AdminEmptyState";
 import AdminLoadingState from "../AdminLoadingState";
+import AdminStepUpDialog from "../AdminStepUpDialog";
 
 type Setting = { key: string; valueJson: string; sensitive: number | boolean; updatedBy?: string; updatedAt?: string };
 const empty = { key: "", value: "{}", sensitive: false };
@@ -18,6 +19,8 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  const stepUpAction = useRef<(() => Promise<void>) | null>(null);
 
   async function load() {
     setLoading(true);
@@ -40,6 +43,11 @@ export default function SettingsPage() {
 
   async function save(event: FormEvent) {
     event.preventDefault();
+    stepUpAction.current = saveAuthorized;
+    setStepUpOpen(true);
+  }
+
+  async function saveAuthorized() {
     setSaving(true);
     setError("");
     setMessage("");
@@ -94,6 +102,22 @@ export default function SettingsPage() {
           )}
         </AdminPanel>
       </section>
+      <AdminStepUpDialog
+        open={stepUpOpen}
+        scope="settings:write"
+        title="Autoriza el cambio de configuración"
+        description="Confirma tu contraseña actual para modificar la configuración de producción. La confirmación dura cinco minutos."
+        onCancel={() => {
+          stepUpAction.current = null;
+          setStepUpOpen(false);
+        }}
+        onVerified={async () => {
+          const action = stepUpAction.current;
+          stepUpAction.current = null;
+          setStepUpOpen(false);
+          await action?.();
+        }}
+      />
     </AdminPageShell>
   );
 }

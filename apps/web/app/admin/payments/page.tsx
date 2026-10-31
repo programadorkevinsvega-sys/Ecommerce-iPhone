@@ -8,6 +8,7 @@ import AdminToolbar from "../AdminToolbar";
 import AdminTable from "../AdminTable";
 import AdminEmptyState from "../AdminEmptyState";
 import AdminLoadingState from "../AdminLoadingState";
+import AdminStepUpDialog from "../AdminStepUpDialog";
 
 type Payment = {
   id: string;
@@ -43,6 +44,7 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [pendingOperation, setPendingOperation] = useState<{ id: string; action: "refund" | "void" } | null>(null);
 
   const query = useMemo(() => {
     const params = new URLSearchParams({ limit: "50", offset: "0" });
@@ -89,16 +91,23 @@ export default function PaymentsPage() {
   async function operate(id: string, action: "refund" | "void") {
     const label = action === "refund" ? "reembolsar" : "anular";
     if (!window.confirm("¿Confirmas " + label + " este pago?")) return;
+    setPendingOperation({ id, action });
+  }
+
+  async function executeOperation(id: string, action: "refund" | "void") {
     const idempotencyKey = crypto.randomUUID();
     setBusy(id + action);
     setError("");
     try {
-      const response = await fetch("/api/admin/payments/" + encodeURIComponent(id) + "/" + action, {
-        method: "POST",
-        headers: { "Idempotency-Key": idempotencyKey },
-        credentials: "same-origin",
-        cache: "no-store",
-      });
+      const response = await fetch(
+        "/api/admin/payments/" + encodeURIComponent(id) + "/" + action,
+        {
+          method: "POST",
+          headers: { "Idempotency-Key": idempotencyKey },
+          credentials: "same-origin",
+          cache: "no-store",
+        },
+      );
       const data = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(data.error ?? "La operación de pago no pudo completarse.");
       await load();
@@ -174,6 +183,18 @@ export default function PaymentsPage() {
           </AdminPanel>
         </section>
       )}
+      <AdminStepUpDialog
+        open={pendingOperation !== null}
+        scope={pendingOperation?.action === "refund" ? "payments:refund" : "payments:void"}
+        title="Autoriza la operación financiera"
+        description="Confirma tu contraseña administrativa para autorizar este reembolso o anulación. La autorización dura cinco minutos y solo sirve para esta clase de operación."
+        onCancel={() => setPendingOperation(null)}
+        onVerified={async () => {
+          const pending = pendingOperation;
+          setPendingOperation(null);
+          if (pending) await executeOperation(pending.id, pending.action);
+        }}
+      />
     </AdminPageShell>
   );
 }

@@ -1,4 +1,8 @@
+import { createRequire } from "node:module";
 import { expect, test } from "@playwright/test";
+
+const require = createRequire(import.meta.url);
+const axe = require("axe-core") as { source: string };
 
 test.describe("platform hardening", () => {
   test("Worker-owned response includes security headers and a stable request ID", async ({
@@ -19,7 +23,11 @@ test.describe("platform hardening", () => {
     expect(headers["permissions-policy"]).toContain("camera=()");
     expect(headers["content-security-policy"]).toContain("default-src 'self'");
     expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
-    expect(headers["content-security-policy"]).not.toContain("unsafe-eval");
+    const scriptSrc = headers["content-security-policy"]
+      .split(";")
+      .find((directive) => directive.trim().startsWith("script-src "));
+    expect(scriptSrc).not.toContain("unsafe-inline");
+    expect(scriptSrc).not.toContain("unsafe-eval");
   });
 
   test("API handlers return the same valid request ID used by middleware", async ({ request }) => {
@@ -31,46 +39,206 @@ test.describe("platform hardening", () => {
     expect(response.headers()["x-request-id"]).toBe(requestId);
   });
 
-  test("storefront exposes a named document, main landmark and accessible controls", async ({
-    page,
-  }) => {
+  test("HTML responses carry a per-request nonce used by Next inline scripts", async ({ page }) => {
     const response = await page.goto("/");
     expect(response?.ok()).toBe(true);
-    await expect(page.locator("html")).toHaveAttribute("lang", "es");
-    await expect(page.locator("main")).toHaveCount(1);
+    const policy = response?.headers()["content-security-policy"] ?? "";
+    const nonce = policy.match(/'nonce-([^']+)'/)?.[1];
+    expect(nonce).toBeTruthy();
 
-    const unnamedControls = await page
-      .locator('a, button, input:not([type="hidden"]), select, textarea')
-      .evaluateAll((elements) =>
-        elements.flatMap((element) => {
-          const labelledBy = element.getAttribute("aria-labelledby");
-          const referencedName = labelledBy
-            ? labelledBy
-                .split(/\s+/)
-                .map((id) => document.getElementById(id)?.textContent?.trim() ?? "")
-                .filter(Boolean)
-                .join(" ")
-            : "";
-          const associatedLabel =
-            element.closest("label")?.textContent?.trim() ??
-            ("labels" in element
-              ? Array.from((element as HTMLInputElement).labels ?? [])
-                  .map((label) => label.textContent?.trim() ?? "")
+    const result = await page.locator("script:not([src])").evaluateAll((scripts) => ({
+      count: scripts.length,
+      nonces: scripts.map((script) => (script as HTMLScriptElement).nonce),
+    }));
+    expect(result.count).toBeGreaterThan(0);
+    expect(result.nonces.every((value) => value === nonce)).toBe(true);
+    const scriptSrc = policy
+      .split(";")
+      .find((directive) => directive.trim().startsWith("script-src "));
+    expect(scriptSrc).toContain(`'nonce-${nonce}'`);
+    expect(scriptSrc).not.toContain("unsafe-inline");
+    expect(scriptSrc).not.toContain("unsafe-eval");
+    const styleSrc = policy
+      .split(";")
+      .find((directive) => directive.trim().startsWith("style-src "));
+    expect(styleSrc).toContain(`'nonce-${nonce}'`);
+    expect(styleSrc).not.toContain("unsafe-inline");
+    expect(styleSrc).not.toContain("unsafe-eval");
+    const styleNonces = await page.locator("style").evaluateAll((styles) =>
+      styles.map((style) => (style as HTMLStyleElement).nonce),
+    );
+    expect(styleNonces.every((value) => value === nonce)).toBe(true);
+  });
+
+  test("critical storefront and admin entry pages expose accessible names and image alternatives", async ({
+    page,
+  }) => {
+    const routes = ["/", "/cart", "/checkout", "/admin/login"];
+
+    for (const route of routes) {
+      const response = await page.goto(route);
+      expect(response?.status() ?? 0, route).toBeLessThan(500);
+      await expect(page.locator("html"), route).toHaveAttribute("lang", "es");
+      await expect(page.locator("main"), route).toHaveCount(1);
+
+      const unnamedControls = await page
+        .locator('a, button, input:not([type="hidden"]), select, textarea')
+        .evaluateAll((elements) =>
+          elements.flatMap((element) => {
+            const labelledBy = element.getAttribute("aria-labelledby");
+            const referencedName = labelledBy
+              ? labelledBy
+                  .split(/\s+/)
+                  .map((id) => document.getElementById(id)?.textContent?.trim() ?? "")
                   .filter(Boolean)
                   .join(" ")
-              : "");
-          const name =
-            element.getAttribute("aria-label")?.trim() ||
-            referencedName ||
-            associatedLabel ||
-            element.textContent?.trim() ||
-            element.getAttribute("title")?.trim() ||
-            (element instanceof HTMLInputElement ? element.value.trim() : "");
-          return name ? [] : [element.tagName.toLowerCase()];
-        }),
-      );
+              : "";
+            const associatedLabel =
+              element.closest("label")?.textContent?.trim() ??
+              ("labels" in element
+                ? Array.from((element as HTMLInputElement).labels ?? [])
+                    .map((label) => label.textContent?.trim() ?? "")
+                    .filter(Boolean)
+                    .join(" ")
+                : "");
+            const name =
+              element.getAttribute("aria-label")?.trim() ||
+              referencedName ||
+              associatedLabel ||
+              element.textContent?.trim() ||
+              element.getAttribute("title")?.trim() ||
+              (element instanceof HTMLInputElement ? element.value.trim() : "");
+            return name ? [] : [element.tagName.toLowerCase()];
+          }),
+        );
 
-    expect(unnamedControls).toEqual([]);
-    await expect(page.locator("img:not([alt])")).toHaveCount(0);
+      expect(unnamedControls, route).toEqual([]);
+      await expect(page.locator("img:not([alt])"), route).toHaveCount(0);
+      await expect(page.locator("[style]"), route).toHaveCount(0);
+
+      await page.evaluate(
+        ({ source, nonceValue }) => {
+          const script = document.createElement("script");
+          script.nonce = nonceValue;
+          script.textContent = source;
+          document.head.appendChild(script);
+        },
+        { source: axe.source, nonceValue: nonce },
+      );
+      const axeViolations = await page.evaluate(async () => {
+        const api = (
+          window as unknown as {
+            axe: {
+              run: (
+                root: Document,
+                options: unknown,
+              ) => Promise<{
+                violations: Array<{
+                  id: string;
+                  impact: string | null;
+                  help: string;
+                  nodes: Array<{ target: string[] }>;
+                }>;
+              }>;
+            };
+          }
+        ).axe;
+        const report = await api.run(document, {
+          runOnly: {
+            type: "tag",
+            values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
+          },
+        });
+        return report.violations.map((violation) => ({
+          id: violation.id,
+          impact: violation.impact,
+          help: violation.help,
+          targets: violation.nodes.flatMap((node) => node.target),
+        }));
+      });
+      expect(axeViolations, `WCAG A/AA violations on ${route}`).toEqual([]);
+
+      const policy = response?.headers()["content-security-policy"] ?? "";
+      const nonce = policy.match(/'nonce-([^']+)'/)?.[1];
+      expect(nonce, route).toBeTruthy();
+      if (!nonce) throw new Error(`Missing CSP nonce on ${route}`);
+      await page.evaluate(
+        ({ source, nonceValue }) => {
+          const script = document.createElement("script");
+          script.nonce = nonceValue;
+          script.textContent = source;
+          document.head.appendChild(script);
+        },
+        { source: axe.source, nonceValue: nonce },
+      );
+      const axeViolations = await page.evaluate(async () => {
+        const api = (
+          window as unknown as {
+            axe: {
+              run: (
+                root: Document,
+                options: unknown,
+              ) => Promise<{
+                violations: Array<{
+                  id: string;
+                  impact: string | null;
+                  help: string;
+                  nodes: Array<{ target: string[] }>;
+                }>;
+              }>;
+            };
+          }
+        ).axe;
+        const report = await api.run(document, {
+          runOnly: {
+            type: "tag",
+            values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
+          },
+        });
+        return report.violations.map((violation) => ({
+          id: violation.id,
+          impact: violation.impact,
+          help: violation.help,
+          targets: violation.nodes.flatMap((node) => node.target),
+        }));
+      });
+      expect(axeViolations, `WCAG A/AA violations on ${route}`).toEqual([]);
+    }
   });
+
+  test("the first keyboard focus target has an accessible name", async ({ page }) => {
+    await page.goto("/");
+    await page.keyboard.press("Tab");
+    const accessibleName = await page.evaluate(() => {
+      const element = document.activeElement;
+      if (!(element instanceof HTMLElement)) return "";
+      const labelledBy = element.getAttribute("aria-labelledby");
+      const referenced = labelledBy
+        ? labelledBy
+            .split(/\s+/)
+            .map((id) => document.getElementById(id)?.textContent?.trim() ?? "")
+            .filter(Boolean)
+            .join(" ")
+        : "";
+      return (
+        element.getAttribute("aria-label")?.trim() ||
+        referenced ||
+        element.closest("label")?.textContent?.trim() ||
+        element.textContent?.trim() ||
+        element.getAttribute("title")?.trim() ||
+        ""
+      );
+    });
+    expect(accessibleName).not.toBe("");
+  });
+  test("step-up endpoint rejects missing admin sessions before evaluating credentials", async ({ request }) => {
+    const response = await request.post("/api/admin/auth/step-up", {
+      data: { password: "not-a-real-password", scope: "payments:refund" },
+    });
+    expect(response.status()).toBe(401);
+    expect(await response.json()).toMatchObject({
+      error: "Tu sesión ya no es válida. Inicia sesión nuevamente.",
+    });
+  });
+
 });

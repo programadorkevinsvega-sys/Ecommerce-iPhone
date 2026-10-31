@@ -23,7 +23,7 @@ export async function commerceContext() {
   const customerSessionRepository = new D1CustomerSessionRepository(env.DB);
   const customerSecurityAudit = new D1CustomerSecurityAuditRepository(env.DB);
   const notificationOutbox = new D1NotificationOutboxRepository(env.DB);
-  const orderRepository = new D1OrderRepository(env.DB, (order, createdAt) =>
+  const orderRepository = new D1OrderRepository(env.DB, (order, createdAt, requestId) =>
     notificationOutbox.prepareEnqueue({
       id: `order-created:${order.id}`,
       eventType: "OrderCreated",
@@ -38,6 +38,7 @@ export async function commerceContext() {
         currency: order.currency,
       },
       createdAt,
+      ...(requestId ? { requestId } : {}),
     }),
   );
   return {

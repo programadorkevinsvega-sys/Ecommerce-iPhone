@@ -43,8 +43,8 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24 }}>
-      <form onSubmit={submit} noValidate={false} aria-describedby={error ? "admin-login-error" : undefined} style={{ width: "100%", maxWidth: 420, display: "grid", gap: 16, padding: 28, border: "1px solid #ddd", borderRadius: 20 }}>
+    <main className="admin-login-shell">
+      <form className="admin-login-form" onSubmit={submit} noValidate={false} aria-describedby={error ? "admin-login-error" : undefined}>
         <div><h1>Panel administrativo</h1><p>Acceso seguro para operadores autorizados.</p></div>
         <label htmlFor="admin-login-email">Email</label>
         <input

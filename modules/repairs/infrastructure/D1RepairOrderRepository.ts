@@ -6,7 +6,7 @@ type Row = { id: string; order_number: string; public_token: string | null; serv
 type ConditionRow = { component: string; condition: DeviceCondition; notes: string | null };
 
 export class D1RepairOrderRepository implements RepairOrderRepository {
-  constructor(private readonly db: D1Database) {}
+  constructor(private readonly db: D1Database, private readonly requestId?: string) {}
 
   async save(order: RepairOrder, actorId: string | null): Promise<void> {
     const p = order.toPrimitives();
@@ -21,7 +21,7 @@ export class D1RepairOrderRepository implements RepairOrderRepository {
     if (!previous || previous.status !== p.status) {
       statements.push(this.db.prepare("INSERT INTO repair_order_status_history (id,repair_order_id,from_status,to_status,actor_id) VALUES (?,?,?,?,?)").bind(crypto.randomUUID(), p.id, previous?.status ?? null, p.status, actorId));
       const eventId = crypto.randomUUID();
-      statements.push(this.db.prepare("INSERT OR IGNORE INTO notification_outbox (id,event_key,event_type,aggregate_id,payload_json,created_at) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)").bind(eventId, `ServiceStatusChanged:${p.id}:${eventId}`, "ServiceStatusChanged", p.id, JSON.stringify({ email: p.email, serviceId: p.orderNumber, status: p.status })));
+      statements.push(this.db.prepare("INSERT OR IGNORE INTO notification_outbox (id,event_key,event_type,aggregate_id,payload_json,created_at,request_id) VALUES (?,?,?,?,?,?,?)").bind(eventId, `ServiceStatusChanged:${p.id}:${eventId}`, "ServiceStatusChanged", p.id, JSON.stringify({ email: p.email, serviceId: p.orderNumber, status: p.status }), new Date().toISOString(), this.requestId ?? null));
     }
     await this.db.batch(statements);
   }

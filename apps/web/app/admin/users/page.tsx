@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import AdminSidebar from "../AdminSidebar";
 import AdminLoadingState from "../AdminLoadingState";
+import AdminStepUpDialog from "../AdminStepUpDialog";
 
 const ROLES = [
   ["SUPER_ADMIN", "Super administrador"],
@@ -89,6 +90,20 @@ export default function AdminUsersPage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [permissions, setPermissions] = useState<PermissionItem[]>([]);
   const [permissionsLoading, setPermissionsLoading] = useState(false);
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  const stepUpAction = useRef<(() => Promise<void>) | null>(null);
+
+  function requestStepUp(action: () => Promise<void>) {
+    stepUpAction.current = action;
+    setStepUpOpen(true);
+  }
+
+  async function completeStepUp() {
+    const action = stepUpAction.current;
+    stepUpAction.current = null;
+    setStepUpOpen(false);
+    await action?.();
+  }
 
   const loadRolePermissions = useCallback(async (role: AdminUser["role"]) => {
     setPermissionsLoading(true);
@@ -139,6 +154,10 @@ export default function AdminUsersPage() {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    requestStepUp(saveAuthorized);
+  }
+
+  async function saveAuthorized() {
     setLoading(true);
     setMessage("");
 
@@ -210,6 +229,10 @@ export default function AdminUsersPage() {
   }
 
   async function toggle(item: AdminUser) {
+    requestStepUp(() => toggleAuthorized(item));
+  }
+
+  async function toggleAuthorized(item: AdminUser) {
     const response = await fetch("/api/admin/users", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
@@ -256,6 +279,11 @@ export default function AdminUsersPage() {
   }
 
   async function savePermissions() {
+    if (!editing) return;
+    requestStepUp(savePermissionsAuthorized);
+  }
+
+  async function savePermissionsAuthorized() {
     if (!editing) return;
     const overrides = permissions
       .filter((item) => item.state !== "inherit")
@@ -449,6 +477,17 @@ export default function AdminUsersPage() {
           </div>
         </section>
       </section>
+      <AdminStepUpDialog
+        open={stepUpOpen}
+        scope="admins:manage"
+        title="Autoriza el cambio administrativo"
+        description="Confirma tu contraseña actual para crear, modificar, activar, desactivar o cambiar permisos de una cuenta administrativa. La confirmación dura cinco minutos."
+        onCancel={() => {
+          stepUpAction.current = null;
+          setStepUpOpen(false);
+        }}
+        onVerified={completeStepUp}
+      />
     </main>
   );
 }

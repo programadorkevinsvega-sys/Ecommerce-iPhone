@@ -1,20 +1,30 @@
-export const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self'",
-  "media-src 'self' blob:",
-  "worker-src 'self' blob:",
-  "manifest-src 'self'",
-  "frame-src 'self'",
-  "upgrade-insecure-requests",
-].join("; ");
+export function buildContentSecurityPolicy(nonce?: string): string {
+  const scriptSources = [
+    "'self'",
+    ...(nonce ? [`'nonce-${nonce}'`] : []),
+    "https://static.cloudflareinsights.com",
+  ];
+  const styleSources = ["'self'", ...(nonce ? [`'nonce-${nonce}'`] : [])];
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    `script-src ${scriptSources.join(" ")}`,
+    `style-src ${styleSources.join(" ")}`,
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self'",
+    "media-src 'self' blob:",
+    "worker-src 'self' blob:",
+    "manifest-src 'self'",
+    "frame-src 'self'",
+    "upgrade-insecure-requests",
+  ].join("; ");
+}
+
+export const CONTENT_SECURITY_POLICY = buildContentSecurityPolicy();
 
 export const SECURITY_RESPONSE_HEADERS: Readonly<Record<string, string>> = {
   "X-Content-Type-Options": "nosniff",

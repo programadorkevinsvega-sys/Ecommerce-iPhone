@@ -112,6 +112,7 @@ type AnalyticsQueueMessage = Readonly<{
 type NotificationQueueMessage = Readonly<{
   schemaVersion: number;
   outboxId: string;
+  requestId?: string | undefined;
 }>;
 
 const SENSITIVE_PREFIXES = [
@@ -145,7 +146,9 @@ async function enforceRateLimit(request: Request, env: Env, pathname: string): P
 
 function withHeaders(response: Response, headers: Record<string, string>): Response {
   const merged = new Headers(response.headers);
-  for (const [key, value] of Object.entries(SECURITY_RESPONSE_HEADERS)) merged.set(key, value);
+  for (const [key, value] of Object.entries(SECURITY_RESPONSE_HEADERS)) {
+    if (!merged.has(key)) merged.set(key, value);
+  }
   for (const [key, value] of Object.entries(headers)) merged.set(key, value);
   return new Response(response.body, {
     status: response.status,
@@ -206,7 +209,11 @@ function parseQueueMessage(body: string): NotificationQueueMessage | null {
   try {
     const value = JSON.parse(body) as Partial<NotificationQueueMessage>;
     if (typeof value.outboxId !== "string" || typeof value.schemaVersion !== "number") return null;
-    return { outboxId: value.outboxId, schemaVersion: value.schemaVersion };
+    return {
+      outboxId: value.outboxId,
+      schemaVersion: value.schemaVersion,
+      ...(isValidRequestId(value.requestId) ? { requestId: value.requestId.trim() } : {}),
+    };
   } catch {
     return null;
   }
@@ -234,7 +241,10 @@ function queueCorrelationId(body: string, fallback?: string): string | undefined
     );
   }
   const notification = parseQueueMessage(body);
-  return resolveQueueCorrelation({ outboxId: notification?.outboxId }, fallback);
+  return resolveQueueCorrelation(
+    { requestId: notification?.requestId, outboxId: notification?.outboxId },
+    fallback,
+  );
 }
 
 async function processAnalyticsMessage(message: Message<string>, env: Env): Promise<void> {

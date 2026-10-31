@@ -9,6 +9,7 @@ export class CloudflareNotificationQueuePublisher implements NotificationQueuePo
     await this.queue.send(JSON.stringify({
       schemaVersion: event.eventVersion,
       outboxId: event.id,
+      ...(event.requestId ? { requestId: event.requestId } : {}),
     }));
   }
 }

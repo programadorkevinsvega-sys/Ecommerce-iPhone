@@ -25,7 +25,7 @@ export default function HomeCarousel({ slides }: { slides: HomeSlide[] }) {
         <p className="eyebrow">{slide.eyebrow}</p>
         <h2>{slide.title}</h2>
         <p>{slide.description}</p>
-        <Link className="button secondary" href={slide.href} style={{ color: "#171715" }}>
+        <Link className="button secondary home-carousel-more-link" href={slide.href}>
           Ver más <span aria-hidden="true">→</span>
         </Link>
         {slides.length > 1 && (

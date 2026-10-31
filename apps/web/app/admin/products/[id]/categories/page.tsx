@@ -93,34 +93,34 @@ export default function ProductCategoriesPage() {
     }
   }
 
-  if (loading) return <main style={{ maxWidth: 900, margin: "0 auto", padding: 32 }} aria-busy="true">Cargando categorías…</main>;
-  if (!product) return <main style={{ maxWidth: 900, margin: "0 auto", padding: 32 }}><p role="alert">{error || "Producto no encontrado."}</p><button type="button" onClick={() => router.push("/admin")}>Volver al panel</button></main>;
+  if (loading) return <main className="admin-category-state" aria-busy="true">Cargando categorías…</main>;
+  if (!product) return <main className="admin-category-state"><p role="alert">{error || "Producto no encontrado."}</p><button type="button" onClick={() => router.push("/admin")}>Volver al panel</button></main>;
 
   return (
-    <main style={{ maxWidth: 900, margin: "0 auto", padding: 32, display: "grid", gap: 24 }}>
-      <header>
+    <main className="admin-product-categories">
+      <header className="admin-product-categories__header">
         <button type="button" onClick={() => router.push("/admin")}>← Volver</button>
-        <p style={{ marginTop: 24 }}>PRODUCTO · {product.brand}</p>
+        <p className="admin-product-categories__kicker">PRODUCTO · {product.brand}</p>
         <h1>{product.name}</h1>
         <p>{product.model} · {product.slug}</p>
       </header>
-      <section style={{ display: "grid", gap: 12 }} aria-labelledby="category-heading">
+      <section className="admin-category-section" aria-labelledby="category-heading">
         <div>
           <h2 id="category-heading">Categorías del producto</h2>
           <p>Selecciona las categorías activas que deben aparecer en el catálogo.</p>
         </div>
         {error && <p role="alert">{error}</p>}
         {activeCategories.length === 0 ? <p>No hay categorías activas disponibles.</p> : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
+          <div className="admin-category-grid">
             {activeCategories.map((category) => (
-              <label key={category.id} style={{ display: "flex", gap: 10, alignItems: "center", padding: 16, border: "1px solid #ddd", borderRadius: 12 }}>
+              <label key={category.id} className="admin-category-choice">
                 <input type="checkbox" checked={selected.has(category.id)} onChange={() => toggle(category.id)} />
-                <span><strong>{category.name}</strong><small style={{ display: "block" }}>{category.slug}</small></span>
+                <span><strong>{category.name}</strong><small className="admin-category-slug">{category.slug}</small></span>
               </label>
             ))}
           </div>
         )}
-        <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 8 }}>
+        <div className="admin-category-actions">
           <button type="button" disabled={saving} onClick={() => void save()}>{saving ? "Guardando…" : "Guardar categorías"}</button>
           {saved && <span role="status">Guardado correctamente.</span>}
         </div>

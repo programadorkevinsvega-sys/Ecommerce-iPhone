@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { CONTENT_SECURITY_POLICY, SECURITY_RESPONSE_HEADERS } from "./securityHeaders";
+import {
+  buildContentSecurityPolicy,
+  CONTENT_SECURITY_POLICY,
+  SECURITY_RESPONSE_HEADERS,
+} from "./securityHeaders";
 
 describe("security response headers", () => {
   it("defines baseline browser protections", () => {
@@ -12,13 +16,31 @@ describe("security response headers", () => {
     expect(SECURITY_RESPONSE_HEADERS["Strict-Transport-Security"]).toContain("max-age=31536000");
   });
 
-  it("keeps CSP same-origin by default and denies framing and plugin content", () => {
-    expect(CONTENT_SECURITY_POLICY).toContain("default-src 'self'");
-    expect(CONTENT_SECURITY_POLICY).toContain("frame-ancestors 'none'");
-    expect(CONTENT_SECURITY_POLICY).toContain("object-src 'none'");
-    expect(CONTENT_SECURITY_POLICY).not.toContain("unsafe-eval");
-    expect(CONTENT_SECURITY_POLICY).not.toContain("*");
-    expect(CONTENT_SECURITY_POLICY.split("https://").length - 1).toBe(1);
-    expect(CONTENT_SECURITY_POLICY).toContain("https://static.cloudflareinsights.com");
+  it("restricts scripts to same-origin, a per-request nonce and the explicit Insights host", () => {
+    const scriptSrc = CONTENT_SECURITY_POLICY.split(";").find((value) =>
+      value.trim().startsWith("script-src "),
+    );
+    expect(scriptSrc).toContain("'self'");
+    expect(scriptSrc).toContain("https://static.cloudflareinsights.com");
+    expect(scriptSrc).not.toContain("unsafe-inline");
+    expect(scriptSrc).not.toContain("unsafe-eval");
+  });
+
+  it("restricts styles to same-origin and the per-request nonce", () => {
+    const styleSrc = buildContentSecurityPolicy("test-nonce")
+      .split(";")
+      .find((value) => value.trim().startsWith("style-src "));
+    expect(styleSrc).toContain("'self'");
+    expect(styleSrc).toContain("'nonce-test-nonce'");
+    expect(styleSrc).not.toContain("unsafe-inline");
+  });
+
+  it("sets no inline allowances in static fallback or nonce policies", () => {
+    for (const policy of [CONTENT_SECURITY_POLICY, buildContentSecurityPolicy("nonce-value")]) {
+      expect(policy).toContain("frame-ancestors 'none'");
+      expect(policy).toContain("object-src 'none'");
+      expect(policy).not.toContain("unsafe-inline");
+      expect(policy).not.toContain("unsafe-eval");
+    }
   });
 });

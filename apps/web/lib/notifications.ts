@@ -1,4 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { headers } from "next/headers";
+import { isValidRequestId } from "./requestCorrelation";
 import { PublishPersistedNotification } from "../../../modules/notifications/application/PublishPersistedNotification";
 import { D1NotificationOutboxRepository } from "../../../modules/notifications/infrastructure/D1NotificationOutboxRepository";
 import type { NotificationEvent } from "../../../modules/notifications/domain/NotificationEvent";
@@ -36,6 +38,8 @@ export async function publishNotificationEvent(
   },
 ): Promise<void> {
   const { env } = getCloudflareContext();
+  const requestHeaders = await headers();
+  const requestId = input.requestId ?? requestHeaders.get("x-request-id") ?? undefined;
   const event: NotificationEvent = {
     id: input.id ?? crypto.randomUUID(),
     eventVersion: input.eventVersion ?? 1,
@@ -44,6 +48,7 @@ export async function publishNotificationEvent(
     aggregateId: input.aggregateId,
     payload: input.payload,
     ...(input.recipients?.length ? { recipients: input.recipients } : {}),
+    ...(requestId && isValidRequestId(requestId) ? { requestId: requestId.trim() } : {}),
   };
 
   const outbox = new D1NotificationOutboxRepository(env.DB);

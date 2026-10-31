@@ -10,7 +10,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const technicianId = typeof body.technicianId === "string" ? body.technicianId.trim() : "";
     if (!technicianId) return NextResponse.json({ error: "Technician is required" }, { status: 400 });
     if (!(await repairOperationsApplication(env).isActiveTechnician(technicianId))) return NextResponse.json({ error: "Invalid technician" }, { status: 400 });
-    await repairOperationsApplication(env).assign(id, technicianId, admin.id);
+    await repairOperationsApplication(env, request.headers.get("x-request-id")?.trim() || undefined).assign(id, technicianId, admin.id);
     return NextResponse.json({ assigned: true }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";

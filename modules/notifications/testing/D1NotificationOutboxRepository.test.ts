@@ -13,6 +13,7 @@ const event: NotificationEvent = {
   eventVersion: 1,
   aggregateId: "order-1",
   createdAt: new Date().toISOString(),
+  requestId: "req_notify_checkout_0001",
   payload: {
     email: "buyer@example.com",
     orderId: "order-1",
@@ -35,6 +36,7 @@ describe("D1NotificationOutboxRepository", () => {
         .count,
     ).toBe(1);
     expect((await repository.findById(event.id))?.aggregateId).toBe("order-1");
+    expect((await repository.findById(event.id))?.requestId).toBe("req_notify_checkout_0001");
   });
 
   it("keeps queue failures durable and sanitized, then allows recovery", async () => {

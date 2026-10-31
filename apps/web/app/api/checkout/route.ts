@@ -181,6 +181,7 @@ export async function POST(request: Request) {
       shippingMethod,
       customerId: customerResult.customer.getId(),
       idempotencyKey,
+      requestId: request.headers.get("x-request-id")?.trim() || undefined,
       ...(promotionCode ? { promotionCode } : {}),
       ...(couponCode ? { couponCode } : {}),
     });
