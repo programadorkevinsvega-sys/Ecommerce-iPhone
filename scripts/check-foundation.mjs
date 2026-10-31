@@ -90,9 +90,7 @@ if (!productionVerification.includes("pnpm verify:production"))
   failures.push("production verification workflow must execute runtime verification");
 const workerBuildDeploy = packageJson.scripts?.["cloudflare:deploy"] ?? "";
 if (workerBuildDeploy !== "pnpm cloudflare:deploy:production") {
-  failures.push(
-    "Cloudflare Workers Builds deploy hook must run the guarded production deploy",
-  );
+  failures.push("Cloudflare Workers Builds deploy hook must run the guarded production deploy");
 }
 
 const guardedProductionDeploy = packageJson.scripts?.["cloudflare:deploy:production"] ?? "";
@@ -110,10 +108,7 @@ if (ciWorkflow.includes("pnpm cloudflare:deploy:production"))
   failures.push("GitHub Actions CI must not invoke the production deploy command");
 if (ciWorkflow.includes("pnpm db:verify:production"))
   failures.push("GitHub Actions CI must not query remote D1 migrations");
-if (
-  ciWorkflow.includes("CLOUDFLARE_API_TOKEN") ||
-  ciWorkflow.includes("CLOUDFLARE_ACCOUNT_ID")
-)
+if (ciWorkflow.includes("CLOUDFLARE_API_TOKEN") || ciWorkflow.includes("CLOUDFLARE_ACCOUNT_ID"))
   failures.push("GitHub Actions CI must not require Cloudflare deployment credentials");
 if (
   !ciWorkflow.includes("WORKERS_CI_BRANCH=preview") ||
