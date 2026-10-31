@@ -1,5 +1,5 @@
 const EDGE_BLOCK_BODY_MARKERS =
-  /attention required|sorry,\\s*you have been blocked|cloudflare ray id|cf-error-details|cf-chl-|just a moment|error\\s*1020|web application firewall|access denied \\| cloudflare/i;
+  /attention required|sorry,\s*you have been blocked|cloudflare ray id|cf-error-details|cf-chl-|just a moment|error\s*1020|web application firewall|access denied \| cloudflare/i;
 
 function readHeader(headers, name) {
   if (typeof headers?.get === "function") {
