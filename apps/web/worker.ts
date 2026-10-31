@@ -79,7 +79,6 @@ type Env = CloudflareEnv & {
   ALLOWED_ORIGIN?: string;
   API_RATE_LIMITER?: { limit(input: { key: string }): Promise<{ success: boolean }> };
   SENSITIVE_RATE_LIMITER?: { limit(input: { key: string }): Promise<{ success: boolean }> };
-  E2E_DISABLE_NOTIFICATION_DELIVERY?: string;
 };
 
 type AnalyticsQueueMessage = Readonly<{ kind: "analytics"; schemaVersion: 1; event: AnalyticsEvent }>;
@@ -421,16 +420,6 @@ const worker = {
           message.retry();
         }
       }
-      return;
-    }
-
-    // Local E2E still publishes the durable outbox message, but does not
-    // invoke external email delivery or race scenario teardown against a consumer.
-    if (
-      batch.queue === "ecommerce-iphone-notifications" &&
-      env.E2E_DISABLE_NOTIFICATION_DELIVERY === "true"
-    ) {
-      for (const message of batch.messages) message.ack();
       return;
     }
 

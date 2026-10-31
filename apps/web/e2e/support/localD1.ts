@@ -84,3 +84,97 @@ export function resetCheckoutInventory(stock: number): void {
     throw new Error("The deterministic local E2E inventory fixtures were not prepared.");
   }
 }
+
+export function cleanupLocalCommerceFixtures(
+  emails: readonly string[],
+  cartIds: readonly string[],
+): void {
+  const uniqueEmails = [...new Set(emails)];
+  const uniqueCartIds = [...new Set(cartIds)];
+
+  if (uniqueEmails.length > 0) {
+    const emailList = uniqueEmails.map(sqlLiteral).join(", ");
+    const orderIds = queryLocalD1<{ id: string }>(
+      `SELECT id FROM orders WHERE email IN (${emailList})`,
+    ).map((row) => row.id);
+    const orderIdList = orderIds.map(sqlLiteral).join(", ") || "''";
+    const outboxIds = queryLocalD1<{ id: string }>(
+      `SELECT id FROM notification_outbox WHERE aggregate_id IN (${orderIdList})`,
+    ).map((row) => row.id);
+    const outboxIdList = outboxIds.map(sqlLiteral).join(", ") || "''";
+
+    if (outboxIds.length > 0) {
+      executeLocalD1(
+        `DELETE FROM notification_channel_deliveries
+         WHERE notification_id IN (
+           SELECT id FROM notification_inbox WHERE event_id IN (${outboxIdList})
+         )`,
+      );
+      executeLocalD1(
+        `DELETE FROM notification_inbox WHERE event_id IN (${outboxIdList})`,
+      );
+      executeLocalD1(
+        `DELETE FROM notification_deliveries WHERE outbox_id IN (${outboxIdList})`,
+      );
+      executeLocalD1(
+        `DELETE FROM notification_outbox WHERE id IN (${outboxIdList})`,
+      );
+    }
+
+    if (orderIds.length > 0) {
+      executeLocalD1(
+        `DELETE FROM inventory_reservations WHERE order_id IN (${orderIdList})`,
+      );
+      executeLocalD1(
+        `DELETE FROM coupon_redemptions WHERE order_id IN (${orderIdList})`,
+      );
+      executeLocalD1(`DELETE FROM order_events WHERE order_id IN (${orderIdList})`);
+      executeLocalD1(`DELETE FROM order_items WHERE order_id IN (${orderIdList})`);
+      executeLocalD1(`DELETE FROM orders WHERE id IN (${orderIdList})`);
+    }
+
+    executeLocalD1(
+      `DELETE FROM checkout_idempotency
+       WHERE customer_id IN (SELECT id FROM customers WHERE email IN (${emailList}))`,
+    );
+    executeLocalD1(`DELETE FROM customers WHERE email IN (${emailList})`);
+
+    const remaining = queryLocalD1<{
+      customers: number;
+      orders: number;
+      outbox: number;
+      deliveries: number;
+    }>(
+      `SELECT
+        (SELECT COUNT(*) FROM customers WHERE email IN (${emailList})) AS customers,
+        (SELECT COUNT(*) FROM orders WHERE id IN (${orderIdList})) AS orders,
+        (SELECT COUNT(*) FROM notification_outbox WHERE id IN (${outboxIdList})) AS outbox,
+        (SELECT COUNT(*) FROM notification_deliveries WHERE outbox_id IN (${outboxIdList})) AS deliveries`,
+    )[0];
+
+    if (
+      remaining.customers !== 0 ||
+      remaining.orders !== 0 ||
+      remaining.outbox !== 0 ||
+      remaining.deliveries !== 0
+    ) {
+      throw new Error("The local E2E order/customer cleanup left residual rows.");
+    }
+  }
+
+  if (uniqueCartIds.length > 0) {
+    const cartList = uniqueCartIds.map(sqlLiteral).join(", ");
+    executeLocalD1(
+      `DELETE FROM inventory_reservations WHERE cart_id IN (${cartList})`,
+    );
+    executeLocalD1(`DELETE FROM cart_items WHERE cart_id IN (${cartList})`);
+    executeLocalD1(`DELETE FROM carts WHERE id IN (${cartList})`);
+
+    const remaining = queryLocalD1<{ count: number }>(
+      `SELECT COUNT(*) AS count FROM carts WHERE id IN (${cartList})`,
+    )[0]?.count;
+    if (remaining !== 0) {
+      throw new Error("The local E2E cart cleanup left residual rows.");
+    }
+  }
+}
