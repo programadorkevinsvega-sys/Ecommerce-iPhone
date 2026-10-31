@@ -1,0 +1,74 @@
+name: PR26 formatting export
+
+on:
+  push:
+    branches:
+      - chore/production-hardening
+
+permissions:
+  contents: read
+
+jobs:
+  format-export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format PR 26 source files
+        run: |
+          pnpm exec prettier --write \
+            apps/web/e2e/platform-hardening.spec.ts \
+            apps/web/lib/queueCorrelation.test.ts \
+            apps/web/lib/queueCorrelation.ts \
+            apps/web/lib/requestCorrelation.test.ts \
+            apps/web/lib/requestCorrelation.ts \
+            apps/web/lib/securityHeaders.test.ts \
+            apps/web/lib/securityHeaders.ts \
+            apps/web/lib/serverLogger.test.ts \
+            apps/web/lib/serverLogger.ts \
+            apps/web/middleware.ts \
+            apps/web/next.config.ts \
+            apps/web/worker.ts \
+            docs/implementation/pr-plans/PR-07-production-hardening.md \
+            docs/production-hardening.md \
+            docs/security.md \
+            modules/admin/application/RequireAdmin.test.ts \
+            scripts/performance-smoke.mjs
+
+      - name: Upload normalized files
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr26-prettier-formatted
+          path: |
+            apps/web/e2e/platform-hardening.spec.ts
+            apps/web/lib/queueCorrelation.test.ts
+            apps/web/lib/queueCorrelation.ts
+            apps/web/lib/requestCorrelation.test.ts
+            apps/web/lib/requestCorrelation.ts
+            apps/web/lib/securityHeaders.test.ts
+            apps/web/lib/securityHeaders.ts
+            apps/web/lib/serverLogger.test.ts
+            apps/web/lib/serverLogger.ts
+            apps/web/middleware.ts
+            apps/web/next.config.ts
+            apps/web/worker.ts
+            docs/implementation/pr-plans/PR-07-production-hardening.md
+            docs/production-hardening.md
+            docs/security.md
+            modules/admin/application/RequireAdmin.test.ts
+            scripts/performance-smoke.mjs
