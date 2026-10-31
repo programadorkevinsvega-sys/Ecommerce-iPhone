@@ -1,8 +1,7 @@
-import { createRequire } from "node:module";
 import { expect, test } from "@playwright/test";
 
-const require = createRequire(import.meta.url);
-const axe = require("axe-core") as { source: string };
+declare const require: (id: string) => { source: string };
+const axe = require("axe-core");
 
 test.describe("platform hardening", () => {
   test("Worker-owned response includes security headers and a stable request ID", async ({
