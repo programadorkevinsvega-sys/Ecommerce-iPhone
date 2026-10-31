@@ -6,7 +6,7 @@ on:
       - chore/production-hardening
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format-export:
@@ -49,6 +49,37 @@ jobs:
             docs/security.md \
             modules/admin/application/RequireAdmin.test.ts \
             scripts/performance-smoke.mjs
+
+      - name: Commit normalized files to the existing PR branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/web/e2e/platform-hardening.spec.ts \
+            apps/web/lib/queueCorrelation.test.ts \
+            apps/web/lib/queueCorrelation.ts \
+            apps/web/lib/requestCorrelation.test.ts \
+            apps/web/lib/requestCorrelation.ts \
+            apps/web/lib/securityHeaders.test.ts \
+            apps/web/lib/securityHeaders.ts \
+            apps/web/lib/serverLogger.test.ts \
+            apps/web/lib/serverLogger.ts \
+            apps/web/middleware.ts \
+            apps/web/next.config.ts \
+            apps/web/worker.ts \
+            docs/implementation/pr-plans/PR-07-production-hardening.md \
+            docs/production-hardening.md \
+            docs/security.md \
+            modules/admin/application/RequireAdmin.test.ts \
+            scripts/performance-smoke.mjs
+          if git diff --cached --quiet; then
+            echo "All PR 26 files are already formatted."
+            exit 0
+          fi
+          git commit -m "style(platform): format production hardening changes"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Upload normalized files
         uses: actions/upload-artifact@v4
