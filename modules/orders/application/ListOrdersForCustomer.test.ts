@@ -31,15 +31,7 @@ class Orders implements OrderRepository {
     return order;
   }
 
-  async findByIdempotencyKeyForCustomer(): Promise<Order | null> {
-    return null;
-  }
-
-  async listByCustomer(
-    customerId: string,
-    limit: number,
-    offset: number,
-  ): Promise<readonly Order[]> {
+  async listByCustomer(customerId: string, limit: number, offset: number): Promise<readonly Order[]> {
     expect(customerId).toBe("customer-1");
     expect(limit).toBe(50);
     expect(offset).toBe(3);
@@ -49,9 +41,7 @@ class Orders implements OrderRepository {
 
 describe("ListOrdersForCustomer", () => {
   it("requires an authenticated customer", async () => {
-    await expect(
-      new ListOrdersForCustomer(new Orders()).execute(""),
-    ).rejects.toThrow("Customer authentication is required");
+    await expect(new ListOrdersForCustomer(new Orders()).execute("")).rejects.toThrow("Customer authentication is required");
   });
 
   it("clamps pagination and preserves ownership at the application boundary", async () => {
@@ -62,7 +52,6 @@ describe("ListOrdersForCustomer", () => {
   it("normalizes negative and fractional pagination", async () => {
     const repository: OrderRepository = {
       findById: async () => order,
-      findByIdempotencyKeyForCustomer: async () => null,
       listByCustomer: async (_customerId, limit, offset) => {
         expect(limit).toBe(1);
         expect(offset).toBe(0);
