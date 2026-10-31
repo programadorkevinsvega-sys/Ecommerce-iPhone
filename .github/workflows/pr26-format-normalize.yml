@@ -1,0 +1,39 @@
+name: PR26 format normalization
+
+on:
+  push:
+    branches:
+      - chore/production-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout PR 26 branch
+        uses: actions/checkout@v4
+        with:
+          ref: chore/production-hardening
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply repository Prettier
+        run: pnpm exec prettier --write "apps/web/e2e/platform-hardening.spec.ts"
+      - name: Commit formatting to existing PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "apps/web/e2e/platform-hardening.spec.ts"
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "style(e2e): format security hardening spec"
+          git push origin HEAD:chore/production-hardening
