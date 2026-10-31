@@ -1,139 +1,125 @@
 # Cloudflare deployment
 
-## Actualización operativa — 2026-09-21
+## Production environment
 
-El dominio canónico de producción es https://iphone.jnmtortas.com. Los workflows de despliegue, verificación, performance y rollback quedan alineados con ese dominio y con pnpm 12.4.1 + Node 24.18.0, evitando que los gates consulten workers.dev distintos al Worker publicado.
+Canonical production domain: https://iphone.jnmtortas.com.
 
-El cambio solo corrige la fuente de verdad operativa y reproducibilidad del pipeline. La versión actual de main seguirá sin certificación hasta completar un ciclo íntegro de build, deploy y verify.
+The repository uses one remote production environment in Cloudflare Workers. There is no remote staging environment yet.
 
-The repository uses a **single remote production environment** on Cloudflare Workers with OpenNext.
+| Resource     | Name                      |
+| ------------ | ------------------------- |
+| Worker       | `ecommerce-iphone`        |
+| D1           | `ecommerce-iphone`        |
+| R2           | `ecommerce-iphone-media`  |
+| Events Queue | `ecommerce-iphone-events` |
 
-## Production resources
-
-| Resource | Name |
-|---|---|
-| Worker | `ecommerce-iphone` |
-| D1 | `ecommerce-iphone` |
-| R2 | `ecommerce-iphone-media` |
-| Queue | `ecommerce-iphone-events` |
-
-There is no remote staging environment.
-
-## Toolchain
+Toolchain:
 
 - Node.js `24.18.0`
 - pnpm `12.4.1`
-- Next.js `15.5.25`
-- `@opennextjs/cloudflare 1.20.6`
-- Wrangler `4.131.1` in the latest confirmed Cloudflare build
+- Next.js `15.5.28`
+- `@opennextjs/cloudflare 1.20.14`
+- Wrangler `4.155.0`
 - workerd compatibility date `2026-09-09`
 
-## Deployment contract
+## CI/CD ownership
 
-```bash
-pnpm db:migrate:production
-pnpm build:cloudflare
-wrangler deploy --env=""
-pnpm verify:production
-```
+**GitHub Actions owns all validation and production deployment. Cloudflare Workers Builds is build-only.**
 
-Shortcut:
+### GitHub Actions — CI before merge
 
-```bash
-pnpm deploy:production
-```
+The workflow `.github/workflows/payment-consistency.yml` runs on pull requests to `main` and pushes to `main`. It performs:
 
-## Bindings
+1. Reproducible install with `pnpm install --frozen-lockfile`.
+2. Complete dependency audit with `pnpm audit` (production, development and optional dependencies).
+3. Prettier on changed files.
+4. Repository foundations, frontend production-data and architecture checks.
+5. ESLint and TypeScript.
+6. Complete Vitest unit/integration suite.
+7. A local-only fixture bootstrap for legacy product parent rows required by migration `0009`, then the complete D1 migration history in local mode.
+8. Playwright against local Wrangler using `wrangler dev --local`.
+9. Cloudflare Worker build as a CI gate, without deploying.
 
-- `DB` -> `ecommerce-iphone`
-- `MEDIA_BUCKET` -> `ecommerce-iphone-media`
-- `EVENTS_QUEUE` -> `ecommerce-iphone-events`
-- `API_RATE_LIMITER` -> 120 requests / 60s
-- `SENSITIVE_RATE_LIMITER` -> 20 requests / 60s
-- `APP_ENV` -> production
+Pull-request CI has no Cloudflare or production credentials. The E2E database is local, initialized from repository migrations and their test/catalog seed data.
 
-## Current production evidence
+### GitHub Actions — CD after merge
 
-Latest directly verified Worker before current unverified changes:
+The `deploy-production` job in the same workflow runs **only** when:
 
-`f7d67832-8598-4f59-8db9-b538f543b3ef`
+- the event is `push`;
+- the ref is `refs/heads/main`;
+- runner diagnostics and the complete quality job both succeeded.
 
-Verified:
+The deployment job rebuilds the exact commit SHA whose CI passed, then runs `pnpm cloudflare:deploy:production`. This command checks that the active Git branch/ref is `main`, applies production D1 migrations and runs `wrangler deploy`. After deployment, GitHub Actions verifies D1 migration state, health/rate limiting, Phase 08 public content and authorization boundaries, Phase 09 SEO, notification authorization boundaries, and the Phase 10.2–10.5 analytics, cart/checkout and revenue-projection probes. Those production probes use unique synthetic identifiers and clean up records they create. Main deployments are serialized and a later push cannot cancel a deployment already in progress.
 
-- `/api/health/live` → 200
-- `/api/health/ready` → 200
-- `verify:production` → PASS
+The job requires GitHub Repository Secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Configure an optional required reviewer on the GitHub `production` environment if a human approval gate is desired.
 
-Subsequent commits require a new successful Cloudflare build/deploy/verify cycle. The current `main` contains technician-domain and shared-navigation fixes that are not yet production-certified.
+The workflow `.github/workflows/production-verification.yml` separately runs scheduled/manual post-deploy smoke checks. Deeper Phase 10.2–10.5 probes, which write synthetic analytics/cart rows and clean them up, are opt-in via `workflow_dispatch`. Authenticated admin/RBAC verification is also opt-in and uses dedicated GitHub Secrets.
 
-## Runtime secrets
+The existing `.github/workflows/performance.yml` runs Playwright performance smoke checks from GitHub Actions on a schedule or manually.
 
-Keep secrets outside Git:
+### Cloudflare Workers Builds — build only, no deploy
+
+Configure **Workers & Pages → ecommerce-iphone → Settings → Build**:
+
+| Field             | Value                                                     |
+| ----------------- | --------------------------------------------------------- |
+| Production branch | `main`                                                    |
+| Build command     | `pnpm install --frozen-lockfile && pnpm build:cloudflare` |
+| Deploy command    | `pnpm cloudflare:deploy`                                  |
+| Root directory    | empty (monorepo root)                                     |
+
+The Cloudflare Build command only invokes `opennextjs-cloudflare build`. It does not run audits, lint, typecheck, Vitest, Playwright, E2E or smoke tests.
+
+The Cloudflare Deploy command `pnpm cloudflare:deploy` is intentionally a no-op. It exists as a safe hook for Workers Builds and cannot apply migrations or publish a Worker. The real deployment is performed by the guarded GitHub Actions `deploy-production` job after successful CI on `main`.
+
+This prevents the production Deploy command from publishing a Worker, even if a Workers Builds job is triggered unexpectedly. Still configure `main` as the production branch in the dashboard.
+
+**Important:** a no-op Deploy command does not disable non-production Preview builds. Cloudflare uses a separate Preview command when Preview Builds are enabled; it defaults to `npx wrangler preview`. Production Deploy and branch Preview are independent controls. See the [Cloudflare Build configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/) and [branch control guide](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/).
+
+### Previews for non-production branches
+
+The repository currently has no isolated remote staging resources. Therefore, in **Workers & Pages → ecommerce-iphone → Settings → Build → Branch control**, leave **Enable Preview Builds** unchecked until separate Preview bindings exist for D1, R2, Queues, Durable Objects and any required secrets. The current top-level Wrangler bindings point to production resources; do not enable remote previews against those bindings.
+
+If remote previews are enabled in the future, configure the separate Preview command and Preview-specific bindings, variables and secrets first. Do not use the production resources as a fallback. The `previews` block in `wrangler.jsonc` defines Preview runtime settings; its presence alone does not turn the dashboard's Preview Builds switch off.
+
+Pull-request E2E runs locally in GitHub Actions with `wrangler dev --local`; a remote preview is not required to validate each PR.
+
+## Versioned commands
+
+- `pnpm build:cloudflare`: compile the Worker bundle; no tests and no deploy.
+- `pnpm cloudflare:build`: build-only alias for Workers Builds.
+- `pnpm cloudflare:deploy`: intentionally does not deploy; safe no-op for Workers Builds.
+- `pnpm cloudflare:deploy:production`: main-only guard, production D1 migrations, then Wrangler deploy.
+- `pnpm deploy:production`: local/manual build followed by the same main-only guarded production deploy.
+- `pnpm db:migrate:local`: apply migrations to local D1.
+- `pnpm db:prepare:e2e`: create local-only legacy parent rows needed by historical migrations, then apply the complete D1 migration history for E2E.
+- `pnpm test`: Vitest.
+- `pnpm test:e2e`: Playwright against local Wrangler.
+
+## Production bindings
+
+- `DB` → `ecommerce-iphone`
+- `MEDIA_BUCKET` → `ecommerce-iphone-media`
+- `EVENTS_QUEUE` → `ecommerce-iphone-events`
+- `NOTIFICATIONS_QUEUE` → `ecommerce-iphone-notifications`
+- `NOTIFICATIONS_DLQ_QUEUE` → `ecommerce-iphone-notifications-dlq`
+- `API_RATE_LIMITER` → 120 requests / 60s
+- `SENSITIVE_RATE_LIMITER` → 20 requests / 60s
+- `APP_ENV` → `production`
+
+## Secrets
+
+Keep Worker secrets out of Git and CI logs:
 
 - `RESEND_API_KEY`
 - `ADMIN_BOOTSTRAP_TOKEN`
-- Wompi/Stripe/Mercado Pago/PayPal/Binance Pay secrets
-- other operational tokens.
+- payment provider credentials.
 
-```bash
-wrangler secret put <SECRET_NAME>
-```
+Configure Worker secrets with `wrangler secret put <SECRET_NAME>`. Configure secrets used by the Actions deploy/verification jobs as repository secrets, available only to workflows that need them.
 
-## Migrations
+## Migrations and rollback
 
-```bash
-pnpm db:migrate:production
-```
+Production migrations are applied as part of the GitHub Actions deployment job immediately before publishing the Worker. Never edit an applied migration; add a new numbered migration.
 
-Never edit an applied migration. Add the next numbered migration.
-
-## Rollback
-
-Rollback to a known Worker version, then run `pnpm verify:production` and confirm both health endpoints.
-
-
-## Cloudflare Workers Builds
-
-Configuración canónica del Dashboard para el Worker `ecommerce-iphone`:
-
-| Campo | Valor |
-|---|---|
-| Production branch | `main` |
-| Build command | `pnpm install --frozen-lockfile && pnpm build:cloudflare` |
-| Deploy command | `pnpm cloudflare:deploy` |
-| Version command | `pnpm exec wrangler --version` |
-| Root directory | vacío (raíz del repositorio) |
-
-El Root directory debe permanecer vacío porque `package.json`, `pnpm-lock.yaml`, `wrangler.jsonc` y `apps/web/` pertenecen al monorepo raíz.
-
-Los equivalentes versionados en `package.json` son:
-
-```bash
-pnpm cloudflare:build
-pnpm cloudflare:deploy
-pnpm cloudflare:version
-```
-
-`cloudflare:build` reproduce exactamente el Build command de Workers Builds.
-`cloudflare:deploy` reproduce el Deploy command de Workers Builds y aplica las migraciones D1 antes de publicar.
-`cloudflare:version` reproduce exactamente el Version command de Workers Builds.
-
-El Deploy command de Workers Builds ejecuta `pnpm cloudflare:deploy`, que aplica las migraciones D1 de producción y después publica el Worker. `pnpm deploy:production` sigue siendo el release completo manual/reproducible porque además construye y ejecuta `verify:production`.
-
-Los cuatro campos de Workers Builds no se configuran dentro de `wrangler.jsonc`; `wrangler.jsonc` continúa siendo el contrato declarativo del Worker para rutas, D1, R2, Queues, rate limits, cron y variables no secretas.
-
-
-### Fase 07 notification resources
-
-| Resource | Name |
-|---|---|
-| Notifications Queue | `ecommerce-iphone-notifications` |
-| Notifications DLQ | `ecommerce-iphone-notifications-dlq` |
-| Durable Object | `NotificationHub` |
-| D1 inbox | `notification_inbox` |
-| D1 channel ledger | `notification_channel_deliveries` |
-| D1 preferences | `notification_preferences` |
-| D1 terminal evidence | `notification_dead_letters` |
-
-The production deploy must apply D1 migrations before the Worker is published so the code and schema move together.
-
+Rollback remains manual through `.github/workflows/rollback.yml` and must be followed by a passing `pnpm verify:production`.
