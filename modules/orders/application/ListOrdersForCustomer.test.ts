@@ -35,7 +35,11 @@ class Orders implements OrderRepository {
     return null;
   }
 
-  async listByCustomer(customerId: string, limit: number, offset: number): Promise<readonly Order[]> {
+  async listByCustomer(
+    customerId: string,
+    limit: number,
+    offset: number,
+  ): Promise<readonly Order[]> {
     expect(customerId).toBe("customer-1");
     expect(limit).toBe(50);
     expect(offset).toBe(3);
@@ -45,11 +49,17 @@ class Orders implements OrderRepository {
 
 describe("ListOrdersForCustomer", () => {
   it("requires an authenticated customer", async () => {
-    await expect(new ListOrdersForCustomer(new Orders()).execute("")).rejects.toThrow("Customer authentication is required");
+    await expect(
+      new ListOrdersForCustomer(new Orders()).execute(""),
+    ).rejects.toThrow("Customer authentication is required");
   });
 
   it("clamps pagination and preserves ownership at the application boundary", async () => {
-    const page = await new ListOrdersForCustomer(new Orders()).execute("customer-1", 500, 3);
+    const page = await new ListOrdersForCustomer(new Orders()).execute(
+      "customer-1",
+      500,
+      3,
+    );
     expect(page).toEqual({ items: [order], limit: 50, offset: 3 });
   });
 

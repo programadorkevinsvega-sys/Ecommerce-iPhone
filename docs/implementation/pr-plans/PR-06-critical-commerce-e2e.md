@@ -62,12 +62,10 @@ These items remain explicitly incomplete until a safe sandbox/test credential pa
 
 ## Verification status
 
-| Validation               | Result                                                              |
-| ------------------------ | ------------------------------------------------------------------- |
-| Local terminal execution | Not run; this session could not clone GitHub or run pnpm.           |
-| GitHub Actions            | First two runs stopped at formatting; the latest corrections await CI. |
-| CI required               | Not approved until the latest full workflow succeeds.               |
-| Cloudflare Preview       | Preview build succeeded for `1fcf579`; no Preview URL is enabled.  |
-| Production data/deployment | Not used; no manual production deploy.                              |
+- **Local terminal execution:** Not run in this session; the runtime could not clone GitHub or execute pnpm.
+- **GitHub Actions:** The first three runs stopped at changed-file formatting. Formatting corrections are now published and the latest run must be checked before approving CI.
+- **CI required:** Not approved until the latest full workflow succeeds.
+- **Cloudflare Preview:** The Preview build succeeded for `1fcf579`; no Preview URL is enabled.
+- **Production data/deployment:** Not used; no manual production deployment occurred.
 
 Only successful checks attached to the final PR head may be marked approved. The PR remains Draft until CI results are green, Preview build evidence for the final SHA is reviewed, and the conditional provider scope is resolved or explicitly accepted as out of scope.
