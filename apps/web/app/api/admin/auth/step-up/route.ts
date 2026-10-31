@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { Permission } from "../../../../../../modules/admin/application/Rbac";
 import { cookies } from "next/headers";
 import {
   ADMIN_COOKIE,
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Datos de reautenticación no válidos." }, { status: 422 });
     }
 
-    const requiredPermission: Record<AdminStepUpScope, string> = {
+    const requiredPermission: Record<AdminStepUpScope, Permission> = {
       "payments:refund": "refunds:create",
       "payments:void": "payments:void",
       "admins:manage": "admins:manage",
