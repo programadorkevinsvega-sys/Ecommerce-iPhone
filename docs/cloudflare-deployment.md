@@ -30,15 +30,16 @@ Toolchain:
 
 The workflow `.github/workflows/payment-consistency.yml` runs on pull requests to `main` and pushes to `main`. It performs:
 
-1. Reproducible install with `pnpm install --frozen-lockfile`.
+1. Reproducible install with `pnpm install --frozen-lockfile`; the install lifecycle runs `scripts/verify-install.mjs`, and CI runs it again as an explicit named gate.
 2. Complete dependency audit with `pnpm audit` (production, development and optional dependencies).
 3. Prettier on changed files.
 4. Repository foundations, frontend production-data and architecture checks.
-5. ESLint and TypeScript.
+5. ESLint and TypeScript as dedicated CI gates.
 6. Complete Vitest unit/integration suite.
 7. A local-only fixture bootstrap for legacy product parent rows required by migration `0009`, then the complete D1 migration history in local mode.
 8. Playwright against local Wrangler using `wrangler dev --local`.
-9. Cloudflare Worker build as a CI gate, without deploying.
+9. The exact OpenNext build command, `pnpm cloudflare:build`, as a CI gate before merge. This runs Next.js production compilation, static page generation and Worker bundling.
+10. `pnpm verify:cloudflare:build` checks that the build produced the Next.js prerender manifest, static HTML pages, OpenNext Worker bundle and assets directory.
 
 Pull-request CI has no Cloudflare or production credentials. The E2E database is local, initialized from repository migrations and their test/catalog seed data. CI never applies remote D1 migrations and never deploys a Worker.
 
@@ -69,7 +70,7 @@ Configure **Workers & Pages → ecommerce-iphone → Settings → Build**:
 | Deploy command    | `pnpm cloudflare:deploy`                                  |
 | Root directory    | empty (monorepo root)                                     |
 
-The Cloudflare Build command compiles the OpenNext Worker. It does not run audits, lint, typecheck, Vitest, Playwright, E2E or smoke tests; those checks run in GitHub Actions.
+GitHub Actions runs `pnpm cloudflare:build` and verifies its generated static pages and Worker artifacts before merge. Cloudflare must still run the build command to create the deployable Worker artifact in its own build environment; this is artifact production, not a replacement for the GitHub CI gates. The Cloudflare build does not run the repository audit, full Vitest suite, local D1 bootstrap, Playwright E2E suite or production smoke probes.
 
 The Deploy command is the only production deployment path. It runs the main-branch guard, applies remote D1 migrations, and publishes the Worker. Keep `main` as the production branch in the Cloudflare dashboard. The guard reads the `WORKERS_CI_BRANCH` variable injected by Workers Builds, so builds from any other branch are rejected.
 
@@ -86,7 +87,8 @@ Pull-request E2E runs locally in GitHub Actions with `wrangler dev --local`; a r
 ## Versioned commands
 
 - `pnpm build:cloudflare`: compile the Worker bundle; no tests and no deploy.
-- `pnpm cloudflare:build`: build-only alias for Workers Builds.
+- `pnpm cloudflare:build`: OpenNext production build; run as a CI validation gate and again in Cloudflare to produce the deployable Worker artifact.
+- `pnpm verify:cloudflare:build`: verify that Next.js static-page output, the OpenNext Worker bundle and static assets were generated.
 - `pnpm cloudflare:deploy`: Workers Builds production hook; main-only guard, production D1 migrations, then Wrangler deploy.
 - `pnpm cloudflare:deploy:production`: main-only guard, production D1 migrations, then Wrangler deploy.
 - `pnpm deploy:production`: local/manual build followed by the same main-only guarded production deploy.
