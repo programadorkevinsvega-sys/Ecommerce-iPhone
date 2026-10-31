@@ -47,7 +47,6 @@ function responseDiagnostic(response, bodyText) {
   });
 }
 
-
 async function assertHealth(path, expectedStatus, expectedBodyStatus) {
   let lastError;
   for (let attempt = 1; attempt <= retries; attempt += 1) {
