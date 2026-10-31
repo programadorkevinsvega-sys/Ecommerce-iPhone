@@ -56,8 +56,10 @@ jobs:
       - name: Audit all dependencies
         run: pnpm audit
 
-      - name: Check repository formatting
-        run: pnpm format:check
+      - name: Check formatting of changed files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: pnpm format:check:changed
 
       - name: Check repository foundations
         run: pnpm foundation:check

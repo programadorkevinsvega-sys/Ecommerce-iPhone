@@ -45,7 +45,8 @@
     "verify:phase10.5:production": "node scripts/verify-phase10.5-production.mjs",
     "cloudflare:deploy:production": "node scripts/assert-main-deploy.mjs && pnpm db:migrate:production && pnpm exec wrangler deploy --env=\"\"",
     "db:prepare:e2e": "node scripts/prepare-local-e2e-d1.mjs",
-    "verify:cloudflare:build": "node scripts/verify-cloudflare-build.mjs"
+    "verify:cloudflare:build": "node scripts/verify-cloudflare-build.mjs",
+    "format:check:changed": "node scripts/verify-changed-format.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260908.1",

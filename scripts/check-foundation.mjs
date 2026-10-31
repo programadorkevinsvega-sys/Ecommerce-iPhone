@@ -15,6 +15,7 @@ const requiredFiles = [
   "scripts/check-architecture.mjs",
   "scripts/check-foundation.mjs",
   "scripts/verify-install.mjs",
+  "scripts/verify-changed-format.mjs",
   "scripts/verify-cloudflare-build.mjs",
   "scripts/verify-production.mjs",
   "scripts/assert-main-deploy.mjs",
@@ -68,6 +69,7 @@ for (const script of [
   "verify:cloudflare:build",
   "verify:production",
   "format:check",
+  "format:check:changed",
 ]) {
   if (!packageJson.scripts?.[script]) failures.push(`missing root quality script: ${script}`);
 }
@@ -131,7 +133,7 @@ const requiredCiCommands = [
   "pnpm install --frozen-lockfile",
   "node scripts/verify-install.mjs",
   "pnpm audit",
-  "pnpm format:check",
+  "pnpm format:check:changed",
   "pnpm foundation:check",
   "pnpm frontend:data:check",
   "pnpm architecture:check",

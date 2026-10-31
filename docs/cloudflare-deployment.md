@@ -32,7 +32,7 @@ The workflow `.github/workflows/payment-consistency.yml` runs on pull requests t
 
 1. Reproducible install with `pnpm install --frozen-lockfile`; the install lifecycle runs `scripts/verify-install.mjs`, and CI runs it again as an explicit named gate.
 2. Complete dependency audit with `pnpm audit` (production, development and optional dependencies).
-3. Prettier on changed files.
+3. Changed-file Prettier validation through `pnpm format:check:changed` (the repository-wide `pnpm format:check` remains available for full-tree maintenance).
 4. Repository foundations, frontend production-data and architecture checks.
 5. ESLint and TypeScript as dedicated CI gates.
 6. Complete Vitest unit/integration suite.
@@ -107,6 +107,8 @@ Pull-request E2E runs locally in GitHub Actions with `wrangler dev --local`; a r
 - `pnpm deploy:production`: local/manual build followed by the same main-only guarded production deploy.
 - `pnpm db:migrate:local`: apply migrations to local D1.
 - `pnpm db:prepare:e2e`: create local-only legacy parent rows needed by historical migrations, then apply the complete D1 migration history for E2E.
+- `pnpm format:check:changed`: Prettier validation for files changed by the current Git diff.
+- `pnpm format:check`: full-repository Prettier check; existing baseline files may require separate cleanup.
 - `pnpm test`: Vitest.
 - `pnpm test:e2e`: Playwright against local Wrangler.
 
