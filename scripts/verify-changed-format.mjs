@@ -55,4 +55,27 @@ if (prettierResult.error) {
   process.exit(1);
 }
 
+if (prettierResult.status !== 0) {
+  console.error("Prettier-generated diff for changed files:");
+  const writeResult = spawnSync(
+    pnpm,
+    ["exec", "prettier", "--write", "--ignore-unknown", ...changedFiles],
+    { cwd: process.cwd(), stdio: "inherit" },
+  );
+  if (writeResult.status !== 0) {
+    console.error("Unable to generate the Prettier diagnostic diff.");
+    process.exit(1);
+  }
+
+  const diffResult = spawnSync("git", ["diff", "--", ...changedFiles], {
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  if (diffResult.status !== 0) {
+    console.error("Unable to read the Prettier diagnostic diff.");
+    process.exit(1);
+  }
+  console.error(diffResult.stdout);
+}
+
 process.exit(prettierResult.status ?? 1);
