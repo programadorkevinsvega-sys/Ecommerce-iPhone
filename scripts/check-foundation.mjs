@@ -15,6 +15,7 @@ const requiredFiles = [
   "scripts/check-architecture.mjs",
   "scripts/check-foundation.mjs",
   "scripts/verify-install.mjs",
+  "scripts/verify-cloudflare-build.mjs",
   "scripts/verify-production.mjs",
   "scripts/assert-main-deploy.mjs",
   "apps/web/next.config.ts",
@@ -63,6 +64,8 @@ for (const script of [
   "test",
   "build",
   "build:cloudflare",
+  "cloudflare:build",
+  "verify:cloudflare:build",
   "verify:production",
   "format:check",
 ]) {
@@ -116,6 +119,13 @@ if (
   !ciWorkflow.includes("feature/test")
 )
   failures.push("GitHub CI must test the main-only guard against GitHub and Cloudflare branches");
+
+if (!ciWorkflow.includes("node scripts/verify-install.mjs"))
+  failures.push("GitHub CI must explicitly verify the installation toolchain");
+if (!ciWorkflow.includes("pnpm cloudflare:build"))
+  failures.push("GitHub CI must execute the OpenNext Cloudflare build");
+if (!ciWorkflow.includes("pnpm verify:cloudflare:build"))
+  failures.push("GitHub CI must verify generated static pages and Worker artifacts");
 
 const productionVerificationHasRemoteD1 = productionVerification.includes(
   "pnpm db:verify:production",
