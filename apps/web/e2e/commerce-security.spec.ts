@@ -146,30 +146,19 @@ test.describe("critical commerce and security journeys", () => {
       const orderIds = `SELECT id FROM orders WHERE email IN (${emailList})`;
       const outboxIds = `SELECT id FROM notification_outbox WHERE aggregate_id IN (${orderIds})`;
 
-      executeLocalD1(
-        [
-          `DELETE FROM notification_deliveries WHERE outbox_id IN (${outboxIds})`,
-          `DELETE FROM notification_outbox WHERE aggregate_id IN (${orderIds})`,
-          `DELETE FROM inventory_reservations WHERE order_id IN (${orderIds})`,
-          `DELETE FROM order_items WHERE order_id IN (${orderIds})`,
-          `DELETE FROM order_events WHERE order_id IN (${orderIds})`,
-          `DELETE FROM coupon_redemptions WHERE order_id IN (${orderIds})`,
-          `DELETE FROM checkout_idempotency WHERE customer_id IN (SELECT id FROM customers WHERE email IN (${emailList}))`,
-          `DELETE FROM orders WHERE email IN (${emailList})`,
-          `DELETE FROM customers WHERE email IN (${emailList})`,
-        ].join(";\\n") + ";",
-      );
+      for (const statement of [
+        `DELETE FROM notification_deliveries WHERE outbox_id IN (${outboxIds})`,
+        `DELETE FROM notification_outbox WHERE aggregate_id IN (${orderIds})`,
+        `DELETE FROM orders WHERE email IN (${emailList})`,
+        `DELETE FROM customers WHERE email IN (${emailList})`,
+      ]) {
+        executeLocalD1(statement);
+      }
     }
 
     if (cartIds.length > 0) {
       const cartList = cartIds.map(sqlLiteral).join(", ");
-      executeLocalD1(
-        [
-          `DELETE FROM inventory_reservations WHERE cart_id IN (${cartList})`,
-          `DELETE FROM cart_items WHERE cart_id IN (${cartList})`,
-          `DELETE FROM carts WHERE id IN (${cartList})`,
-        ].join(";\\n") + ";",
-      );
+      executeLocalD1(`DELETE FROM carts WHERE id IN (${cartList})`);
     }
   });
 

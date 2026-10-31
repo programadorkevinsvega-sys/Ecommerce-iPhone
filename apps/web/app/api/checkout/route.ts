@@ -25,7 +25,12 @@ function safeError(error: unknown): { error: string; status: number } {
       status: 400,
     };
   }
-  const code = error instanceof Error ? error.message.toUpperCase() : "UNKNOWN";
+  const code =
+    error instanceof Error && "code" in error && typeof error.code === "string"
+      ? error.code.toUpperCase()
+      : error instanceof Error
+        ? error.message.toUpperCase()
+        : "UNKNOWN";
   const known: Record<string, string> = {
     INVALID_EMAIL: "Revisa los datos ingresados e inténtalo nuevamente.",
     INVALID_PHONE: "Revisa los datos ingresados e inténtalo nuevamente.",

@@ -22,7 +22,12 @@ function errorResponse(error: unknown): Response {
       { status: 400, headers: { "cache-control": "no-store" } },
     );
   }
-  const code = error instanceof Error ? error.message.toUpperCase() : "UNKNOWN";
+  const code =
+    error instanceof Error && "code" in error && typeof error.code === "string"
+      ? error.code.toUpperCase()
+      : error instanceof Error
+        ? error.message.toUpperCase()
+        : "UNKNOWN";
   let status = 500;
   if (code.includes("RATE_LIMIT") || code.includes("TOO_MANY")) {
     status = 429;
