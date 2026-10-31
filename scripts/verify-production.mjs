@@ -109,6 +109,13 @@ async function verifyRateLimit() {
       console.log(`PASS rate limit: HTTP 429 observed at request ${i}, Retry-After=${retryAfter}`);
       return;
     }
+
+    if (response.status === 403) {
+      const rawBody = await response.text();
+      if (isCloudflareEdgeBlock(response, rawBody)) {
+        throw new CloudflareEdgeBlockedError(path, responseDiagnostic(response, rawBody));
+      }
+    }
   }
 
   const message = `WARN rate limit: no HTTP 429 after ${rateLimitAttempts} requests. Cloudflare Workers Rate Limiting is eventually consistent and may permit bursts across isolates/locations.`;
