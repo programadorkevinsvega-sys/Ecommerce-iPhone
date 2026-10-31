@@ -1,15 +1,11 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { CheckoutCart } from "../application/CheckoutCart";
 import type { CheckoutInput, OrderCheckoutRepository } from "../application/CheckoutInput";
-import type {
-  OrderIdempotencyLookup,
-  OrderRepository,
-} from "../application/OrderRepository";
+import type { OrderIdempotencyLookup, OrderRepository } from "../application/OrderRepository";
 import { assertOrderTransition, type Order, type OrderStatus } from "../domain/Order";
 
 export class D1OrderRepository
-  implements OrderCheckoutRepository, OrderRepository, OrderIdempotencyLookup
-{
+  implements OrderCheckoutRepository, OrderRepository, OrderIdempotencyLookup {
   constructor(
     private readonly db: D1Database,
     private readonly prepareOrderCreatedOutbox?: (

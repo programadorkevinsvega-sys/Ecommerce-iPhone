@@ -7,8 +7,5 @@ export interface OrderRepository {
 }
 
 export interface OrderIdempotencyLookup {
-  findByIdempotencyKeyForCustomer(
-    key: string,
-    customerId: string,
-  ): Promise<Order | null>;
+  findByIdempotencyKeyForCustomer(key: string, customerId: string): Promise<Order | null>;
 }
