@@ -24,7 +24,7 @@ Toolchain:
 
 ## CI/CD ownership
 
-**GitHub Actions owns all validation and production deployment. Cloudflare Workers Builds is build-only.**
+**GitHub Actions owns CI and automated tests. Cloudflare Workers Builds owns production D1 migrations and Worker deployment.**
 
 ### GitHub Actions — CI before merge
 
@@ -40,25 +40,25 @@ The workflow `.github/workflows/payment-consistency.yml` runs on pull requests t
 8. Playwright against local Wrangler using `wrangler dev --local`.
 9. Cloudflare Worker build as a CI gate, without deploying.
 
-Pull-request CI has no Cloudflare or production credentials. The E2E database is local, initialized from repository migrations and their test/catalog seed data.
+Pull-request CI has no Cloudflare or production credentials. The E2E database is local, initialized from repository migrations and their test/catalog seed data. CI never applies remote D1 migrations and never deploys a Worker.
 
-### GitHub Actions — CD after merge
+### Cloudflare Workers Builds — production CD
 
-The `deploy-production` job in the same workflow runs **only** when:
+Every push to the configured production branch `main` triggers Workers Builds. Cloudflare runs the configured Build command, then the Deploy command. The repository's Deploy command is `pnpm cloudflare:deploy`, which delegates to `pnpm cloudflare:deploy:production` and performs these operations in order:
 
-- the event is `push`;
-- the ref is `refs/heads/main`;
-- runner diagnostics and the complete quality job both succeeded.
+1. Verify that Cloudflare Workers Builds reports `WORKERS_CI_BRANCH=main` (non-main branches are rejected).
+2. Apply unapplied production D1 migrations with `pnpm db:migrate:production`.
+3. Publish the Worker with `pnpm exec wrangler deploy --env=""`.
 
-The deployment job rebuilds the exact commit SHA whose CI passed, then runs `pnpm cloudflare:deploy:production`. This command checks that the active Git branch/ref is `main`, applies production D1 migrations and runs `wrangler deploy`. After deployment, GitHub Actions verifies D1 migration state, health/rate limiting, Phase 08 public content and authorization boundaries, Phase 09 SEO, notification authorization boundaries, and the Phase 10.2–10.5 analytics, cart/checkout and revenue-projection probes. Those production probes use unique synthetic identifiers and clean up records they create. Main deployments are serialized and a later push cannot cancel a deployment already in progress.
+The production migration and Worker deployment therefore execute inside Cloudflare Workers Builds, using the API token configured for that Worker in Cloudflare. GitHub Actions does not need `CLOUDFLARE_ACCOUNT_ID` or `CLOUDFLARE_API_TOKEN` to deploy.
 
-The job requires GitHub Repository Secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`. Configure an optional required reviewer on the GitHub `production` environment if a human approval gate is desired.
+**Required Cloudflare token permission:** the automatically generated Workers Builds token does not include D1 access by default. In Cloudflare, open **My Profile → API Tokens**, edit the token selected under the Worker’s **Settings → Build → API token**, and grant **Account → D1 → Edit**. Keep the existing Workers Scripts edit permission required to deploy the Worker. Without D1 Edit, the migration step will fail even though Worker upload permissions are correct.
 
-The workflow `.github/workflows/production-verification.yml` separately runs scheduled/manual post-deploy smoke checks. Deeper Phase 10.2–10.5 probes, which write synthetic analytics/cart rows and clean them up, are opt-in via `workflow_dispatch`. Authenticated admin/RBAC verification is also opt-in and uses dedicated GitHub Secrets.
+The workflow `.github/workflows/production-verification.yml` separately runs scheduled/manual HTTP smoke checks after deployment. Deeper Phase 10.2–10.5 probes, which write synthetic analytics/cart rows and clean them up, are opt-in via `workflow_dispatch`. Authenticated admin/RBAC verification is also opt-in and uses dedicated GitHub Secrets.
 
 The existing `.github/workflows/performance.yml` runs Playwright performance smoke checks from GitHub Actions on a schedule or manually.
 
-### Cloudflare Workers Builds — build only, no deploy
+### Cloudflare Workers Builds — build and deploy
 
 Configure **Workers & Pages → ecommerce-iphone → Settings → Build**:
 
@@ -69,11 +69,9 @@ Configure **Workers & Pages → ecommerce-iphone → Settings → Build**:
 | Deploy command    | `pnpm cloudflare:deploy`                                  |
 | Root directory    | empty (monorepo root)                                     |
 
-The Cloudflare Build command only invokes `opennextjs-cloudflare build`. It does not run audits, lint, typecheck, Vitest, Playwright, E2E or smoke tests.
+The Cloudflare Build command compiles the OpenNext Worker. It does not run audits, lint, typecheck, Vitest, Playwright, E2E or smoke tests; those checks run in GitHub Actions.
 
-The Cloudflare Deploy command `pnpm cloudflare:deploy` is intentionally a no-op. It exists as a safe hook for Workers Builds and cannot apply migrations or publish a Worker. The real deployment is performed by the guarded GitHub Actions `deploy-production` job after successful CI on `main`.
-
-This prevents the production Deploy command from publishing a Worker, even if a Workers Builds job is triggered unexpectedly. Still configure `main` as the production branch in the dashboard.
+The Deploy command is the only production deployment path. It runs the main-branch guard, applies remote D1 migrations, and publishes the Worker. Keep `main` as the production branch in the Cloudflare dashboard. The guard reads the `WORKERS_CI_BRANCH` variable injected by Workers Builds, so builds from any other branch are rejected.
 
 **Important:** a no-op Deploy command does not disable non-production Preview builds. Cloudflare uses a separate Preview command when Preview Builds are enabled; it defaults to `npx wrangler preview`. Production Deploy and branch Preview are independent controls. See the [Cloudflare Build configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/) and [branch control guide](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/).
 
@@ -89,7 +87,7 @@ Pull-request E2E runs locally in GitHub Actions with `wrangler dev --local`; a r
 
 - `pnpm build:cloudflare`: compile the Worker bundle; no tests and no deploy.
 - `pnpm cloudflare:build`: build-only alias for Workers Builds.
-- `pnpm cloudflare:deploy`: intentionally does not deploy; safe no-op for Workers Builds.
+- `pnpm cloudflare:deploy`: Workers Builds production hook; main-only guard, production D1 migrations, then Wrangler deploy.
 - `pnpm cloudflare:deploy:production`: main-only guard, production D1 migrations, then Wrangler deploy.
 - `pnpm deploy:production`: local/manual build followed by the same main-only guarded production deploy.
 - `pnpm db:migrate:local`: apply migrations to local D1.
@@ -116,10 +114,10 @@ Keep Worker secrets out of Git and CI logs:
 - `ADMIN_BOOTSTRAP_TOKEN`
 - payment provider credentials.
 
-Configure Worker secrets with `wrangler secret put <SECRET_NAME>`. Configure secrets used by the Actions deploy/verification jobs as repository secrets, available only to workflows that need them.
+Configure Worker secrets with `wrangler secret put <SECRET_NAME>`. Configure only the secrets actually required by production verification (such as dedicated admin/RBAC test credentials) as GitHub repository secrets. The Cloudflare deploy token is managed by Workers Builds in Cloudflare, not stored in GitHub Actions.
 
 ## Migrations and rollback
 
-Production migrations are applied as part of the GitHub Actions deployment job immediately before publishing the Worker. Never edit an applied migration; add a new numbered migration.
+Production migrations are applied by the Cloudflare Workers Builds Deploy command immediately before publishing the Worker. Never edit an applied migration; add a new numbered migration.
 
 Rollback remains manual through `.github/workflows/rollback.yml` and must be followed by a passing `pnpm verify:production`.
