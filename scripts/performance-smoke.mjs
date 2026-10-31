@@ -1,6 +1,6 @@
-import { isCloudflareEdgeBlock } from "./cloudflare-edge-response.mjs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
+import { isCloudflareEdgeBlock } from "./cloudflare-edge-response.mjs";
 
 const require = createRequire(join(process.cwd(), "package.json"));
 const { chromium } = require("@playwright/test");
@@ -10,7 +10,6 @@ if (!baseUrl) {
   console.error("PERF_BASE_URL is required");
   process.exit(1);
 }
-
 
 const routes = ["/", "/catalog", "/iphone/iphone-17-pro-max", "/cart", "/contacto"];
 const browser = await chromium.launch({ headless: true });
