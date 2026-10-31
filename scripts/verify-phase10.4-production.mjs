@@ -32,17 +32,7 @@ async function request(path, init = {}) {
 async function d1(sql) {
   const { stdout } = await execFileAsync(
     "pnpm",
-    [
-      "exec",
-      "wrangler",
-      "d1",
-      "execute",
-      "DB",
-      "--remote",
-      "--json",
-      "--command",
-      sql,
-    ],
+    ["exec", "wrangler", "d1", "execute", "DB", "--remote", "--json", "--command", sql],
     { env: process.env, maxBuffer: 1024 * 1024 },
   );
   const parsed = JSON.parse(stdout);
@@ -93,10 +83,7 @@ try {
     },
     body: JSON.stringify({ productId, quantity: 1 }),
   });
-  assert(
-    addResponse.status === 200,
-    `real cart add: expected HTTP 200, got ${addResponse.status}`,
-  );
+  assert(addResponse.status === 200, `real cart add: expected HTTP 200, got ${addResponse.status}`);
   console.log("PASS real cart add: HTTP 200");
 
   const removeResponse = await request("/api/cart", {
@@ -159,28 +146,21 @@ try {
         "cart analytics source mismatch",
       );
       assert(
-        typeof added.payload_json === "string" &&
-          added.payload_json.includes(productId),
+        typeof added.payload_json === "string" && added.payload_json.includes(productId),
         "CartItemAdded payload does not reference the real product",
       );
       assert(
-        typeof removed.payload_json === "string" &&
-          removed.payload_json.includes(productId),
+        typeof removed.payload_json === "string" && removed.payload_json.includes(productId),
         "CartItemRemoved payload does not reference the real product",
       );
-      console.log(
-        `PASS HTTP → EVENTS_QUEUE → D1: cart events persisted after ${attempt} poll(s)`,
-      );
+      console.log(`PASS HTTP → EVENTS_QUEUE → D1: cart events persisted after ${attempt} poll(s)`);
       completed = true;
       break;
     }
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 
-  assert(
-    completed,
-    `cart analytics queue persistence timeout after ${pollAttempts} polls`,
-  );
+  assert(completed, `cart analytics queue persistence timeout after ${pollAttempts} polls`);
 
   const abandoned = await d1(
     "SELECT COUNT(*) AS count FROM analytics_events WHERE event_type='CartAbandoned' AND source='server'",
