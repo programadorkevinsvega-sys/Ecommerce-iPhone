@@ -2,7 +2,7 @@
 
 **Updated:** 2026-10-31  
 **Branch:** `chore/production-hardening`  
-**Status:** Partial implementation; mandatory branch CI and remaining acceptance criteria are pending.
+**Status:** Partial implementation; Repository CI run [#41232292845](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/actions/runs/41232292845) passed on code HEAD `f20a35d5ed485ceb18c53b793b5fd2b5ec98e85d`. The Cloudflare Preview build for that HEAD was still in progress at the last bot update; remaining production acceptance criteria are pending.
 
 ## HTTP request correlation
 
@@ -70,7 +70,7 @@ PR #19 is closed without merge. The exact path `modules/shared-kernel/domain/Med
 
 The Repository CI workflow remains responsible for frozen-lockfile installation, complete dependency audit, changed-file formatting, repository foundations, architecture, lint, typecheck, unit/integration tests, local D1 preparation, OpenNext/Worker build verification and Playwright E2E. Cloudflare remains the owner of its configured Worker deployment and production D1 migration sequence.
 
-A successful CI run on the earlier `main` commit is baseline evidence only; it does not certify the PR branch. The final PR HEAD must pass all mandatory checks. Do not merge or authorize production deployment while required checks or external deployment evidence are pending.
+The PR branch code HEAD `f20a35d5ed485ceb18c53b793b5fd2b5ec98e85d` passed Repository CI run [#41232292845](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/actions/runs/41232292845): frozen install, audit, changed-file format, repository/front-end/architecture checks, ESLint, TypeScript, unit/integration tests, isolated D1 preparation, OpenNext/Worker build, generated artifact verification, Chromium, 11 Wrangler E2E tests and the production-branch guard. The CI job and aggregate `CI required` both concluded `success`. A subsequent documentation-only commit changes the PR HEAD, so the exact new HEAD must receive a fresh CI run before final acceptance. Cloudflare's Preview integration separately reported the `f20a35d` build as in progress at the last update; no Preview URL is enabled. Do not merge or authorize production deployment while that external Preview evidence or remaining risk acceptance is pending.
 
 ## Remaining work
 
@@ -78,4 +78,4 @@ A successful CI run on the earlier `main` commit is baseline evidence only; it d
 2. Persist originating request correlation through the notification Outbox for HTTP-to-notification trace continuity.
 3. Complete a WCAG 2.2 AA-oriented review of keyboard flows, focus, contrast, reflow, and critical checkout forms.
 4. Establish validated LCP, INP and CLS budgets from reproducible lab and/or field data; no Core Web Vitals pass is claimed by the current smoke.
-5. Execute and review the complete PR branch CI suite and applicable Cloudflare Preview/build evidence.
+5. Confirm the Cloudflare Preview build for the final PR HEAD; then record its outcome alongside the already successful Repository CI evidence.

@@ -1,7 +1,7 @@
 # PR 07 — Production hardening and documentation
 
 **Priority:** P2  
-**Status:** Partial implementation published to the existing PR branch; acceptance and CI verification are pending.
+**Status:** Partial implementation published. Repository CI [#41232292845](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/actions/runs/41232292845) passed on code HEAD `f20a35d5ed485ceb18c53b793b5fd2b5ec98e85d`; Cloudflare Preview for `f20a35d` was still in progress at the latest bot update. The documentation-only update below requires a fresh CI run on the new HEAD.
 
 ## Baseline confirmed on 2026-10-31
 
@@ -10,6 +10,20 @@
 - PR #19 is closed and unmerged. The actual current media primitive is `modules/shared-kernel/MediaReference.ts`; `modules/shared-kernel/domain/MediaReference.ts` is absent.
 - Repository CI already owns frozen-lockfile install, audit, format, foundations, architecture, lint, typecheck, unit/integration, local D1, Cloudflare Worker build verification and Playwright E2E.
 - The existing performance workflow already runs every six hours and measures TTFB, DOMContentLoaded and load event. It classifies Cloudflare edge blocks as inconclusive.
+
+## Latest verification evidence
+
+Repository CI run [#41232292845](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/actions/runs/41232292845) completed successfully on code HEAD `f20a35d5ed485ceb18c53b793b5fd2b5ec98e85d`:
+
+- [x] Frozen-lockfile install, toolchain, dependency audit, changed-file format, repository foundations, frontend-data and architecture checks.
+- [x] ESLint and TypeScript.
+- [x] Full unit/integration suite: 305 tests passed.
+- [x] Isolated D1 preparation, OpenNext/Cloudflare Worker build and generated artifact verification.
+- [x] Chromium installation and 11 Playwright E2E tests against local Wrangler.
+- [x] Production branch guard: rejects `feature/test` and `preview`, accepts only `main`.
+- [x] Aggregate `CI required` job.
+
+The Cloudflare Preview bot reported the Preview build for `f20a35d` as in progress; the Preview URL feature is disabled. This documentation-only update creates a new HEAD, which must receive a fresh CI run before the PR is considered fully verified.
 
 ## Scope and delivery status
 
@@ -54,11 +68,11 @@
 
 - [x] Update `docs/security.md` with current headers, session controls, logger privacy behavior and MFA limitation.
 - [x] Add `docs/production-hardening.md` with contracts, observability limits, security residual risks, operational checks and remaining work.
-- [ ] Update the final acceptance state only after branch CI and applicable Cloudflare build evidence are available.
+- [ ] Complete the final acceptance update after the documentation-only HEAD passes Repository CI and Cloudflare reports the Preview build outcome.
 
 ## Verification required for the final PR HEAD
 
-The existing Repository CI workflow must pass on the exact final PR HEAD:
+The current code HEAD `f20a35d5ed485ceb18c53b793b5fd2b5ec98e85d` passed all gates listed below in run [#41232292845](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/actions/runs/41232292845). Because this plan and the operations document are being updated in a new documentation-only commit, run the same workflow again on that exact new HEAD before marking the PR accepted:
 
 - Frozen-lockfile install and toolchain validation.
 - Full dependency audit.
