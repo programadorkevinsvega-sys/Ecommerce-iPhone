@@ -1,3 +1,4 @@
+import { isCloudflareEdgeBlock } from "./cloudflare-edge-response.mjs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 
@@ -10,22 +11,6 @@ if (!baseUrl) {
   process.exit(1);
 }
 
-function isCloudflareEdgeBlock(status, headers, bodyText) {
-  if (status !== 403 || headers["x-request-id"]) return false;
-
-  const server = (headers.server ?? "").toLowerCase();
-  const cfRay = headers["cf-ray"];
-  const mitigation = (headers["cf-mitigated"] ?? "").toLowerCase();
-  const cloudflareBody =
-    /attention required|sorry, you have been blocked|cloudflare ray id|cf-error-details|cf-chl-|just a moment/i.test(
-      String(bodyText ?? ""),
-    );
-
-  return (
-    mitigation === "challenge" ||
-    ((server.includes("cloudflare") || Boolean(cfRay)) && cloudflareBody)
-  );
-}
 
 const routes = ["/", "/catalog", "/iphone/iphone-17-pro-max", "/cart", "/contacto"];
 const browser = await chromium.launch({ headless: true });
@@ -42,7 +27,7 @@ try {
     const status = response?.status() ?? 0;
     const headers = response ? await response.allHeaders() : {};
     const bodyText = status === 403 && response ? (await response.text()).slice(0, 1200) : "";
-    const edgeBlocked = isCloudflareEdgeBlock(status, headers, bodyText);
+    const edgeBlocked = isCloudflareEdgeBlock({ status, headers }, bodyText);
     const metrics = await page.evaluate(() => {
       const nav = performance.getEntriesByType("navigation")[0];
       const resources = performance.getEntriesByType("resource");
