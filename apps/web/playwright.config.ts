@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const webServerCommand = process.env.CI
-  ? "cd ../.. && pnpm exec wrangler dev --config wrangler.jsonc --local"
+  ? "cd ../.. && pnpm exec wrangler dev --config wrangler.jsonc --local --var E2E_DISABLE_NOTIFICATION_DELIVERY:true"
   : "pnpm preview:cloudflare";
 
 export default defineConfig({
