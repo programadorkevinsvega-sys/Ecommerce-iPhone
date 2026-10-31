@@ -113,10 +113,9 @@ test.describe("platform hardening", () => {
 
       expect(unnamedControls, route).toEqual([]);
       await expect(page.locator("img:not([alt])"), route).toHaveCount(0);
-      await expect(
-        page.locator("[style]:not(img[style='color:transparent'])"),
-        route,
-      ).toHaveCount(0);
+      await expect(page.locator("[style]:not(img[style='color:transparent'])"), route).toHaveCount(
+        0,
+      );
 
       const policy = response?.headers()["content-security-policy"] ?? "";
       expect(policy.split(",").filter(Boolean), route).toHaveLength(1);
