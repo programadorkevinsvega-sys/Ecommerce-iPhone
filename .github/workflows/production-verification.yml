@@ -2,6 +2,17 @@ name: Production Verification
 
 on:
   workflow_dispatch:
+    inputs:
+      run_deep_checks:
+        description: "Run Phase 10.2–10.5 production probes (writes unique probe data and cleans it up)"
+        required: false
+        default: false
+        type: boolean
+      run_admin_checks:
+        description: "Run the authenticated production RBAC smoke test (requires admin credentials in GitHub Secrets)"
+        required: false
+        default: false
+        type: boolean
   schedule:
     - cron: "*/15 * * * *"
 
@@ -16,9 +27,9 @@ env:
   PRODUCTION_URL: https://iphone.jnmtortas.com
 
 jobs:
-  verify:
+  smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,8 +48,78 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify deployed production Worker
+      - name: Verify production Worker health and rate limiting
         run: pnpm verify:production
 
-      - name: Verify deployed Phase 09 SEO
+      - name: Verify Phase 08 public content and admin authorization
+        run: pnpm verify:phase08:production
+
+      - name: Verify Phase 09 SEO
         run: pnpm verify:phase09:production
+
+      - name: Verify notification authorization boundaries
+        run: pnpm verify:notifications:production
+
+  deep-production:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_deep_checks }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify Phase 10.2 analytics ingestion and idempotency
+        run: pnpm verify:phase10.2:production
+
+      - name: Verify Phase 10.3 catalog and search analytics
+        run: pnpm verify:phase10.3:production
+
+      - name: Verify Phase 10.4 cart, checkout and analytics
+        run: pnpm verify:phase10.4:production
+
+      - name: Verify Phase 10.5 canonical revenue projection
+        run: pnpm verify:phase10.5:production
+
+  admin-production:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_admin_checks }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ADMIN_EMAIL: ${{ secrets.ADMIN_RBAC_ALLOWED_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_RBAC_ALLOWED_PASSWORD }}
+      ADMIN_RBAC_DENIED_EMAIL: ${{ secrets.ADMIN_RBAC_DENIED_EMAIL }}
+      ADMIN_RBAC_DENIED_PASSWORD: ${{ secrets.ADMIN_RBAC_DENIED_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify production admin authentication, RBAC and session revocation
+        run: pnpm verify:admin:production

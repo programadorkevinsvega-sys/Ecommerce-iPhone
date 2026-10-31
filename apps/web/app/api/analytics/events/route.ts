@@ -17,12 +17,18 @@ function validId(value: unknown): value is string {
 }
 
 function parsePayload(value: unknown): Readonly<Record<string, string | number | boolean | null>> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("INVALID_ANALYTICS_PAYLOAD");
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error("INVALID_ANALYTICS_PAYLOAD");
   const payload = value as Record<string, unknown>;
   const result: Record<string, string | number | boolean | null> = {};
   for (const [key, item] of Object.entries(payload)) {
     if (!/^[A-Za-z][A-Za-z0-9_:-]{0,63}$/.test(key)) throw new Error("INVALID_ANALYTICS_PAYLOAD");
-    if (item !== null && typeof item !== "string" && typeof item !== "number" && typeof item !== "boolean") {
+    if (
+      item !== null &&
+      typeof item !== "string" &&
+      typeof item !== "number" &&
+      typeof item !== "boolean"
+    ) {
       throw new Error("INVALID_ANALYTICS_PAYLOAD");
     }
     result[key] = item;
@@ -52,10 +58,13 @@ export async function POST(request: Request) {
 
     const body = parsed as Record<string, unknown>;
     const context = analyticsRequestContext(request);
-    const visitorId = context.visitorId ?? (validId(body.visitorId) ? body.visitorId : crypto.randomUUID());
-    const sessionId = context.sessionId ?? (validId(body.sessionId) ? body.sessionId : crypto.randomUUID());
+    const visitorId =
+      context.visitorId ?? (validId(body.visitorId) ? body.visitorId : crypto.randomUUID());
+    const sessionId =
+      context.sessionId ?? (validId(body.sessionId) ? body.sessionId : crypto.randomUUID());
     const eventId = validId(body.eventId) ? body.eventId : crypto.randomUUID();
-    const occurredAt = typeof body.occurredAt === "string" ? body.occurredAt : new Date().toISOString();
+    const occurredAt =
+      typeof body.occurredAt === "string" ? body.occurredAt : new Date().toISOString();
     const requestId = request.headers.get("x-request-id")?.trim() || undefined;
 
     await analyticsApp(cloudflareEnv()).record({
@@ -93,15 +102,24 @@ export async function POST(request: Request) {
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     const status =
-      code === "INVALID_ANALYTICS_EVENT_TYPE" ||
-      code === "INVALID_ANALYTICS_EVENT" ||
-      code === "INVALID_ANALYTICS_PAYLOAD"
-        ? 400
-        : code === "ANALYTICS_SENSITIVE_FIELD" || code === "ANALYTICS_PAYLOAD_TOO_LARGE"
-          ? 422
-          : 400;
+      code === "SERVER_OWNED_ANALYTICS_EVENT"
+        ? 403
+        : code === "INVALID_ANALYTICS_EVENT_TYPE" ||
+            code === "INVALID_ANALYTICS_EVENT" ||
+            code === "INVALID_ANALYTICS_PAYLOAD"
+          ? 400
+          : code === "ANALYTICS_SENSITIVE_FIELD" || code === "ANALYTICS_PAYLOAD_TOO_LARGE"
+            ? 422
+            : 400;
     return NextResponse.json(
-      { error: status === 400 ? "Invalid analytics event" : "Analytics payload rejected" },
+      {
+        error:
+          status === 403
+            ? "This event is recorded only after a trusted server-side transition"
+            : status === 400
+              ? "Invalid analytics event"
+              : "Analytics payload rejected",
+      },
       { status },
     );
   }
