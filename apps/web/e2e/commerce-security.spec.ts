@@ -220,7 +220,7 @@ test.describe("critical commerce and security journeys", () => {
 
     const malformedCart = await request.post("/api/cart", {
       headers: { "content-type": "application/json" },
-      data: "{",
+      data: Buffer.from("{", "utf8"),
     });
     expect(malformedCart.status()).toBe(400);
 
@@ -229,7 +229,7 @@ test.describe("critical commerce and security journeys", () => {
         "content-type": "application/json",
         "Idempotency-Key": randomUUID(),
       },
-      data: "{",
+      data: Buffer.from("{", "utf8"),
     });
     expect(malformedCheckout.status()).toBe(400);
 
