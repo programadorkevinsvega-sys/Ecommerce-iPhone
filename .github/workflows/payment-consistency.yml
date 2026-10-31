@@ -119,7 +119,7 @@ jobs:
           path: apps/web/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
-ci-required:
+  ci-required:
     name: CI required
     if: ${{ always() }}
     needs:

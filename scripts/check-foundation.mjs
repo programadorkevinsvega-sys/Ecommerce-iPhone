@@ -157,9 +157,13 @@ if (!/^  push:\r?\n    branches:\r?\n      - main/m.test(ciWorkflow)) {
   failures.push("GitHub CI must run for pushes to main");
 }
 
-const auditStep = ciWorkflow.match(
-  /      - name: Audit all dependencies\r?\n([\\s\\S]*?)(?=\r?\n      - name:)/,
-)?.[1] ?? "";
+const auditStepStart = ciWorkflow.indexOf("      - name: Audit all dependencies");
+const auditStepEnd = ciWorkflow.indexOf("\n      - name:", auditStepStart + 1);
+const auditStep =
+  auditStepStart >= 0
+    ? ciWorkflow.slice(auditStepStart, auditStepEnd >= 0 ? auditStepEnd : undefined)
+    : "";
+
 if (!auditStep.includes("run: pnpm audit")) {
   failures.push("GitHub CI must execute the complete pnpm audit");
 }
