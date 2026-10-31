@@ -1,6 +1,7 @@
 # PR 06 — Critical commerce and security E2E coverage
 
-**Priority:** P1  
+**Priority:** P1
+
 **Status:** E2E implementation added to PR #25. GitHub Actions and Cloudflare Preview evidence for the implementation SHA are pending; provider sandbox and refund journeys remain conditional.
 
 ## Repository baseline and dependencies
@@ -61,12 +62,12 @@ These items remain explicitly incomplete until a safe sandbox/test credential pa
 
 ## Verification status
 
-| Validation | Status |
+| Validation | Result |
 | --- | --- |
-| Local terminal execution | Not run in this session; the runtime could not resolve `github.com` for a repository clone. |
-| GitHub Actions on the implementation SHA | Pending after branch update. |
-| CI required | Pending; do not treat absent checks as approved. |
-| Cloudflare Preview for the implementation SHA | Pending; no manual deployment is part of this PR. |
-| Production deployment or production data | Not used by E2E. |
+| Local terminal execution | Not run; this session could not clone GitHub or run pnpm. |
+| GitHub Actions | Initial run failed at changed-file formatting; corrected files await rerun. |
+| CI required | Failed on the initial formatting check; no quality checks approved yet. |
+| Cloudflare Preview | Build for the implementation SHA was in progress; no success/URL confirmed. |
+| Production data/deployment | Not used; no manual production deploy. |
 
 Only successful checks attached to the final PR head may be marked approved. The PR remains Draft until CI results and the required Preview evidence are reviewed and the conditional provider scope is resolved or explicitly accepted as out of scope.

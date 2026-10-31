@@ -23,23 +23,25 @@ function errorResponse(error: unknown): Response {
     );
   }
   const code = error instanceof Error ? error.message.toUpperCase() : "UNKNOWN";
-  const status =
-    code.includes("RATE_LIMIT") || code.includes("TOO_MANY")
-      ? 429
-      : code.includes("UNAUTHORIZED") || code.includes("SESSION")
-        ? 401
-        : code.includes("FORBIDDEN") || code.includes("PERMISSION")
-          ? 403
-          : code.includes("NOT_FOUND") || code.includes("NOT FOUND")
-            ? 404
-            : code.includes("CONFLICT") ||
-          code.includes("ALREADY") ||
-          code.includes("STOCK") ||
-          code.includes("UNAVAILABLE")
-        ? 409
-              : code.includes("INVALID") || code.includes("VALIDATION")
-                ? 422
-                : 500;
+  let status = 500;
+  if (code.includes("RATE_LIMIT") || code.includes("TOO_MANY")) {
+    status = 429;
+  } else if (code.includes("UNAUTHORIZED") || code.includes("SESSION")) {
+    status = 401;
+  } else if (code.includes("FORBIDDEN") || code.includes("PERMISSION")) {
+    status = 403;
+  } else if (code.includes("NOT_FOUND") || code.includes("NOT FOUND")) {
+    status = 404;
+  } else if (
+    code.includes("CONFLICT") ||
+    code.includes("ALREADY") ||
+    code.includes("STOCK") ||
+    code.includes("UNAVAILABLE")
+  ) {
+    status = 409;
+  } else if (code.includes("INVALID") || code.includes("VALIDATION")) {
+    status = 422;
+  }
   const message =
     status === 401
       ? "Tu sesión ya no es válida. Inicia sesión nuevamente."

@@ -3,7 +3,9 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 const workingDirectory = process.cwd();
-const repositoryRoot = existsSync(resolve(workingDirectory, "pnpm-workspace.yaml"))
+const repositoryRoot = existsSync(
+  resolve(workingDirectory, "pnpm-workspace.yaml"),
+)
   ? workingDirectory
   : resolve(workingDirectory, "../..");
 
@@ -13,26 +15,24 @@ type D1QueryResult<T> = {
 };
 
 export function executeLocalD1(sql: string): string {
-  return execFileSync(
-    "pnpm",
-    [
-      "exec",
-      "wrangler",
-      "d1",
-      "execute",
-      "ecommerce-iphone",
-      "--local",
-      "--json",
-      "--command",
-      sql,
-    ],
-    {
-      cwd: repositoryRoot,
-      encoding: "utf8",
-      env: process.env,
-      maxBuffer: 4 * 1024 * 1024,
-    },
-  );
+  const args = [
+    "exec",
+    "wrangler",
+    "d1",
+    "execute",
+    "ecommerce-iphone",
+    "--local",
+    "--json",
+    "--command",
+    sql,
+  ];
+
+  return execFileSync("pnpm", args, {
+    cwd: repositoryRoot,
+    encoding: "utf8",
+    env: process.env,
+    maxBuffer: 4 * 1024 * 1024,
+  });
 }
 
 export function queryLocalD1<T>(sql: string): T[] {
@@ -59,11 +59,15 @@ export function resetCheckoutInventory(stock: number): void {
     throw new Error("Checkout E2E stock must be a non-negative integer.");
   }
 
-  executeLocalD1([
-    `UPDATE products SET stock=${stock},updated_at=CURRENT_TIMESTAMP WHERE id='prod-iphone-17-pro-max' AND active=1;`,
-    "UPDATE products SET stock=0,updated_at=CURRENT_TIMESTAMP WHERE id='prod-iphone-18-pro-max' AND active=1;",
-    "UPDATE product_variants SET price_in_cents=464900000 WHERE id='var-iphone-17-256-deep-blue' AND product_id='prod-iphone-17-pro-max';",
-  ].join("\n"));
+  const statements = [
+    `UPDATE products SET stock=${stock},updated_at=CURRENT_TIMESTAMP ` +
+      "WHERE id='prod-iphone-17-pro-max' AND active=1",
+    "UPDATE products SET stock=0,updated_at=CURRENT_TIMESTAMP " +
+      "WHERE id='prod-iphone-18-pro-max' AND active=1",
+    "UPDATE product_variants SET price_in_cents=464900000 " +
+      "WHERE id='var-iphone-17-256-deep-blue' AND product_id='prod-iphone-17-pro-max'",
+  ];
+  executeLocalD1(`${statements.join(";\n")};`);
 
   const availableProduct = queryLocalD1<{ active: number; stock: number }>(
     "SELECT active,stock FROM products WHERE id='prod-iphone-17-pro-max' LIMIT 1",
