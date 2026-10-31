@@ -1,7 +1,7 @@
 type LogContext = Readonly<Record<string, string | number | boolean | null | undefined>>;
 
 const SENSITIVE_CONTEXT_KEY =
-  /authorization|cookie|password|passphrase|token|secret|api.?key|signature|session|email|phone|address|card|cvv|cvc|ip(?:address)?|fingerprint|customer.?name|first.?name|last.?name/i;
+  /authorization|cookie|password|passphrase|token|secret|api.?key|signature|session|email|phone|address|card|cvv|cvc|ip(?:address)?|fingerprint|customer.?name|first.?name|last.?name|account.?id|user.?id|admin.?id|customer.?id|device.?id|imei|serial.?number/i;
 
 const RESERVED_CONTEXT_KEYS = new Set(["timestamp", "level", "source", "operation", "error"]);
 
@@ -16,6 +16,7 @@ function sanitizeText(value: string): string {
     .replace(/https?:\/\/[^/\s:@]+:[^@\s]+@/gi, "https://[REDACTED]@")
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[REDACTED_EMAIL]")
     .replace(/\b(?:\d[ -]?){13,19}\b/g, "[REDACTED_CARD]")
+    .replace(/\+\d{8,15}\b/g, "[REDACTED_PHONE]")
     .replace(
       /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
       "[REDACTED_PRIVATE_KEY]",

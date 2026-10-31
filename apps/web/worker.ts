@@ -25,7 +25,7 @@ import type {
   NotificationInboxItem,
 } from "../../modules/notifications/domain/NotificationEvent";
 import { mediaKeyFromUrl } from "../../modules/shared-kernel/MediaReference";
-import { logServerError } from "./lib/serverLogger";
+import { logServerError } from "./server/serverLogger";
 import { isValidRequestId, resolveRequestId } from "./lib/requestCorrelation";
 import { resolveQueueCorrelation } from "./lib/queueCorrelation";
 import { SECURITY_RESPONSE_HEADERS } from "./lib/securityHeaders";

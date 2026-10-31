@@ -9,7 +9,7 @@ describe("structured server logging", () => {
     logServerError(
       "payment.refund",
       new Error(
-        "Provider rejected Bearer sk_live_secret_123 for buyer@example.com card 4111 1111 1111 1111",
+        "Provider rejected Bearer sk_live_secret_123 for buyer@example.com card 4111 1111 1111 1111 +573001234567",
       ),
       {
         component: "payments",
@@ -17,7 +17,7 @@ describe("structured server logging", () => {
         authorization: "Bearer sk_live_secret_123",
         sessionCookie: "session-secret-value",
         customerEmail: "buyer@example.com",
-        accountId: "123456789",
+        accountId: "acct-private-123456789",
       },
     );
     expect(output).toHaveBeenCalledTimes(1);
@@ -40,10 +40,11 @@ describe("structured server logging", () => {
     expect(record.authorization).toBe("[REDACTED]");
     expect(record.sessionCookie).toBe("[REDACTED]");
     expect(record.customerEmail).toBe("[REDACTED]");
-    expect(record.accountId).toBe("123456789");
+    expect(record.accountId).toBe("[REDACTED]");
     expect(record.error.message).toContain("Bearer [REDACTED]");
     expect(record.error.message).toContain("[REDACTED_EMAIL]");
     expect(record.error.message).toContain("[REDACTED_CARD]");
+    expect(record.error.message).toContain("[REDACTED_PHONE]");
     expect(record.error.stack).toBeUndefined();
     const serialized = JSON.stringify(record);
     for (const secret of [
@@ -51,6 +52,7 @@ describe("structured server logging", () => {
       "session-secret-value",
       "buyer@example.com",
       "4111 1111 1111 1111",
+      "+573001234567",
     ]) {
       expect(serialized).not.toContain(secret);
     }

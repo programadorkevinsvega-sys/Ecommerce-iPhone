@@ -3,7 +3,7 @@ import { PublishPersistedNotification } from "../../../modules/notifications/app
 import { D1NotificationOutboxRepository } from "../../../modules/notifications/infrastructure/D1NotificationOutboxRepository";
 import type { NotificationEvent } from "../../../modules/notifications/domain/NotificationEvent";
 import { notificationQueuePublisher } from "./notificationsApplication";
-import { logServerError } from "./serverLogger";
+import { logServerError } from "../server/serverLogger";
 
 async function publishStoredNotification(
   env: CloudflareEnv,
