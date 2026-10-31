@@ -1,3 +1,4 @@
+import { isCloudflareEdgeBlock } from "./cloudflare-edge-response.mjs";
 const BASE_URL = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
 const timeoutMs = Number(process.env.HEALTH_TIMEOUT_MS ?? "15000");
 const retries = Number(process.env.HEALTH_RETRIES ?? "30");
@@ -46,22 +47,6 @@ function responseDiagnostic(response, bodyText) {
   });
 }
 
-function isCloudflareEdgeBlock(response, bodyText) {
-  if (response.status !== 403 || response.headers.get("x-request-id")) return false;
-
-  const server = (response.headers.get("server") ?? "").toLowerCase();
-  const cfRay = response.headers.get("cf-ray");
-  const mitigation = (response.headers.get("cf-mitigated") ?? "").toLowerCase();
-  const cloudflareBody =
-    /attention required|sorry, you have been blocked|cloudflare ray id|cf-error-details|cf-chl-|just a moment/i.test(
-      String(bodyText ?? ""),
-    );
-
-  return (
-    mitigation === "challenge" ||
-    ((server.includes("cloudflare") || Boolean(cfRay)) && cloudflareBody)
-  );
-}
 
 async function assertHealth(path, expectedStatus, expectedBodyStatus) {
   let lastError;
