@@ -78,14 +78,15 @@ try {
 
 console.table(results);
 const limits = { ttfbMs: 800, domContentLoadedMs: 2500, loadEventMs: 4000 };
-const failures = results.flatMap((r) =>
+const edgeBlockedRoutes = results.filter((result) => result.cloudflareEdgeBlocked);
+const measurableResults = results.filter((result) => !result.cloudflareEdgeBlocked);
+const failures = measurableResults.flatMap((r) =>
   Object.entries(limits)
     .filter(([key, limit]) => r[key] != null && r[key] > limit)
     .map(([key, limit]) => `${r.route}: ${key}=${r[key]}ms > ${limit}ms`),
 );
-const edgeBlockedRoutes = results.filter((result) => result.cloudflareEdgeBlocked);
-const nonEdgeHttpFailures = results.filter(
-  (result) => !result.cloudflareEdgeBlocked && (result.status < 200 || result.status >= 400),
+const nonEdgeHttpFailures = measurableResults.filter(
+  (result) => result.status < 200 || result.status >= 400,
 );
 
 console.log(JSON.stringify({ baseUrl, limits, results, failures }, null, 2));
