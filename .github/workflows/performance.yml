@@ -43,6 +43,24 @@ jobs:
         run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
 
       - name: Run production performance smoke
+        shell: bash
         env:
           PERF_BASE_URL: ${{ inputs.perf_base_url || env.PERF_BASE_URL }}
-        run: pnpm performance:production
+        run: |
+          set +e
+          pnpm performance:production
+          status=$?
+          set -e
+
+          if [ "$status" -eq 2 ]; then
+            echo "::warning title=Performance monitor blocked by Cloudflare::The edge blocked one or more route probes. Performance timings are inconclusive and do not represent storefront performance."
+            {
+              echo "### Storefront performance measurement inconclusive"
+              echo
+              echo "Cloudflare blocked one or more GitHub Actions probes before the storefront could be measured. The script reported the Cloudflare response signature and Ray ID where available."
+              echo "This run is not treated as a performance regression or a deployment failure; no performance pass is claimed."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          exit "$status"

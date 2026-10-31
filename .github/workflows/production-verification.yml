@@ -30,6 +30,8 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      cloudflare_edge_blocked: ${{ steps.production-health.outputs.cloudflare_edge_blocked }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,19 +51,49 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Verify production Worker health and rate limiting
-        run: pnpm verify:production
+        id: production-health
+        shell: bash
+        run: |
+          set +e
+          pnpm verify:production
+          status=$?
+          set -e
+
+          if [ "$status" -eq 2 ]; then
+            echo "cloudflare_edge_blocked=true" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Production monitor blocked by Cloudflare::The edge returned a verified Cloudflare challenge/block response. Worker health is inconclusive; this is not reported as an application or deployment failure."
+            {
+              echo "### Production verification inconclusive"
+              echo
+              echo "Cloudflare blocked the GitHub Actions monitor before the health endpoint could be verified. The response diagnostics above include the Cloudflare Ray ID where available."
+              echo "Phase 08, Phase 09 and notification HTTP probes are skipped for this run because they would use the same blocked public edge."
+              echo
+              echo "This does **not** certify production runtime health; check the Workers Builds deployment check and a real browser request separately."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [ "$status" -ne 0 ]; then
+            exit "$status"
+          fi
+
+          echo "cloudflare_edge_blocked=false" >> "$GITHUB_OUTPUT"
 
       - name: Verify Phase 08 public content and admin authorization
+        if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
         run: pnpm verify:phase08:production
 
       - name: Verify Phase 09 SEO
+        if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
         run: pnpm verify:phase09:production
 
       - name: Verify notification authorization boundaries
+        if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
         run: pnpm verify:notifications:production
 
   deep-production:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_deep_checks }}
+    needs: smoke
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_deep_checks && needs.smoke.outputs.cloudflare_edge_blocked != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -95,7 +127,8 @@ jobs:
         run: pnpm verify:phase10.5:production
 
   admin-production:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_admin_checks }}
+    needs: smoke
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_admin_checks && needs.smoke.outputs.cloudflare_edge_blocked != 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
