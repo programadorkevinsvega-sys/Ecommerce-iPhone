@@ -148,3 +148,16 @@ El audit inicial de Cloudflare encontró `next@15.5.25` en el lockfile y cuatro 
 Se fijaron `next` y `eslint-config-next` en `15.5.28` y se actualizaron las integridades y referencias de Next/SWC en `pnpm-lock.yaml`. Next.js publica `15.5.28` como versión corregida para los avisos crítico y alto; incluye también las correcciones previas de la rama 15.5. `sharp` ya está fijado en `0.35.5`, que cumple la versión indicada por el aviso crítico como workaround upstream.
 
 La nueva auditoría cubre todas las dependencias, no solo producción. **La remediación no se declara certificada todavía:** el primer build de Cloudflare tras estos cambios terminó en fallo sin publicar la salida del audit o de la instalación. Se requiere revisar su log y conseguir un `pnpm audit` completo sin avisos.
+
+
+## Production hardening update — 2026-10-31
+
+The shared security response-header map is maintained in `apps/web/lib/securityHeaders.ts` and consumed by both `apps/web/next.config.ts` and the Cloudflare Worker response wrapper. Worker-owned health, readiness, rate-limit and redirect responses receive the same baseline headers as Next.js responses.
+
+API request IDs are validated and forwarded from middleware to route handlers. The Worker preserves the request ID returned by middleware, so route-level log context and the response `X-Request-Id` stay aligned. Application and Worker failures use structured JSON records. Sensitive context keys and common credential, email, payment-card and private-key patterns are redacted; raw stack traces are omitted.
+
+Queue failure logs include component, queue/schedule, outcome and available correlation key without logging raw Queue bodies. Analytics events preserve the optional request ID provided by API producers. Notification consumers correlate using the durable Outbox ID; the current outbox schema does not persist the originating HTTP request ID, so full HTTP-to-notification tracing remains pending.
+
+Admin authorization continues to be enforced server-side by persisted session resolution and effective RBAC permissions. Session tokens are stored as hashes; session expiration/revocation, secure cookies, login throttling and audit are present. The repository has no provider-backed MFA/step-up integration, and no fake second factor was introduced. These are compensating controls, not equivalent to a real step-up challenge.
+
+The existing CSP retains `'unsafe-inline'` for scripts/styles pending a verified nonce/hash integration with Next.js/OpenNext. It does not enable `'unsafe-eval'` and keeps the existing explicit Cloudflare Insights script origin. See [production hardening and operational evidence](./production-hardening.md) for exact implementation boundaries and outstanding risks.

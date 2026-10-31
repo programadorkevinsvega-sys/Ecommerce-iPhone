@@ -17,12 +17,49 @@ const results = [];
 try {
   for (const route of routes) {
     const page = await browser.newPage();
+    await page.addInitScript(() => {
+      const metrics = { lcpMs: null, cls: 0, inpMs: null };
+      const interactions = new Map();
+      try {
+        new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          const latest = entries[entries.length - 1];
+          if (latest) metrics.lcpMs = Math.round(latest.startTime);
+        }).observe({ type: "largest-contentful-paint", buffered: true });
+      } catch {}
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (!entry.hadRecentInput) metrics.cls += entry.value;
+          }
+        }).observe({ type: "layout-shift", buffered: true });
+      } catch {}
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (!entry.interactionId || entry.interactionId <= 0) continue;
+            interactions.set(
+              entry.interactionId,
+              Math.max(interactions.get(entry.interactionId) ?? 0, entry.duration),
+            );
+          }
+          const values = [...interactions.values()].sort((a, b) => a - b);
+          if (values.length > 0) {
+            const index = Math.min(values.length - 1, Math.ceil(values.length * 0.98) - 1);
+            metrics.inpMs = Math.round(values[index]);
+          }
+        }).observe({ type: "event", buffered: true, durationThreshold: 16 });
+      } catch {}
+      window.__productionHardeningVitals = metrics;
+    });
     const started = Date.now();
     const response = await page.goto(`${baseUrl}${route}`, {
       waitUntil: "domcontentloaded",
       timeout: 30000,
     });
     const domContentLoadedMs = Date.now() - started;
+    await page.waitForLoadState("load").catch(() => undefined);
+    await page.waitForTimeout(750);
     const status = response?.status() ?? 0;
     const headers = response ? await response.allHeaders() : {};
     const bodyText = status === 403 && response ? (await response.text()).slice(0, 1200) : "";
@@ -38,6 +75,9 @@ try {
           resources.reduce((sum, item) => sum + (item.transferSize || 0), 0),
         ),
         resourceCount: resources.length,
+        lcpMs: window.__productionHardeningVitals?.lcpMs ?? null,
+        inpMs: window.__productionHardeningVitals?.inpMs ?? null,
+        cls: Number((window.__productionHardeningVitals?.cls ?? 0).toFixed(4)),
       };
     });
 

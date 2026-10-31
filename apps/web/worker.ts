@@ -13,6 +13,10 @@ import type { AnalyticsEvent } from "../../modules/analytics/domain/AnalyticsEve
 import { NotificationTerminalError } from "../../modules/notifications/application/NotificationProcessingError";
 import type { NotificationEvent, NotificationInboxItem } from "../../modules/notifications/domain/NotificationEvent";
 import { mediaKeyFromUrl } from "../../modules/shared-kernel/MediaReference";
+import { logServerError } from "./lib/serverLogger";
+import { isValidRequestId, resolveRequestId } from "./lib/requestCorrelation";
+import { resolveQueueCorrelation } from "./lib/queueCorrelation";
+import { SECURITY_RESPONSE_HEADERS } from "./lib/securityHeaders";
 
 export class NotificationHub extends DurableObject {
   async fetch(request: Request): Promise<Response> {
@@ -98,11 +102,6 @@ const SENSITIVE_PREFIXES = [
   "/api/notifications",
 ];
 
-function requestId(request: Request): string {
-  const supplied = request.headers.get("x-request-id")?.trim();
-  return supplied && /^[A-Za-z0-9._:-]{8,128}$/.test(supplied) ? supplied : crypto.randomUUID();
-}
-
 function clientKey(request: Request, pathname: string): string {
   const address = request.headers.get("cf-connecting-ip") ?? "local";
   return `${address}:${pathname}`;
@@ -122,6 +121,7 @@ async function enforceRateLimit(request: Request, env: Env, pathname: string): P
 
 function withHeaders(response: Response, headers: Record<string, string>): Response {
   const merged = new Headers(response.headers);
+  for (const [key, value] of Object.entries(SECURITY_RESPONSE_HEADERS)) merged.set(key, value);
   for (const [key, value] of Object.entries(headers)) merged.set(key, value);
   return new Response(response.body, {
     status: response.status,
@@ -195,6 +195,21 @@ function parseAnalyticsMessage(body: string): AnalyticsQueueMessage | null {
     if (value.kind !== "analytics" || value.schemaVersion !== 1 || !value.event) return null;
     return value as AnalyticsQueueMessage;
   } catch { return null; }
+}
+
+function queueCorrelationId(body: string, fallback?: string): string | undefined {
+  const analytics = parseAnalyticsMessage(body);
+  if (analytics) {
+    return resolveQueueCorrelation(
+      {
+        requestId: analytics.event.requestId,
+        eventId: analytics.event.eventId,
+      },
+      fallback,
+    );
+  }
+  const notification = parseQueueMessage(body);
+  return resolveQueueCorrelation({ outboxId: notification?.outboxId }, fallback);
 }
 
 async function processAnalyticsMessage(message: Message<string>, env: Env): Promise<void> {
@@ -286,7 +301,7 @@ async function processNotificationMessage(
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
-    const id = requestId(request);
+    let id = resolveRequestId(request.headers);
 
     if (url.pathname === "/api/health/live") {
       return withHeaders(healthResponse("ok"), { "X-Request-Id": id });
@@ -331,6 +346,8 @@ const worker = {
     }
 
     const response = await nextWorker.fetch(request, env, ctx);
+    const middlewareRequestId = response.headers.get("X-Request-Id");
+    if (isValidRequestId(middlewareRequestId)) id = middlewareRequestId.trim();
 
     if (
       (request.method === "GET" || request.method === "HEAD") &&
@@ -367,37 +384,54 @@ const worker = {
     );
   },
 
-  async scheduled(_event: ScheduledEvent, env: Env) {
-    const now = new Date().toISOString();
-    await processMediaCleanup(env);
-    await analyticsPersistence(env.DB).purgeExpired(500);
-    await revenueAnalyticsApp(env).reconcile(500);
-    await recordAbandonedCarts(env);
-    await env.DB.batch([
-      env.DB.prepare("UPDATE cms_blog_posts SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
-      env.DB.prepare("UPDATE cms_landing_pages SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
-    ]);
-    await new D1ReservationRepository(env.DB).releaseExpired();
+  async scheduled(event: ScheduledEvent, env: Env) {
+    const correlationId = `scheduled:${event.scheduledTime}`;
+    try {
+      const now = new Date().toISOString();
+      await processMediaCleanup(env);
+      await analyticsPersistence(env.DB).purgeExpired(500);
+      await revenueAnalyticsApp(env).reconcile(500);
+      await recordAbandonedCarts(env);
+      await env.DB.batch([
+        env.DB.prepare("UPDATE cms_blog_posts SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
+        env.DB.prepare("UPDATE cms_landing_pages SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
+      ]);
+      await new D1ReservationRepository(env.DB).releaseExpired();
 
-    const repo = new D1NotificationOutboxRepository(env.DB);
-    const publisher = notificationQueuePublisher(env);
-    const pending = await repo.pending(50);
+      const repo = new D1NotificationOutboxRepository(env.DB);
+      const publisher = notificationQueuePublisher(env);
+      const pending = await repo.pending(50);
 
-    for (const event of pending) {
-      if (!(await repo.claim(event.id, 300))) continue;
-      try {
-        await publisher.publish(event);
-        await repo.markQueued(event.id);
-      } catch (error) {
-        await repo.markFailed(
-          event.id,
-          error instanceof Error ? error.message : String(error),
-          new Date(Date.now() + 60_000)
-            .toISOString()
-            .replace("T", " ")
-            .replace("Z", ""),
-        );
+      for (const outboxEvent of pending) {
+        if (!(await repo.claim(outboxEvent.id, 300))) continue;
+        try {
+          await publisher.publish(outboxEvent);
+          await repo.markQueued(outboxEvent.id);
+        } catch (error) {
+          logServerError("queue.publish.notification", error, {
+            component: "cloudflare-worker",
+            queue: "ecommerce-iphone-events",
+            correlationId: outboxEvent.id,
+            outcome: "retry",
+          });
+          await repo.markFailed(
+            outboxEvent.id,
+            error instanceof Error ? error.message : String(error),
+            new Date(Date.now() + 60_000)
+              .toISOString()
+              .replace("T", " ")
+              .replace("Z", ""),
+          );
+        }
       }
+    } catch (error) {
+      logServerError("scheduled.run", error, {
+        component: "cloudflare-worker",
+        schedule: event.cron,
+        correlationId,
+        outcome: "failed",
+      });
+      throw error;
     }
   },
 
@@ -412,7 +446,17 @@ const worker = {
           }
           await processNotificationMessage(message, env, true);
         } catch (error) {
-          if (error instanceof NotificationTerminalError) {
+          const queueMessageId = (message as Message<string> & { id?: string }).id;
+          const correlationId = queueCorrelationId(message.body, queueMessageId);
+          const terminal = error instanceof NotificationTerminalError;
+          logServerError("queue.consume", error, {
+            component: "cloudflare-worker",
+            queue: batch.queue,
+            correlationId,
+            messageId: queueMessageId,
+            outcome: terminal ? "dead_letter" : "retry",
+          });
+          if (terminal) {
             await env.NOTIFICATIONS_DLQ_QUEUE.send(message.body);
             message.ack();
             continue;
@@ -427,13 +471,24 @@ const worker = {
       const deadLetters = notificationDeadLetterApplication(env);
       for (const message of batch.messages) {
         const raw = message as Message<string> & { id?: string };
-        await deadLetters.record({
-          id: raw.id ?? crypto.randomUUID(),
-          queueName: batch.queue,
-          ...(raw.id ? { messageId: raw.id } : {}),
-          messageBody: raw.body,
-        });
-        message.ack();
+        try {
+          await deadLetters.record({
+            id: raw.id ?? crypto.randomUUID(),
+            queueName: batch.queue,
+            ...(raw.id ? { messageId: raw.id } : {}),
+            messageBody: raw.body,
+          });
+          message.ack();
+        } catch (error) {
+          logServerError("queue.consume.dead_letter", error, {
+            component: "cloudflare-worker",
+            queue: batch.queue,
+            correlationId: raw.id,
+            messageId: raw.id,
+            outcome: "retry",
+          });
+          message.retry();
+        }
       }
       return;
     }
@@ -446,7 +501,17 @@ const worker = {
           batch.queue === "ecommerce-iphone-events",
         );
       } catch (error) {
-        if (error instanceof NotificationTerminalError) {
+        const queueMessageId = (message as Message<string> & { id?: string }).id;
+        const correlationId = queueCorrelationId(message.body, queueMessageId);
+        const terminal = error instanceof NotificationTerminalError;
+        logServerError("queue.consume", error, {
+          component: "cloudflare-worker",
+          queue: batch.queue,
+          correlationId,
+          messageId: queueMessageId,
+          outcome: terminal ? "dead_letter" : "retry",
+        });
+        if (terminal) {
           await env.NOTIFICATIONS_DLQ_QUEUE.send(message.body);
           message.ack();
           continue;
