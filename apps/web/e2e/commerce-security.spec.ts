@@ -1,8 +1,4 @@
-import {
-  expect,
-  test,
-  type APIRequestContext,
-} from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import {
   executeLocalD1,

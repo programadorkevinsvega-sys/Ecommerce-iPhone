@@ -29,7 +29,7 @@ The new Playwright suite `apps/web/e2e/commerce-security.spec.ts` runs against t
 - [x] A second authenticated customer cannot read another customer's order or create a payment intent for it (IDOR boundary); no payment row is created.
 - [x] Concurrent checkout attempts against one remaining unit produce one committed order and one conflict; the failed cart remains intact and no second reservation/outbox/order is persisted.
 
-The suite is serialized within its spec to make inventory mutations deterministic. Each request context receives an independent cart/customer identity. The shared local D1 database is disposable per CI job, and the fixture reset restores the test product stock and variant price before every scenario.
+The suite is serialized within its spec to make inventory mutations deterministic. Each request context receives an independent cart/customer identity. An `afterEach` hook removes the scenario's orders, customers, sessions, reservations, outbox rows, deliveries, carts, and cart items from local D1. The fixture reset restores the test product stock and variant price before every scenario; the disposable local D1 is never shared with production.
 
 ## Small API correctness fixes required by the E2E contract
 

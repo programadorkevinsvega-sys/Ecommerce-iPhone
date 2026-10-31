@@ -55,11 +55,7 @@ describe("ListOrdersForCustomer", () => {
   });
 
   it("clamps pagination and preserves ownership at the application boundary", async () => {
-    const page = await new ListOrdersForCustomer(new Orders()).execute(
-      "customer-1",
-      500,
-      3,
-    );
+    const page = await new ListOrdersForCustomer(new Orders()).execute("customer-1", 500, 3);
     expect(page).toEqual({ items: [order], limit: 50, offset: 3 });
   });
 
