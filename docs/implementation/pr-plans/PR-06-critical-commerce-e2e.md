@@ -2,7 +2,7 @@
 
 **Priority:** P1
 
-**Status:** E2E implementation added to PR #25. GitHub Actions and Cloudflare Preview evidence for the implementation SHA are pending; provider sandbox and refund journeys remain conditional.
+**Status:** E2E implementation and local validation are complete on the current PR head. GitHub Actions `CI required` and Cloudflare Preview build both passed for SHA `ad8e26a333cdbc376ea916a2213823b2b7214b1c`. Provider sandbox and refund journeys remain conditional.
 
 ## Repository baseline and dependencies
 
@@ -29,7 +29,7 @@ The new Playwright suite `apps/web/e2e/commerce-security.spec.ts` runs against t
 - [x] A second authenticated customer cannot read another customer's order or create a payment intent for it (IDOR boundary); no payment row is created.
 - [x] Concurrent checkout attempts against one remaining unit produce one committed order and one conflict; the failed cart remains intact and no second reservation/outbox/order is persisted.
 
-The suite is serialized within its spec to make inventory mutations deterministic. Playwright targets `http://localhost:8787` so the Worker can exercise production-style `Secure` cookies on a loopback origin. Each request context receives an independent cart/customer identity. An E2E-only Wrangler variable keeps the notification Queue producer active but makes its local consumer acknowledge messages without invoking external email delivery. This preserves the HTTP outbox publish path while isolating customer communications. An `afterEach` hook marks only the scenario's local outbox rows terminal, polls active consumer leases to completion, then removes delivery rows, outbox rows, orders, customers, and carts. It asserts that the created rows are gone. The fixture reset restores the test product stock and variant price before every scenario; the disposable local D1 is never shared with production.
+The suite is serialized within its spec to make inventory mutations deterministic. Playwright targets `http://localhost:8787` so the Worker can exercise production-style `Secure` cookies on a loopback origin. Each request context receives an independent cart/customer identity. An E2E-only Wrangler variable is intercepted in `apps/web/worker-entry.ts`: the notification Queue producer and durable outbox path remain active, while the local consumer acknowledges notifications without invoking external email delivery. The production Worker behavior is unchanged when that variable is absent. The `afterEach` cleanup helper removes notification channel deliveries, inbox entries, outbox rows, order children, orders, idempotency records, customers, reservations, cart items, and carts in foreign-key-safe order. It asserts that no created customer, order, outbox, delivery, or cart rows remain. The fixture reset restores the test product stock and variant price before every scenario; the disposable local D1 is never shared with production.
 
 ## Small API correctness fixes required by the E2E contract
 
@@ -62,10 +62,10 @@ These items remain explicitly incomplete until a safe sandbox/test credential pa
 
 ## Verification status
 
-- **Local terminal execution:** Not run in this session; the runtime could not clone GitHub or execute pnpm.
-- **GitHub Actions:** The first three runs stopped at changed-file formatting. Formatting corrections are now published and the latest run must be checked before approving CI.
-- **CI required:** Not approved until the latest full workflow succeeds.
-- **Cloudflare Preview:** The Preview build succeeded for `1fcf579`; no Preview URL is enabled.
+- **Local terminal execution:** Not run from the assistant runtime. The complete validation ran on the isolated GitHub-hosted runner.
+- **GitHub Actions:** Run [#41226512674](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/actions/runs/41226512674) passed on SHA `ad8e26a333cdbc376ea916a2213823b2b7214b1c`: formatting, repository checks, lint, TypeScript, unit/integration tests, local D1 preparation, OpenNext build, generated Worker/static artifact verification, Chromium install, all 8 Playwright E2E tests (`8 passed`, no flaky tests), and the production branch guard.
+- **CI required:** Passed on the same SHA.
+- **Cloudflare Preview:** Build succeeded for SHA `ad8e26a333cdbc376ea916a2213823b2b7214b1c`. Preview URLs are disabled for the Worker, so no public Preview URL was generated.
 - **Production data/deployment:** Not used; no manual production deployment occurred.
 
 Only successful checks attached to the final PR head may be marked approved. The PR remains Draft until CI results are green, Preview build evidence for the final SHA is reviewed, and the conditional provider scope is resolved or explicitly accepted as out of scope.
