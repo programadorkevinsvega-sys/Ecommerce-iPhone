@@ -16,7 +16,12 @@ const GENERIC_ERROR = "No pudimos completar la operación.";
 const VALIDATION_ERROR = "Revisa los datos ingresados e inténtalo nuevamente.";
 
 function errorResponse(error: unknown): Response {
-  if (error instanceof SyntaxError) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "SyntaxError"
+  ) {
     return NextResponse.json(
       { error: VALIDATION_ERROR },
       { status: 400, headers: { "cache-control": "no-store" } },

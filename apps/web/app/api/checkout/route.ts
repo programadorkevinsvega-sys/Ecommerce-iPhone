@@ -19,7 +19,12 @@ import { cloudflareEnv } from "../../../lib/cloudflareContext";
 import { cloudflareWaitUntil } from "../../../lib/cloudflareContext";
 
 function safeError(error: unknown): { error: string; status: number } {
-  if (error instanceof SyntaxError) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "SyntaxError"
+  ) {
     return {
       error: "Revisa los datos ingresados e inténtalo nuevamente.",
       status: 400,
