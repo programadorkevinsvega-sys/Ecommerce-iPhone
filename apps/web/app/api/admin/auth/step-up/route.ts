@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { Permission } from "../../../../../../modules/admin/application/Rbac";
+import type { Permission } from "../../../../../../../modules/admin/application/Rbac";
 import { cookies } from "next/headers";
 import {
   ADMIN_COOKIE,
