@@ -1,5 +1,7 @@
 type HeaderCollection =
-  | { get(name: string): string | null }
+  | {
+      get(name: string): string | null;
+    }
   | Record<string, string | undefined>;
 
 export function isCloudflareEdgeBlock(
