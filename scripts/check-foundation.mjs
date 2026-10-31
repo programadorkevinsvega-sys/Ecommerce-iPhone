@@ -127,6 +127,61 @@ if (!ciWorkflow.includes("pnpm cloudflare:build"))
 if (!ciWorkflow.includes("pnpm verify:cloudflare:build"))
   failures.push("GitHub CI must verify generated static pages and Worker artifacts");
 
+const requiredCiCommands = [
+  "pnpm install --frozen-lockfile",
+  "node scripts/verify-install.mjs",
+  "pnpm audit",
+  "pnpm format:check",
+  "pnpm foundation:check",
+  "pnpm frontend:data:check",
+  "pnpm architecture:check",
+  "pnpm lint",
+  "pnpm typecheck",
+  "pnpm test",
+  "pnpm db:prepare:e2e",
+  "pnpm --filter @ecommerce/web exec playwright install --with-deps chromium",
+  "pnpm test:e2e",
+  "pnpm cloudflare:build",
+  "pnpm verify:cloudflare:build",
+];
+for (const command of requiredCiCommands) {
+  if (!ciWorkflow.includes(command)) {
+    failures.push(`GitHub CI is missing required quality command: ${command}`);
+  }
+}
+
+if (!/^  pull_request:\r?\n    branches:\r?\n      - main/m.test(ciWorkflow)) {
+  failures.push("GitHub CI must run for pull requests targeting main");
+}
+if (!/^  push:\r?\n    branches:\r?\n      - main/m.test(ciWorkflow)) {
+  failures.push("GitHub CI must run for pushes to main");
+}
+
+const auditStep = ciWorkflow.match(
+  /      - name: Audit all dependencies\r?\n([\\s\\S]*?)(?=\r?\n      - name:)/,
+)?.[1] ?? "";
+if (!auditStep.includes("run: pnpm audit")) {
+  failures.push("GitHub CI must execute the complete pnpm audit");
+}
+if (auditStep.includes("continue-on-error")) {
+  failures.push("Dependency audit failures must not be ignored");
+}
+
+const requiredCheckJob = ciWorkflow.slice(ciWorkflow.indexOf("  ci-required:"));
+for (const requiredFragment of [
+  "    name: CI required",
+  "    if: ${{ always() }}",
+  "      - runner-diagnostics",
+  "      - payment-quality",
+  "needs.runner-diagnostics.result",
+  "needs.payment-quality.result",
+  '!= "success"',
+]) {
+  if (!requiredCheckJob.includes(requiredFragment)) {
+    failures.push(`The required CI aggregate job is missing: ${requiredFragment}`);
+  }
+}
+
 const productionVerificationHasRemoteD1 = productionVerification.includes(
   "pnpm db:verify:production",
 );

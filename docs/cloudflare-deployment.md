@@ -43,6 +43,19 @@ The workflow `.github/workflows/payment-consistency.yml` runs on pull requests t
 
 Pull-request CI has no Cloudflare or production credentials. The E2E database is local, initialized from repository migrations and their test/catalog seed data. CI never applies remote D1 migrations and never deploys a Worker.
 
+The workflow exposes one stable aggregate job check named **`CI required`**. It runs with `always()` and succeeds only when both `runner-diagnostics` and `payment-quality` succeed. A failed, cancelled or skipped upstream job makes the aggregate check fail.
+
+### Required merge protection for `main`
+
+The workflow triggers CI, but it cannot make its own result mandatory for merging. Configure this separately in **Settings → Rules → Rulesets** (or **Settings → Branches → Branch protection rules**) for the `main` branch:
+
+1. Require status checks to pass before merging.
+2. Add the exact GitHub Actions check **`CI required`** from **Repository CI** as a required check. Do not rely only on the individual `payment-quality` job.
+3. Do not grant bypass actors for this rule; include administrators / enable the ruleset's bypass protection.
+4. Block force pushes and branch deletion. Requiring the branch to be up to date before merging is recommended.
+
+This is repository administration state and is not configured by a workflow file. Until the rule is enabled in GitHub, CI will run on pull requests but a failing check is not guaranteed to block a merge.
+
 ### Cloudflare Workers Builds — production CD
 
 Every push to the configured production branch `main` triggers Workers Builds. Cloudflare runs the configured Build command, then the Deploy command. The repository's Deploy command is `pnpm cloudflare:deploy`, which delegates to `pnpm cloudflare:deploy:production` and performs these operations in order:
