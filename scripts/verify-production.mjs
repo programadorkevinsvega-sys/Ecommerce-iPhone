@@ -5,6 +5,14 @@ const retryDelayMs = Number(process.env.HEALTH_RETRY_DELAY_MS ?? "10000");
 const rateLimitAttempts = Number(process.env.RATE_LIMIT_PROBE_ATTEMPTS ?? "21");
 const strictRateLimit = process.env.STRICT_RATE_LIMIT_VERIFICATION === "1";
 
+class CloudflareEdgeBlockedError extends Error {
+  constructor(path, diagnostic) {
+    super(`Cloudflare edge blocked the production monitor at ${path}: ${diagnostic}`);
+    this.name = "CloudflareEdgeBlockedError";
+    this.exitCode = 2;
+  }
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -23,13 +31,30 @@ async function request(path, init = {}) {
   }
 }
 
-async function getJson(response) {
-  const text = await response.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    return { raw: text };
-  }
+function responseDiagnostic(response, bodyText) {
+  const headers = response.headers;
+  return JSON.stringify({
+    status: response.status,
+    server: headers.get("server"),
+    cfRay: headers.get("cf-ray"),
+    cfMitigated: headers.get("cf-mitigated"),
+    contentType: headers.get("content-type"),
+    requestId: headers.get("x-request-id"),
+    bodyExcerpt: String(bodyText ?? "").replace(/\s+/g, " ").slice(0, 240),
+  });
+}
+
+function isCloudflareEdgeBlock(response, bodyText) {
+  if (response.status !== 403 || response.headers.get("x-request-id")) return false;
+
+  const server = (response.headers.get("server") ?? "").toLowerCase();
+  const cfRay = response.headers.get("cf-ray");
+  const mitigation = (response.headers.get("cf-mitigated") ?? "").toLowerCase();
+  const cloudflareBody = /attention required|sorry, you have been blocked|cloudflare ray id|cf-error-details|cf-chl-|just a moment/i.test(
+    String(bodyText ?? ""),
+  );
+
+  return mitigation === "challenge" || ((server.includes("cloudflare") || Boolean(cfRay)) && cloudflareBody);
 }
 
 async function assertHealth(path, expectedStatus, expectedBodyStatus) {
@@ -37,18 +62,36 @@ async function assertHealth(path, expectedStatus, expectedBodyStatus) {
   for (let attempt = 1; attempt <= retries; attempt += 1) {
     try {
       const response = await request(path);
-      const body = await getJson(response);
+      const rawBody = await response.text();
+
+      if (isCloudflareEdgeBlock(response, rawBody)) {
+        throw new CloudflareEdgeBlockedError(path, responseDiagnostic(response, rawBody));
+      }
+
+      let body;
+      try {
+        body = JSON.parse(rawBody);
+      } catch {
+        body = { status: "missing" };
+      }
+
       const requestId = response.headers.get("x-request-id");
       if (response.status === expectedStatus && body.status === expectedBodyStatus && requestId) {
         console.log(`PASS ${path}: HTTP ${response.status}, status=${body.status}, request_id=${requestId}`);
         return;
       }
-      lastError = new Error(`${path}: expected HTTP ${expectedStatus}/${expectedBodyStatus}, got HTTP ${response.status}/${body.status ?? "missing"}`);
+
+      lastError = new Error(
+        `${path}: expected HTTP ${expectedStatus}/${expectedBodyStatus}, got HTTP ${response.status}/${body.status}; response=${responseDiagnostic(response, rawBody)}`,
+      );
     } catch (error) {
+      if (error instanceof CloudflareEdgeBlockedError) throw error;
       lastError = error;
     }
+
     if (attempt < retries) await sleep(retryDelayMs);
   }
+
   throw lastError ?? new Error(`Health verification failed for ${path}`);
 }
 
@@ -69,13 +112,24 @@ async function verifyRateLimit() {
   }
 
   const message = `WARN rate limit: no HTTP 429 after ${rateLimitAttempts} requests. Cloudflare Workers Rate Limiting is eventually consistent and may permit bursts across isolates/locations.`;
-  if (strictRateLimit) {
-    throw new Error(message.replace(/^WARN /, ""));
-  }
+  if (strictRateLimit) throw new Error(message.replace(/^WARN /, ""));
   console.warn(message);
 }
 
-await assertHealth("/api/health/live", 200, "ok");
-await assertHealth("/api/health/ready", 200, "ready");
-await verifyRateLimit();
-console.log(`Production verification passed for ${BASE_URL}`);
+async function main() {
+  await assertHealth("/api/health/live", 200, "ok");
+  await assertHealth("/api/health/ready", 200, "ready");
+  await verifyRateLimit();
+  console.log(`Production verification passed for ${BASE_URL}`);
+}
+
+main().catch((error) => {
+  if (error instanceof CloudflareEdgeBlockedError) {
+    console.warn(`PRODUCTION_MONITOR_INCONCLUSIVE: ${error.message}`);
+    process.exitCode = 2;
+    return;
+  }
+
+  console.error(error);
+  process.exitCode = 1;
+});
