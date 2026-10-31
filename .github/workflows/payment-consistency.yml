@@ -1,4 +1,4 @@
-name: Repository CI and Production CD
+name: Repository CI
 
 on:
   pull_request:
@@ -106,13 +106,22 @@ jobs:
         env:
           CI: "true"
 
-      - name: Verify production deployment is blocked outside main
-        if: github.ref != 'refs/heads/main'
+      - name: Verify production deployment guard for GitHub and Cloudflare branches
+        shell: bash
         run: |
+          set -euo pipefail
+
           if node scripts/assert-main-deploy.mjs; then
-            echo "::error::Production deployment guard unexpectedly allowed a non-main ref."
+            echo "::error::Production deployment guard unexpectedly allowed a non-main GitHub ref."
             exit 1
           fi
+
+          if env -u GITHUB_REF WORKERS_CI_BRANCH=preview node scripts/assert-main-deploy.mjs; then
+            echo "::error::Production deployment guard unexpectedly allowed a Cloudflare preview branch."
+            exit 1
+          fi
+
+          env -u GITHUB_REF WORKERS_CI_BRANCH=main node scripts/assert-main-deploy.mjs
 
       - name: Build Cloudflare Worker
         run: pnpm build:cloudflare
@@ -126,73 +135,3 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-  deploy-production:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs:
-      - runner-diagnostics
-      - payment-quality
-    runs-on: ubuntu-24.04
-    timeout-minutes: 40
-    environment: production
-    concurrency:
-      group: ecommerce-iphone-production-deployment
-      cancel-in-progress: false
-    permissions:
-      contents: read
-    env:
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      PRODUCTION_URL: https://iphone.jnmtortas.com
-    steps:
-      - name: Checkout the exact main commit that passed CI
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 12.4.1
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24.18.0
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build production Worker
-        run: pnpm build:cloudflare
-
-      - name: Deploy production Worker (main-only guard)
-        run: pnpm cloudflare:deploy:production
-
-      - name: Verify production D1 migrations
-        run: pnpm db:verify:production
-
-      - name: Verify production Worker health and rate limiting
-        run: pnpm verify:production
-
-      - name: Verify Phase 08 content and authorization boundaries
-        run: pnpm verify:phase08:production
-
-      - name: Verify Phase 09 SEO
-        run: pnpm verify:phase09:production
-
-      - name: Verify notification authorization boundaries
-        run: pnpm verify:notifications:production
-
-      - name: Verify Phase 10.2 analytics ingestion and idempotency
-        run: pnpm verify:phase10.2:production
-
-      - name: Verify Phase 10.3 catalog and search analytics
-        run: pnpm verify:phase10.3:production
-
-      - name: Verify Phase 10.4 cart, checkout and analytics
-        run: pnpm verify:phase10.4:production
-
-      - name: Verify Phase 10.5 canonical revenue projection
-        run: pnpm verify:phase10.5:production
