@@ -73,11 +73,15 @@ The Cloudflare Build command only invokes `opennextjs-cloudflare build`. It does
 
 The Cloudflare Deploy command `pnpm cloudflare:deploy` is intentionally a no-op. It exists as a safe hook for Workers Builds and cannot apply migrations or publish a Worker. The real deployment is performed by the guarded GitHub Actions `deploy-production` job after successful CI on `main`.
 
-This prevents a Cloudflare Workers Builds run for a feature branch or Pull Request from publishing to production, even if the dashboard branch setting is temporarily incorrect. Still configure `main` as the production branch in the dashboard.
+This prevents the production Deploy command from publishing a Worker, even if a Workers Builds job is triggered unexpectedly. Still configure `main` as the production branch in the dashboard.
+
+**Important:** a no-op Deploy command does not disable non-production Preview builds. Cloudflare uses a separate Preview command when Preview Builds are enabled; it defaults to `npx wrangler preview`. Production Deploy and branch Preview are independent controls. See the [Cloudflare Build configuration](https://developers.cloudflare.com/workers/ci-cd/builds/configuration/) and [branch control guide](https://developers.cloudflare.com/workers/ci-cd/builds/build-branches/).
 
 ### Previews for non-production branches
 
-The repository currently has no isolated remote staging resources. Therefore, keep Cloudflare Preview Builds disabled until separate Preview bindings exist for D1, R2, Queues, Durable Objects and any required secrets. Never connect preview code to production resources.
+The repository currently has no isolated remote staging resources. Therefore, in **Workers & Pages → ecommerce-iphone → Settings → Build → Branch control**, leave **Enable Preview Builds** unchecked until separate Preview bindings exist for D1, R2, Queues, Durable Objects and any required secrets. The current top-level Wrangler bindings point to production resources; do not enable remote previews against those bindings.
+
+If remote previews are enabled in the future, configure the separate Preview command and Preview-specific bindings, variables and secrets first. Do not use the production resources as a fallback. The `previews` block in `wrangler.jsonc` defines Preview runtime settings; its presence alone does not turn the dashboard's Preview Builds switch off.
 
 Pull-request E2E runs locally in GitHub Actions with `wrangler dev --local`; a remote preview is not required to validate each PR.
 
