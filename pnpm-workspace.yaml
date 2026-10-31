@@ -21,4 +21,4 @@ overrides:
   undici: 7.30.1
   vite: 7.3.7
 patchedDependencies:
-  '@eslint/eslintrc@3.3.7': patches/@eslint__eslintrc@3.3.7.patch
+  "@eslint/eslintrc@3.3.7": patches/@eslint__eslintrc@3.3.7.patch
