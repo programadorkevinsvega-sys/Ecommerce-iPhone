@@ -56,14 +56,6 @@ jobs:
       - name: Audit all dependencies
         run: pnpm audit
 
-      - name: TEMP format monitor scripts and print canonical output
-        run: |
-          pnpm exec prettier --write scripts/performance-smoke.mjs scripts/verify-production.mjs
-          echo "=== PRETTIER OUTPUT: scripts/performance-smoke.mjs ==="
-          cat scripts/performance-smoke.mjs
-          echo "=== PRETTIER OUTPUT: scripts/verify-production.mjs ==="
-          cat scripts/verify-production.mjs
-
       - name: Check formatting of changed files
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
