@@ -49,7 +49,8 @@ function safeError(error: unknown): { error: string; status: number } {
     code.includes("ALREADY") ||
     code.includes("IDEMPOTENCY") ||
     code.includes("STOCK") ||
-    code.includes("UNAVAILABLE")
+    code.includes("UNAVAILABLE") ||
+    code.includes("CHECKOUT_GUARDS.ID")
   )
     return { error: "La operación entra en conflicto con el estado actual.", status: 409 };
   if (code.includes("RATE_LIMIT") || code.includes("TOO_MANY"))
@@ -145,7 +146,7 @@ export async function POST(request: Request) {
 
     // A successful checkout clears its cart, so resolve a retry before loading it again.
     if (currentSession) {
-      const previousOrder = await context.orderRepository.findByIdempotencyKeyForCustomer(
+      const previousOrder = await context.orderIdempotency.findByIdempotencyKeyForCustomer(
         idempotencyKey,
         currentSession.customerId,
       );

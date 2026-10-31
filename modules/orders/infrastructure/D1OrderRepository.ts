@@ -1,11 +1,10 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type { CheckoutCart } from "../application/CheckoutCart";
 import type { CheckoutInput, OrderCheckoutRepository } from "../application/CheckoutInput";
-import type { OrderIdempotencyLookup, OrderRepository } from "../application/OrderRepository";
+import type { OrderRepository } from "../application/OrderRepository";
 import { assertOrderTransition, type Order, type OrderStatus } from "../domain/Order";
 
-export class D1OrderRepository
-  implements OrderCheckoutRepository, OrderRepository, OrderIdempotencyLookup {
+export class D1OrderRepository implements OrderCheckoutRepository, OrderRepository {
   constructor(
     private readonly db: D1Database,
     private readonly prepareOrderCreatedOutbox?: (
@@ -233,28 +232,10 @@ export class D1OrderRepository
           throw new Error("Idempotency key belongs to another customer");
         return raced;
       }
-      if (
-        error instanceof Error &&
-        error.message.toLowerCase().includes("checkout_guards.id") &&
-        (await this.hasInsufficientStock(effectiveCart))
-      ) {
-        throw new Error("INSUFFICIENT_STOCK");
-      }
       throw error;
     }
 
     return order;
-  }
-
-  private async hasInsufficientStock(cart: CheckoutCart): Promise<boolean> {
-    for (const item of cart.items) {
-      const product = await this.db
-        .prepare("SELECT active,stock FROM products WHERE id=?")
-        .bind(item.productId)
-        .first<{ active: number; stock: number }>();
-      if (!product || product.active !== 1 || product.stock < item.quantity) return true;
-    }
-    return false;
   }
 
   private async ensureOrderCreatedOutbox(order: Order): Promise<void> {
@@ -272,16 +253,6 @@ export class D1OrderRepository
     const row = await this.db.prepare("SELECT * FROM orders WHERE id=?").bind(id).first<OrderRow>();
     if (!row) return null;
     return this.hydrateOrder(row);
-  }
-
-  async findByIdempotencyKeyForCustomer(key: string, customerId: string): Promise<Order | null> {
-    const row = await this.db
-      .prepare(
-        "SELECT o.* FROM checkout_idempotency i JOIN orders o ON o.id=i.order_id WHERE i.idempotency_key=? AND i.customer_id=? AND i.expires_at>CURRENT_TIMESTAMP LIMIT 1",
-      )
-      .bind(key, customerId)
-      .first<OrderRow>();
-    return row ? this.hydrateOrder(row) : null;
   }
 
   async listByCustomer(

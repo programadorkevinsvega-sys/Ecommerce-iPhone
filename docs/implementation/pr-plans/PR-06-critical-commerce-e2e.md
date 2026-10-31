@@ -36,7 +36,7 @@ The suite is serialized within its spec to make inventory mutations deterministi
 - Cart and checkout routes now classify malformed JSON as HTTP 400.
 - Cart/checkout stock and availability conflicts return HTTP 409 rather than being surfaced as generic HTTP 500 errors.
 - The checkout route resolves an authenticated idempotent retry before requiring a non-empty cart. This is necessary because a committed checkout clears its cart.
-- The order repository maps a transaction guard collision to an inventory conflict only after confirming that current product stock is insufficient. Other persistence errors continue to propagate.
+- The HTTP boundary maps the transaction's conditional checkout-guard constraint to HTTP 409. Other persistence errors continue to propagate.
 
 ## CI/CD integration
 

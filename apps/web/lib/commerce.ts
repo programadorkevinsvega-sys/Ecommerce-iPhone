@@ -11,6 +11,7 @@ import { CustomerDeviceService } from "../../../modules/customers/application/Cu
 import { D1CustomerDeviceRepository } from "../../../modules/customers/infrastructure/D1CustomerDeviceRepository";
 import { Checkout } from "../../../modules/orders/application/Checkout";
 import { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
+import { D1OrderIdempotencyLookup } from "../../../modules/orders/infrastructure/D1OrderIdempotencyLookup";
 import { D1ReservationRepository } from "../../../modules/orders/infrastructure/D1ReservationRepository";
 import { D1CustomerPortalRepository } from "../../../modules/customers/infrastructure/D1CustomerPortalRepository";
 import { D1NotificationOutboxRepository } from "../../../modules/notifications/infrastructure/D1NotificationOutboxRepository";
@@ -53,6 +54,7 @@ export async function commerceContext() {
     customerDevices: new CustomerDeviceService(new D1CustomerDeviceRepository(env.DB)),
     customerPortal: new D1CustomerPortalRepository(env.DB),
     orderRepository,
+    orderIdempotency: new D1OrderIdempotencyLookup(env.DB, orderRepository),
   };
 }
 
