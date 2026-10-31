@@ -84,23 +84,24 @@ const failures = results.flatMap((r) =>
     .map(([key, limit]) => `${r.route}: ${key}=${r[key]}ms > ${limit}ms`),
 );
 const edgeBlockedRoutes = results.filter((result) => result.cloudflareEdgeBlocked);
+const nonEdgeHttpFailures = results.filter(
+  (result) => !result.cloudflareEdgeBlocked && (result.status < 200 || result.status >= 400),
+);
 
 console.log(JSON.stringify({ baseUrl, limits, results, failures }, null, 2));
 
-if (edgeBlockedRoutes.length > 0) {
+if (nonEdgeHttpFailures.length > 0 || failures.length > 0) {
+  nonEdgeHttpFailures.forEach((result) => {
+    failures.push(`${result.route}: non-success HTTP ${result.status}`);
+  });
+  console.error("Performance smoke failed:");
+  failures.forEach((failure) => console.error(`- ${failure}`));
+  process.exitCode = 1;
+} else if (edgeBlockedRoutes.length > 0) {
   console.warn(
     `PERFORMANCE_MONITOR_INCONCLUSIVE: Cloudflare edge blocked ${edgeBlockedRoutes.length} of ${routes.length} route probes. These timings measure the challenge/block response, not the deployed storefront.`,
   );
   process.exitCode = 2;
-} else if (results.some((r) => r.status < 200 || r.status >= 400)) {
-  failures.push("A route returned a non-success HTTP status");
-  console.error("Performance smoke failed:");
-  failures.forEach((failure) => console.error(`- ${failure}`));
-  process.exitCode = 1;
-} else if (failures.length) {
-  console.error("Performance smoke failed:");
-  failures.forEach((failure) => console.error(`- ${failure}`));
-  process.exitCode = 1;
 } else {
   console.log("Performance smoke passed.");
 }
