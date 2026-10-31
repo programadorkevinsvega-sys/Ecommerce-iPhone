@@ -128,8 +128,7 @@ test.describe("platform hardening", () => {
         elements
           .filter(
             (element) =>
-              !(element instanceof HTMLImageElement) ||
-              element.style.color !== "transparent",
+              !(element instanceof HTMLImageElement) || element.style.color !== "transparent",
           )
           .map((element) => ({
             tag: element.tagName.toLowerCase(),
