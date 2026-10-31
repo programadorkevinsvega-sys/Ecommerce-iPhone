@@ -8,7 +8,9 @@ describe("structured server logging", () => {
     const output = vi.spyOn(console, "error").mockImplementation(() => undefined);
     logServerError(
       "payment.refund",
-      new Error("Provider rejected Bearer sk_live_secret_123 for buyer@example.com card 4111 1111 1111 1111"),
+      new Error(
+        "Provider rejected Bearer sk_live_secret_123 for buyer@example.com card 4111 1111 1111 1111",
+      ),
       {
         component: "payments",
         requestId: "req_pr26_trace_0001",
@@ -44,7 +46,12 @@ describe("structured server logging", () => {
     expect(record.error.message).toContain("[REDACTED_CARD]");
     expect(record.error.stack).toBeUndefined();
     const serialized = JSON.stringify(record);
-    for (const secret of ["sk_live_secret_123", "session-secret-value", "buyer@example.com", "4111 1111 1111 1111"]) {
+    for (const secret of [
+      "sk_live_secret_123",
+      "session-secret-value",
+      "buyer@example.com",
+      "4111 1111 1111 1111",
+    ]) {
       expect(serialized).not.toContain(secret);
     }
   });

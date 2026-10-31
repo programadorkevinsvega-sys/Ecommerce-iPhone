@@ -36,7 +36,9 @@ describe("RequireAdmin", () => {
         };
       },
     });
-    await expect(requireAdmin.execute("token", "orders:read")).resolves.toMatchObject({ id: "admin-1" });
+    await expect(requireAdmin.execute("token", "orders:read")).resolves.toMatchObject({
+      id: "admin-1",
+    });
   });
 
   it("rejects permissions outside the effective set", async () => {
@@ -68,7 +70,9 @@ describe("RequireAdmin", () => {
         };
       },
     });
-    await expect(requireAdmin.execute("token", "inventory:read")).resolves.toMatchObject({ id: "admin-1" });
+    await expect(requireAdmin.execute("token", "inventory:read")).resolves.toMatchObject({
+      id: "admin-1",
+    });
   });
 
   it("rejects a permission removed by an explicit deny", async () => {

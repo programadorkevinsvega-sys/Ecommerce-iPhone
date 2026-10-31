@@ -1,17 +1,29 @@
 // OpenNext owns HTTP routing; this wrapper adds Cloudflare Queue, Scheduled and Durable Object handlers.
 // @ts-ignore OpenNext generates this module during build.
 import nextWorker from "./.open-next/worker.js";
-import type { ExecutionContext, MessageBatch, Message, ScheduledEvent } from "@cloudflare/workers-types";
+import type {
+  ExecutionContext,
+  MessageBatch,
+  Message,
+  ScheduledEvent,
+} from "@cloudflare/workers-types";
 import { D1NotificationOutboxRepository } from "../../modules/notifications/infrastructure/D1NotificationOutboxRepository";
 import { DurableObject } from "cloudflare:workers";
-import { notificationDeadLetterApplication, notificationProcessingApplication, notificationQueuePublisher } from "./lib/notificationsApplication";
+import {
+  notificationDeadLetterApplication,
+  notificationProcessingApplication,
+  notificationQueuePublisher,
+} from "./lib/notificationsApplication";
 import { seoManagementApplication } from "./lib/seoApplication";
 import { D1ReservationRepository } from "../../modules/orders/infrastructure/D1ReservationRepository";
 import { analyticsPersistence } from "../../modules/analytics/infrastructure/analyticsComposition";
 import { revenueAnalyticsApp } from "./lib/analyticsApplication";
 import type { AnalyticsEvent } from "../../modules/analytics/domain/AnalyticsEvent";
 import { NotificationTerminalError } from "../../modules/notifications/application/NotificationProcessingError";
-import type { NotificationEvent, NotificationInboxItem } from "../../modules/notifications/domain/NotificationEvent";
+import type {
+  NotificationEvent,
+  NotificationInboxItem,
+} from "../../modules/notifications/domain/NotificationEvent";
 import { mediaKeyFromUrl } from "../../modules/shared-kernel/MediaReference";
 import { logServerError } from "./lib/serverLogger";
 import { isValidRequestId, resolveRequestId } from "./lib/requestCorrelation";
@@ -23,7 +35,7 @@ export class NotificationHub extends DurableObject {
     const url = new URL(request.url);
 
     if (request.method === "POST" && url.pathname === "/publish") {
-      const item = await request.json() as NotificationInboxItem;
+      const item = (await request.json()) as NotificationInboxItem;
       const message = JSON.stringify({
         type: "notification",
         notificationId: item.id,
@@ -40,7 +52,9 @@ export class NotificationHub extends DurableObject {
         try {
           websocket.send(message);
         } catch {
-          try { websocket.close(1011, "Delivery failed"); } catch {}
+          try {
+            websocket.close(1011, "Delivery failed");
+          } catch {}
         }
       }
 
@@ -68,11 +82,15 @@ export class NotificationHub extends DurableObject {
   }
 
   webSocketClose(websocket: WebSocket, _code: number, _reason: string, _wasClean: boolean): void {
-    try { websocket.close(); } catch {}
+    try {
+      websocket.close();
+    } catch {}
   }
 
   webSocketError(websocket: WebSocket): void {
-    try { websocket.close(1011, "Socket error"); } catch {}
+    try {
+      websocket.close(1011, "Socket error");
+    } catch {}
   }
 }
 
@@ -85,7 +103,11 @@ type Env = CloudflareEnv & {
   SENSITIVE_RATE_LIMITER?: { limit(input: { key: string }): Promise<{ success: boolean }> };
 };
 
-type AnalyticsQueueMessage = Readonly<{ kind: "analytics"; schemaVersion: 1; event: AnalyticsEvent }>;
+type AnalyticsQueueMessage = Readonly<{
+  kind: "analytics";
+  schemaVersion: 1;
+  event: AnalyticsEvent;
+}>;
 
 type NotificationQueueMessage = Readonly<{
   schemaVersion: number;
@@ -108,7 +130,9 @@ function clientKey(request: Request, pathname: string): string {
 }
 
 function sensitive(pathname: string): boolean {
-  return SENSITIVE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  return SENSITIVE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 }
 
 async function enforceRateLimit(request: Request, env: Env, pathname: string): Promise<boolean> {
@@ -172,17 +196,16 @@ function parseLegacyNotification(body: unknown): NotificationEvent | null {
     aggregateId: value.aggregateId,
     createdAt: value.createdAt,
     payload: value.payload as Record<string, unknown>,
-    ...(Array.isArray(value.recipients) ? { recipients: value.recipients as NotificationEvent["recipients"] } : {}),
+    ...(Array.isArray(value.recipients)
+      ? { recipients: value.recipients as NotificationEvent["recipients"] }
+      : {}),
   };
 }
 
 function parseQueueMessage(body: string): NotificationQueueMessage | null {
   try {
     const value = JSON.parse(body) as Partial<NotificationQueueMessage>;
-    if (
-      typeof value.outboxId !== "string" ||
-      typeof value.schemaVersion !== "number"
-    ) return null;
+    if (typeof value.outboxId !== "string" || typeof value.schemaVersion !== "number") return null;
     return { outboxId: value.outboxId, schemaVersion: value.schemaVersion };
   } catch {
     return null;
@@ -194,7 +217,9 @@ function parseAnalyticsMessage(body: string): AnalyticsQueueMessage | null {
     const value = JSON.parse(body) as Partial<AnalyticsQueueMessage>;
     if (value.kind !== "analytics" || value.schemaVersion !== 1 || !value.event) return null;
     return value as AnalyticsQueueMessage;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 function queueCorrelationId(body: string, fallback?: string): string | undefined {
@@ -220,10 +245,17 @@ async function processAnalyticsMessage(message: Message<string>, env: Env): Prom
 }
 
 async function processMediaCleanup(env: Env): Promise<void> {
-  const rows = await env.DB.prepare("SELECT object_key,attempts FROM media_cleanup_queue WHERE available_at<=CURRENT_TIMESTAMP ORDER BY created_at ASC LIMIT 100").all<{object_key:string;attempts:number}>();
-  for (const row of rows.results) await cleanupMediaKey(env,row.object_key,row.attempts);
+  const rows = await env.DB.prepare(
+    "SELECT object_key,attempts FROM media_cleanup_queue WHERE available_at<=CURRENT_TIMESTAMP ORDER BY created_at ASC LIMIT 100",
+  ).all<{ object_key: string; attempts: number }>();
+  for (const row of rows.results) await cleanupMediaKey(env, row.object_key, row.attempts);
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-  for (const prefix of ["product-images/","category-images/","service-images/","home-carousel/"]) {
+  for (const prefix of [
+    "product-images/",
+    "category-images/",
+    "service-images/",
+    "home-carousel/",
+  ]) {
     const listed = await env.MEDIA_BUCKET.list({ prefix, limit: 1000 });
     for (const object of listed.objects) {
       if (object.uploaded.getTime() > cutoff) continue;
@@ -235,7 +267,11 @@ async function processMediaCleanup(env: Env): Promise<void> {
 async function cleanupMediaKey(env: Env, key: string, attempts: number): Promise<void> {
   if (!mediaKeyFromUrl("/api/media/" + key)) return;
   const url = "/api/media/" + key;
-  const referenced = await env.DB.prepare("SELECT CASE WHEN EXISTS (SELECT 1 FROM product_images WHERE url=?) OR EXISTS (SELECT 1 FROM categories WHERE image_url=?) OR EXISTS (SELECT 1 FROM service_types WHERE image_url=?) OR EXISTS (SELECT 1 FROM cms_blog_posts WHERE cover_image_url=?) OR EXISTS (SELECT 1 FROM marketing_banners WHERE image_url=?) OR EXISTS (SELECT 1 FROM seo_route_overrides WHERE og_image_url=?) OR EXISTS (SELECT 1 FROM cms_pages WHERE content LIKE ?) OR EXISTS (SELECT 1 FROM cms_landing_pages WHERE content LIKE ?) THEN 1 ELSE 0 END AS referenced").bind(url,url,url,url,url,url,"%"+url+"%","%"+url+"%").first<{referenced:number}>();
+  const referenced = await env.DB.prepare(
+    "SELECT CASE WHEN EXISTS (SELECT 1 FROM product_images WHERE url=?) OR EXISTS (SELECT 1 FROM categories WHERE image_url=?) OR EXISTS (SELECT 1 FROM service_types WHERE image_url=?) OR EXISTS (SELECT 1 FROM cms_blog_posts WHERE cover_image_url=?) OR EXISTS (SELECT 1 FROM marketing_banners WHERE image_url=?) OR EXISTS (SELECT 1 FROM seo_route_overrides WHERE og_image_url=?) OR EXISTS (SELECT 1 FROM cms_pages WHERE content LIKE ?) OR EXISTS (SELECT 1 FROM cms_landing_pages WHERE content LIKE ?) THEN 1 ELSE 0 END AS referenced",
+  )
+    .bind(url, url, url, url, url, url, "%" + url + "%", "%" + url + "%")
+    .first<{ referenced: number }>();
   if (Number(referenced?.referenced ?? 0) === 1) {
     await env.DB.prepare("DELETE FROM media_cleanup_queue WHERE object_key=?").bind(key).run();
     return;
@@ -244,9 +280,13 @@ async function cleanupMediaKey(env: Env, key: string, attempts: number): Promise
     await env.MEDIA_BUCKET.delete(key);
     await env.DB.prepare("DELETE FROM media_cleanup_queue WHERE object_key=?").bind(key).run();
   } catch (error) {
-    const nextAttempts=attempts+1;
-    const delay=Math.min(3600,2**Math.min(nextAttempts,10));
-    await env.DB.prepare("INSERT INTO media_cleanup_queue(object_key,attempts,available_at,last_error,updated_at) VALUES(?,?,datetime('now','+'||?||' seconds'),?,CURRENT_TIMESTAMP) ON CONFLICT(object_key) DO UPDATE SET attempts=excluded.attempts,available_at=excluded.available_at,last_error=excluded.last_error,updated_at=CURRENT_TIMESTAMP").bind(key,nextAttempts,delay,error instanceof Error?error.message:String(error)).run();
+    const nextAttempts = attempts + 1;
+    const delay = Math.min(3600, 2 ** Math.min(nextAttempts, 10));
+    await env.DB.prepare(
+      "INSERT INTO media_cleanup_queue(object_key,attempts,available_at,last_error,updated_at) VALUES(?,?,datetime('now','+'||?||' seconds'),?,CURRENT_TIMESTAMP) ON CONFLICT(object_key) DO UPDATE SET attempts=excluded.attempts,available_at=excluded.available_at,last_error=excluded.last_error,updated_at=CURRENT_TIMESTAMP",
+    )
+      .bind(key, nextAttempts, delay, error instanceof Error ? error.message : String(error))
+      .run();
   }
 }
 async function recordAbandonedCarts(env: Env): Promise<void> {
@@ -269,7 +309,10 @@ async function recordAbandonedCarts(env: Env): Promise<void> {
       payload: {
         cartId: row.id,
         itemCount: Number(row.item_count),
-        abandonmentMinutes: Math.max(30, Math.floor((Date.now() - new Date(row.updated_at).getTime()) / 60000)),
+        abandonmentMinutes: Math.max(
+          30,
+          Math.floor((Date.now() - new Date(row.updated_at).getTime()) / 60000),
+        ),
       },
     });
   }
@@ -315,14 +358,9 @@ const worker = {
           { "X-Request-Id": id },
         );
       } catch {
-        return withHeaders(
-          healthResponse(
-            "ready",
-            { dependencies: { d1: "unavailable" } },
-            503,
-          ),
-          { "X-Request-Id": id },
-        );
+        return withHeaders(healthResponse("ready", { dependencies: { d1: "unavailable" } }, 503), {
+          "X-Request-Id": id,
+        });
       }
     }
 
@@ -357,16 +395,22 @@ const worker = {
     ) {
       const redirect = await seoManagementApplication(env).resolveRedirect(url.pathname);
       if (redirect?.statusCode === 301 && redirect.targetUrl) {
-        return withHeaders(new Response(null, {
-          status: 301,
-          headers: { Location: redirect.targetUrl, "Cache-Control": "public, max-age=3600" },
-        }), { "X-Request-Id": id });
+        return withHeaders(
+          new Response(null, {
+            status: 301,
+            headers: { Location: redirect.targetUrl, "Cache-Control": "public, max-age=3600" },
+          }),
+          { "X-Request-Id": id },
+        );
       }
       if (redirect?.statusCode === 410) {
-        return withHeaders(new Response(null, {
-          status: 410,
-          headers: { "Cache-Control": "public, max-age=300" },
-        }), { "X-Request-Id": id });
+        return withHeaders(
+          new Response(null, {
+            status: 410,
+            headers: { "Cache-Control": "public, max-age=300" },
+          }),
+          { "X-Request-Id": id },
+        );
       }
     }
 
@@ -393,8 +437,12 @@ const worker = {
       await revenueAnalyticsApp(env).reconcile(500);
       await recordAbandonedCarts(env);
       await env.DB.batch([
-        env.DB.prepare("UPDATE cms_blog_posts SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
-        env.DB.prepare("UPDATE cms_landing_pages SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?").bind(now),
+        env.DB.prepare(
+          "UPDATE cms_blog_posts SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?",
+        ).bind(now),
+        env.DB.prepare(
+          "UPDATE cms_landing_pages SET status='PUBLISHED',published_at=scheduled_at,updated_at=CURRENT_TIMESTAMP WHERE status='SCHEDULED' AND scheduled_at IS NOT NULL AND scheduled_at<=?",
+        ).bind(now),
       ]);
       await new D1ReservationRepository(env.DB).releaseExpired();
 
@@ -417,10 +465,7 @@ const worker = {
           await repo.markFailed(
             outboxEvent.id,
             error instanceof Error ? error.message : String(error),
-            new Date(Date.now() + 60_000)
-              .toISOString()
-              .replace("T", " ")
-              .replace("Z", ""),
+            new Date(Date.now() + 60_000).toISOString().replace("T", " ").replace("Z", ""),
           );
         }
       }
@@ -495,11 +540,7 @@ const worker = {
 
     for (const message of batch.messages) {
       try {
-        await processNotificationMessage(
-          message,
-          env,
-          batch.queue === "ecommerce-iphone-events",
-        );
+        await processNotificationMessage(message, env, batch.queue === "ecommerce-iphone-events");
       } catch (error) {
         const queueMessageId = (message as Message<string> & { id?: string }).id;
         const correlationId = queueCorrelationId(message.body, queueMessageId);

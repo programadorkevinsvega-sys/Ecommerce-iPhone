@@ -16,12 +16,17 @@ function sanitizeText(value: string): string {
     .replace(/https?:\/\/[^/\s:@]+:[^@\s]+@/gi, "https://[REDACTED]@")
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[REDACTED_EMAIL]")
     .replace(/\b(?:\d[ -]?){13,19}\b/g, "[REDACTED_CARD]")
-    .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g, "[REDACTED_PRIVATE_KEY]")
+    .replace(
+      /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/g,
+      "[REDACTED_PRIVATE_KEY]",
+    )
     .replace(/[\r\n\t]+/g, " ")
     .slice(0, 1000);
 }
 
-function sanitizeContext(context: LogContext): Record<string, string | number | boolean | null | undefined> {
+function sanitizeContext(
+  context: LogContext,
+): Record<string, string | number | boolean | null | undefined> {
   const safe: Record<string, string | number | boolean | null | undefined> = {};
   for (const [key, value] of Object.entries(context)) {
     if (RESERVED_CONTEXT_KEYS.has(key)) continue;
@@ -44,11 +49,7 @@ function serializeError(error: unknown): Record<string, string> {
   return { message: sanitizeText(String(error)) };
 }
 
-export function logServerError(
-  operation: string,
-  error: unknown,
-  context: LogContext = {},
-): void {
+export function logServerError(operation: string, error: unknown, context: LogContext = {}): void {
   globalThis["console"]["error"](
     JSON.stringify({
       timestamp: new Date().toISOString(),

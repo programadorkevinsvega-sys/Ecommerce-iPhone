@@ -22,9 +22,7 @@ test.describe("platform hardening", () => {
     expect(headers["content-security-policy"]).not.toContain("unsafe-eval");
   });
 
-  test("API handlers return the same valid request ID used by middleware", async ({
-    request,
-  }) => {
+  test("API handlers return the same valid request ID used by middleware", async ({ request }) => {
     const requestId = "pr26_api_trace_0001";
     const response = await request.get("/api/cart", {
       headers: { "x-request-id": requestId },

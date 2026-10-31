@@ -149,7 +149,6 @@ Se fijaron `next` y `eslint-config-next` en `15.5.28` y se actualizaron las inte
 
 La nueva auditoría cubre todas las dependencias, no solo producción. **La remediación no se declara certificada todavía:** el primer build de Cloudflare tras estos cambios terminó en fallo sin publicar la salida del audit o de la instalación. Se requiere revisar su log y conseguir un `pnpm audit` completo sin avisos.
 
-
 ## Production hardening update — 2026-10-31
 
 The shared security response-header map is maintained in `apps/web/lib/securityHeaders.ts` and consumed by both `apps/web/next.config.ts` and the Cloudflare Worker response wrapper. Worker-owned health, readiness, rate-limit and redirect responses receive the same baseline headers as Next.js responses.
