@@ -31,7 +31,13 @@ describe("runScheduledTasks", () => {
     expect(logger.log).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledTimes(1);
 
-    const summary = JSON.parse(logger.error.mock.calls[0][0] as string) as {
+    const loggedSummary = logger.error.mock.calls[0]?.[0];
+    expect(loggedSummary).toBeTypeOf("string");
+    if (typeof loggedSummary !== "string") {
+      throw new Error("Expected scheduled task failure summary to be logged");
+    }
+
+    const summary = JSON.parse(loggedSummary) as {
       failedTaskCount: number;
       tasks: Array<{ task: string; outcome: string; error?: { message: string } }>;
     };
