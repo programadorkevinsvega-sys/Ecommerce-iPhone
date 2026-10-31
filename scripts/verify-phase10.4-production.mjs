@@ -116,7 +116,7 @@ try {
     if (added && removed) {
       assert(added.event_version === 1 && removed.event_version === 1, "cart analytics event version mismatch");
       assert(added.visitor_id === visitorId && removed.visitor_id === visitorId, "cart analytics visitor mismatch");
-      assert(added.source === "web" && removed.source === "web", "cart analytics source mismatch");
+      assert(added.source === "server" && removed.source === "server", "cart analytics source mismatch");
       assert(typeof added.payload_json === "string" && added.payload_json.includes(productId), "CartItemAdded payload does not reference the real product");
       assert(typeof removed.payload_json === "string" && removed.payload_json.includes(productId), "CartItemRemoved payload does not reference the real product");
       console.log(`PASS HTTP → EVENTS_QUEUE → D1: cart events persisted after ${attempt} poll(s)`);
