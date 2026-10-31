@@ -1,6 +1,5 @@
 import {
   expect,
-  request as playwrightRequest,
   test,
   type APIRequestContext,
 } from "@playwright/test";
@@ -18,6 +17,8 @@ const OUT_OF_STOCK_PRODUCT_ID = "prod-iphone-18-pro-max";
 const OUT_OF_STOCK_VARIANT_ID = "var-iphone-18-256-silver";
 const API_BASE_URL = "http://127.0.0.1:8787";
 const ORIGINAL_VARIANT_PRICE = 464900000;
+const createdCartIds = new Set<string>();
+const createdEmails = new Set<string>();
 
 type CartResponse = {
   id: string;
@@ -78,6 +79,7 @@ async function createCart(api: APIRequestContext): Promise<string> {
   expect(response.status()).toBe(200);
   const cart = (await response.json()) as CartResponse;
   expect(cart.id).toBeTruthy();
+  createdCartIds.add(cart.id);
   return cart.id;
 }
 
@@ -110,6 +112,7 @@ async function sendCheckout(
   idempotencyKey = randomUUID(),
   overrides: Record<string, unknown> = {},
 ) {
+  createdEmails.add(email);
   const response = await api.post("/api/checkout", {
     headers: { "Idempotency-Key": idempotencyKey },
     data: checkoutPayload(email, overrides),
@@ -134,6 +137,44 @@ test.describe("critical commerce and security journeys", () => {
 
   test.beforeEach(() => {
     resetCheckoutInventory(100);
+  });
+
+  test.afterEach(() => {
+    const emails = Array.from(createdEmails);
+    const cartIds = Array.from(createdCartIds);
+    createdEmails.clear();
+    createdCartIds.clear();
+
+    if (emails.length > 0) {
+      const emailList = emails.map(sqlLiteral).join(", ");
+      const orderIds = `SELECT id FROM orders WHERE email IN (${emailList})`;
+      const outboxIds = `SELECT id FROM notification_outbox WHERE aggregate_id IN (${orderIds})`;
+
+      executeLocalD1(
+        [
+          `DELETE FROM notification_deliveries WHERE outbox_id IN (${outboxIds})`,
+          `DELETE FROM notification_outbox WHERE aggregate_id IN (${orderIds})`,
+          `DELETE FROM inventory_reservations WHERE order_id IN (${orderIds})`,
+          `DELETE FROM order_items WHERE order_id IN (${orderIds})`,
+          `DELETE FROM order_events WHERE order_id IN (${orderIds})`,
+          `DELETE FROM coupon_redemptions WHERE order_id IN (${orderIds})`,
+          `DELETE FROM checkout_idempotency WHERE customer_id IN (SELECT id FROM customers WHERE email IN (${emailList}))`,
+          `DELETE FROM orders WHERE email IN (${emailList})`,
+          `DELETE FROM customers WHERE email IN (${emailList})`,
+        ].join(";\\n") + ";",
+      );
+    }
+
+    if (cartIds.length > 0) {
+      const cartList = cartIds.map(sqlLiteral).join(", ");
+      executeLocalD1(
+        [
+          `DELETE FROM inventory_reservations WHERE cart_id IN (${cartList})`,
+          `DELETE FROM cart_items WHERE cart_id IN (${cartList})`,
+          `DELETE FROM carts WHERE id IN (${cartList})`,
+        ].join(";\\n") + ";",
+      );
+    }
   });
 
   test("cart supports add, quantity change, invalid quantity, removal and unavailable stock", async ({
@@ -371,7 +412,7 @@ test.describe("critical commerce and security journeys", () => {
       expect((await anonymous.get("/api/payments/not-a-payment")).status()).toBe(401);
       expect(
         (
-          await anonymous.post("/api/admin/payments/not-a-payment/refund", {
+          await anonymous.post("/api/payments/not-a-payment/refund", {
             data: {},
           })
         ).status(),
