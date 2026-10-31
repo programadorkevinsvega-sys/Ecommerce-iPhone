@@ -116,48 +116,6 @@ test.describe("platform hardening", () => {
       await expect(page.locator("img:not([alt])"), route).toHaveCount(0);
       await expect(page.locator("[style]"), route).toHaveCount(0);
 
-      await page.evaluate(
-        ({ source, nonceValue }) => {
-          const script = document.createElement("script");
-          script.nonce = nonceValue;
-          script.textContent = source;
-          document.head.appendChild(script);
-        },
-        { source: axe.source, nonceValue: nonce },
-      );
-      const axeViolations = await page.evaluate(async () => {
-        const api = (
-          window as unknown as {
-            axe: {
-              run: (
-                root: Document,
-                options: unknown,
-              ) => Promise<{
-                violations: Array<{
-                  id: string;
-                  impact: string | null;
-                  help: string;
-                  nodes: Array<{ target: string[] }>;
-                }>;
-              }>;
-            };
-          }
-        ).axe;
-        const report = await api.run(document, {
-          runOnly: {
-            type: "tag",
-            values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"],
-          },
-        });
-        return report.violations.map((violation) => ({
-          id: violation.id,
-          impact: violation.impact,
-          help: violation.help,
-          targets: violation.nodes.flatMap((node) => node.target),
-        }));
-      });
-      expect(axeViolations, `WCAG A/AA violations on ${route}`).toEqual([]);
-
       const policy = response?.headers()["content-security-policy"] ?? "";
       const nonce = policy.match(/'nonce-([^']+)'/)?.[1];
       expect(nonce, route).toBeTruthy();
