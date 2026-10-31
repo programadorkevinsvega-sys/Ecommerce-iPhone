@@ -90,12 +90,15 @@ The Deploy command is the only production deployment path. It runs the main-bran
 
 ### Previews for non-production branches
 
-**Operational state observed on 2026-10-31:** Cloudflare Workers Builds generated a successful preview build for branch
+**Operational state observed on 2026-10-31:** the Cloudflare GitHub App reported a
+successful Preview build for the current PR head
+`aab6f34f06cbe25d2e2aa403d887d49d4a7c5916` on branch
 `ci/mandatory-quality-gates` (Build ID
-`837f7469-6299-415d-b2ef-40f3d75003f5`; the check details URL was under
-`/production/previews/ci-mandatory-quality-gates/builds/`). This proves that
-Preview Builds are currently enabled in the Cloudflare dashboard; the previous
-instruction to leave them unchecked does not describe the observed setting.
+`01575f42-9c04-4b5e-b754-0049a7222bc1`; check details URL under
+`/production/previews/ci-mandatory-quality-gates/builds/`). This confirms that
+Preview Builds are enabled for non-production branches. The PR comment did not
+provide a Preview URL ("No Preview URL"), so this is build evidence only, not
+a reachable application endpoint or a runtime health check.
 
 A Cloudflare Preview is separate from a production Worker version or active
 deployment. Non-production branches run the Preview command, not the production
