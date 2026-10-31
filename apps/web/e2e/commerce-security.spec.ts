@@ -2,6 +2,8 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import {
   cleanupLocalCommerceFixtures,
+  executeLocalD1,
+  queryLocalD1,
   resetCheckoutInventory,
   sqlLiteral,
 } from "./support/localD1";
