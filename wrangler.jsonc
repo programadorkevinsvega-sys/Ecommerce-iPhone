@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ecommerce-iphone",
-  "main": "apps/web/worker.ts",
+  "main": "apps/web/worker-entry.ts",
   "compatibility_date": "2026-09-09",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
