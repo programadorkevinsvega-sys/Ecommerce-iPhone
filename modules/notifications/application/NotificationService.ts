@@ -1,4 +1,8 @@
-import type { NotificationEvent, NotificationInboxItem, NotificationRecipient } from "../domain/NotificationEvent";
+import type {
+  NotificationEvent,
+  NotificationInboxItem,
+  NotificationRecipient,
+} from "../domain/NotificationEvent";
 import { notificationContent, safeNotificationPayload } from "../domain/NotificationEvent";
 import { renderEmail } from "./NotificationTemplates";
 import type { NotificationInboxRepository } from "./NotificationInboxRepository";
@@ -6,15 +10,21 @@ import type { NotificationRealtimePort } from "./NotificationRealtimePort";
 import type { NotificationOutboxRepository, EmailProvider } from "./NotificationPorts";
 import type { NotificationDeliveryRepository } from "./NotificationDeliveryRepository";
 import type { NotificationPreferenceRepository } from "./NotificationPreferenceRepository";
-import { NotificationProviderError, NotificationTerminalError } from "./NotificationProcessingError";
+import {
+  NotificationProviderError,
+  NotificationTerminalError,
+} from "./NotificationProcessingError";
 
-const templateFor = (eventType: string) => ({
-  OrderCreated: "ORDER_CREATED",
-  OrderPaid: "ORDER_PAID",
-  OrderStatusChanged: "ORDER_STATUS_CHANGED",
-  ServiceRequestCreated: "SERVICE_REQUESTED",
-  ServiceStatusChanged: "SERVICE_STATUS_CHANGED",
-} as const)[eventType];
+const templateFor = (eventType: string) =>
+  (
+    ({
+      OrderCreated: "ORDER_CREATED",
+      OrderPaid: "ORDER_PAID",
+      OrderStatusChanged: "ORDER_STATUS_CHANGED",
+      ServiceRequestCreated: "SERVICE_REQUESTED",
+      ServiceStatusChanged: "SERVICE_STATUS_CHANGED",
+    }) as const
+  )[eventType];
 
 type ProjectedRecipient = Readonly<{
   recipient: NotificationRecipient;
@@ -41,6 +51,10 @@ export class NotificationService {
     if (record.terminalAt) {
       throw new NotificationTerminalError("NOTIFICATION_ALREADY_TERMINAL");
     }
+    if (record.status === "PROCESSED") return;
+    // A competing consumer or an active retry lease already owns this durable event.
+    // Acknowledge this duplicate queue delivery; the outbox reconciler republishes it
+    // if the owning lease expires without the event reaching PROCESSED.
     if (!(await this.outbox.claim(outboxId, 900))) return;
     await this.process(record);
   }
@@ -48,7 +62,9 @@ export class NotificationService {
   async process(event: NotificationEvent): Promise<void> {
     const projected = await this.projectInbox(event);
     const payload = event.payload as Record<string, unknown>;
-    const recipientEmail = String(payload.email ?? "").trim().toLowerCase();
+    const recipientEmail = String(payload.email ?? "")
+      .trim()
+      .toLowerCase();
     if (!recipientEmail || !recipientEmail.includes("@")) {
       await this.outbox.markProcessed(event.id);
       return;
@@ -64,10 +80,17 @@ export class NotificationService {
       (recipient) => recipient.email?.trim().toLowerCase() === recipientEmail,
     );
     const projectedRecipient = explicitRecipient
-      ? projected.find((value) => value.recipient.id === explicitRecipient.id && value.recipient.type === explicitRecipient.type)
+      ? projected.find(
+          (value) =>
+            value.recipient.id === explicitRecipient.id &&
+            value.recipient.type === explicitRecipient.type,
+        )
       : undefined;
 
-    if (explicitRecipient && !(await this.preferences.isEnabled(explicitRecipient, "EMAIL", event.eventType))) {
+    if (
+      explicitRecipient &&
+      !(await this.preferences.isEnabled(explicitRecipient, "EMAIL", event.eventType))
+    ) {
       await this.outbox.markProcessed(event.id);
       return;
     }
@@ -105,7 +128,8 @@ export class NotificationService {
     }
 
     const rendered = renderEmail(template as Parameters<typeof renderEmail>[0], payload);
-    const idempotencyKey = `ecommerce-iphone/email/${event.eventType}/${event.aggregateId}/${event.id}`.slice(0, 256);
+    const idempotencyKey =
+      `ecommerce-iphone/email/${event.eventType}/${event.aggregateId}/${event.id}`.slice(0, 256);
 
     try {
       const result = await this.email.send({
@@ -135,7 +159,10 @@ export class NotificationService {
         error: message,
       });
       if (retryable) {
-        const retryAt = new Date(Date.now() + 60_000).toISOString().replace("T", " ").replace("Z", "");
+        const retryAt = new Date(Date.now() + 60_000)
+          .toISOString()
+          .replace("T", " ")
+          .replace("Z", "");
         await this.outbox.markFailed(event.id, message, retryAt);
         throw error;
       }
@@ -165,7 +192,8 @@ export class NotificationService {
     if (!claimed) throw new Error("Notification delivery is already being processed");
 
     const rendered = renderEmail(template as Parameters<typeof renderEmail>[0], payload);
-    const idempotencyKey = `ecommerce-iphone/email/${event.eventType}/${event.aggregateId}/${event.id}`.slice(0, 256);
+    const idempotencyKey =
+      `ecommerce-iphone/email/${event.eventType}/${event.aggregateId}/${event.id}`.slice(0, 256);
 
     try {
       const result = await this.email.send({
@@ -189,7 +217,10 @@ export class NotificationService {
       const message = error instanceof Error ? error.message : String(error);
       const retryable = error instanceof NotificationProviderError ? error.retryable : true;
       if (retryable) {
-        const retryAt = new Date(Date.now() + 60_000).toISOString().replace("T", " ").replace("Z", "");
+        const retryAt = new Date(Date.now() + 60_000)
+          .toISOString()
+          .replace("T", " ")
+          .replace("Z", "");
         await this.outbox.recordDelivery({
           outboxId: event.id,
           channel: "EMAIL",

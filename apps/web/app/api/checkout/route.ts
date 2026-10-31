@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { checkoutUseCase, commerceContext } from "../../../lib/commerce";
-import { publishNotificationEvent } from "../../../lib/notifications";
+import { publishPersistedNotificationEvent } from "../../../lib/notifications";
 import {
   assertLength,
   normalizeSingleLine,
@@ -166,19 +166,7 @@ export async function POST(request: Request) {
         })
         .catch(() => undefined),
     );
-    await publishNotificationEvent({
-      id: `order-created:${order.id}`,
-      eventType: "OrderCreated",
-      aggregateId: order.id,
-      payload: {
-        email: customerResult.customer.toPrimitives().email,
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        status: order.status,
-        totalInCents: order.totalInCents,
-        currency: order.currency,
-      },
-    });
+    await publishPersistedNotificationEvent(`order-created:${order.id}`);
     const response = NextResponse.json({ order }, { status: 201 });
     if (analytics.setCookies) {
       response.headers.append(

@@ -13,6 +13,7 @@ import { Checkout } from "../../../modules/orders/application/Checkout";
 import { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
 import { D1ReservationRepository } from "../../../modules/orders/infrastructure/D1ReservationRepository";
 import { D1CustomerPortalRepository } from "../../../modules/customers/infrastructure/D1CustomerPortalRepository";
+import { D1NotificationOutboxRepository } from "../../../modules/notifications/infrastructure/D1NotificationOutboxRepository";
 
 export async function commerceContext() {
   const { env } = getCloudflareContext();
@@ -20,17 +21,38 @@ export async function commerceContext() {
   const customerRepository = new D1CustomerRepository(env.DB);
   const customerSessionRepository = new D1CustomerSessionRepository(env.DB);
   const customerSecurityAudit = new D1CustomerSecurityAuditRepository(env.DB);
+  const notificationOutbox = new D1NotificationOutboxRepository(env.DB);
+  const orderRepository = new D1OrderRepository(env.DB, (order, createdAt) =>
+    notificationOutbox.prepareEnqueue({
+      id: `order-created:${order.id}`,
+      eventType: "OrderCreated",
+      eventVersion: 1,
+      aggregateId: order.id,
+      payload: {
+        email: order.email,
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        status: order.status,
+        totalInCents: order.totalInCents,
+        currency: order.currency,
+      },
+      createdAt,
+    }),
+  );
   return {
     db: env.DB,
     cart: new CartManagement(cartRepository),
     customer: new CustomerManagement(customerRepository),
-    customerSession: new CustomerSessionService(customerSessionRepository, new WebCryptoCustomerSessionTokenGenerator()),
+    customerSession: new CustomerSessionService(
+      customerSessionRepository,
+      new WebCryptoCustomerSessionTokenGenerator(),
+    ),
     customerSecurityAudit,
     cartRepository,
     customerRepository,
     customerDevices: new CustomerDeviceService(new D1CustomerDeviceRepository(env.DB)),
     customerPortal: new D1CustomerPortalRepository(env.DB),
-    orderRepository: new D1OrderRepository(env.DB),
+    orderRepository,
   };
 }
 
