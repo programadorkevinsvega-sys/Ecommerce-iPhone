@@ -111,7 +111,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          if node scripts/assert-main-deploy.mjs; then
+          if GITHUB_REF=refs/heads/feature/test node scripts/assert-main-deploy.mjs; then
             echo "::error::Production deployment guard unexpectedly allowed a non-main GitHub ref."
             exit 1
           fi
