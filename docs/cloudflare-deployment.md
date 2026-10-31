@@ -91,21 +91,30 @@ The Deploy command is the only production deployment path. It runs the main-bran
 ### Previews for non-production branches
 
 **Operational state observed on 2026-10-31:** the Cloudflare GitHub App reported a
-successful Preview build for the current PR head
+successful Preview build for commit
 `aab6f34f06cbe25d2e2aa403d887d49d4a7c5916` on branch
 `ci/mandatory-quality-gates` (Build ID
 `01575f42-9c04-4b5e-b754-0049a7222bc1`; check details URL under
-`/production/previews/ci-mandatory-quality-gates/builds/`). This confirms that
-Preview Builds are enabled for non-production branches. The PR comment did not
-provide a Preview URL ("No Preview URL"), so this is build evidence only, not
-a reachable application endpoint or a runtime health check.
+`/production/previews/ci-mandatory-quality-gates/builds/`). The project
+operator has since confirmed that a dedicated Preview domain is configured in
+Cloudflare. Therefore, the earlier GitHub comment text "No Preview URL" is
+stale as an indicator of domain availability: the Cloudflare GitHub App's
+deployment comment may leave its URL cell blank even though the Preview
+hostname is configured.
+
+The Preview hostname is managed in Cloudflare and is not declared in the
+repository's current Wrangler configuration. Do not infer or substitute the
+production hostname or a `workers.dev` URL. Copy the exact Preview hostname
+from Cloudflare before publishing it in project documentation or using it for
+runtime checks. A configured domain is not, by itself, proof that the Preview
+application is healthy or that its data resources are isolated.
 
 A Cloudflare Preview is separate from a production Worker version or active
 deployment. Non-production branches run the Preview command, not the production
 Deploy command. The successful Preview build check is build evidence only: it
 does not prove the Preview runtime's resource isolation or application health.
 
-**Isolation is not yet certified.** The repository's top-level Wrangler
+**Resource isolation is not yet certified.** The existence of the Preview domain does not change the repository configuration: its top-level Wrangler
 configuration binds production D1, R2 and Queues resources, while its
 `previews` block is empty and does not declare separate D1, R2 or Queue
 producer bindings. A successful Preview build must not be treated as evidence
@@ -114,7 +123,9 @@ Previews sharing the same D1 database ID, R2 bucket name or Queue name share
 those resources.
 
 Until dedicated non-production resources and Preview bindings are provisioned
-and verified, manually disable **Enable Preview Builds** in
+and verified, do not use the Preview domain for operations that write to D1,
+R2 or Queues. To prevent accidental access while those resources remain
+unverified, disable **Enable Preview Builds** in
 **Workers & Pages → ecommerce-iphone → Settings → Build → Branch control**.
 Alternatively, keep previews enabled only after configuring separate Preview
 D1, R2 and Queue resources, Preview-specific variables/secrets, and validating

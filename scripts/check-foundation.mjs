@@ -22,6 +22,13 @@ const requiredFiles = [
   "apps/web/next.config.ts",
   "apps/web/middleware.ts",
   "apps/web/worker.ts",
+  "apps/web/worker-entry.ts",
+  "apps/web/lib/scheduledWorker.ts",
+  "apps/web/lib/scheduledTaskRunner.ts",
+  "apps/web/lib/scheduledTaskRunner.test.ts",
+  "apps/web/lib/mediaCleanupScheduler.ts",
+  "apps/web/lib/mediaCleanupScheduler.test.ts",
+  "migrations/0043_media_cleanup_scan_state.sql",
   "apps/web/app/api/admin/resources/route.ts",
   ".github/workflows/payment-consistency.yml",
   ".github/workflows/production-verification.yml",
@@ -53,6 +60,18 @@ if (!worker.includes('url.pathname === "/api/health/live"'))
   failures.push("Worker must expose liveness handling");
 if (!worker.includes('url.pathname === "/api/health/ready"'))
   failures.push("Worker must expose readiness handling");
+
+const scheduledWorker = await readFile("apps/web/lib/scheduledWorker.ts", "utf8");
+if (!scheduledWorker.includes("runScheduledTasks(tasks)"))
+  failures.push("Scheduled Worker must execute maintenance tasks through the isolated task runner");
+if (!scheduledWorker.includes("media_cleanup_scan_state"))
+  failures.push("R2 orphan cleanup must persist per-prefix pagination cursors in D1");
+
+const workerEntry = await readFile("apps/web/worker-entry.ts", "utf8");
+if (!workerEntry.includes("scheduled: runScheduledWorker"))
+  failures.push("Wrangler entrypoint must install the isolated scheduled handler");
+if (!wrangler.includes('"main": "apps/web/worker-entry.ts"'))
+  failures.push("Wrangler must use the entrypoint that installs the isolated scheduled handler");
 
 const packageJson = JSON.parse(await readFile("package.json", "utf8"));
 if (packageJson.packageManager !== "pnpm@12.4.1")
