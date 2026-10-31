@@ -50,11 +50,15 @@ function isCloudflareEdgeBlock(response, bodyText) {
   const server = (response.headers.get("server") ?? "").toLowerCase();
   const cfRay = response.headers.get("cf-ray");
   const mitigation = (response.headers.get("cf-mitigated") ?? "").toLowerCase();
-  const cloudflareBody = /attention required|sorry, you have been blocked|cloudflare ray id|cf-error-details|cf-chl-|just a moment/i.test(
-    String(bodyText ?? ""),
-  );
+  const cloudflareBody =
+    /attention required|sorry, you have been blocked|cloudflare ray id|cf-error-details|cf-chl-|just a moment/i.test(
+      String(bodyText ?? ""),
+    );
 
-  return mitigation === "challenge" || ((server.includes("cloudflare") || Boolean(cfRay)) && cloudflareBody);
+  return (
+    mitigation === "challenge" ||
+    ((server.includes("cloudflare") || Boolean(cfRay)) && cloudflareBody)
+  );
 }
 
 async function assertHealth(path, expectedStatus, expectedBodyStatus) {
@@ -76,7 +80,11 @@ async function assertHealth(path, expectedStatus, expectedBodyStatus) {
       }
 
       const requestId = response.headers.get("x-request-id");
-      if (response.status === expectedStatus && body.status === expectedBodyStatus && requestId) {
+      if (
+        response.status === expectedStatus &&
+        body.status === expectedBodyStatus &&
+        requestId
+      ) {
         console.log(`PASS ${path}: HTTP ${response.status}, status=${body.status}, request_id=${requestId}`);
         return;
       }
@@ -104,7 +112,9 @@ async function verifyRateLimit() {
       const retryAfter = response.headers.get("retry-after");
       const requestId = response.headers.get("x-request-id");
       if (!requestId || !retryAfter) {
-        throw new Error(`Rate limit returned 429 without required headers: requestId=${requestId}, retryAfter=${retryAfter}`);
+        throw new Error(
+          `Rate limit returned 429 without required headers: requestId=${requestId}, retryAfter=${retryAfter}`,
+        );
       }
       console.log(`PASS rate limit: HTTP 429 observed at request ${i}, Retry-After=${retryAfter}`);
       return;
