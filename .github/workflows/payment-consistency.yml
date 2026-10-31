@@ -82,6 +82,12 @@ jobs:
       - name: Prepare isolated local D1 database for E2E
         run: pnpm db:prepare:e2e
 
+      - name: Build Cloudflare Worker with OpenNext
+        run: pnpm cloudflare:build
+
+      - name: Verify generated static pages and Worker bundle
+        run: pnpm verify:cloudflare:build
+
       - name: Install Playwright Chromium
         run: pnpm --filter @ecommerce/web exec playwright install --with-deps chromium
 
@@ -106,12 +112,6 @@ jobs:
           fi
 
           env -u GITHUB_REF WORKERS_CI_BRANCH=main node scripts/assert-main-deploy.mjs
-
-      - name: Build Cloudflare Worker with OpenNext
-        run: pnpm cloudflare:build
-
-      - name: Verify generated static pages and Worker bundle
-        run: pnpm verify:cloudflare:build
 
       - name: Upload Playwright report on failure
         if: failure()

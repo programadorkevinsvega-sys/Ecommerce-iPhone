@@ -188,6 +188,28 @@ for (const requiredFragment of [
   }
 }
 
+const playwrightConfig = await readFile("apps/web/playwright.config.ts", "utf8");
+if (
+  !playwrightConfig.includes("process.env.CI") ||
+  !playwrightConfig.includes("pnpm exec wrangler dev --config wrangler.jsonc --local") ||
+  !playwrightConfig.includes("pnpm preview:cloudflare")
+) {
+  failures.push("CI Playwright must reuse the prebuilt OpenNext output instead of triggering another build");
+}
+
+const buildStepIndex = ciWorkflow.indexOf("      - name: Build Cloudflare Worker with OpenNext");
+const artifactStepIndex = ciWorkflow.indexOf("      - name: Verify generated static pages and Worker bundle");
+const e2eStepIndex = ciWorkflow.indexOf("      - name: Run end-to-end tests against local Wrangler");
+if (
+  buildStepIndex < 0 ||
+  artifactStepIndex < 0 ||
+  e2eStepIndex < 0 ||
+  buildStepIndex > e2eStepIndex ||
+  artifactStepIndex > e2eStepIndex
+) {
+  failures.push("GitHub CI must build and verify OpenNext once before E2E reuses the local Worker artifact");
+}
+
 const productionVerificationHasRemoteD1 = productionVerification.includes(
   "pnpm db:verify:production",
 );

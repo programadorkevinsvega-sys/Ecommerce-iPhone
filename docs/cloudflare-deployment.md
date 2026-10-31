@@ -37,9 +37,8 @@ The workflow `.github/workflows/payment-consistency.yml` runs on pull requests t
 5. ESLint and TypeScript as dedicated CI gates.
 6. Complete Vitest unit/integration suite.
 7. A local-only fixture bootstrap for legacy product parent rows required by migration `0009`, then the complete D1 migration history in local mode.
-8. Playwright against local Wrangler using `wrangler dev --local`.
-9. The exact OpenNext build command, `pnpm cloudflare:build`, as a CI gate before merge. This runs Next.js production compilation, static page generation and Worker bundling.
-10. `pnpm verify:cloudflare:build` checks that the build produced the Next.js prerender manifest, static HTML pages, OpenNext Worker bundle and assets directory.
+8. The single OpenNext build command, `pnpm cloudflare:build`, followed by `pnpm verify:cloudflare:build` to validate the prerender manifest, static HTML pages, Worker bundle and assets.
+9. Playwright against local Wrangler using the already-built Worker output. In CI the Playwright web server starts `wrangler dev --local` directly and does not invoke another OpenNext build.
 
 Pull-request CI has no Cloudflare or production credentials. The E2E database is local, initialized from repository migrations and their test/catalog seed data. CI never applies remote D1 migrations and never deploys a Worker.
 
@@ -100,8 +99,8 @@ Pull-request E2E runs locally in GitHub Actions with `wrangler dev --local`; a r
 ## Versioned commands
 
 - `pnpm build:cloudflare`: compile the Worker bundle; no tests and no deploy.
-- `pnpm cloudflare:build`: OpenNext production build; run as a CI validation gate and again in Cloudflare to produce the deployable Worker artifact.
-- `pnpm verify:cloudflare:build`: verify that Next.js static-page output, the OpenNext Worker bundle and static assets were generated.
+- `pnpm cloudflare:build`: the single OpenNext production build in GitHub Actions; Cloudflare runs its own build in the deployment environment to produce the deployable Worker artifact.
+- `pnpm verify:cloudflare:build`: verify that Next.js static-page output, the OpenNext Worker bundle and static assets were generated before CI starts Playwright.
 - `pnpm cloudflare:deploy`: Workers Builds production hook; main-only guard, production D1 migrations, then Wrangler deploy.
 - `pnpm cloudflare:deploy:production`: main-only guard, production D1 migrations, then Wrangler deploy.
 - `pnpm deploy:production`: local/manual build followed by the same main-only guarded production deploy.

@@ -16,9 +16,10 @@ The workflow retains the quality sequence already delivered by the merged CI/CD 
 4. Non-mutating Prettier validation for changed files via `pnpm format:check:changed`.
 5. Foundation, frontend production-data and architecture checks.
 6. ESLint, TypeScript and the complete Vitest unit/integration suite.
-7. Local-only D1 preparation and migrations, followed by Playwright against local Wrangler.
-8. Positive and negative tests for the production branch guard.
-9. One OpenNext/Cloudflare build and verification of Next.js static output, Worker bundle and assets.
+7. Local-only D1 preparation and migrations.
+8. One OpenNext/Cloudflare build and artifact verification.
+9. Playwright against local Wrangler, reusing the already-built Worker output instead of triggering another OpenNext build.
+10. Positive and negative tests for the production branch guard.
 
 The separate full-repository `pnpm format:check` currently reports 485 pre-existing unformatted baseline files; that unrelated cleanup is excluded from this PR.
 
