@@ -16,21 +16,42 @@ const GENERIC_ERROR = "No pudimos completar la operación.";
 const VALIDATION_ERROR = "Revisa los datos ingresados e inténtalo nuevamente.";
 
 function errorResponse(error: unknown): Response {
-  const code = error instanceof Error ? error.message.toUpperCase() : "UNKNOWN";
-  const status =
-    code.includes("RATE_LIMIT") || code.includes("TOO_MANY")
-      ? 429
-      : code.includes("UNAUTHORIZED") || code.includes("SESSION")
-        ? 401
-        : code.includes("FORBIDDEN") || code.includes("PERMISSION")
-          ? 403
-          : code.includes("NOT_FOUND") || code.includes("NOT FOUND")
-            ? 404
-            : code.includes("CONFLICT") || code.includes("ALREADY")
-              ? 409
-              : code.includes("INVALID") || code.includes("VALIDATION")
-                ? 422
-                : 500;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "SyntaxError"
+  ) {
+    return NextResponse.json(
+      { error: VALIDATION_ERROR },
+      { status: 400, headers: { "cache-control": "no-store" } },
+    );
+  }
+  const code =
+    error instanceof Error && "code" in error && typeof error.code === "string"
+      ? error.code.toUpperCase()
+      : error instanceof Error
+        ? error.message.toUpperCase()
+        : "UNKNOWN";
+  let status = 500;
+  if (code.includes("RATE_LIMIT") || code.includes("TOO_MANY")) {
+    status = 429;
+  } else if (code.includes("UNAUTHORIZED") || code.includes("SESSION")) {
+    status = 401;
+  } else if (code.includes("FORBIDDEN") || code.includes("PERMISSION")) {
+    status = 403;
+  } else if (code.includes("NOT_FOUND") || code.includes("NOT FOUND")) {
+    status = 404;
+  } else if (
+    code.includes("CONFLICT") ||
+    code.includes("ALREADY") ||
+    code.includes("STOCK") ||
+    code.includes("UNAVAILABLE")
+  ) {
+    status = 409;
+  } else if (code.includes("INVALID") || code.includes("VALIDATION")) {
+    status = 422;
+  }
   const message =
     status === 401
       ? "Tu sesión ya no es válida. Inicia sesión nuevamente."

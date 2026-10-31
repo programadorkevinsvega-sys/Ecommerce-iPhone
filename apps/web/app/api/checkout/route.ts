@@ -19,7 +19,23 @@ import { cloudflareEnv } from "../../../lib/cloudflareContext";
 import { cloudflareWaitUntil } from "../../../lib/cloudflareContext";
 
 function safeError(error: unknown): { error: string; status: number } {
-  const code = error instanceof Error ? error.message.toUpperCase() : "UNKNOWN";
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    error.name === "SyntaxError"
+  ) {
+    return {
+      error: "Revisa los datos ingresados e inténtalo nuevamente.",
+      status: 400,
+    };
+  }
+  const code =
+    error instanceof Error && "code" in error && typeof error.code === "string"
+      ? error.code.toUpperCase()
+      : error instanceof Error
+        ? error.message.toUpperCase()
+        : "UNKNOWN";
   const known: Record<string, string> = {
     INVALID_EMAIL: "Revisa los datos ingresados e inténtalo nuevamente.",
     INVALID_PHONE: "Revisa los datos ingresados e inténtalo nuevamente.",
@@ -38,7 +54,14 @@ function safeError(error: unknown): { error: string; status: number } {
     return { error: "No tienes autorización para realizar esta operación.", status: 403 };
   if (code.includes("NOT_FOUND") || code.includes("NOT FOUND"))
     return { error: "No encontramos el recurso solicitado.", status: 404 };
-  if (code.includes("CONFLICT") || code.includes("ALREADY") || code.includes("IDEMPOTENCY"))
+  if (
+    code.includes("CONFLICT") ||
+    code.includes("ALREADY") ||
+    code.includes("IDEMPOTENCY") ||
+    code.includes("STOCK") ||
+    code.includes("UNAVAILABLE") ||
+    code.includes("CHECKOUT_GUARDS.ID")
+  )
     return { error: "La operación entra en conflicto con el estado actual.", status: 409 };
   if (code.includes("RATE_LIMIT") || code.includes("TOO_MANY"))
     return { error: "Demasiadas solicitudes. Inténtalo nuevamente en unos minutos.", status: 429 };
@@ -130,6 +153,21 @@ export async function POST(request: Request) {
           { status: 401 },
         );
     }
+
+    // A successful checkout clears its cart, so resolve a retry before loading it again.
+    if (currentSession) {
+      const previousOrder = await context.orderIdempotency.findByIdempotencyKeyForCustomer(
+        idempotencyKey,
+        currentSession.customerId,
+      );
+      if (previousOrder) {
+        return NextResponse.json(
+          { order: previousOrder },
+          { status: 200, headers: { "cache-control": "no-store" } },
+        );
+      }
+    }
+
     const customerResult = await context.customer.save(
       { email, firstName, lastName, phone },
       { label: "Principal", ...shippingAddress, isDefault: true },
