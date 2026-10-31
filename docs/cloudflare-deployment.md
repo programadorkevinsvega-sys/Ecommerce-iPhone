@@ -90,11 +90,37 @@ The Deploy command is the only production deployment path. It runs the main-bran
 
 ### Previews for non-production branches
 
-The repository currently has no isolated remote staging resources. Therefore, in **Workers & Pages → ecommerce-iphone → Settings → Build → Branch control**, leave **Enable Preview Builds** unchecked until separate Preview bindings exist for D1, R2, Queues, Durable Objects and any required secrets. The current top-level Wrangler bindings point to production resources; do not enable remote previews against those bindings.
+**Operational state observed on 2026-10-31:** Cloudflare Workers Builds generated a successful preview build for branch
+`ci/mandatory-quality-gates` (Build ID
+`837f7469-6299-415d-b2ef-40f3d75003f5`; the check details URL was under
+`/production/previews/ci-mandatory-quality-gates/builds/`). This proves that
+Preview Builds are currently enabled in the Cloudflare dashboard; the previous
+instruction to leave them unchecked does not describe the observed setting.
 
-If remote previews are enabled in the future, configure the separate Preview command and Preview-specific bindings, variables and secrets first. Do not use the production resources as a fallback. The `previews` block in `wrangler.jsonc` defines Preview runtime settings; its presence alone does not turn the dashboard's Preview Builds switch off.
+A Cloudflare Preview is separate from a production Worker version or active
+deployment. Non-production branches run the Preview command, not the production
+Deploy command. The successful Preview build check is build evidence only: it
+does not prove the Preview runtime's resource isolation or application health.
 
-Pull-request E2E runs locally in GitHub Actions with `wrangler dev --local`; a remote preview is not required to validate each PR.
+**Isolation is not yet certified.** The repository's top-level Wrangler
+configuration binds production D1, R2 and Queues resources, while its
+`previews` block is empty and does not declare separate D1, R2 or Queue
+producer bindings. A successful Preview build must not be treated as evidence
+that the preview runtime is safely isolated. Cloudflare documents that
+Previews sharing the same D1 database ID, R2 bucket name or Queue name share
+those resources.
+
+Until dedicated non-production resources and Preview bindings are provisioned
+and verified, manually disable **Enable Preview Builds** in
+**Workers & Pages → ecommerce-iphone → Settings → Build → Branch control**.
+Alternatively, keep previews enabled only after configuring separate Preview
+D1, R2 and Queue resources, Preview-specific variables/secrets, and validating
+the Preview URL and its access boundaries. Do not point Preview traffic or
+producers at production resources. Queue consumers and production Cron/Routes
+remain separate platform concerns and must not be assumed to be preview-isolated.
+
+Pull-request E2E validation is performed in GitHub Actions against local
+Wrangler with local D1. A remote Cloudflare Preview is not required for CI.
 
 ## Versioned commands
 

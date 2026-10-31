@@ -30,7 +30,7 @@ A final job named **`CI required`** runs with `always()` and evaluates the resul
 - **GitHub Actions:** installation, audit, format, lint, types, architecture/contracts, tests, local D1, Playwright, OpenNext build and artifact verification.
 - **Cloudflare Workers Builds:** deploy build environment, main-only production guard, remote D1 migrations and `wrangler deploy`.
 - GitHub Actions does not receive Cloudflare deployment credentials, run remote D1 migrations or deploy production.
-- Non-production Cloudflare previews must remain disabled until isolated preview bindings and resources exist.
+- A Cloudflare Preview build for this branch was observed, confirming that Preview Builds are enabled in the dashboard. The Preview build was not a production deployment, but runtime resource isolation is not certified because the Wrangler `previews` block has no separate D1/R2/Queue bindings. Disable Preview Builds manually until isolated resources are configured and verified.
 
 ## Acceptance status
 
@@ -38,7 +38,7 @@ A final job named **`CI required`** runs with `always()` and evaluates the resul
 - [x] Use the official non-mutating changed-file formatting check without creating unrelated repository-wide formatting churn.
 - [x] Publish one stable aggregate status check that rejects failed, cancelled and skipped prerequisite jobs.
 - [x] Keep production migrations and deployment owned by Cloudflare.
-- [ ] GitHub Actions checks on the latest PR commit: pending after push.
+- [x] GitHub Actions `Repository CI` and `CI required` passed on commit `efd8f94baa760af6316b16708050ee99aa039c0c` (run `41157442917`); a subsequent documentation commit will trigger a fresh run.
 - [ ] Require **`CI required`** in the `main` branch ruleset / protection rule: manual repository-admin action. The last inspected GitHub branch metadata reported `main` as unprotected and no repository rulesets.
 
 ## Verification commands
