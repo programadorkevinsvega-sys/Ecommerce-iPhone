@@ -173,11 +173,14 @@ describe("processOrphanMediaPage", () => {
     await expect(
       processOrphanMediaPage({
         bucket: {
-          list: async () => ({
-            objects: [],
-            truncated: true,
-            cursor: "page-3",
-          }),
+          list: async () => {
+            persistedCursor = "page-2";
+            return {
+              objects: [],
+              truncated: true,
+              cursor: "page-3",
+            };
+          },
         },
         scanStore: {
           loadDue: async () => ({ cursor: "page-1" }),
