@@ -2,6 +2,7 @@ import { cookies, headers } from "next/headers";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { PERMISSIONS } from "../../../modules/admin/application/Rbac";
 import type { AdminStepUpScope } from "../../../modules/admin/application/AdminStepUpRepository";
+import { buildCreateAdminStepUp } from "./adminAuthCompositionV2";
 import type { CurrentAdmin } from "../../../modules/admin/application/ResolveCurrentAdmin";
 import { D1AdminStepUpRepository } from "../../../modules/admin/infrastructure/D1AdminStepUpRepository";
 import { sha256 } from "../../../modules/admin/infrastructure/AdminSecurity";
@@ -50,6 +51,17 @@ export async function requireAdminStepUp(
   });
   if (!valid) throw new Error("ADMIN_STEP_UP_REQUIRED");
   return { admin, env };
+}
+
+export async function createAdminStepUp(input: Readonly<{
+  adminUserId: string;
+  sessionToken: string;
+  password: string;
+  scope: AdminStepUpScope;
+  ipHash?: string;
+}>) {
+  const { env } = getCloudflareContext();
+  return buildCreateAdminStepUp(env).execute(input);
 }
 
 export async function requestFingerprint() {

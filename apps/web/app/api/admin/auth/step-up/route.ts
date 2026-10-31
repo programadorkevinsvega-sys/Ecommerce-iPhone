@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { buildCreateAdminStepUp } from "../../../../../lib/adminAuthCompositionV2";
 import {
   ADMIN_COOKIE,
+  createAdminStepUp,
   currentAdmin,
   requestFingerprint,
   setAdminStepUp,
@@ -49,8 +48,7 @@ export async function POST(request: Request) {
     }
 
     const fingerprint = await requestFingerprint();
-    const { env } = getCloudflareContext();
-    const grant = await buildCreateAdminStepUp(env).execute({
+    const grant = await createAdminStepUp({
       adminUserId: admin.id,
       sessionToken,
       password,
