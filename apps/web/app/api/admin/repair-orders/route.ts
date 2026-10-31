@@ -72,8 +72,8 @@ export async function GET(request: Request) {
       ).filter((item): item is NonNullable<typeof item> => item !== null);
       /*
        * The request remains in service_requests after reception. The repair-order
-      * relation is the source of truth that removes it from this intake queue.
-      */
+       * relation is the source of truth that removes it from this intake queue.
+       */
       return NextResponse.json({ items }, { headers: { "cache-control": "no-store" } });
     }
     const rawStatus = url.searchParams.get("status");
@@ -93,7 +93,10 @@ export async function POST(request: Request) {
     const { env, admin } = await requireAdmin(PERMISSIONS.repairOrdersWrite);
     const body = bodyRecord(await request.json());
     const serviceRequestId = typeof body.serviceRequestId === "string" ? body.serviceRequestId : "";
-    const order = await createRepairOrderApplication(env, request.headers.get("x-request-id")?.trim() || undefined).execute(serviceRequestId, admin.id);
+    const order = await createRepairOrderApplication(
+      env,
+      request.headers.get("x-request-id")?.trim() || undefined,
+    ).execute(serviceRequestId, admin.id);
     return NextResponse.json(
       { order: order.toPrimitives() },
       { status: 201, headers: { "cache-control": "no-store" } },

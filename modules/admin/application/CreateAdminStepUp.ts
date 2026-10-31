@@ -29,13 +29,15 @@ export class CreateAdminStepUp {
     private readonly generateToken: () => string = createToken,
   ) {}
 
-  async execute(input: Readonly<{
-    adminUserId: string;
-    sessionToken: string;
-    password: string;
-    scope: AdminStepUpScope;
-    ipHash?: string;
-  }>): Promise<Readonly<{ token: string; expiresAt: Date }>> {
+  async execute(
+    input: Readonly<{
+      adminUserId: string;
+      sessionToken: string;
+      password: string;
+      scope: AdminStepUpScope;
+      ipHash?: string;
+    }>,
+  ): Promise<Readonly<{ token: string; expiresAt: Date }>> {
     const adminUserId = input.adminUserId.trim();
     if (!adminUserId || !input.sessionToken || !input.password || input.password.length > 128) {
       throw new Error("INVALID_STEP_UP");

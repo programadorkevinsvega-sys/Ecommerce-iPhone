@@ -64,9 +64,9 @@ test.describe("platform hardening", () => {
     expect(styleSrc).toContain(`'nonce-${nonce}'`);
     expect(styleSrc).not.toContain("unsafe-inline");
     expect(styleSrc).not.toContain("unsafe-eval");
-    const styleNonces = await page.locator("style").evaluateAll((styles) =>
-      styles.map((style) => (style as HTMLStyleElement).nonce),
-    );
+    const styleNonces = await page
+      .locator("style")
+      .evaluateAll((styles) => styles.map((style) => (style as HTMLStyleElement).nonce));
     expect(styleNonces.every((value) => value === nonce)).toBe(true);
   });
 
@@ -231,7 +231,9 @@ test.describe("platform hardening", () => {
     });
     expect(accessibleName).not.toBe("");
   });
-  test("step-up endpoint rejects missing admin sessions before evaluating credentials", async ({ request }) => {
+  test("step-up endpoint rejects missing admin sessions before evaluating credentials", async ({
+    request,
+  }) => {
     const response = await request.post("/api/admin/auth/step-up", {
       data: { password: "not-a-real-password", scope: "payments:refund" },
     });
@@ -240,5 +242,4 @@ test.describe("platform hardening", () => {
       error: "Tu sesión ya no es válida. Inicia sesión nuevamente.",
     });
   });
-
 });

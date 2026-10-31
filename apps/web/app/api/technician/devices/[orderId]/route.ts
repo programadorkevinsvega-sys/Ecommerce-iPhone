@@ -8,12 +8,11 @@ export async function PATCH(
 ) {
   try {
     const { env, technician } = await requireTechnician();
-    const body = await request.json() as Record<string, unknown>;
-    const device = await technicianDeviceApplication(env, request.headers.get("x-request-id")?.trim() || undefined).update(
-      technician.id,
-      (await params).orderId,
-      body,
-    );
+    const body = (await request.json()) as Record<string, unknown>;
+    const device = await technicianDeviceApplication(
+      env,
+      request.headers.get("x-request-id")?.trim() || undefined,
+    ).update(technician.id, (await params).orderId, body);
     return NextResponse.json(
       { device: device.toPrimitives() },
       { headers: { "cache-control": "no-store" } },
@@ -21,16 +20,23 @@ export async function PATCH(
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     const status =
-      code === "UNAUTHORIZED" ? 401 :
-      code === "FORBIDDEN" ? 403 :
-      code === "DEVICE_NOT_FOUND" || code === "DEVICE_NOT_LINKED" ? 404 : 400;
+      code === "UNAUTHORIZED"
+        ? 401
+        : code === "FORBIDDEN"
+          ? 403
+          : code === "DEVICE_NOT_FOUND" || code === "DEVICE_NOT_LINKED"
+            ? 404
+            : 400;
     return NextResponse.json(
       {
         error:
-          status === 401 ? "Authentication required" :
-          status === 403 ? "Forbidden" :
-          status === 404 ? "Device not found" :
-          "Unable to update device",
+          status === 401
+            ? "Authentication required"
+            : status === 403
+              ? "Forbidden"
+              : status === 404
+                ? "Device not found"
+                : "Unable to update device",
       },
       { status },
     );

@@ -6,10 +6,12 @@ export class CloudflareNotificationQueuePublisher implements NotificationQueuePo
   constructor(private readonly queue: Queue) {}
 
   async publish(event: NotificationEvent): Promise<void> {
-    await this.queue.send(JSON.stringify({
-      schemaVersion: event.eventVersion,
-      outboxId: event.id,
-      ...(event.requestId ? { requestId: event.requestId } : {}),
-    }));
+    await this.queue.send(
+      JSON.stringify({
+        schemaVersion: event.eventVersion,
+        outboxId: event.id,
+        ...(event.requestId ? { requestId: event.requestId } : {}),
+      }),
+    );
   }
 }

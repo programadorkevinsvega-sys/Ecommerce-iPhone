@@ -108,10 +108,13 @@ export default function AdminUsersPage() {
   const loadRolePermissions = useCallback(async (role: AdminUser["role"]) => {
     setPermissionsLoading(true);
     try {
-      const response = await fetch(`/api/admin/permissions/catalog?role=${encodeURIComponent(role)}`, {
-        cache: "no-store",
-        credentials: "same-origin",
-      });
+      const response = await fetch(
+        `/api/admin/permissions/catalog?role=${encodeURIComponent(role)}`,
+        {
+          cache: "no-store",
+          credentials: "same-origin",
+        },
+      );
       const data = (await response.json()) as { items?: PermissionItem[]; error?: string };
       if (!response.ok) {
         setMessage(data.error ?? "No se pudieron cargar los permisos del rol.");
@@ -199,16 +202,21 @@ export default function AdminUsersPage() {
         .filter((item) => item.state !== "inherit")
         .map((item) => ({ permission: item.permission, granted: item.state === "grant" }));
       if (overrides.length) {
-        const permissionResponse = await fetch(`/api/admin/users/${encodeURIComponent(data.id)}/permissions`, {
-          method: "PATCH",
-          headers: { "content-type": "application/json" },
-          credentials: "same-origin",
-          cache: "no-store",
-          body: JSON.stringify({ overrides }),
-        });
+        const permissionResponse = await fetch(
+          `/api/admin/users/${encodeURIComponent(data.id)}/permissions`,
+          {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            credentials: "same-origin",
+            cache: "no-store",
+            body: JSON.stringify({ overrides }),
+          },
+        );
         if (!permissionResponse.ok) {
           const permissionData = (await permissionResponse.json()) as { error?: string };
-          setMessage(`Administrador creado con el rol base. No se pudieron aplicar los permisos individuales: ${permissionData.error ?? "error de autorización"}.`);
+          setMessage(
+            `Administrador creado con el rol base. No se pudieron aplicar los permisos individuales: ${permissionData.error ?? "error de autorización"}.`,
+          );
         } else {
           setMessage("Administrador creado con sus credenciales y permisos configurados.");
         }
@@ -241,7 +249,9 @@ export default function AdminUsersPage() {
       body: JSON.stringify({ id: item.id, active: !item.active }),
     });
     const data = (await response.json()) as { error?: string };
-    setMessage(response.ok ? "Estado actualizado." : data.error ?? "No se pudo actualizar el estado.");
+    setMessage(
+      response.ok ? "Estado actualizado." : (data.error ?? "No se pudo actualizar el estado."),
+    );
     if (response.ok) await load();
   }
 
@@ -313,126 +323,200 @@ export default function AdminUsersPage() {
           <div>
             <p className="admin-kicker">Seguridad y acceso</p>
             <h1>Administradores y roles</h1>
-            <p>Crea cuentas administrativas, asigna un rol base y configura permisos específicos por cuenta.</p>
+            <p>
+              Crea cuentas administrativas, asigna un rol base y configura permisos específicos por
+              cuenta.
+            </p>
           </div>
-          <Link href="/admin" className="admin-button">Volver</Link>
+          <Link href="/admin" className="admin-button">
+            Volver
+          </Link>
         </header>
 
         <section className="admin-workspace admin-users-grid">
           <div className="admin-page-panel">
-          <form className="admin-form" onSubmit={save}>
-            <div className="admin-section-heading">
-              <div>
-                <p className="admin-kicker">Cuenta</p>
-                <h2>{editing ? "Editar administrador" : "Crear administrador"}</h2>
-              </div>
-              {editing && <button className="admin-button" type="button" onClick={() => { setEditing(null); setForm(EMPTY); setPermissions([]); }}>Nuevo</button>}
-            </div>
-            <div className="form-grid">
-              <label>
-                Correo
-                <input required type="email" value={form.email} onChange={(e) => setForm((v) => ({ ...v, email: e.target.value }))} />
-              </label>
-              <label>
-                Nombre
-                <input required value={form.firstName} onChange={(e) => setForm((v) => ({ ...v, firstName: e.target.value }))} />
-              </label>
-              <label>
-                Apellido
-                <input required value={form.lastName} onChange={(e) => setForm((v) => ({ ...v, lastName: e.target.value }))} />
-              </label>
-              <label>
-                Rol
-                <select
-                  value={form.role}
-                  onChange={(e) => {
-                    const role = e.target.value as AdminUser["role"];
-                    setForm((v) => ({ ...v, role }));
-                    if (!editing) void loadRolePermissions(role);
-                  }}
-                >
-                  {ROLES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
-              </label>
-              <label>
-                {editing ? "Nueva contraseña (opcional)" : "Contraseña inicial"}
-                <input required={!editing} minLength={12} type="password" autoComplete="new-password" value={form.password} onChange={(e) => setForm((v) => ({ ...v, password: e.target.value }))} />
-              </label>
-              {editing && (
-                <label className="checkbox-label">
-                  <input type="checkbox" checked={form.active} onChange={(e) => setForm((v) => ({ ...v, active: e.target.checked }))} />
-                  Cuenta activa
-                </label>
-              )}
-            </div>
-            <section className="admin-permissions-panel">
+            <form className="admin-form" onSubmit={save}>
               <div className="admin-section-heading">
                 <div>
-                  <p className="admin-kicker">Autorización</p>
-                  <h2>Permisos de la cuenta</h2>
+                  <p className="admin-kicker">Cuenta</p>
+                  <h2>{editing ? "Editar administrador" : "Crear administrador"}</h2>
                 </div>
-                <span className="muted">
-                  {editing ? "Rol base + ajustes individuales." : "Se aplican al crear la cuenta."}
-                </span>
+                {editing && (
+                  <button
+                    className="admin-button"
+                    type="button"
+                    onClick={() => {
+                      setEditing(null);
+                      setForm(EMPTY);
+                      setPermissions([]);
+                    }}
+                  >
+                    Nuevo
+                  </button>
+                )}
               </div>
-              {permissionsLoading ? (
-                <AdminLoadingState label="Cargando permisos…" compact />
-              ) : form.role === "SUPER_ADMIN" ? (
-                <p className="form-help">SUPER_ADMIN dispone de todos los permisos y sus permisos individuales están protegidos.</p>
-              ) : (
-                <>
-                  <p className="form-help">Heredar usa el permiso definido por el rol. Permitir o Denegar crea un ajuste específico para esta cuenta.</p>
-                  <div className="permission-grid">
-                    {permissions.map((item) => (
-                      <label className="permission-row" key={item.permission}>
-                        <span>
-                          <strong>{PERMISSION_LABELS[item.permission] ?? item.permission}</strong>
-                          <small>{item.permission} · base: {item.roleGranted ? "Activo" : "Denegado"} · efectivo: {item.effective ? "Activo" : "Denegado"}</small>
-                        </span>
-                        <select
-                          value={item.state}
-                          onChange={(event) =>
-                            setPermissions((current) =>
-                              current.map((permission) =>
-                                permission.permission === item.permission
-                                  ? {
-                                      ...permission,
-                                      state: event.target.value as PermissionItem["state"],
-                                      effective:
-                                        event.target.value === "grant"
-                                          ? true
-                                          : event.target.value === "deny"
-                                            ? false
-                                            : permission.roleGranted,
-                                    }
-                                  : permission,
-                              ),
-                            )
-                          }
-                        >
-                          <option value="inherit">Heredar del rol</option>
-                          <option value="grant">Permitir</option>
-                          <option value="deny">Denegar</option>
-                        </select>
-                      </label>
+              <div className="form-grid">
+                <label>
+                  Correo
+                  <input
+                    required
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => setForm((v) => ({ ...v, email: e.target.value }))}
+                  />
+                </label>
+                <label>
+                  Nombre
+                  <input
+                    required
+                    value={form.firstName}
+                    onChange={(e) => setForm((v) => ({ ...v, firstName: e.target.value }))}
+                  />
+                </label>
+                <label>
+                  Apellido
+                  <input
+                    required
+                    value={form.lastName}
+                    onChange={(e) => setForm((v) => ({ ...v, lastName: e.target.value }))}
+                  />
+                </label>
+                <label>
+                  Rol
+                  <select
+                    value={form.role}
+                    onChange={(e) => {
+                      const role = e.target.value as AdminUser["role"];
+                      setForm((v) => ({ ...v, role }));
+                      if (!editing) void loadRolePermissions(role);
+                    }}
+                  >
+                    {ROLES.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
                     ))}
+                  </select>
+                </label>
+                <label>
+                  {editing ? "Nueva contraseña (opcional)" : "Contraseña inicial"}
+                  <input
+                    required={!editing}
+                    minLength={12}
+                    type="password"
+                    autoComplete="new-password"
+                    value={form.password}
+                    onChange={(e) => setForm((v) => ({ ...v, password: e.target.value }))}
+                  />
+                </label>
+                {editing && (
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={form.active}
+                      onChange={(e) => setForm((v) => ({ ...v, active: e.target.checked }))}
+                    />
+                    Cuenta activa
+                  </label>
+                )}
+              </div>
+              <section className="admin-permissions-panel">
+                <div className="admin-section-heading">
+                  <div>
+                    <p className="admin-kicker">Autorización</p>
+                    <h2>Permisos de la cuenta</h2>
                   </div>
-                  {editing && <div className="modal-actions"><button type="button" className="admin-button primary" onClick={() => void savePermissions()}>Guardar permisos</button></div>}
-                </>
-              )}
-            </section>
-            {message && <p role="status">{message}</p>}
-            <div className="modal-actions">
-              <button className="admin-button primary" disabled={loading} type="submit">
-                {editing ? "Guardar cambios" : "Crear cuenta"}
-              </button>
-              {editing && (
-                <button type="button" className="admin-button" onClick={() => { setEditing(null); setForm(EMPTY); setPermissions([]); }}>
-                  Cancelar
+                  <span className="muted">
+                    {editing
+                      ? "Rol base + ajustes individuales."
+                      : "Se aplican al crear la cuenta."}
+                  </span>
+                </div>
+                {permissionsLoading ? (
+                  <AdminLoadingState label="Cargando permisos…" compact />
+                ) : form.role === "SUPER_ADMIN" ? (
+                  <p className="form-help">
+                    SUPER_ADMIN dispone de todos los permisos y sus permisos individuales están
+                    protegidos.
+                  </p>
+                ) : (
+                  <>
+                    <p className="form-help">
+                      Heredar usa el permiso definido por el rol. Permitir o Denegar crea un ajuste
+                      específico para esta cuenta.
+                    </p>
+                    <div className="permission-grid">
+                      {permissions.map((item) => (
+                        <label className="permission-row" key={item.permission}>
+                          <span>
+                            <strong>{PERMISSION_LABELS[item.permission] ?? item.permission}</strong>
+                            <small>
+                              {item.permission} · base: {item.roleGranted ? "Activo" : "Denegado"} ·
+                              efectivo: {item.effective ? "Activo" : "Denegado"}
+                            </small>
+                          </span>
+                          <select
+                            value={item.state}
+                            onChange={(event) =>
+                              setPermissions((current) =>
+                                current.map((permission) =>
+                                  permission.permission === item.permission
+                                    ? {
+                                        ...permission,
+                                        state: event.target.value as PermissionItem["state"],
+                                        effective:
+                                          event.target.value === "grant"
+                                            ? true
+                                            : event.target.value === "deny"
+                                              ? false
+                                              : permission.roleGranted,
+                                      }
+                                    : permission,
+                                ),
+                              )
+                            }
+                          >
+                            <option value="inherit">Heredar del rol</option>
+                            <option value="grant">Permitir</option>
+                            <option value="deny">Denegar</option>
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                    {editing && (
+                      <div className="modal-actions">
+                        <button
+                          type="button"
+                          className="admin-button primary"
+                          onClick={() => void savePermissions()}
+                        >
+                          Guardar permisos
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+              {message && <p role="status">{message}</p>}
+              <div className="modal-actions">
+                <button className="admin-button primary" disabled={loading} type="submit">
+                  {editing ? "Guardar cambios" : "Crear cuenta"}
                 </button>
-              )}
-            </div>
-          </form>
+                {editing && (
+                  <button
+                    type="button"
+                    className="admin-button"
+                    onClick={() => {
+                      setEditing(null);
+                      setForm(EMPTY);
+                      setPermissions([]);
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
 
           <div className="admin-page-panel admin-page-table-panel">
@@ -443,37 +527,70 @@ export default function AdminUsersPage() {
               </div>
               <span className="muted">{items.length} cuentas</span>
             </div>
-          <div className="admin-table-wrap">
-            {dataLoading ? (
-              <AdminLoadingState label="Cargando administradores…" />
-            ) : (
-              <>
-            <table className="admin-table">
-              <thead>
-                <tr><th>Administrador</th><th>Rol</th><th>Estado</th><th>Último acceso</th><th>Acciones</th></tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <strong>{item.firstName} {item.lastName}</strong>
-                      <span className="table-subtext">{item.email}</span>
-                    </td>
-                    <td>{ROLES.find(([value]) => value === item.role)?.[1] ?? item.role}</td>
-                    <td>{item.active ? "Activo" : "Inactivo"}</td>
-                    <td>{item.lastLoginAt ? new Date(item.lastLoginAt).toLocaleString("es-CO") : "Nunca"}</td>
-                    <td>
-                      <button className="table-action" type="button" onClick={() => edit(item)}>Editar</button>
-                      <button className="table-action" type="button" onClick={() => void toggle(item)}>{item.active ? "Desactivar" : "Activar"}</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {!items.length && <div className="admin-empty"><span>♛</span><h3>No hay cuentas administrativas adicionales</h3><p>La primera cuenta SUPER_ADMIN se crea mediante el bootstrap seguro del sistema.</p></div>}
-              </>
-            )}
-          </div>
+            <div className="admin-table-wrap">
+              {dataLoading ? (
+                <AdminLoadingState label="Cargando administradores…" />
+              ) : (
+                <>
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Administrador</th>
+                        <th>Rol</th>
+                        <th>Estado</th>
+                        <th>Último acceso</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item) => (
+                        <tr key={item.id}>
+                          <td>
+                            <strong>
+                              {item.firstName} {item.lastName}
+                            </strong>
+                            <span className="table-subtext">{item.email}</span>
+                          </td>
+                          <td>{ROLES.find(([value]) => value === item.role)?.[1] ?? item.role}</td>
+                          <td>{item.active ? "Activo" : "Inactivo"}</td>
+                          <td>
+                            {item.lastLoginAt
+                              ? new Date(item.lastLoginAt).toLocaleString("es-CO")
+                              : "Nunca"}
+                          </td>
+                          <td>
+                            <button
+                              className="table-action"
+                              type="button"
+                              onClick={() => edit(item)}
+                            >
+                              Editar
+                            </button>
+                            <button
+                              className="table-action"
+                              type="button"
+                              onClick={() => void toggle(item)}
+                            >
+                              {item.active ? "Desactivar" : "Activar"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {!items.length && (
+                    <div className="admin-empty">
+                      <span>♛</span>
+                      <h3>No hay cuentas administrativas adicionales</h3>
+                      <p>
+                        La primera cuenta SUPER_ADMIN se crea mediante el bootstrap seguro del
+                        sistema.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </section>
       </section>

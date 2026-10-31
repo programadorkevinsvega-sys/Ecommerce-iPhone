@@ -67,13 +67,21 @@ export function adminPromotionsApplication(env: CloudflareEnv): AdminPromotions 
   return new AdminPromotions(new D1PromotionRepository(env.DB), new D1AuditPort(env.DB));
 }
 
-export function adminCouponsApplication(env: CloudflareEnv): AdminCoupons { return new AdminCoupons(new D1CouponRepository(env.DB), new D1AuditPort(env.DB)); }
+export function adminCouponsApplication(env: CloudflareEnv): AdminCoupons {
+  return new AdminCoupons(new D1CouponRepository(env.DB), new D1AuditPort(env.DB));
+}
 
-export function adminContentApplication(env: CloudflareEnv): AdminContent { return new AdminContent(new D1CmsContentRepository(env.DB), new D1AuditPort(env.DB)); }
+export function adminContentApplication(env: CloudflareEnv): AdminContent {
+  return new AdminContent(new D1CmsContentRepository(env.DB), new D1AuditPort(env.DB));
+}
 
-export function reviewModerationApplication(env: CloudflareEnv): ReviewModeration { return new ReviewModeration(new D1ReviewModerationRepository(env.DB), new D1AuditPort(env.DB)); }
+export function reviewModerationApplication(env: CloudflareEnv): ReviewModeration {
+  return new ReviewModeration(new D1ReviewModerationRepository(env.DB), new D1AuditPort(env.DB));
+}
 
-export function adminCampaignsApplication(env: CloudflareEnv): AdminCampaigns { return new AdminCampaigns(new D1CampaignRepository(env.DB), new D1AuditPort(env.DB)); }
+export function adminCampaignsApplication(env: CloudflareEnv): AdminCampaigns {
+  return new AdminCampaigns(new D1CampaignRepository(env.DB), new D1AuditPort(env.DB));
+}
 
 export function adminReviewsApplication(env: CloudflareEnv): AdminReviews {
   return new AdminReviews(new D1AdminReviewRepository(env.DB), new D1AuditPort(env.DB));
@@ -144,7 +152,9 @@ export function adminUserManagementApplication(env: CloudflareEnv): AdminUserMan
   );
 }
 
-export function adminPermissionManagementApplication(env: CloudflareEnv): AdminPermissionManagement {
+export function adminPermissionManagementApplication(
+  env: CloudflareEnv,
+): AdminPermissionManagement {
   return new AdminPermissionManagement(
     new D1AdminUserRepository(env.DB),
     new D1AdminPermissionRepository(env.DB),
@@ -152,17 +162,38 @@ export function adminPermissionManagementApplication(env: CloudflareEnv): AdminP
   );
 }
 
-export function repairOrderRepository(env: CloudflareEnv, requestId?: string): D1RepairOrderRepository {
+export function repairOrderRepository(
+  env: CloudflareEnv,
+  requestId?: string,
+): D1RepairOrderRepository {
   return new D1RepairOrderRepository(env.DB, requestId);
 }
 
-export function createRepairOrderApplication(env: CloudflareEnv, requestId?: string): CreateRepairOrder {
-  return new CreateRepairOrder(serviceRequestRepository(env), repairOrderRepository(env, requestId));
+export function createRepairOrderApplication(
+  env: CloudflareEnv,
+  requestId?: string,
+): CreateRepairOrder {
+  return new CreateRepairOrder(
+    serviceRequestRepository(env),
+    repairOrderRepository(env, requestId),
+  );
 }
 
-export function repairOrderManagementApplication(env: CloudflareEnv, requestId?: string): RepairOrderManagement {
+export function repairOrderManagementApplication(
+  env: CloudflareEnv,
+  requestId?: string,
+): RepairOrderManagement {
   return new RepairOrderManagement(repairOrderRepository(env, requestId));
 }
-export function repairTrackingApplication(env: CloudflareEnv): RepairTracking { return new RepairTracking(repairOrderRepository(env), new D1RepairOperationsRepository(env.DB)); }
-export function repairEvidenceApplication(env: CloudflareEnv): RepairEvidenceService { return new RepairEvidenceService(new D1RepairEvidenceRepository(env.DB)); }
-export function repairOperationsApplication(env: CloudflareEnv, requestId?: string): RepairOperations { return new RepairOperations(new D1RepairOperationsRepository(env.DB, requestId)); }
+export function repairTrackingApplication(env: CloudflareEnv): RepairTracking {
+  return new RepairTracking(repairOrderRepository(env), new D1RepairOperationsRepository(env.DB));
+}
+export function repairEvidenceApplication(env: CloudflareEnv): RepairEvidenceService {
+  return new RepairEvidenceService(new D1RepairEvidenceRepository(env.DB));
+}
+export function repairOperationsApplication(
+  env: CloudflareEnv,
+  requestId?: string,
+): RepairOperations {
+  return new RepairOperations(new D1RepairOperationsRepository(env.DB, requestId));
+}

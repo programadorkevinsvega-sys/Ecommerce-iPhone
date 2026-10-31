@@ -31,7 +31,10 @@ export default async function HomePage() {
   const products = await listHomeProductItems();
   const services = await listHomeServiceItems();
   const marketing = await publicMarketing();
-  const [banners, featured] = await Promise.all([marketing.banners("HOME"), marketing.featured("HOME")]);
+  const [banners, featured] = await Promise.all([
+    marketing.banners("HOME"),
+    marketing.featured("HOME"),
+  ]);
   return (
     <main className="store-shell">
       <StoreHeader activeHref="/" />

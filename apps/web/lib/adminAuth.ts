@@ -6,11 +6,7 @@ import type { CurrentAdmin } from "../../../modules/admin/application/ResolveCur
 import { D1AdminStepUpRepository } from "../../../modules/admin/infrastructure/D1AdminStepUpRepository";
 import { sha256 } from "../../../modules/admin/infrastructure/AdminSecurity";
 import { buildRequestFingerprint } from "./adminFingerprintComposition";
-import {
-  buildBootstrapAdmin,
-  buildLogoutAdmin,
-  buildRequireAdmin,
-} from "./adminAuthCompositionV2";
+import { buildBootstrapAdmin, buildLogoutAdmin, buildRequireAdmin } from "./adminAuthCompositionV2";
 
 export { PERMISSIONS };
 export const ADMIN_COOKIE = "admin_session";
@@ -19,10 +15,12 @@ export const ADMIN_STEP_UP_COOKIE = "admin_step_up";
 export async function currentAdmin(): Promise<CurrentAdmin | null> {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   const { env } = getCloudflareContext();
-  return buildRequireAdmin(env).execute(token).catch((error: unknown) => {
-    if (error instanceof Error && error.message === "UNAUTHORIZED") return null;
-    throw error;
-  });
+  return buildRequireAdmin(env)
+    .execute(token)
+    .catch((error: unknown) => {
+      if (error instanceof Error && error.message === "UNAUTHORIZED") return null;
+      throw error;
+    });
 }
 
 export async function requireAdmin(
@@ -114,6 +112,7 @@ export async function logoutAdmin() {
 
 export async function bootstrapAdmin(body: Record<string, unknown>, suppliedToken: string | null) {
   const { env } = getCloudflareContext();
-  const expected = (env as CloudflareEnv & { ADMIN_BOOTSTRAP_TOKEN?: string }).ADMIN_BOOTSTRAP_TOKEN;
+  const expected = (env as CloudflareEnv & { ADMIN_BOOTSTRAP_TOKEN?: string })
+    .ADMIN_BOOTSTRAP_TOKEN;
   return buildBootstrapAdmin(env).execute(body, suppliedToken, expected);
 }

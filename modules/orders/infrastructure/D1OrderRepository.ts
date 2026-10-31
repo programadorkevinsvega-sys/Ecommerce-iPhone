@@ -247,7 +247,9 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
       .bind(eventId)
       .first<{ present: number }>();
     if (existing) return;
-    await this.db.batch([this.prepareOrderCreatedOutbox(order, new Date().toISOString(), requestId)]);
+    await this.db.batch([
+      this.prepareOrderCreatedOutbox(order, new Date().toISOString(), requestId),
+    ]);
   }
 
   async findById(id: string): Promise<Order | null> {

@@ -44,8 +44,16 @@ export default function AdminLoginPage() {
 
   return (
     <main className="admin-login-shell">
-      <form className="admin-login-form" onSubmit={submit} noValidate={false} aria-describedby={error ? "admin-login-error" : undefined}>
-        <div><h1>Panel administrativo</h1><p>Acceso seguro para operadores autorizados.</p></div>
+      <form
+        className="admin-login-form"
+        onSubmit={submit}
+        noValidate={false}
+        aria-describedby={error ? "admin-login-error" : undefined}
+      >
+        <div>
+          <h1>Panel administrativo</h1>
+          <p>Acceso seguro para operadores autorizados.</p>
+        </div>
         <label htmlFor="admin-login-email">Email</label>
         <input
           id="admin-login-email"
@@ -73,8 +81,14 @@ export default function AdminLoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           aria-invalid={Boolean(error)}
         />
-        {error && <p id="admin-login-error" role="alert">{error}</p>}
-        <button disabled={loading} type="submit">{loading ? "Entrando…" : "Iniciar sesión"}</button>
+        {error && (
+          <p id="admin-login-error" role="alert">
+            {error}
+          </p>
+        )}
+        <button disabled={loading} type="submit">
+          {loading ? "Entrando…" : "Iniciar sesión"}
+        </button>
       </form>
     </main>
   );

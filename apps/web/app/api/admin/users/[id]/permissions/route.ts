@@ -15,14 +15,13 @@ function errorResponse(error: unknown) {
   const status =
     code === "ADMIN_STEP_UP_REQUIRED"
       ? 428
-      : code === "FORBIDDEN" ||
-    code === "PERMISSION_ESCALATION_FORBIDDEN"
-      ? 403
-      : code === "UNAUTHORIZED"
-        ? 401
-        : code === "ADMIN_NOT_FOUND"
-          ? 404
-          : 400;
+      : code === "FORBIDDEN" || code === "PERMISSION_ESCALATION_FORBIDDEN"
+        ? 403
+        : code === "UNAUTHORIZED"
+          ? 401
+          : code === "ADMIN_NOT_FOUND"
+            ? 404
+            : 400;
   const messages: Record<string, string> = {
     ADMIN_STEP_UP_REQUIRED: "Vuelve a confirmar tu contraseña para autorizar esta operación.",
     UNAUTHORIZED: "Authentication required",
@@ -41,10 +40,7 @@ function errorResponse(error: unknown) {
   );
 }
 
-export async function GET(
-  _request: Request,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
     return NextResponse.json({ items: await getAdminUserPermissions(id) });
@@ -53,10 +49,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: Request,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     await requireAdminStepUp("admins:manage", "admins:manage");
     const { id } = await context.params;

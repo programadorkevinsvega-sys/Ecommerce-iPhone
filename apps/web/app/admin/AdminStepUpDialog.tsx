@@ -41,7 +41,7 @@ export default function AdminStepUpDialog({
 
     const focusable = Array.from(
       event.currentTarget.querySelectorAll<HTMLElement>(
-        'input:not([disabled]), button:not([disabled])',
+        "input:not([disabled]), button:not([disabled])",
       ),
     );
     const first = focusable[0];
@@ -110,7 +110,11 @@ export default function AdminStepUpDialog({
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
-          {error && <p className="admin-error" role="alert">{error}</p>}
+          {error && (
+            <p className="admin-error" role="alert">
+              {error}
+            </p>
+          )}
           <div className="modal-actions">
             <button className="admin-button" type="button" disabled={busy} onClick={cancel}>
               Cancelar

@@ -40,7 +40,9 @@ describe("D1AdminStepUpRepository", () => {
       scope: "payments:refund" as const,
     };
     await expect(repository.hasValid(base)).resolves.toBe(true);
-    await expect(repository.hasValid({ ...base, sessionTokenHash: "session-hash-b" })).resolves.toBe(false);
+    await expect(
+      repository.hasValid({ ...base, sessionTokenHash: "session-hash-b" }),
+    ).resolves.toBe(false);
     await expect(repository.hasValid({ ...base, tokenHash: "proof-hash-b" })).resolves.toBe(false);
     await expect(repository.hasValid({ ...base, scope: "payments:void" })).resolves.toBe(false);
   });
