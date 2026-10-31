@@ -110,24 +110,14 @@ export function cleanupLocalCommerceFixtures(
            SELECT id FROM notification_inbox WHERE event_id IN (${outboxIdList})
          )`,
       );
-      executeLocalD1(
-        `DELETE FROM notification_inbox WHERE event_id IN (${outboxIdList})`,
-      );
-      executeLocalD1(
-        `DELETE FROM notification_deliveries WHERE outbox_id IN (${outboxIdList})`,
-      );
-      executeLocalD1(
-        `DELETE FROM notification_outbox WHERE id IN (${outboxIdList})`,
-      );
+      executeLocalD1(`DELETE FROM notification_inbox WHERE event_id IN (${outboxIdList})`);
+      executeLocalD1(`DELETE FROM notification_deliveries WHERE outbox_id IN (${outboxIdList})`);
+      executeLocalD1(`DELETE FROM notification_outbox WHERE id IN (${outboxIdList})`);
     }
 
     if (orderIds.length > 0) {
-      executeLocalD1(
-        `DELETE FROM inventory_reservations WHERE order_id IN (${orderIdList})`,
-      );
-      executeLocalD1(
-        `DELETE FROM coupon_redemptions WHERE order_id IN (${orderIdList})`,
-      );
+      executeLocalD1(`DELETE FROM inventory_reservations WHERE order_id IN (${orderIdList})`);
+      executeLocalD1(`DELETE FROM coupon_redemptions WHERE order_id IN (${orderIdList})`);
       executeLocalD1(`DELETE FROM order_events WHERE order_id IN (${orderIdList})`);
       executeLocalD1(`DELETE FROM order_items WHERE order_id IN (${orderIdList})`);
       executeLocalD1(`DELETE FROM orders WHERE id IN (${orderIdList})`);
@@ -164,9 +154,7 @@ export function cleanupLocalCommerceFixtures(
 
   if (uniqueCartIds.length > 0) {
     const cartList = uniqueCartIds.map(sqlLiteral).join(", ");
-    executeLocalD1(
-      `DELETE FROM inventory_reservations WHERE cart_id IN (${cartList})`,
-    );
+    executeLocalD1(`DELETE FROM inventory_reservations WHERE cart_id IN (${cartList})`);
     executeLocalD1(`DELETE FROM cart_items WHERE cart_id IN (${cartList})`);
     executeLocalD1(`DELETE FROM carts WHERE id IN (${cartList})`);
 

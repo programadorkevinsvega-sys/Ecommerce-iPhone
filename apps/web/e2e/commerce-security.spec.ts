@@ -135,10 +135,7 @@ test.describe("critical commerce and security journeys", () => {
   });
 
   test.afterEach(() => {
-    cleanupLocalCommerceFixtures(
-      Array.from(createdEmails),
-      Array.from(createdCartIds),
-    );
+    cleanupLocalCommerceFixtures(Array.from(createdEmails), Array.from(createdCartIds));
     createdEmails.clear();
     createdCartIds.clear();
   });
