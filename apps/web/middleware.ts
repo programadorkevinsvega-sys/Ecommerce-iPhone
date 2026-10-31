@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { resolveRequestId } from "./lib/requestCorrelation";
-import { buildContentSecurityPolicy } from "./lib/securityHeaders";
+import { buildContentSecurityPolicy, CONTENT_SECURITY_POLICY } from "./lib/securityHeaders";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
@@ -32,10 +32,12 @@ function apiResponse(request: NextRequest): Response {
   const isAllowedOrigin = !origin || origin === currentOrigin;
 
   if (!isAllowedOrigin && (request.method === "OPTIONS" || MUTATING_METHODS.has(request.method))) {
-    return NextResponse.json(
+    const denied = NextResponse.json(
       { error: { code: "ORIGIN_NOT_ALLOWED", message: "Request origin is not allowed." } },
       { status: 403, headers: { "X-Request-Id": id } },
     );
+    denied.headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+    return denied;
   }
 
   const forwardedHeaders = new Headers(request.headers);
@@ -47,6 +49,7 @@ function apiResponse(request: NextRequest): Response {
       : NextResponse.next({ request: { headers: forwardedHeaders } });
 
   response.headers.set("X-Request-Id", id);
+  response.headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
 
   if (!isPublicContentRequest(request)) {
     response.headers.set("Cache-Control", "no-store");

@@ -19,10 +19,12 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/(.*)",
-        headers: Object.entries(SECURITY_RESPONSE_HEADERS).map(([key, value]) => ({
-          key,
-          value,
-        })),
+        headers: Object.entries(SECURITY_RESPONSE_HEADERS)
+          .filter(([key]) => key.toLowerCase() !== "content-security-policy")
+          .map(([key, value]) => ({
+            key,
+            value,
+          })),
       },
     ];
   },
