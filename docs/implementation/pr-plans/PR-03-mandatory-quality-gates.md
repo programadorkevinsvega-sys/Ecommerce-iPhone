@@ -13,11 +13,10 @@ The workflow retains the quality sequence already delivered by the merged CI/CD 
 1. Checkout, pnpm 12.4.1 setup, Node.js 24.18.0 setup and frozen installation.
 2. Explicit toolchain verification through `scripts/verify-install.mjs`.
 3. Full dependency audit through `pnpm audit`, without `continue-on-error`.
-4. Non-mutating Prettier validation of all changed files through the official
-   `pnpm format:check:changed` script. The full-repository
-   `pnpm format:check` currently reports 485 pre-existing unformatted files
-   on the baseline; reformatting that unrelated debt is intentionally
-   excluded from this PR.
+4. Non-mutating Prettier validation of changed files via
+   `pnpm format:check:changed`.
+
+The separate full-repository `pnpm format:check` currently reports 485 pre-existing unformatted baseline files; that unrelated cleanup is excluded from this PR.
 5. Foundation, frontend production-data and architecture checks.
 6. ESLint, TypeScript and the complete Vitest unit/integration suite.
 7. Local-only D1 preparation and migrations, followed by Playwright against local Wrangler.
