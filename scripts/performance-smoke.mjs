@@ -10,6 +10,19 @@ if (!baseUrl) {
   process.exit(1);
 }
 
+function isCloudflareEdgeBlock(status, headers, bodyText) {
+  if (status !== 403 || headers["x-request-id"]) return false;
+
+  const server = (headers.server ?? "").toLowerCase();
+  const cfRay = headers["cf-ray"];
+  const mitigation = (headers["cf-mitigated"] ?? "").toLowerCase();
+  const cloudflareBody = /attention required|sorry, you have been blocked|cloudflare ray id|cf-error-details|cf-chl-|just a moment/i.test(
+    String(bodyText ?? ""),
+  );
+
+  return mitigation === "challenge" || ((server.includes("cloudflare") || Boolean(cfRay)) && cloudflareBody);
+}
+
 const routes = ["/", "/catalog", "/iphone/iphone-17-pro-max", "/cart", "/contacto"];
 const browser = await chromium.launch({ headless: true });
 const results = [];
@@ -17,8 +30,18 @@ try {
   for (const route of routes) {
     const page = await browser.newPage();
     const started = Date.now();
-    const response = await page.goto(`${baseUrl}${route}`, { waitUntil: "domcontentloaded", timeout: 30000 });
+    const response = await page.goto(`${baseUrl}${route}`, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
     const domContentLoadedMs = Date.now() - started;
+    const status = response?.status() ?? 0;
+    const headers = response ? await response.allHeaders() : {};
+    const bodyText =
+      status === 403 && response
+        ? (await response.text()).slice(0, 1200)
+        : "";
+    const edgeBlocked = isCloudflareEdgeBlock(status, headers, bodyText);
     const metrics = await page.evaluate(() => {
       const nav = performance.getEntriesByType("navigation")[0];
       const resources = performance.getEntriesByType("resource");
@@ -30,7 +53,23 @@ try {
         resourceCount: resources.length,
       };
     });
-    results.push({ route, status: response?.status() ?? 0, domContentLoadedMs, ...metrics });
+
+    results.push({
+      route,
+      status,
+      domContentLoadedMs,
+      ...metrics,
+      ...(edgeBlocked
+        ? {
+            cloudflareEdgeBlocked: true,
+            cfRay: headers["cf-ray"] ?? null,
+            cfMitigated: headers["cf-mitigated"] ?? null,
+            server: headers.server ?? null,
+            contentType: headers["content-type"] ?? null,
+            bodyExcerpt: bodyText.replace(/\s+/g, " ").slice(0, 240),
+          }
+        : {}),
+    });
     await page.close();
   }
 } finally {
@@ -44,11 +83,24 @@ const failures = results.flatMap((r) =>
     .filter(([key, limit]) => r[key] != null && r[key] > limit)
     .map(([key, limit]) => `${r.route}: ${key}=${r[key]}ms > ${limit}ms`),
 );
-if (results.some((r) => r.status < 200 || r.status >= 400)) failures.push("A route returned a non-success HTTP status");
+const edgeBlockedRoutes = results.filter((result) => result.cloudflareEdgeBlocked);
+
 console.log(JSON.stringify({ baseUrl, limits, results, failures }, null, 2));
-if (failures.length) {
+
+if (edgeBlockedRoutes.length > 0) {
+  console.warn(
+    `PERFORMANCE_MONITOR_INCONCLUSIVE: Cloudflare edge blocked ${edgeBlockedRoutes.length} of ${routes.length} route probes. These timings measure the challenge/block response, not the deployed storefront.`,
+  );
+  process.exitCode = 2;
+} else if (results.some((r) => r.status < 200 || r.status >= 400)) {
+  failures.push("A route returned a non-success HTTP status");
   console.error("Performance smoke failed:");
   failures.forEach((failure) => console.error(`- ${failure}`));
-  process.exit(1);
+  process.exitCode = 1;
+} else if (failures.length) {
+  console.error("Performance smoke failed:");
+  failures.forEach((failure) => console.error(`- ${failure}`));
+  process.exitCode = 1;
+} else {
+  console.log("Performance smoke passed.");
 }
-console.log("Performance smoke passed.");
