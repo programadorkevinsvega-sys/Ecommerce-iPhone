@@ -150,8 +150,7 @@ test.describe("critical commerce and security journeys", () => {
       const outboxIds = queryLocalD1<{ id: string }>(
         `SELECT id FROM notification_outbox WHERE aggregate_id IN (${orderIdList})`,
       ).map((row) => row.id);
-      const outboxIdList =
-        outboxIds.length > 0 ? outboxIds.map(sqlLiteral).join(", ") : "''";
+      const outboxIdList = outboxIds.length > 0 ? outboxIds.map(sqlLiteral).join(", ") : "''";
 
       if (outboxIds.length > 0) {
         // Stop reconciliation/retries from claiming these local-only events again.
