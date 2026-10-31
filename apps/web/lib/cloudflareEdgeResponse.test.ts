@@ -19,10 +19,9 @@ describe("Cloudflare edge response detection", () => {
         "CF-Ray": "9abc1234-MDE",
       },
     };
+    const body = "Sorry, you have been blocked. Error 1020.";
 
-    expect(
-      isCloudflareEdgeBlock(response, "Sorry, you have been blocked. Error 1020."),
-    ).toBe(true);
+    expect(isCloudflareEdgeBlock(response, body)).toBe(true);
   });
 
   it("supports the Cloudflare signature returned by Fetch Headers", () => {
@@ -47,8 +46,9 @@ describe("Cloudflare edge response detection", () => {
         "cf-mitigated": "challenge",
       },
     });
+    const body = "Sorry, you have been blocked";
 
-    expect(isCloudflareEdgeBlock(response, "Sorry, you have been blocked")).toBe(false);
+    expect(isCloudflareEdgeBlock(response, body)).toBe(false);
   });
 
   it("does not classify an ordinary application 403 as an edge block", () => {
@@ -56,8 +56,9 @@ describe("Cloudflare edge response detection", () => {
       status: 403,
       headers: { "content-type": "application/json" },
     };
+    const body = '{"error":"FORBIDDEN"}';
 
-    expect(isCloudflareEdgeBlock(response, '{"error":"FORBIDDEN"}')).toBe(false);
+    expect(isCloudflareEdgeBlock(response, body)).toBe(false);
   });
 
   it("requires an edge marker when only the Cloudflare server signature exists", () => {
