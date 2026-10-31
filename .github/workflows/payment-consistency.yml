@@ -53,6 +53,11 @@ jobs:
       - name: Audit all dependencies
         run: pnpm audit
 
+      - name: Diagnose Prettier formatting for Phase 10.4 verifier
+        run: |
+          pnpm exec prettier scripts/verify-phase10.4-production.mjs > /tmp/verify-phase10.4-production.formatted.mjs
+          diff -u scripts/verify-phase10.4-production.mjs /tmp/verify-phase10.4-production.formatted.mjs || true
+
       - name: Check formatting of changed files
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
