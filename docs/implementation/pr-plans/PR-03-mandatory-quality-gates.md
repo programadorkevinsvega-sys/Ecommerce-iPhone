@@ -13,15 +13,14 @@ The workflow retains the quality sequence already delivered by the merged CI/CD 
 1. Checkout, pnpm 12.4.1 setup, Node.js 24.18.0 setup and frozen installation.
 2. Explicit toolchain verification through `scripts/verify-install.mjs`.
 3. Full dependency audit through `pnpm audit`, without `continue-on-error`.
-4. Non-mutating Prettier validation of changed files via
-   `pnpm format:check:changed`.
-
-The separate full-repository `pnpm format:check` currently reports 485 pre-existing unformatted baseline files; that unrelated cleanup is excluded from this PR.
+4. Non-mutating Prettier validation for changed files via `pnpm format:check:changed`.
 5. Foundation, frontend production-data and architecture checks.
 6. ESLint, TypeScript and the complete Vitest unit/integration suite.
 7. Local-only D1 preparation and migrations, followed by Playwright against local Wrangler.
 8. Positive and negative tests for the production branch guard.
 9. One OpenNext/Cloudflare build and verification of Next.js static output, Worker bundle and assets.
+
+The separate full-repository `pnpm format:check` currently reports 485 pre-existing unformatted baseline files; that unrelated cleanup is excluded from this PR.
 
 A final job named **`CI required`** runs with `always()` and evaluates the result of both `runner-diagnostics` and `payment-quality`. Any upstream failure, cancellation or skip causes this aggregate job to fail. Configure this exact job check as the required GitHub status check for `main`.
 
@@ -44,4 +43,3 @@ A final job named **`CI required`** runs with `always()` and evaluates the resul
 ## Verification commands
 
 GitHub Actions executes the repository's official commands from the workflow. Local validation from this execution environment was not possible because outbound access to GitHub was unavailable; the pushed PR checks must provide the authoritative execution evidence.
-
