@@ -50,6 +50,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify installation and Node.js toolchain
+        run: node scripts/verify-install.mjs
+
       - name: Audit all dependencies
         run: pnpm audit
 
@@ -123,8 +126,11 @@ jobs:
 
           env -u GITHUB_REF WORKERS_CI_BRANCH=main node scripts/assert-main-deploy.mjs
 
-      - name: Build Cloudflare Worker
-        run: pnpm build:cloudflare
+      - name: Build Cloudflare Worker with OpenNext
+        run: pnpm cloudflare:build
+
+      - name: Verify generated static pages and Worker bundle
+        run: pnpm verify:cloudflare:build
 
       - name: Upload Playwright report on failure
         if: failure()
