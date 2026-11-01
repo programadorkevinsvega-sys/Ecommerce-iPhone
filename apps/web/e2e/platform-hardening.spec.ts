@@ -124,20 +124,29 @@ test.describe("platform hardening", () => {
 
       expect(unnamedControls, route).toEqual([]);
       await expect(page.locator("img:not([alt])"), route).toHaveCount(0);
-      const inlineStyles = await page.locator("[style]").evaluateAll((elements) =>
+      const unapprovedInlineStyles = await page.locator("[style]").evaluateAll((elements) =>
         elements
           .filter((element) => {
-            if (element instanceof HTMLImageElement) {
-              return element.style.color !== "transparent";
+            // Next.js emits this presentation hint on optimized images; it is not an app style.
+            if (
+              element instanceof HTMLImageElement &&
+              element.getAttribute("style")?.trim() === "color:transparent" &&
+              element.hasAttribute("alt")
+            ) {
+              return false;
             }
-            return !element.closest("next-route-announcer");
+
+            // App Router injects a visually-hidden live region for route announcements.
+            if (element.closest("#__next-route-announcer__")) return false;
+            return true;
           })
           .map((element) => ({
             tag: element.tagName.toLowerCase(),
+            id: element.id,
             style: element.getAttribute("style"),
           })),
       );
-      expect(inlineStyles, route).toEqual([]);
+      expect(unapprovedInlineStyles, route).toEqual([]);
 
       const policy = response?.headers()["content-security-policy"] ?? "";
       expect(policy.split(",").filter(Boolean), route).toHaveLength(1);
