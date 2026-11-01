@@ -154,8 +154,15 @@ test.describe("platform hardening", () => {
               return false;
             }
 
-            // App Router injects a visually-hidden live region for route announcements.
-            if (element.closest("next-route-announcer")) return false;
+            // Next.js versions render the route announcer as either a custom element
+            // or a visually-hidden div with this stable framework-owned ID.
+            if (
+              element.id === "__next-route-announcer__" ||
+              element.closest("#__next-route-announcer__") ||
+              element.closest("next-route-announcer")
+            ) {
+              return false;
+            }
             return true;
           })
           .map((element) => ({
