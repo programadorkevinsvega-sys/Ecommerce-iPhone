@@ -13,7 +13,8 @@ export function buildContentSecurityPolicy(nonce?: string): string {
     "object-src 'none'",
     `script-src ${scriptSources.join(" ")}`,
     `style-src ${styleSources.join(" ")}`,
-    "style-src-attr 'none'",
+    // Next/Image emits this exact non-executable presentation hint on optimized images.
+    "style-src-attr 'unsafe-hashes' 'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     "connect-src 'self'",
