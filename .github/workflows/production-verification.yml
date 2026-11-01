@@ -32,6 +32,26 @@ env:
   PRODUCTION_URL: https://iphone.jnmtortas.com
 
 jobs:
+  # Credentialed manual checks can touch production D1 or admin sessions.
+  # Fail closed when a workflow_dispatch originates from any branch but main.
+  production_ref_guard:
+    name: Guard credentialed production checks to main
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' &&
+        (inputs.run_deep_checks || inputs.run_admin_checks) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require main branch for production credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::Credentialed production checks are only allowed from refs/heads/main (requested: $GITHUB_REF)."
+            exit 1
+          fi
+          echo "Production credential guard passed for $GITHUB_REF."
+
   smoke:
     # A check_run event is accepted only for the exact production Workers Build
     # check, created by Cloudflare's GitHub App, on main and with a successful
@@ -41,7 +61,9 @@ jobs:
         (github.event.check_run.name == 'Workers Builds: ecommerce-iphone' &&
          github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
          github.event.check_run.conclusion == 'success' &&
-         github.event.check_run.check_suite.head_branch == 'main') }}
+         github.event.check_run.check_suite.head_branch == 'main' &&
+         contains(github.event.check_run.details_url, '/workers/services/view/ecommerce-iphone/production/builds/') &&
+         !contains(github.event.check_run.details_url, '/previews/')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -114,9 +136,13 @@ jobs:
 
   # Manual deep verification remains available for the full Phase 10.2–10.5 set.
   deep-production:
-    needs: smoke
+    needs: [smoke, production_ref_guard]
     environment: production
-    if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_deep_checks && needs.smoke.outputs.production_health_verified == 'true' }}
+    if: >-
+      ${{ always() && github.event_name == 'workflow_dispatch' &&
+        inputs.run_deep_checks && github.ref == 'refs/heads/main' &&
+        needs.production_ref_guard.result == 'success' &&
+        needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -170,6 +196,8 @@ jobs:
         github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
         github.event.check_run.conclusion == 'success' &&
         github.event.check_run.check_suite.head_branch == 'main' &&
+        contains(github.event.check_run.details_url, '/workers/services/view/ecommerce-iphone/production/builds/') &&
+        !contains(github.event.check_run.details_url, '/previews/') &&
         needs.smoke.outputs.production_health_verified == 'true' }}
     name: Analytics Phase 10.4/10.5 production certification
     runs-on: ubuntu-latest
@@ -327,9 +355,65 @@ jobs:
           fi
           echo "Both production verifiers passed. Analytics Phase 10.4/10.5 certification evidence is complete."
 
-  admin-production:
+
+  analytics-certification-inconclusive:
     needs: smoke
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_admin_checks && needs.smoke.outputs.production_health_verified == 'true' }}
+    if: >-
+      ${{ always() && github.event_name == 'check_run' &&
+        github.event.check_run.name == 'Workers Builds: ecommerce-iphone' &&
+        github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
+        github.event.check_run.conclusion == 'success' &&
+        github.event.check_run.check_suite.head_branch == 'main' &&
+        contains(github.event.check_run.details_url, '/workers/services/view/ecommerce-iphone/production/builds/') &&
+        !contains(github.event.check_run.details_url, '/previews/') &&
+        needs.smoke.outputs.production_health_verified != 'true' }}
+    name: Analytics Phase 10.4/10.5 — INCONCLUSIVE
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Record why production certification did not run
+        env:
+          EDGE_BLOCKED: ${{ needs.smoke.outputs.cloudflare_edge_blocked || 'false' }}
+          DEPLOYED_SHA: ${{ github.event.check_run.head_sha }}
+          DEPLOYED_CHECK_URL: ${{ github.event.check_run.details_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/analytics-phase10-inconclusive"
+          {
+            echo "# Analytics Phase 10.4/10.5 production certification"
+            echo
+            echo "- Result: **INCONCLUSIVE**"
+            echo "- Deployed commit: $DEPLOYED_SHA"
+            echo "- Cloudflare production build: $DEPLOYED_CHECK_URL"
+            echo "- Phase 10.4: NOT_RUN"
+            echo "- Phase 10.5: NOT_RUN"
+            echo
+            if [[ "$EDGE_BLOCKED" == "true" ]]; then
+              echo "The Cloudflare edge challenged/blocked the GitHub Actions monitor. The workflow did not issue production HTTP probes or claim a certification."
+            else
+              echo "The production Worker health check did not complete successfully. The Analytics verifiers were not run because their public runtime checks would not have trustworthy reachability."
+            fi
+            echo
+            echo "A production build success is not, by itself, an Analytics certification. Keep P0-05 and Issue #10 open until both verifiers return PASS."
+          } > "$RUNNER_TEMP/analytics-phase10-inconclusive/summary.md"
+          cat "$RUNNER_TEMP/analytics-phase10-inconclusive/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload inconclusive production evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: analytics-phase10-production-inconclusive-${{ github.run_id }}
+          path: ${{ runner.temp }}/analytics-phase10-inconclusive/
+          if-no-files-found: error
+          retention-days: 90
+
+  admin-production:
+    needs: [smoke, production_ref_guard]
+    if: >-
+      ${{ always() && github.event_name == 'workflow_dispatch' &&
+        inputs.run_admin_checks && github.ref == 'refs/heads/main' &&
+        needs.production_ref_guard.result == 'success' &&
+        needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
