@@ -9,14 +9,16 @@ describe("security response headers", () => {
   it("defines baseline browser protections", () => {
     expect(SECURITY_RESPONSE_HEADERS["X-Content-Type-Options"]).toBe("nosniff");
     expect(SECURITY_RESPONSE_HEADERS["X-Frame-Options"]).toBe("DENY");
-    expect(SECURITY_RESPONSE_HEADERS["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
+    const referrerPolicy = SECURITY_RESPONSE_HEADERS["Referrer-Policy"];
+    expect(referrerPolicy).toBe("strict-origin-when-cross-origin");
     expect(SECURITY_RESPONSE_HEADERS["Permissions-Policy"]).toBe(
       "camera=(), microphone=(), geolocation=()",
     );
-    expect(SECURITY_RESPONSE_HEADERS["Strict-Transport-Security"]).toContain("max-age=31536000");
+    const hsts = SECURITY_RESPONSE_HEADERS["Strict-Transport-Security"];
+    expect(hsts).toContain("max-age=31536000");
   });
 
-  it("restricts scripts to same-origin, a per-request nonce and the explicit Insights host", () => {
+  it("restricts scripts to same-origin, nonce and the Insights host", () => {
     const scriptSrc = CONTENT_SECURITY_POLICY.split(";").find((value) =>
       value.trim().startsWith("script-src "),
     );
