@@ -5454,3 +5454,24 @@ div {
     flex-wrap: wrap;
   }
 }
+
+
+/* Keep framework-owned inline presentation styles compatible with strict style-src-attr. */
+img {
+  color: transparent;
+}
+next-route-announcer {
+  position: absolute;
+}
+next-route-announcer > div {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
