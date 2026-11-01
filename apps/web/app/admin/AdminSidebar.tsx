@@ -23,7 +23,8 @@ export type AdminSidebarSection =
   | "notifications"
   | "cms"
   | "seo"
-  | "security";
+  | "security"
+  | "performance";
 
 type AdminSidebarProps = { active: AdminSidebarSection };
 const items: ReadonlyArray<{

@@ -70,7 +70,10 @@ function decodeEncryptionKey(value: string | undefined): Uint8Array {
 }
 
 async function importAesKey(value: string | undefined): Promise<CryptoKey> {
-  return crypto.subtle.importKey("raw", decodeEncryptionKey(value), { name: "AES-GCM" }, false, [
+  const decoded = decodeEncryptionKey(value);
+  const keyBytes = new Uint8Array(decoded.byteLength);
+  keyBytes.set(decoded);
+  return crypto.subtle.importKey("raw", keyBytes.buffer, { name: "AES-GCM" }, false, [
     "encrypt",
     "decrypt",
   ]);

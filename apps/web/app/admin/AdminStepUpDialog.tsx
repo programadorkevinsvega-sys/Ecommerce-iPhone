@@ -23,7 +23,6 @@ export default function AdminStepUpDialog({
   const previousFocus = useRef<HTMLElement | null>(null);
   const [password, setPassword] = useState("");
   const [secondFactorCode, setSecondFactorCode] = useState("");
-  const [secondFactorCode, setSecondFactorCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 

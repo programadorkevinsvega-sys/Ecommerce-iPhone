@@ -43,9 +43,12 @@ export async function totpAtStep(secret: string, step: number): Promise<string> 
   if (!Number.isSafeInteger(step) || step < 0) throw new Error("INVALID_TOTP_STEP");
   const counter = new Uint8Array(8);
   new DataView(counter.buffer).setBigUint64(0, BigInt(step), false);
+  const decodedSecret = decodeBase32(secret);
+  const keyBytes = new Uint8Array(decodedSecret.byteLength);
+  keyBytes.set(decodedSecret);
   const key = await crypto.subtle.importKey(
     "raw",
-    decodeBase32(secret),
+    keyBytes.buffer,
     { name: "HMAC", hash: "SHA-1" },
     false,
     ["sign"],
