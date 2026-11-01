@@ -83,7 +83,7 @@ describe("D1RevenueAnalyticsRepository", () => {
       database.exec(
         "CREATE TABLE payment_ledger (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, entry_type TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
       );
-      database.exec(
+      partialDatabase.exec(
         "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
       );
       insertPayment(database, "payment-1", "order-1", "COP", "ledger-sale-1", 10000);
@@ -168,7 +168,7 @@ describe("D1RevenueAnalyticsRepository", () => {
       database.exec(
         "CREATE TABLE payment_ledger (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, entry_type TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
       );
-      database.exec(
+      missingRefundDatabase.exec(
         "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
       );
       insertPayment(database, "payment-cop", "order-cop", "COP", "ledger-cop", 100000);

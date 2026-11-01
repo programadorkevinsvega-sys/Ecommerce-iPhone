@@ -29,6 +29,7 @@ export const SERVER_OWNED_ANALYTICS_EVENT_TYPES = [
   "CartItemRemoved",
   "CartAbandoned",
   "CheckoutStarted",
+  "ShippingMethodSelected",
   "PaymentStarted",
   "PurchaseCompleted",
   "RevenueRecorded",
