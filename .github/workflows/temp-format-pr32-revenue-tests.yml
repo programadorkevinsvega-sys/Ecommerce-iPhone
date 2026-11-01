@@ -1,0 +1,43 @@
+name: Temporary PR 32 revenue test formatter
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.event.pull_request.head.ref == 'feat/phase-10-4-10-5-analytics-certification'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the existing PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.4.1
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - name: Install reproducible dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply repository Prettier to the rebuilt D1 test suite
+        run: pnpm exec prettier --write modules/analytics/infrastructure/D1RevenueAnalyticsRepository.test.ts
+      - name: Remove the temporary formatter from the PR
+        run: rm .github/workflows/temp-format-pr32-revenue-tests.yml
+      - name: Commit the formatted test file to the existing PR branch
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style(tests): format revenue D1 test suite with repository Prettier"
+          git push origin "HEAD:refs/heads/${BRANCH}"
