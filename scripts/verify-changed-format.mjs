@@ -43,10 +43,11 @@ console.log(`Checking Prettier formatting for ${changedFiles.length} changed fil
 const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
 const prettierResult = spawnSync(
   pnpm,
-  ["exec", "prettier", "--check", "--ignore-unknown", ...changedFiles],
+  ["exec", "prettier", "--write", "--ignore-unknown", ...changedFiles],
   {
     cwd: process.cwd(),
-    stdio: "inherit",
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024,
   },
 );
 
@@ -54,5 +55,15 @@ if (prettierResult.error) {
   console.error(prettierResult.error.message);
   process.exit(1);
 }
+if (prettierResult.stdout) console.log(prettierResult.stdout);
+if (prettierResult.stderr) console.error(prettierResult.stderr);
 
-process.exit(prettierResult.status ?? 1);
+const diff = spawnSync("git", ["diff", "--no-ext-diff", "--unified=3", "--", ...changedFiles], {
+  cwd: process.cwd(),
+  encoding: "utf8",
+  maxBuffer: 10 * 1024 * 1024,
+});
+console.log("TEMPORARY PRETTIER OUTPUT DIFF:");
+console.log(diff.stdout ?? "");
+console.error("Temporary formatting diagnostic: stop after recording the diff.");
+process.exit(1);
