@@ -113,7 +113,7 @@ jobs:
   # Manual deep verification remains available for the full Phase 10.2–10.5 set.
   deep-production:
     needs: smoke
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_deep_checks && needs.smoke.outputs.production_health_verified == 'true' }}
+    if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_deep_checks && needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -162,7 +162,7 @@ jobs:
   analytics-certification:
     needs: smoke
     if: >-
-      ${{ github.event_name == 'check_run' &&
+      ${{ always() && github.event_name == 'check_run' &&
         github.event.check_run.name == 'Workers Builds: ecommerce-iphone' &&
         github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
         github.event.check_run.conclusion == 'success' &&
