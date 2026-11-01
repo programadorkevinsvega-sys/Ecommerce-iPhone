@@ -2,80 +2,109 @@
 
 **Updated:** 2026-10-31  
 **Branch:** `chore/production-hardening`  
-**Status:** Partial implementation; Repository CI run [#41232292845](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/actions/runs/41232292845) passed on code HEAD `f20a35d5ed485ceb18c53b793b5fd2b5ec98e85d`. The Cloudflare Preview build for that HEAD was still in progress at the last bot update; remaining production acceptance criteria are pending.
+**Pull request:** [#26 — production hardening and documentation](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/pull/26)  
+**Status:** Hardening controls are implemented in the existing PR branch. Final acceptance remains tied to the required CI checks on the exact latest HEAD and external review of the residual risks below. The PR remains Draft.
 
 ## HTTP request correlation
 
-- The Cloudflare Worker accepts a valid inbound `X-Request-Id` or creates a UUID for Worker-owned responses.
-- The Next.js API middleware reuses the valid ID (or creates one), forwards it into the route-handler request headers, and returns the same value in the `X-Request-Id` response header.
-- After OpenNext responds, the Worker adopts the validated middleware response ID instead of replacing it with a different identifier. This aligns route logs and the externally visible response.
-- Accepted identifiers are 8–128 ASCII letters, digits, dot, underscore, colon or hyphen. Malformed values are not trusted.
-- Same-origin restrictions on mutating API requests, non-cacheable API responses, and the public content cache exception are preserved.
+- The Worker accepts a validated inbound `X-Request-Id` or creates a UUID for Worker-owned responses.
+- Next.js middleware reuses a valid ID (or creates one), forwards it to route handlers and returns the same value in `X-Request-Id`.
+- The Worker adopts the validated middleware response ID rather than replacing it.
+- Accepted identifiers are bounded to 8–128 ASCII letters, digits, dot, underscore, colon or hyphen. Malformed values are not trusted.
+- Mutating API requests retain same-origin checks and API responses remain non-cacheable except for the explicit public content cache path.
+
+## Transactional outbox and queue correlation
+
+- Checkout passes the middleware request ID into the order application.
+- The order repository prepares the `OrderCreated` outbox event with that optional identifier in the same transactional workflow as order persistence.
+- Additive migration `0045_production_hardening.sql` adds `notification_outbox.request_id` and an index for non-null values.
+- D1 Outbox serialization/deserialization persists the ID, and the notification Queue publisher forwards it when present.
+- Analytics events continue to preserve an optional request ID provided by their API producers.
+- Events produced outside a request context may legitimately have no request ID; they still retain their durable outbox/job identifier.
+
+This creates HTTP-to-Notification correlation for the checkout order-created path without making request IDs mandatory for scheduled or system-originated events.
 
 ## Structured logs and sensitive-data minimization
 
-Server and Worker failures use JSON records with timestamp, level, source, operation, safe context and a normalized error object. The logger redacts sensitive context keys and common credential, email, payment-card and private-key patterns in free-form text. Raw stack traces are excluded because they may embed provider payloads, query values or personal data.
+Server and Worker failures use JSON records with timestamp, level, source, operation, safe context and normalized error details. The logger redacts sensitive context keys and common credential, email, payment-card and private-key patterns. Raw stack traces are omitted because they may embed provider payloads, query values or personal data.
 
-Queue publisher, consumer, dead-letter persistence and scheduled-handler failures include component, queue/schedule, outcome and available correlation identifier. Queue message bodies and credentials are not written to application logs. Notification Outbox error persistence retains its existing sanitization path.
+Queue publisher, consumer, dead-letter persistence and scheduled-handler failures include component, queue/schedule, outcome and available correlation identifier. Queue message bodies and credentials are not written to application logs. Notification Outbox error persistence retains its sanitization path.
 
-This is a defense-in-depth redaction layer, not a substitute for callers passing only minimal structured context. New log fields must be reviewed for privacy before being added.
+Redaction is defense in depth, not permission to pass sensitive data to the logger. New log fields must be reviewed for privacy before being added.
 
-## Queue correlation contract and boundary
+## Browser security headers and CSP
 
-- Analytics events already support an optional `requestId`; the event is serialized through the Analytics Queue publisher and remains available to the consumer. API producers that supply it can be correlated to the originating request.
-- Notification queue messages carry the durable `outboxId`. Queue failures therefore remain traceable to an outbox record and retry/dead-letter operation.
-- The current Notification Outbox schema does **not** persist the originating HTTP request ID. The notification path is traceable by outbox/job ID, but a complete HTTP-request-to-notification trace is not implemented. An additive outbox correlation field and propagation from request-scoped application services remain a follow-up.
+The baseline response-header map is centralized in `apps/web/lib/securityHeaders.ts` and is consumed by Next.js and the Cloudflare Worker response wrapper. Worker-owned health, readiness, rate-limit and redirect responses receive the same baseline protection.
 
-## Browser security headers
+For document requests:
 
-The same response-header map is consumed by Next.js and the Cloudflare Worker wrapper, including Worker-owned health, readiness, rate-limit and redirect responses:
+1. Middleware generates a fresh cryptographic nonce.
+2. The nonce and matching CSP are forwarded into Next.js rendering.
+3. The response carries the same policy; the Worker preserves it.
+4. Inline executable scripts and style elements must carry the request nonce.
 
-- Content-Security-Policy: same-origin default, `frame-ancestors 'none'`, `object-src 'none'`, and one explicit external script origin for the existing Cloudflare Insights integration.
-- Strict-Transport-Security: `max-age=31536000; includeSubDomains; preload`.
-- X-Content-Type-Options, X-Frame-Options, Referrer-Policy and Permissions-Policy.
-- Cross-Origin-Opener-Policy, Cross-Origin-Resource-Policy and X-DNS-Prefetch-Control.
+The policy keeps same-origin defaults, `frame-ancestors 'none'`, `object-src 'none'`, explicit Cloudflare Insights script origin, and disables `unsafe-inline` and `unsafe-eval`.
 
-**Known CSP limitation:** the existing policy retains `'unsafe-inline'` for scripts and styles. It was preserved rather than risking an unverified break to Next.js rendering/hydration or application styling. `'unsafe-eval'` is not enabled. Replacing inline allowances with per-request nonces or hashes requires nonce propagation through the deployed Next.js/OpenNext Worker path and a separate verified production test.
+Next.js Image emits `style="color:transparent"` on optimized images. The `style-src-attr` directive allows only the exact SHA-256 hash of this non-executable presentation hint using `unsafe-hashes`; it does not allow arbitrary inline CSS. Unit tests pin the hash, while Playwright monitors browser console output for CSP violations. This is deliberately narrower than `unsafe-inline`.
 
-## Administrative authentication and authorization
+Other baseline headers include HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP, CORP and X-DNS-Prefetch-Control. Product images remain restricted to same-origin media paths through Next image configuration.
 
-- Protected admin routes resolve a persisted session server-side and authorize each operation against effective RBAC permissions.
-- Admin session tokens are stored hashed; sessions are checked through the session repository and can be revoked. The browser cookie is HttpOnly, Secure and SameSite=Strict.
-- Admin authentication has persistent throttling and audit events; logout revokes the active session.
-- Sensitive mutations such as refunds require an explicit server-side permission (for example, `refunds:create`). UI state is not the authorization boundary.
+## Administrative authentication and sensitive mutations
 
-**MFA / step-up limitation:** the repository currently uses its own email/password admin authentication and has no verified MFA or step-up provider integration. No simulated second factor was added. Compensating controls currently consist of persisted session resolution, expiry/revocation, per-operation RBAC, login throttling, secure cookies and audit records. These controls do not provide the same assurance as a provider-backed reauthentication challenge. MFA/step-up remains pending until a real provider and recovery policy are selected and integrated.
+Admin authorization remains server-side through persisted session resolution and effective RBAC permissions. Session tokens are stored as hashes; sessions enforce expiry/revocation, secure HttpOnly/SameSite cookies, throttling and audit records.
 
-## Accessibility and performance verification
+Sensitive operations additionally require password reauthentication through the admin step-up flow:
 
-The new Playwright smoke covers the storefront homepage for document language, a main landmark, image alt attributes and accessible names on visible links and controls. It is a targeted regression check, not a WCAG 2.2 AA certification. Keyboard-only completion, focus visibility, color contrast, zoom/reflow and critical checkout form review remain open.
+- Random proof tokens are stored as hashes, never in plaintext.
+- Grants are bound to the current admin identity and hashed session token.
+- Grants are scoped to `payments:refund`, `payments:void`, `admins:manage` or `settings:write`.
+- Grants expire after five minutes and are recorded in the admin security audit.
+- Failed password attempts are tracked and lockout is enforced.
+- API routes return HTTP 428 when step-up proof is required; the admin UI obtains it before retrying the operation.
 
-The scheduled production monitor already runs every six hours across the configured route set. Its existing budgets are TTFB 800 ms, DOMContentLoaded 2,500 ms and load event 4,000 ms. It detects Cloudflare edge challenges and classifies those runs as inconclusive rather than storefront performance failures.
+The step-up grant is fresh authentication using the existing password. **It is not MFA and does not provide a second independent factor.** No fake factor has been introduced. Provider-backed MFA and a secure recovery/break-glass policy remain open before high-assurance security certification.
 
-The monitor now also reports browser-observed LCP and CLS, plus Event Timing interaction samples. Its interaction percentile is a lab sample, not field INP; INP is null where the page probe records no interaction. No production measurement has been run for this PR, so this document does not claim a Web Vitals pass or a performance improvement. LCP/INP/CLS budgets must be based on reproducible field/lab evidence before they become release gates.
+## Accessibility verification
+
+Playwright checks the critical routes `/`, `/cart`, `/checkout` and `/admin/login` for Spanish document language, exactly one main landmark, accessible names for links/controls, image alt attributes, and Axe violations for WCAG 2.0/2.1/2.2 A/AA rule tags. It also checks that the first keyboard focus target has an accessible name and that app-authored inline styles are not introduced outside the exact framework exceptions described above.
+
+This is a focused automated regression suite, not a claim of WCAG 2.2 AA certification. Manual keyboard-only journeys, full focus-order review, color contrast, zoom/reflow and screen-reader testing remain open.
+
+## Performance verification
+
+The scheduled production smoke runs every six hours and measures TTFB, DOMContentLoaded, load, LCP, CLS and Event Timing interaction samples. Current thresholds include:
+
+| Metric | Threshold |
+|---|---:|
+| TTFB | 800 ms |
+| DOMContentLoaded | 2,500 ms |
+| Load event | 4,000 ms |
+| LCP | 2,500 ms |
+| CLS | 0.1 |
+| Event Timing interaction P98 | 200 ms |
+
+The interaction percentile is a lab sample, not field INP. Missing measurements remain inconclusive. Cloudflare edge challenges are classified as inconclusive instead of being reported as storefront failures or passes. No improvement or Core Web Vitals pass is claimed without reproducible production/field measurements.
 
 ## Payment and Worker architecture
 
-- `PaymentService` is in the Payments Application layer and depends on repository, provider, order and reservation ports.
-- Payment domain rules are separate from Cloudflare and provider adapters; infrastructure adapters and composition remain outside the domain.
-- The existing architecture checker validates module layer boundaries and rejects infrastructure imports/direct D1 execution from API presentation routes.
-- No payment rewrite was justified by the inspected dependency graph. Existing idempotency, payment finalization and refund recovery contracts are preserved.
-- The Worker remains the Cloudflare composition root for HTTP, Queue and Scheduled handlers. The changes add safe observability and shared headers without moving payment rules into the Worker.
+- `PaymentService` stays in the Payments Application layer and depends on repository, provider, order and reservation ports.
+- Payment domain rules remain independent from Cloudflare and provider SDKs; adapters and composition remain in Infrastructure.
+- Architecture checks validate module-layer boundaries and reject direct D1 execution or infrastructure imports from presentation routes.
+- Existing payment idempotency, payment finalization and refund recovery contracts are preserved; no broad rewrite was justified by the inspected dependency graph.
+- The Worker remains the Cloudflare composition root for HTTP, Queue and Scheduled handlers, not a domain service.
 
-## Shared media reference and dependency status
+## Migration and CI/CD ownership
 
-PR #19 is closed without merge. The exact path `modules/shared-kernel/domain/MediaReference.ts` does not exist on current `main`. The actual existing primitive is `modules/shared-kernel/MediaReference.ts`, and Worker uses that path. PR #26 does not reintroduce or relocate it.
+Migration `0045_production_hardening.sql` is additive and introduces the Outbox request ID field/index and the admin step-up grants table.
 
-## CI/CD ownership and release gate
+GitHub Actions validates frozen-lockfile installation, full dependency audit, formatting, repository foundations, frontend data, architecture, lint, TypeScript, unit/integration tests, isolated local D1 preparation, OpenNext/Worker build, generated artifacts and Wrangler/Playwright E2E. It does not apply remote production migrations.
 
-The Repository CI workflow remains responsible for frozen-lockfile installation, complete dependency audit, changed-file formatting, repository foundations, architecture, lint, typecheck, unit/integration tests, local D1 preparation, OpenNext/Worker build verification and Playwright E2E. Cloudflare remains the owner of its configured Worker deployment and production D1 migration sequence.
+Cloudflare remains responsible for the configured Worker deployment and the remote D1 migration sequence. Production migrations must not be moved into CI. A Cloudflare Preview build can be checked through the PR bot, but Preview URLs are disabled, so there is currently no public Preview URL for functional browser verification.
 
-The PR branch code HEAD `f20a35d5ed485ceb18c53b793b5fd2b5ec98e85d` passed Repository CI run [#41232292845](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/actions/runs/41232292845): frozen install, audit, changed-file format, repository/front-end/architecture checks, ESLint, TypeScript, unit/integration tests, isolated D1 preparation, OpenNext/Worker build, generated artifact verification, Chromium, 11 Wrangler E2E tests and the production-branch guard. The CI job and aggregate `CI required` both concluded `success`. A subsequent documentation-only commit changes the PR HEAD, so the exact new HEAD must receive a fresh CI run before final acceptance. Cloudflare's Preview integration separately reported the `f20a35d` build as in progress at the last update; no Preview URL is enabled. Do not merge or authorize production deployment while that external Preview evidence or remaining risk acceptance is pending.
+## Remaining acceptance items
 
-## Remaining work
-
-1. Integrate provider-backed MFA/step-up authentication and define recovery/administrative break-glass policy.
-2. Persist originating request correlation through the notification Outbox for HTTP-to-notification trace continuity.
-3. Complete a WCAG 2.2 AA-oriented review of keyboard flows, focus, contrast, reflow, and critical checkout forms.
-4. Establish validated LCP, INP and CLS budgets from reproducible lab and/or field data; no Core Web Vitals pass is claimed by the current smoke.
-5. Confirm the Cloudflare Preview build for the final PR HEAD; then record its outcome alongside the already successful Repository CI evidence.
+1. Integrate provider-backed MFA and define recovery/break-glass policy; current password step-up is not MFA.
+2. Complete manual accessibility validation for keyboard journeys, focus, contrast, reflow and assistive technology.
+3. Collect reproducible field/lab Web Vitals evidence and validate the performance thresholds against real usage.
+4. Confirm mandatory Repository CI and Cloudflare Preview build status on the exact final PR HEAD.
+5. Keep the PR in Draft until the residual security and accessibility risks are explicitly accepted; do not merge solely because a Worker build succeeds.
