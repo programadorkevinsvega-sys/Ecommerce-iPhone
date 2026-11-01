@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { D1Database } from "@cloudflare/workers-types";
 import { D1RevenueAnalyticsRepository } from "./D1RevenueAnalyticsRepository";
 import { D1SqliteTestDatabase } from "../../shared-kernel/testing/D1SqliteTestDatabase";
 
@@ -131,6 +132,28 @@ function insertAnalyticsEvent(
 }
 
 describe("D1RevenueAnalyticsRepository", () => {
+  it("keeps integrity validation within Cloudflare D1 compound SELECT limits", async () => {
+    const database = new D1SqliteTestDatabase();
+    try {
+      createPaymentTables(database);
+      const underlying = database.asD1();
+      const d1WithCompoundSelectLimit = {
+        prepare(sql: string) {
+          const unionTerms = sql.match(/\bUNION(?:\s+ALL)?\b/gi)?.length ?? 0;
+          if (unionTerms + 1 > 5) {
+            throw new Error("D1_ERROR: too many terms in compound SELECT: SQLITE_ERROR");
+          }
+          return underlying.prepare(sql);
+        },
+      } as unknown as D1Database;
+
+      const repository = new D1RevenueAnalyticsRepository(d1WithCompoundSelectLimit);
+      await expect(repository.pendingRevenueEntries(50)).resolves.toHaveLength(0);
+    } finally {
+      database.close();
+    }
+  });
+
   it("uses canonical server events for conversion and reconciles a provider-confirmed full refund", async () => {
     const database = new D1SqliteTestDatabase();
     try {
