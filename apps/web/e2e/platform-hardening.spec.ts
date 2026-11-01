@@ -92,7 +92,9 @@ test.describe("platform hardening", () => {
       .split(";")
       .find((directive) => directive.trim().startsWith("style-src-attr "));
     expect(styleAttr).toContain("'unsafe-hashes'");
-    expect(styleAttr).toContain("'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='");
+    expect(styleAttr).toContain(
+      "'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='",
+    );
     expect(styleAttr).not.toContain("unsafe-inline");
     expect(cspViolations).toEqual([]);
   });
