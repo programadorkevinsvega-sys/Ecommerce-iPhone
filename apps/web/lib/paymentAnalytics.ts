@@ -5,7 +5,6 @@ import type { ProviderTransaction } from "../../../modules/payments/application/
 import type { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
 import type { D1PaymentRepository } from "../../../modules/payments/infrastructure/D1PaymentRepository";
 
-
 type PaymentRepositories = Readonly<{
   payments: D1PaymentRepository;
   orders: D1OrderRepository;

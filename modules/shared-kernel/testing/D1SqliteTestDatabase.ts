@@ -25,7 +25,9 @@ class TestStatement {
 
   run(): { meta: { changes: number; last_row_id: number } } {
     const result = this.db.prepare(this.sql).run(...this.params);
-    return { meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) } };
+    return {
+      meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) },
+    };
   }
 
   descriptor(): BoundStatement {
@@ -103,7 +105,9 @@ export class D1SqliteTestDatabase {
     return new TestStatement(this.db, sql);
   }
 
-  batch(statements: TestStatement[]): readonly { meta: { changes: number; last_row_id: number } }[] {
+  batch(
+    statements: TestStatement[],
+  ): readonly { meta: { changes: number; last_row_id: number } }[] {
     this.db.exec("BEGIN IMMEDIATE");
     try {
       const results = statements.map((statement) => this.execute(statement.descriptor()));
@@ -137,6 +141,8 @@ export class D1SqliteTestDatabase {
 
   private execute(statement: BoundStatement): { meta: { changes: number; last_row_id: number } } {
     const result = this.db.prepare(statement.sql).run(...statement.params);
-    return { meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) } };
+    return {
+      meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) },
+    };
   }
 }

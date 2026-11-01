@@ -1035,14 +1035,14 @@ Las subfases posteriores continúan sin implementar hasta cerrar sus gaps con c�
 
 ### Hallazgos de la revisión de main
 
-| Área | Hallazgo |
-|---|---|
+| Área                            | Hallazgo                                                                                                                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | CartItemAdded / CartItemRemoved | Las APIs emitían después de las llamadas de mutación, pero el contrato del repositorio no indicaba si D1 había cambiado realmente una fila; un DELETE no-op podía producir un evento falso. |
-| CartAbandoned | El Cron escaneaba siempre los mismos primeros 200 carritos y no revalidaba la actividad ni la existencia de artículos al persistir. |
-| ShippingMethodSelected | El evento podía originarse desde el navegador, aunque la selección válida se conoce en la orden persistida. |
-| RevenueRecorded | El reconciliador podía omitir ledger huérfano por el join interno y no validaba coherencia de importe/moneda contra Payment y Order. |
-| Revenue report | Los totales globales podían sumar monedas distintas y el funnel no se contaba directamente desde la definición oficial de eventos. |
-| Verificación 10.5 | La prueba se apoyaba en agregados y no comparaba cada relación `ledgerId → paymentId → orderId` con su evento. |
+| CartAbandoned                   | El Cron escaneaba siempre los mismos primeros 200 carritos y no revalidaba la actividad ni la existencia de artículos al persistir.                                                         |
+| ShippingMethodSelected          | El evento podía originarse desde el navegador, aunque la selección válida se conoce en la orden persistida.                                                                                 |
+| RevenueRecorded                 | El reconciliador podía omitir ledger huérfano por el join interno y no validaba coherencia de importe/moneda contra Payment y Order.                                                        |
+| Revenue report                  | Los totales globales podían sumar monedas distintas y el funnel no se contaba directamente desde la definición oficial de eventos.                                                          |
+| Verificación 10.5               | La prueba se apoyaba en agregados y no comparaba cada relación `ledgerId → paymentId → orderId` con su evento.                                                                              |
 
 ### Endurecimiento
 

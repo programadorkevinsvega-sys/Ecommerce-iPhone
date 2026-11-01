@@ -21,22 +21,35 @@ describe("D1AnalyticsRepository", () => {
     try {
       database.exec(
         "INSERT INTO products (id,name,slug,active,price_in_cents,currency,stock) VALUES (?,?,?,?,?,?,?)",
-        "product-abandoned", "Probe Product", "probe-product", 1, 100, "COP", 5,
+        "product-abandoned",
+        "Probe Product",
+        "probe-product",
+        1,
+        100,
+        "COP",
+        5,
       );
       database.exec(
         "INSERT INTO carts (id,customer_id,currency,updated_at) VALUES (?,?,?,datetime('now','-31 minutes'))",
-        "cart-abandoned", null, "COP",
+        "cart-abandoned",
+        null,
+        "COP",
       );
       database.exec(
         "INSERT INTO cart_items (cart_id,product_id,quantity,unit_price_in_cents) VALUES (?,?,?,?)",
-        "cart-abandoned", "product-abandoned", 1, 100,
+        "cart-abandoned",
+        "product-abandoned",
+        1,
+        100,
       );
       const lastActivityAt = database.query<{ updated_at: string }>(
-        "SELECT updated_at FROM carts WHERE id=?", "cart-abandoned",
+        "SELECT updated_at FROM carts WHERE id=?",
+        "cart-abandoned",
       )[0]!.updated_at;
       const repository = new D1AnalyticsRepository(database.asD1());
       const event: AnalyticsEvent = {
-        eventId: "cart-abandoned:cart-abandoned:" + lastActivityAt.replace(" ", "T").replaceAll(":", "-"),
+        eventId:
+          "cart-abandoned:cart-abandoned:" + lastActivityAt.replace(" ", "T").replaceAll(":", "-"),
         eventType: "CartAbandoned",
         eventVersion: 1,
         occurredAt: new Date(lastActivityAt.replace(" ", "T") + "Z").toISOString(),
@@ -73,7 +86,9 @@ describe("D1AnalyticsRepository", () => {
       const repository = new D1AnalyticsRepository(database.asD1());
       await repository.record(event);
       await repository.record(event);
-      const rows = database.query<{ count: number }>("SELECT COUNT(*) AS count FROM analytics_events");
+      const rows = database.query<{ count: number }>(
+        "SELECT COUNT(*) AS count FROM analytics_events",
+      );
       expect(rows[0]?.count).toBe(1);
     } finally {
       database.close();

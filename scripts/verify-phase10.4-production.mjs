@@ -79,7 +79,7 @@ async function verifyRealServerCheckoutEvents() {
      WHERE ae.source='server'
        AND ae.event_type IN ('CheckoutStarted','ShippingMethodSelected','PaymentStarted','PurchaseCompleted')
      ORDER BY ae.occurred_at DESC
-     LIMIT 1000`
+     LIMIT 1000`,
   );
 
   const counts = new Map([
@@ -103,32 +103,78 @@ async function verifyRealServerCheckoutEvents() {
     const payload = parsePayload({ payload_json: row.payloadJson }, row.eventType);
     assert(row.persistedOrderId, `${row.eventType} references an order that does not exist`);
     equal(payload.orderId, row.persistedOrderId, `${row.eventType} order reference`);
-    assert(!/(email|phone|address|recipient|shippingAddress|token|secret|authorization)/i.test(row.payloadJson), `${row.eventType} payload contains sensitive data`);
+    assert(
+      !/(email|phone|address|recipient|shippingAddress|token|secret|authorization)/i.test(
+        row.payloadJson,
+      ),
+      `${row.eventType} payload contains sensitive data`,
+    );
 
     if (row.eventType === "CheckoutStarted") {
       equal(row.eventId, `checkout-started:${row.persistedOrderId}`, "CheckoutStarted event ID");
-      equal(payload.shippingMethod, row.shippingMethod, "CheckoutStarted persisted shipping method");
-      equal(Number(payload.itemCount), Number(row.orderItemCount), "CheckoutStarted persisted item count");
-      equal(Boolean(payload.hasDiscount), Number(row.discountInCents) > 0, "CheckoutStarted persisted discount flag");
+      equal(
+        payload.shippingMethod,
+        row.shippingMethod,
+        "CheckoutStarted persisted shipping method",
+      );
+      equal(
+        Number(payload.itemCount),
+        Number(row.orderItemCount),
+        "CheckoutStarted persisted item count",
+      );
+      equal(
+        Boolean(payload.hasDiscount),
+        Number(row.discountInCents) > 0,
+        "CheckoutStarted persisted discount flag",
+      );
     } else if (row.eventType === "ShippingMethodSelected") {
-      equal(row.eventId, `shipping-method-selected:${row.persistedOrderId}`, "ShippingMethodSelected event ID");
-      equal(payload.shippingMethodId, row.shippingMethod, "ShippingMethodSelected canonical method");
+      equal(
+        row.eventId,
+        `shipping-method-selected:${row.persistedOrderId}`,
+        "ShippingMethodSelected event ID",
+      );
+      equal(
+        payload.shippingMethodId,
+        row.shippingMethod,
+        "ShippingMethodSelected canonical method",
+      );
     } else {
       assert(row.persistedPaymentId, `${row.eventType} references a payment that does not exist`);
       equal(payload.paymentId, row.persistedPaymentId, `${row.eventType} payment reference`);
       equal(row.paymentOrderId, row.persistedOrderId, `${row.eventType} payment/order relation`);
       equal(payload.provider, row.paymentProvider, `${row.eventType} payment provider`);
-      equal(Number(payload.amountInCents), Number(row.paymentAmountInCents), `${row.eventType} payment amount`);
+      equal(
+        Number(payload.amountInCents),
+        Number(row.paymentAmountInCents),
+        `${row.eventType} payment amount`,
+      );
       equal(payload.currency, row.paymentCurrency, `${row.eventType} payment currency`);
       equal(row.paymentCurrency, row.orderCurrency, `${row.eventType} order/payment currency`);
-      equal(Number(row.paymentAmountInCents), Number(row.orderTotalInCents), `${row.eventType} order/payment amount`);
+      equal(
+        Number(row.paymentAmountInCents),
+        Number(row.orderTotalInCents),
+        `${row.eventType} order/payment amount`,
+      );
       if (row.eventType === "PaymentStarted") {
         equal(row.eventId, `payment-started:${row.persistedPaymentId}`, "PaymentStarted event ID");
       } else {
-        equal(row.eventId, `purchase-completed:${row.persistedPaymentId}`, "PurchaseCompleted event ID");
-        assert(["PAID", "REFUNDED"].includes(row.paymentStatus), "PurchaseCompleted payment is not confirmed");
-        assert(allowedPaidOrderStates.includes(row.orderStatus), "PurchaseCompleted order is not in a paid lifecycle state");
-        assert(typeof payload.transactionId === "string" && payload.transactionId.length > 0, "PurchaseCompleted provider transaction reference is missing");
+        equal(
+          row.eventId,
+          `purchase-completed:${row.persistedPaymentId}`,
+          "PurchaseCompleted event ID",
+        );
+        assert(
+          ["PAID", "REFUNDED"].includes(row.paymentStatus),
+          "PurchaseCompleted payment is not confirmed",
+        );
+        assert(
+          allowedPaidOrderStates.includes(row.orderStatus),
+          "PurchaseCompleted order is not in a paid lifecycle state",
+        );
+        assert(
+          typeof payload.transactionId === "string" && payload.transactionId.length > 0,
+          "PurchaseCompleted provider transaction reference is missing",
+        );
       }
     }
     counts.set(row.eventType, (counts.get(row.eventType) ?? 0) + 1);
@@ -136,8 +182,19 @@ async function verifyRealServerCheckoutEvents() {
 
   for (const eventType of counts.keys()) {
     const count = counts.get(eventType) ?? 0;
-    if (count === 0) throw new Error("INCONCLUSIVE: no real server-owned " + eventType + " events are available for production certification");
-    console.log("PASS " + eventType + ": " + count + " persisted server-owned events linked to canonical order/payment records");
+    if (count === 0)
+      throw new Error(
+        "INCONCLUSIVE: no real server-owned " +
+          eventType +
+          " events are available for production certification",
+      );
+    console.log(
+      "PASS " +
+        eventType +
+        ": " +
+        count +
+        " persisted server-owned events linked to canonical order/payment records",
+    );
   }
 }
 const probe = crypto.randomUUID();
@@ -193,7 +250,10 @@ try {
   console.log("PASS real cart add: HTTP 200");
 
   const repeatedAddResponse = await addRequest();
-  assert(repeatedAddResponse.status === 200, `idempotent add retry: expected HTTP 200, got ${repeatedAddResponse.status}`);
+  assert(
+    repeatedAddResponse.status === 200,
+    `idempotent add retry: expected HTTP 200, got ${repeatedAddResponse.status}`,
+  );
   console.log("PASS real cart add and idempotent retry: HTTP 200");
   const removeRequest = () =>
     request("/api/cart", {
@@ -246,32 +306,51 @@ try {
        FROM analytics_events
        WHERE session_id=${sqlString(sessionId)}
          AND event_type IN ('CartItemAdded','CartItemRemoved')
-       ORDER BY occurred_at ASC`
+       ORDER BY occurred_at ASC`,
     );
-    const addedCount = cartEventRows.filter((row) => row.event_type === 'CartItemAdded').length;
-    const removedCount = cartEventRows.filter((row) => row.event_type === 'CartItemRemoved').length;
+    const addedCount = cartEventRows.filter((row) => row.event_type === "CartItemAdded").length;
+    const removedCount = cartEventRows.filter((row) => row.event_type === "CartItemRemoved").length;
     if (addedCount > 1 || removedCount > 1) {
-      throw new Error(`Cart analytics idempotency failed: added=${addedCount}, removed=${removedCount}`);
+      throw new Error(
+        `Cart analytics idempotency failed: added=${addedCount}, removed=${removedCount}`,
+      );
     }
     if (addedCount === 1 && removedCount === 1) break;
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
-  const addedRows = cartEventRows.filter((row) => row.event_type === 'CartItemAdded');
-  const removedRows = cartEventRows.filter((row) => row.event_type === 'CartItemRemoved');
-  assert(addedRows.length === 1, `CartItemAdded: expected one persisted event, got ${addedRows.length}`);
-  assert(removedRows.length === 1, `CartItemRemoved: expected one persisted event, got ${removedRows.length}`);
+  const addedRows = cartEventRows.filter((row) => row.event_type === "CartItemAdded");
+  const removedRows = cartEventRows.filter((row) => row.event_type === "CartItemRemoved");
+  assert(
+    addedRows.length === 1,
+    `CartItemAdded: expected one persisted event, got ${addedRows.length}`,
+  );
+  assert(
+    removedRows.length === 1,
+    `CartItemRemoved: expected one persisted event, got ${removedRows.length}`,
+  );
 
   for (const row of [...addedRows, ...removedRows]) {
     assert(row.event_version === 1, "cart analytics event version mismatch");
     assert(row.visitor_id === visitorId, "cart analytics visitor mismatch");
     assert(row.source === "server", "cart analytics source mismatch");
     assert(row.request_id === requestId, "cart analytics request correlation mismatch");
-    assert(parsePayload(row, row.event_type).productId === productId, `${row.event_type} does not reference the real product`);
+    assert(
+      parsePayload(row, row.event_type).productId === productId,
+      `${row.event_type} does not reference the real product`,
+    );
   }
-  assert(addedRows[0].event_id.startsWith("cart-added:"), "CartItemAdded must use its deterministic operation key");
-  assert(removedRows[0].event_id.startsWith("cart-removed:"), "CartItemRemoved must use its deterministic operation key");
+  assert(
+    addedRows[0].event_id.startsWith("cart-added:"),
+    "CartItemAdded must use its deterministic operation key",
+  );
+  assert(
+    removedRows[0].event_id.startsWith("cart-removed:"),
+    "CartItemRemoved must use its deterministic operation key",
+  );
   cartEventsCompleted = true;
-  console.log("PASS HTTP → EVENTS_QUEUE → D1: one CartItemAdded and one CartItemRemoved; no-op DELETE did not emit a duplicate");
+  console.log(
+    "PASS HTTP → EVENTS_QUEUE → D1: one CartItemAdded and one CartItemRemoved; no-op DELETE did not emit a duplicate",
+  );
 
   await d1(
     `INSERT INTO carts(id,customer_id,currency,updated_at)
@@ -286,12 +365,15 @@ try {
 
   await d1(
     `INSERT INTO cart_items(id,cart_id,product_id,quantity,unit_price_in_cents,variant_id)
-     VALUES(${sqlString(crypto.randomUUID())},${sqlString(abandonedCartId)},${sqlString(productId)},1,${Number(product.price_in_cents)},NULL)`
+     VALUES(${sqlString(crypto.randomUUID())},${sqlString(abandonedCartId)},${sqlString(productId)},1,${Number(product.price_in_cents)},NULL)`,
   );
   const insertedItemRows = await d1(
-    `SELECT COUNT(*) AS count FROM cart_items WHERE cart_id=${sqlString(abandonedCartId)} AND product_id=${sqlString(productId)}`
+    `SELECT COUNT(*) AS count FROM cart_items WHERE cart_id=${sqlString(abandonedCartId)} AND product_id=${sqlString(productId)}`,
   );
-  assert(Number(insertedItemRows[0]?.count ?? 0) === 1, "abandoned cart probe item was not persisted");
+  assert(
+    Number(insertedItemRows[0]?.count ?? 0) === 1,
+    "abandoned cart probe item was not persisted",
+  );
 
   for (let attempt = 1; attempt <= pollAttempts; attempt += 1) {
     const rows = await d1(
@@ -336,7 +418,6 @@ try {
     "admin revenue endpoint must return Cache-Control: no-store",
   );
   console.log("PASS admin revenue authorization and no-store policy");
-
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   if (message.startsWith("INCONCLUSIVE:")) {
@@ -353,7 +434,9 @@ try {
        WHERE session_id IN (${sqlString(sessionId)},${sqlString(`cart:${abandonedCartId}`)})
           OR instr(event_id,${sqlString(`cart-abandoned:${abandonedCartId}:`)})=1`,
     );
-    await d1(`DELETE FROM cart_items WHERE cart_id IN (${sqlString(cartId)},${sqlString(abandonedCartId)})`);
+    await d1(
+      `DELETE FROM cart_items WHERE cart_id IN (${sqlString(cartId)},${sqlString(abandonedCartId)})`,
+    );
     await d1(`DELETE FROM carts WHERE id IN (${sqlString(cartId)},${sqlString(abandonedCartId)})`);
     console.log("PASS production verification cleanup: both isolated cart probes removed from D1");
   } catch (error) {

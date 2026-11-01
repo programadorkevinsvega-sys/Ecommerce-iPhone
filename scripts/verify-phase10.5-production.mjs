@@ -8,7 +8,9 @@ const execFileAsync = promisify(execFile);
 
 const BASE_URL = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
 const to = new Date();
-const from = new Date(to.getTime() - (Number.isFinite(periodDays) ? periodDays : 30) * 24 * 60 * 60 * 1000);
+const from = new Date(
+  to.getTime() - (Number.isFinite(periodDays) ? periodDays : 30) * 24 * 60 * 60 * 1000,
+);
 const fromIso = from.toISOString();
 const toIso = to.toISOString();
 
@@ -107,9 +109,14 @@ async function verifyRowLevelProjection() {
      ORDER BY pl.created_at ASC,pl.id ASC`,
   );
 
-  if (rows.length === 0) throw new Error("INCONCLUSIVE: no eligible payment ledger entries exist in production");
-  if (!rows.some((row) => row.entryType === "PAYMENT_CONFIRMED")) throw new Error("INCONCLUSIVE: no confirmed payment ledger entry exists in production");
-  if (!rows.some((row) => row.entryType === "PAYMENT_REFUNDED")) throw new Error("INCONCLUSIVE: no provider-confirmed refund ledger entry exists in production; do not create a refund only for this probe");
+  if (rows.length === 0)
+    throw new Error("INCONCLUSIVE: no eligible payment ledger entries exist in production");
+  if (!rows.some((row) => row.entryType === "PAYMENT_CONFIRMED"))
+    throw new Error("INCONCLUSIVE: no confirmed payment ledger entry exists in production");
+  if (!rows.some((row) => row.entryType === "PAYMENT_REFUNDED"))
+    throw new Error(
+      "INCONCLUSIVE: no provider-confirmed refund ledger entry exists in production; do not create a refund only for this probe",
+    );
 
   const currencyLedger = new Map();
   const currencyProjection = new Map();
@@ -118,20 +125,44 @@ async function verifyRowLevelProjection() {
     equal(row.persistedOrderId, row.orderId, `persisted order reference for ${row.ledgerId}`);
     equal(row.paymentCurrency, row.currency, `ledger/payment currency for ${row.ledgerId}`);
     equal(row.orderCurrency, row.paymentCurrency, `payment/order currency for ${row.ledgerId}`);
-    equal(Number(row.paymentAmountInCents), Number(row.orderTotalInCents), `payment/order amount for ${row.ledgerId}`);
-    assert(["PAID", "REFUNDED"].includes(row.paymentStatus), `ledger ${row.ledgerId} has an ineligible payment state`);
+    equal(
+      Number(row.paymentAmountInCents),
+      Number(row.orderTotalInCents),
+      `payment/order amount for ${row.ledgerId}`,
+    );
+    assert(
+      ["PAID", "REFUNDED"].includes(row.paymentStatus),
+      `ledger ${row.ledgerId} has an ineligible payment state`,
+    );
     if (row.entryType === "PAYMENT_CONFIRMED") {
       assert(
-        ["PAID", "CANCELLED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "REFUND_PENDING", "REFUNDED"].includes(row.orderStatus),
+        [
+          "PAID",
+          "CANCELLED",
+          "PROCESSING",
+          "READY_TO_SHIP",
+          "SHIPPED",
+          "DELIVERED",
+          "REFUND_PENDING",
+          "REFUNDED",
+        ].includes(row.orderStatus),
         `ledger ${row.ledgerId} has an incompatible order state`,
       );
-      equal(Number(row.paymentAmountInCents), Number(row.amountInCents), `confirmed amount vs payment for ${row.ledgerId}`);
+      equal(
+        Number(row.paymentAmountInCents),
+        Number(row.amountInCents),
+        `confirmed amount vs payment for ${row.ledgerId}`,
+      );
     } else {
       equal(row.paymentStatus, "REFUNDED", `refund payment state for ${row.ledgerId}`);
       equal(row.orderStatus, "REFUNDED", `refund order state for ${row.ledgerId}`);
       equal(Number(row.hasConfirmedPayment), 1, `refund sale linkage for ${row.ledgerId}`);
       equal(Number(row.hasProviderRefund), 1, `provider-confirmed refund row for ${row.ledgerId}`);
-      equal(Number(row.amountInCents), Number(row.paymentAmountInCents), `full refund amount for ${row.ledgerId}`);
+      equal(
+        Number(row.amountInCents),
+        Number(row.paymentAmountInCents),
+        `full refund amount for ${row.ledgerId}`,
+      );
     }
     assert(row.eventId, `ledger ${row.ledgerId} has no RevenueRecorded projection`);
     equal(row.eventId, `revenue:${row.ledgerId}`, `event ID for ${row.ledgerId}`);
@@ -141,7 +172,10 @@ async function verifyRowLevelProjection() {
     const payload = payloadOf({ ...row, payload_json: row.payloadJson });
     const expectedDirection = row.entryType === "PAYMENT_REFUNDED" ? "DEBIT" : "CREDIT";
     const amount = Number(row.amountInCents);
-    assert(Number.isSafeInteger(amount) && amount >= 0, `ledger amount is not a safe integer for ${row.ledgerId}`);
+    assert(
+      Number.isSafeInteger(amount) && amount >= 0,
+      `ledger amount is not a safe integer for ${row.ledgerId}`,
+    );
     equal(payload.ledgerId, row.ledgerId, `payload ledgerId for ${row.ledgerId}`);
     equal(payload.paymentId, row.paymentId, `payload paymentId for ${row.ledgerId}`);
     equal(payload.orderId, row.orderId, `payload orderId for ${row.ledgerId}`);
@@ -149,10 +183,26 @@ async function verifyRowLevelProjection() {
     equal(Number(payload.amountInCents), amount, `payload amount for ${row.ledgerId}`);
     equal(payload.currency, row.currency, `payload currency for ${row.ledgerId}`);
     equal(payload.revenueDirection, expectedDirection, `payload direction for ${row.ledgerId}`);
-    equal(Number(payload.netAmountInCents), expectedDirection === "DEBIT" ? -amount : amount, `payload signed amount for ${row.ledgerId}`);
+    equal(
+      Number(payload.netAmountInCents),
+      expectedDirection === "DEBIT" ? -amount : amount,
+      `payload signed amount for ${row.ledgerId}`,
+    );
 
-    const ledgerAggregate = currencyLedger.get(row.currency) ?? { gross: 0, refunded: 0, paymentIds: new Set(), refunds: 0, entries: 0 };
-    const projectionAggregate = currencyProjection.get(row.currency) ?? { gross: 0, refunded: 0, paymentIds: new Set(), refunds: 0, entries: 0 };
+    const ledgerAggregate = currencyLedger.get(row.currency) ?? {
+      gross: 0,
+      refunded: 0,
+      paymentIds: new Set(),
+      refunds: 0,
+      entries: 0,
+    };
+    const projectionAggregate = currencyProjection.get(row.currency) ?? {
+      gross: 0,
+      refunded: 0,
+      paymentIds: new Set(),
+      refunds: 0,
+      entries: 0,
+    };
     if (row.entryType === "PAYMENT_CONFIRMED") {
       ledgerAggregate.gross += amount;
       ledgerAggregate.paymentIds.add(row.paymentId);
@@ -178,17 +228,26 @@ async function verifyRowLevelProjection() {
     equal(projected.paymentIds.size, ledger.paymentIds.size, `${currency} confirmed payment count`);
     equal(projected.refunds, ledger.refunds, `${currency} refund count`);
     equal(projected.entries, ledger.entries, `${currency} projected ledger entry count`);
-    console.log(`PASS ${currency}: gross=${ledger.gross} refunds=${ledger.refunded} net=${ledger.gross - ledger.refunded}; payments=${ledger.paymentIds.size}; refunds=${ledger.refunds}; entries=${ledger.entries}`);
+    console.log(
+      `PASS ${currency}: gross=${ledger.gross} refunds=${ledger.refunded} net=${ledger.gross - ledger.refunded}; payments=${ledger.paymentIds.size}; refunds=${ledger.refunds}; entries=${ledger.entries}`,
+    );
   }
   console.log(`PASS row-level ledger reconciliation: ${rows.length} eligible entries`);
 }
 
 try {
-  assert(Number.isInteger(periodDays) && periodDays > 0 && periodDays <= 366, "PHASE10_5_PERIOD_DAYS must be an integer from 1 to 366");
+  assert(
+    Number.isInteger(periodDays) && periodDays > 0 && periodDays <= 366,
+    "PHASE10_5_PERIOD_DAYS must be an integer from 1 to 366",
+  );
 
   const adminResponse = await request("/api/admin/analytics/revenue");
   equal(adminResponse.status, 401, "unauthenticated admin revenue status");
-  equal(adminResponse.headers.get("cache-control")?.toLowerCase(), "no-store", "admin revenue cache policy");
+  equal(
+    adminResponse.headers.get("cache-control")?.toLowerCase(),
+    "no-store",
+    "admin revenue cache policy",
+  );
   console.log("PASS admin revenue authorization guard and no-store response");
 
   const orphanLedger = await d1(
@@ -213,7 +272,11 @@ try {
        HAVING COUNT(*)>1
      ) duplicates`,
   );
-  equal(Number(duplicateLedgerEntries[0]?.count ?? 0), 0, "duplicate canonical payment ledger entries");
+  equal(
+    Number(duplicateLedgerEntries[0]?.count ?? 0),
+    0,
+    "duplicate canonical payment ledger entries",
+  );
   const successfulRefundsWithoutLedger = await d1(
     `SELECT COUNT(*) AS count
      FROM payment_refunds pr
@@ -229,9 +292,13 @@ try {
            AND pl.amount_in_cents=pr.amount_in_cents
            AND pl.currency=pr.currency
            AND json_extract(pl.metadata_json,'$.providerRefundId')=pr.provider_refund_id
-       )`
+       )`,
   );
-  equal(Number(successfulRefundsWithoutLedger[0]?.count ?? 0), 0, "provider-confirmed refunds missing matching PAYMENT_REFUNDED ledger entries");
+  equal(
+    Number(successfulRefundsWithoutLedger[0]?.count ?? 0),
+    0,
+    "provider-confirmed refunds missing matching PAYMENT_REFUNDED ledger entries",
+  );
 
   const refundedPaymentTotals = await d1(
     `SELECT COUNT(*) AS count
@@ -247,9 +314,13 @@ try {
          )
        GROUP BY p.id,p.amount_in_cents
        HAVING COALESCE(SUM(refunds.amount_in_cents),0)<>p.amount_in_cents
-     ) invalidRefundedPayments`
+     ) invalidRefundedPayments`,
   );
-  equal(Number(refundedPaymentTotals[0]?.count ?? 0), 0, "refunded payments must have exactly one full refund ledger entry");
+  equal(
+    Number(refundedPaymentTotals[0]?.count ?? 0),
+    0,
+    "refunded payments must have exactly one full refund ledger entry",
+  );
 
   const unledgeredPaidPayments = await d1(
     `SELECT COUNT(*) AS count
@@ -259,9 +330,13 @@ try {
        AND NOT EXISTS (
          SELECT 1 FROM payment_ledger confirmed
          WHERE confirmed.payment_id=p.id AND confirmed.entry_type='PAYMENT_CONFIRMED'
-       )`
+       )`,
   );
-  equal(Number(unledgeredPaidPayments[0]?.count ?? 0), 0, "paid payments missing their confirmed ledger entry");
+  equal(
+    Number(unledgeredPaidPayments[0]?.count ?? 0),
+    0,
+    "paid payments missing their confirmed ledger entry",
+  );
 
   const overRefunded = await d1(
     `SELECT COUNT(*) AS count
@@ -339,16 +414,24 @@ try {
   const checkouts = Number(funnel[0]?.checkouts ?? 0);
   const purchases = Number(funnel[0]?.purchases ?? 0);
   if (checkouts === 0 || purchases === 0) {
-    throw new Error("INCONCLUSIVE: production has no real checkout and purchase events in the selected conversion window");
+    throw new Error(
+      "INCONCLUSIVE: production has no real checkout and purchase events in the selected conversion window",
+    );
   }
   const conversionRate = checkouts === 0 ? 0 : purchases / checkouts;
   assert(Number.isFinite(conversionRate) && conversionRate >= 0, "conversion rate is invalid");
-  console.log(`PASS conversion window UTC ${fromIso} to ${toIso}: PurchaseCompleted=${purchases} / CheckoutStarted=${checkouts} = ${conversionRate.toFixed(6)}`);
+  console.log(
+    `PASS conversion window UTC ${fromIso} to ${toIso}: PurchaseCompleted=${purchases} / CheckoutStarted=${checkouts} = ${conversionRate.toFixed(6)}`,
+  );
   if (purchases > checkouts) {
-    console.warn("WARN conversion exceeds 100%: the period can include PurchaseCompleted events whose CheckoutStarted occurred before this period; review cohort alignment, do not interpret this as a single-checkout conversion rate.");
+    console.warn(
+      "WARN conversion exceeds 100%: the period can include PurchaseCompleted events whose CheckoutStarted occurred before this period; review cohort alignment, do not interpret this as a single-checkout conversion rate.",
+    );
   }
 
-  console.log("PASS per-ledger traceability, currency separation, orphan checks, duplicate checks and payload minimization");
+  console.log(
+    "PASS per-ledger traceability, currency separation, orphan checks, duplicate checks and payload minimization",
+  );
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
   if (message.startsWith("INCONCLUSIVE:")) {

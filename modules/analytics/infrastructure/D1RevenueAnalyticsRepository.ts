@@ -262,15 +262,11 @@ export class D1RevenueAnalyticsRepository implements RevenueAnalyticsPort {
 
     return {
       period: { from, to },
-      grossRevenueInCents: hasAtMostOneCurrency
-        ? (singleCurrency?.grossRevenueInCents ?? 0)
-        : null,
+      grossRevenueInCents: hasAtMostOneCurrency ? (singleCurrency?.grossRevenueInCents ?? 0) : null,
       refundedRevenueInCents: hasAtMostOneCurrency
         ? (singleCurrency?.refundedRevenueInCents ?? 0)
         : null,
-      netRevenueInCents: hasAtMostOneCurrency
-        ? (singleCurrency?.netRevenueInCents ?? 0)
-        : null,
+      netRevenueInCents: hasAtMostOneCurrency ? (singleCurrency?.netRevenueInCents ?? 0) : null,
       financialTotalsCurrency: singleCurrency?.currency ?? null,
       confirmedPaymentCount: Number(aggregate?.confirmedPaymentCount ?? 0),
       refundCount: Number(aggregate?.refundCount ?? 0),

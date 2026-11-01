@@ -89,11 +89,23 @@ describe("D1RevenueAnalyticsRepository", () => {
       insertPayment(database, "payment-1", "order-1", "COP", "ledger-sale-1", 10000);
       database.exec(
         "INSERT INTO payment_refunds (id,payment_id,idempotency_key,provider_refund_id,status,amount_in_cents,currency,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
-        "refund-1", "payment-1", "refund-key-1", "provider-refund-1", "SUCCEEDED", 10000, "COP", "2026-09-16 12:00:00", "2026-09-16 12:00:00",
+        "refund-1",
+        "payment-1",
+        "refund-key-1",
+        "provider-refund-1",
+        "SUCCEEDED",
+        10000,
+        "COP",
+        "2026-09-16 12:00:00",
+        "2026-09-16 12:00:00",
       );
       database.exec(
         "INSERT INTO payment_ledger (id,payment_id,entry_type,amount_in_cents,currency,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)",
-        "ledger-refund-1", "payment-1", "PAYMENT_REFUNDED", 10000, "COP",
+        "ledger-refund-1",
+        "payment-1",
+        "PAYMENT_REFUNDED",
+        10000,
+        "COP",
         JSON.stringify({ providerRefundId: "provider-refund-1", idempotencyKey: "refund-key-1" }),
         "2026-09-16 12:01:00",
       );
@@ -101,13 +113,25 @@ describe("D1RevenueAnalyticsRepository", () => {
       database.exec("UPDATE payments SET status='REFUNDED' WHERE id=?", "payment-1");
       database.exec("UPDATE orders SET status='REFUNDED' WHERE id=?", "order-1");
 
-      insertAnalyticsEvent(database, "forged-checkout-1", "CheckoutStarted", "web", { orderId: "forged-order" });
-      insertAnalyticsEvent(database, "forged-purchase-1", "PurchaseCompleted", "web", { paymentId: "forged-payment" });
-      insertAnalyticsEvent(database, "checkout-1", "CheckoutStarted", "server", { orderId: "order-1" });
-      insertAnalyticsEvent(database, "purchase-1", "PurchaseCompleted", "server", { orderId: "order-1", paymentId: "payment-1" });
+      insertAnalyticsEvent(database, "forged-checkout-1", "CheckoutStarted", "web", {
+        orderId: "forged-order",
+      });
+      insertAnalyticsEvent(database, "forged-purchase-1", "PurchaseCompleted", "web", {
+        paymentId: "forged-payment",
+      });
+      insertAnalyticsEvent(database, "checkout-1", "CheckoutStarted", "server", {
+        orderId: "order-1",
+      });
+      insertAnalyticsEvent(database, "purchase-1", "PurchaseCompleted", "server", {
+        orderId: "order-1",
+        paymentId: "payment-1",
+      });
 
       const repository = new D1RevenueAnalyticsRepository(database.asD1());
-      const report = await repository.report("2026-09-01T00:00:00.000Z", "2026-10-01T00:00:00.000Z");
+      const report = await repository.report(
+        "2026-09-01T00:00:00.000Z",
+        "2026-10-01T00:00:00.000Z",
+      );
 
       expect(report).toMatchObject({
         grossRevenueInCents: 10000,
@@ -119,14 +143,16 @@ describe("D1RevenueAnalyticsRepository", () => {
         checkoutStartedCount: 1,
         purchaseCompletedCount: 1,
         conversionRate: 1,
-        currencyBreakdown: [{
-          currency: "COP",
-          grossRevenueInCents: 10000,
-          refundedRevenueInCents: 10000,
-          netRevenueInCents: 0,
-          confirmedPaymentCount: 1,
-          refundCount: 1,
-        }],
+        currencyBreakdown: [
+          {
+            currency: "COP",
+            grossRevenueInCents: 10000,
+            refundedRevenueInCents: 10000,
+            netRevenueInCents: 0,
+            confirmedPaymentCount: 1,
+            refundCount: 1,
+          },
+        ],
       });
     } finally {
       database.close();
@@ -149,7 +175,10 @@ describe("D1RevenueAnalyticsRepository", () => {
       insertPayment(database, "payment-usd", "order-usd", "USD", "ledger-usd", 2500);
 
       const repository = new D1RevenueAnalyticsRepository(database.asD1());
-      const report = await repository.report("2026-09-01T00:00:00.000Z", "2026-10-01T00:00:00.000Z");
+      const report = await repository.report(
+        "2026-09-01T00:00:00.000Z",
+        "2026-10-01T00:00:00.000Z",
+      );
 
       expect(report.grossRevenueInCents).toBeNull();
       expect(report.refundedRevenueInCents).toBeNull();
@@ -200,7 +229,9 @@ describe("D1RevenueAnalyticsRepository", () => {
         "2026-09-15T12:00:00.000Z",
       );
       const repository = new D1RevenueAnalyticsRepository(database.asD1());
-      await expect(repository.pendingRevenueEntries(50)).rejects.toThrow("PAYMENT_LEDGER_INTEGRITY_MISMATCH");
+      await expect(repository.pendingRevenueEntries(50)).rejects.toThrow(
+        "PAYMENT_LEDGER_INTEGRITY_MISMATCH",
+      );
     } finally {
       database.close();
     }
@@ -217,17 +248,39 @@ describe("D1RevenueAnalyticsRepository", () => {
       database.exec(
         "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
       );
-      insertPayment(partialDatabase, "payment-partial", "order-partial", "COP", "ledger-sale-partial", 10000);
+      insertPayment(
+        partialDatabase,
+        "payment-partial",
+        "order-partial",
+        "COP",
+        "ledger-sale-partial",
+        10000,
+      );
       partialDatabase.exec("UPDATE payments SET status='REFUNDED' WHERE id=?", "payment-partial");
       partialDatabase.exec("UPDATE orders SET status='REFUNDED' WHERE id=?", "order-partial");
       partialDatabase.exec(
         "INSERT INTO payment_refunds (id,payment_id,idempotency_key,provider_refund_id,status,amount_in_cents,currency,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
-        "refund-partial", "payment-partial", "refund-key-partial", "provider-refund-partial", "SUCCEEDED", 5000, "COP", "2026-09-16 12:00:00", "2026-09-16 12:00:00",
+        "refund-partial",
+        "payment-partial",
+        "refund-key-partial",
+        "provider-refund-partial",
+        "SUCCEEDED",
+        5000,
+        "COP",
+        "2026-09-16 12:00:00",
+        "2026-09-16 12:00:00",
       );
       partialDatabase.exec(
         "INSERT INTO payment_ledger (id,payment_id,entry_type,amount_in_cents,currency,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)",
-        "ledger-refund-partial", "payment-partial", "PAYMENT_REFUNDED", 5000, "COP",
-        JSON.stringify({ providerRefundId: "provider-refund-partial", idempotencyKey: "refund-key-partial" }),
+        "ledger-refund-partial",
+        "payment-partial",
+        "PAYMENT_REFUNDED",
+        5000,
+        "COP",
+        JSON.stringify({
+          providerRefundId: "provider-refund-partial",
+          idempotencyKey: "refund-key-partial",
+        }),
         "2026-09-16 12:01:00",
       );
       const repository = new D1RevenueAnalyticsRepository(partialDatabase.asD1());
@@ -249,9 +302,22 @@ describe("D1RevenueAnalyticsRepository", () => {
       database.exec(
         "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
       );
-      insertPayment(missingRefundDatabase, "payment-missing-refund", "order-missing-refund", "COP", "ledger-sale-missing-refund", 10000);
-      missingRefundDatabase.exec("UPDATE payments SET status='REFUNDED' WHERE id=?", "payment-missing-refund");
-      missingRefundDatabase.exec("UPDATE orders SET status='REFUNDED' WHERE id=?", "order-missing-refund");
+      insertPayment(
+        missingRefundDatabase,
+        "payment-missing-refund",
+        "order-missing-refund",
+        "COP",
+        "ledger-sale-missing-refund",
+        10000,
+      );
+      missingRefundDatabase.exec(
+        "UPDATE payments SET status='REFUNDED' WHERE id=?",
+        "payment-missing-refund",
+      );
+      missingRefundDatabase.exec(
+        "UPDATE orders SET status='REFUNDED' WHERE id=?",
+        "order-missing-refund",
+      );
       const repository = new D1RevenueAnalyticsRepository(missingRefundDatabase.asD1());
       await expect(repository.pendingRevenueEntries(50)).rejects.toThrow(
         "PAYMENT_LEDGER_INTEGRITY_MISMATCH",
@@ -260,8 +326,6 @@ describe("D1RevenueAnalyticsRepository", () => {
       missingRefundDatabase.close();
     }
   });
-
-
 
   it("does not classify an in-flight succeeded refund as an orphan while its refund lock is held", async () => {
     const database = new D1SqliteTestDatabase();
@@ -275,7 +339,14 @@ describe("D1RevenueAnalyticsRepository", () => {
       database.exec(
         "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
       );
-      insertPayment(database, "payment-in-flight-refund", "order-in-flight-refund", "COP", "ledger-sale-in-flight-refund", 10000);
+      insertPayment(
+        database,
+        "payment-in-flight-refund",
+        "order-in-flight-refund",
+        "COP",
+        "ledger-sale-in-flight-refund",
+        10000,
+      );
       database.exec(
         "INSERT INTO payment_refunds (id,payment_id,idempotency_key,provider_refund_id,status,amount_in_cents,currency,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
         "refund-in-flight",
@@ -301,7 +372,6 @@ describe("D1RevenueAnalyticsRepository", () => {
     }
   });
 
-
   it("allows a recent paid transition to finish its ledger write but rejects a stale missing confirmation", async () => {
     const database = new D1SqliteTestDatabase();
     try {
@@ -314,7 +384,14 @@ describe("D1RevenueAnalyticsRepository", () => {
       database.exec(
         "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
       );
-      insertPayment(database, "payment-recent-transition", "order-recent-transition", "COP", "ledger-sale-recent-transition", 10000);
+      insertPayment(
+        database,
+        "payment-recent-transition",
+        "order-recent-transition",
+        "COP",
+        "ledger-sale-recent-transition",
+        10000,
+      );
       database.exec("DELETE FROM payment_ledger WHERE payment_id=?", "payment-recent-transition");
 
       const repository = new D1RevenueAnalyticsRepository(database.asD1());
@@ -344,23 +421,24 @@ describe("D1RevenueAnalyticsRepository", () => {
       database.exec(
         "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
       );
-      insertPayment(database, "payment-projection", "order-projection", "COP", "ledger-projection", 10000);
-      insertAnalyticsEvent(
+      insertPayment(
         database,
-        "revenue:ledger-projection",
-        "RevenueRecorded",
-        "server",
-        {
-          ledgerId: "ledger-projection",
-          paymentId: "payment-projection",
-          orderId: "order-projection",
-          entryType: "PAYMENT_CONFIRMED",
-          revenueDirection: "CREDIT",
-          amountInCents: 9000,
-          netAmountInCents: 9000,
-          currency: "COP",
-        },
+        "payment-projection",
+        "order-projection",
+        "COP",
+        "ledger-projection",
+        10000,
       );
+      insertAnalyticsEvent(database, "revenue:ledger-projection", "RevenueRecorded", "server", {
+        ledgerId: "ledger-projection",
+        paymentId: "payment-projection",
+        orderId: "order-projection",
+        entryType: "PAYMENT_CONFIRMED",
+        revenueDirection: "CREDIT",
+        amountInCents: 9000,
+        netAmountInCents: 9000,
+        currency: "COP",
+      });
 
       const repository = new D1RevenueAnalyticsRepository(database.asD1());
       await expect(repository.pendingRevenueEntries(50)).rejects.toThrow(
@@ -370,5 +448,4 @@ describe("D1RevenueAnalyticsRepository", () => {
       database.close();
     }
   });
-
 });

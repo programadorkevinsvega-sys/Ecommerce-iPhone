@@ -83,8 +83,7 @@ export class RevenueAnalyticsService {
           entryType: entry.entryType,
           revenueDirection: direction,
           amountInCents: entry.amountInCents,
-          netAmountInCents:
-            direction === "DEBIT" ? -entry.amountInCents : entry.amountInCents,
+          netAmountInCents: direction === "DEBIT" ? -entry.amountInCents : entry.amountInCents,
           currency: entry.currency,
         },
       });

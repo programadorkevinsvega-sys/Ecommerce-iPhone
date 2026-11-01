@@ -220,8 +220,14 @@ export async function POST(request: Request) {
     const response = NextResponse.json(mutation.cart, { headers: { "cache-control": "no-store" } });
     if (!(await cookies()).get("cart_id")) setCartCookie(response, id);
     if (analytics.setCookies) {
-      response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_VISITOR_COOKIE, analytics.visitorId, 31536000));
-      response.headers.append("Set-Cookie", analyticsSetCookie(ANALYTICS_SESSION_COOKIE, analytics.sessionId, 1800));
+      response.headers.append(
+        "Set-Cookie",
+        analyticsSetCookie(ANALYTICS_VISITOR_COOKIE, analytics.visitorId, 31536000),
+      );
+      response.headers.append(
+        "Set-Cookie",
+        analyticsSetCookie(ANALYTICS_SESSION_COOKIE, analytics.sessionId, 1800),
+      );
     }
     return response;
   } catch (error) {

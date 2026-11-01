@@ -36,16 +36,22 @@ describe("RevenueAnalyticsService", () => {
     await expect(service.reconcile()).resolves.toBe(2);
 
     expect(record).toHaveBeenCalledTimes(2);
-    expect(record).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      eventId: "revenue:ledger-sale-12345678",
-      eventType: "RevenueRecorded",
-      source: "server",
-    }));
-    expect(record).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      eventId: "revenue:ledger-refund-12345678",
-      eventType: "RevenueRecorded",
-      source: "server",
-    }));
+    expect(record).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        eventId: "revenue:ledger-sale-12345678",
+        eventType: "RevenueRecorded",
+        source: "server",
+      }),
+    );
+    expect(record).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        eventId: "revenue:ledger-refund-12345678",
+        eventType: "RevenueRecorded",
+        source: "server",
+      }),
+    );
   });
 
   it("returns the canonical period report", async () => {
@@ -62,14 +68,16 @@ describe("RevenueAnalyticsService", () => {
         checkoutStartedCount: 10,
         purchaseCompletedCount: 2,
         conversionRate: 0.2,
-        currencyBreakdown: [{
-          currency: "COP",
-          grossRevenueInCents: 300000,
-          refundedRevenueInCents: 50000,
-          netRevenueInCents: 250000,
-          confirmedPaymentCount: 3,
-          refundCount: 1,
-        }],
+        currencyBreakdown: [
+          {
+            currency: "COP",
+            grossRevenueInCents: 300000,
+            refundedRevenueInCents: 50000,
+            netRevenueInCents: 250000,
+            confirmedPaymentCount: 3,
+            refundCount: 1,
+          },
+        ],
       }),
     };
     const service = new RevenueAnalyticsService(source, {} as AnalyticsService);
@@ -89,9 +97,11 @@ describe("RevenueAnalyticsService", () => {
     };
     const service = new RevenueAnalyticsService(source, {} as AnalyticsService);
 
-    await expect(service.report("2026-09-30T00:00:00.000Z", "2026-09-29T00:00:00.000Z"))
-      .rejects.toThrow("INVALID_REVENUE_PERIOD");
-    await expect(service.report("2025-01-01T00:00:00.000Z", "2026-09-29T00:00:00.000Z"))
-      .rejects.toThrow("REVENUE_PERIOD_TOO_LARGE");
+    await expect(
+      service.report("2026-09-30T00:00:00.000Z", "2026-09-29T00:00:00.000Z"),
+    ).rejects.toThrow("INVALID_REVENUE_PERIOD");
+    await expect(
+      service.report("2025-01-01T00:00:00.000Z", "2026-09-29T00:00:00.000Z"),
+    ).rejects.toThrow("REVENUE_PERIOD_TOO_LARGE");
   });
 });

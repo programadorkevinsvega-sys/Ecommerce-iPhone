@@ -123,7 +123,7 @@ async function recordAbandonedCarts(env: CloudflareEnv): Promise<void> {
        )
      GROUP BY c.id,c.updated_at
      ORDER BY c.updated_at ASC,c.id ASC
-     LIMIT 200`
+     LIMIT 200`,
   ).all<{ id: string; updated_at: string; item_count: number }>();
 
   const analytics = analyticsPersistence(env.DB);
