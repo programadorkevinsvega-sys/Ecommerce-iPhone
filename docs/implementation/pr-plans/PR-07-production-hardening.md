@@ -11,6 +11,7 @@
 - Repository CI owns dependency installation/audit, formatting, repository checks, architecture, lint, TypeScript, unit/integration, local D1 preparation, OpenNext build verification and Playwright E2E.
 - CI prepares isolated local D1 only. Cloudflare remains responsible for Worker deployment and remote D1 migrations.
 - The existing scheduled performance workflow runs every six hours and classifies Cloudflare edge challenges as inconclusive.
+- GitHub-hosted workflows use Node.js 24-compatible action releases; the application runtime is pinned and verified at Node.js 24.18.0 because GitHub removed Node.js 20 from hosted Actions runners on 2026-09-23.
 
 ## Scope and delivery status
 
@@ -59,6 +60,7 @@
 - [x] Update `docs/security.md` for per-request CSP nonces, exact Next Image style hash, step-up scope and current security boundaries.
 - [x] Update `docs/production-hardening.md` with request/outbox correlation, observability, accessibility, performance and migration ownership.
 - [x] Update this plan to reflect implemented code and the remaining acceptance items.
+- [x] Upgrade checkout/setup-node/pnpm-setup/artifact actions to Node.js 24-compatible releases and pin runner diagnostics to the repository's Node.js 24.18.0 runtime.
 - [ ] Record final Repository CI and Cloudflare Preview results on the exact latest PR HEAD; Preview URL is disabled and cannot be used for functional browser checks.
 
 ## Required release evidence

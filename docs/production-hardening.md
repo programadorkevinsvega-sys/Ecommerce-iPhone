@@ -93,6 +93,17 @@ The interaction percentile is a lab sample, not field INP. Missing measurements 
 - Existing payment idempotency, payment finalization and refund recovery contracts are preserved; no broad rewrite was justified by the inspected dependency graph.
 - The Worker remains the Cloudflare composition root for HTTP, Queue and Scheduled handlers, not a domain service.
 
+## GitHub Actions and Node.js runtime policy
+
+GitHub-hosted Actions runners removed Node.js 20 support on September 23, 2026. The repository therefore uses the supported Node.js 24 runtime instead of attempting to force the retired Node.js 20 action runtime.
+
+- Application and build commands are pinned to Node.js `24.18.0`, matching the exact `package.json` engine and `scripts/verify-install.mjs` guard.
+- JavaScript actions use Node.js 24-compatible releases: `actions/checkout@v7`, `actions/setup-node@v7`, `pnpm/action-setup@v6` and `actions/upload-artifact@v7`.
+- The runner diagnostics job installs and verifies the same exact Node.js `24.18.0` runtime used by the repository CI job.
+- Do not set the removed `ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION` escape hatch or downgrade the project toolchain to an end-of-life Node.js release.
+
+This alignment also replaces the older action bundles associated with the observed `DEP0169` (`url.parse()`) and `DEP0040` (core `punycode`) warnings. CI logs must be checked on the new HEAD to confirm whether any warning remains.
+
 ## Migration and CI/CD ownership
 
 Migration `0045_production_hardening.sql` is additive and introduces the Outbox request ID field/index and the admin step-up grants table.
