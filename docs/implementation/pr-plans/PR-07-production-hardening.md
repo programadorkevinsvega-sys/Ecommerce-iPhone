@@ -1,85 +1,86 @@
 # PR 07 — Production hardening and documentation
 
 **Priority:** P2  
-**Status:** Partial implementation published. Repository CI [#41232292845](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/actions/runs/41232292845) passed on code HEAD `f20a35d5ed485ceb18c53b793b5fd2b5ec98e85d`; Cloudflare Preview for `f20a35d` was still in progress at the latest bot update. The documentation-only update below requires a fresh CI run on the new HEAD.
+**Implementation branch:** `chore/production-hardening` (existing PR #26; no replacement PR)  
+**Status:** Production-hardening code is implemented in the branch. Final CI evidence must be recorded against the exact latest PR HEAD. External acceptance items remain open, so the PR stays Draft.
 
-## Baseline confirmed on 2026-10-31
+## Baseline and boundaries
 
-- PR #25 is merged; Repository CI run `41227903747` completed successfully on `main` commit `b608048786b751bc54277593c9d5feab0240524d`.
-- PR #26 initially contained only this planning document. Its branch was 32 commits behind `main` and was synchronized onto that commit without creating another branch or changing `main`.
-- PR #19 is closed and unmerged. The actual current media primitive is `modules/shared-kernel/MediaReference.ts`; `modules/shared-kernel/domain/MediaReference.ts` is absent.
-- Repository CI already owns frozen-lockfile install, audit, format, foundations, architecture, lint, typecheck, unit/integration, local D1, Cloudflare Worker build verification and Playwright E2E.
-- The existing performance workflow already runs every six hours and measures TTFB, DOMContentLoaded and load event. It classifies Cloudflare edge blocks as inconclusive.
-
-## Latest verification evidence
-
-Repository CI run [#41232292845](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/actions/runs/41232292845) completed successfully on code HEAD `f20a35d5ed485ceb18c53b793b5fd2b5ec98e85d`:
-
-- [x] Frozen-lockfile install, toolchain, dependency audit, changed-file format, repository foundations, frontend-data and architecture checks.
-- [x] ESLint and TypeScript.
-- [x] Full unit/integration suite: 305 tests passed.
-- [x] Isolated D1 preparation, OpenNext/Cloudflare Worker build and generated artifact verification.
-- [x] Chromium installation and 11 Playwright E2E tests against local Wrangler.
-- [x] Production branch guard: rejects `feature/test` and `preview`, accepts only `main`.
-- [x] Aggregate `CI required` job.
-
-The Cloudflare Preview bot reported the Preview build for `f20a35d` as in progress; the Preview URL feature is disabled. This documentation-only update creates a new HEAD, which must receive a fresh CI run before the PR is considered fully verified.
+- PR #26 is based on `main` at `b608048786b751bc54277593c9d5feab0240524d`; the branch is ahead and has no commits behind main.
+- This work remains on the existing branch `chore/production-hardening`.
+- Repository CI owns dependency installation/audit, formatting, repository checks, architecture, lint, TypeScript, unit/integration, local D1 preparation, OpenNext build verification and Playwright E2E.
+- CI prepares isolated local D1 only. Cloudflare remains responsible for Worker deployment and remote D1 migrations.
+- The existing scheduled performance workflow runs every six hours and classifies Cloudflare edge challenges as inconclusive.
 
 ## Scope and delivery status
 
-### A — Authentication and sensitive administrative operations
+### A — Admin authentication and sensitive operations
 
-- [x] Confirm server-side persisted session resolution and effective RBAC checks on protected admin operations.
-- [x] Confirm hashed session tokens, session expiration/revocation, secure HttpOnly/SameSite cookies, authentication throttling and audit records.
-- [x] Add regression coverage for missing and invalid/expired sessions at the `RequireAdmin` authorization boundary.
-- [ ] Provider-backed MFA/step-up authentication. No verified provider exists in the repository. No simulated factor was introduced. Documented compensating controls do not provide the same assurance as a true step-up challenge.
+- [x] Preserve server-side persisted session resolution and effective RBAC checks.
+- [x] Preserve hashed session tokens, expiry/revocation, secure HttpOnly/SameSite cookies, throttling and audit records.
+- [x] Add short-lived, password-based step-up grants for refunds, voids, admin user/permission management and sensitive settings writes.
+- [x] Bind step-up proofs to admin identity, session hash and permission scope; store only token hashes, expire after five minutes, audit attempts and enforce lockout.
+- [x] Cover grant issuance, invalid password/scope, missing/inactive admin and D1 persistence with unit/integration tests.
+- [ ] Provider-backed MFA and recovery/break-glass policy. The current step-up rechecks the existing password and is explicitly **not MFA**; no provider or second factor is simulated.
 
-### B — Content Security Policy and HTTP headers
+### B — CSP and HTTP response security
 
-- [x] Centralize the existing CSP/security header policy for Next.js and Worker-generated/wrapped HTTP responses.
-- [x] Apply the shared baseline to health, readiness, rate-limit and redirect responses produced by the Worker.
-- [x] Add unit coverage for key header values and CSP origin/directive constraints.
-- [ ] Replace script/style `'unsafe-inline'` with runtime nonces or hashes. This requires independently verified nonce propagation through the Next.js/OpenNext Worker path. `'unsafe-eval'` remains disabled.
+- [x] Centralize security response headers for Next.js and Worker-owned responses.
+- [x] Generate a fresh per-document nonce in middleware and propagate it through Next.js/OpenNext response rendering.
+- [x] Require the nonce for inline script/style elements; keep `unsafe-inline` and `unsafe-eval` disabled.
+- [x] Allow only the exact Next.js Image `color:transparent` style-attribute hash via `unsafe-hashes`; do not allow arbitrary inline style attributes.
+- [x] Unit-test the nonce policy/hash and exercise nonce propagation and browser CSP-violation detection with Wrangler/Playwright.
 
 ### C — Structured logs and correlation
 
-- [x] Emit JSON error records with timestamp, severity, source, operation, minimal context and normalized error details.
-- [x] Redact sensitive context keys and common credential, email, payment-card and private-key patterns; omit raw stack traces.
-- [x] Align API route request IDs with response `X-Request-Id` by forwarding the middleware ID and preserving it in the Worker.
-- [x] Log Queue publisher, consumer, dead-letter persistence and scheduled-handler failures with queue/schedule, outcome and available correlation key. Never log raw Queue bodies.
-- [x] Preserve existing analytics event `requestId` through the analytics Queue contract where the producer supplied it.
-- [ ] Persist originating HTTP request ID through Notification Outbox events. Current notification jobs correlate by durable `outboxId`; the outbox schema has no originating request ID.
+- [x] Emit structured JSON error records with timestamp, level, source, operation, safe context and normalized errors.
+- [x] Redact sensitive context keys and common credential, email, payment-card and private-key patterns; omit raw stacks.
+- [x] Align middleware, route-handler, Worker and response `X-Request-Id` values.
+- [x] Persist optional checkout request IDs through order-created Notification Outbox rows and queue payloads using additive migration `0045_production_hardening.sql`.
+- [x] Preserve optional request IDs in Analytics events and ensure Queue logs never include raw message bodies.
 
 ### D — Accessibility and performance
 
-- [x] Add a Playwright homepage smoke for document language, main landmark, image alt attributes and accessible names of visible links/controls.
-- [x] Extend the existing scheduled browser performance smoke to report LCP, CLS and Event Timing interaction samples while preserving existing TTFB/DOMContentLoaded/load budgets and Cloudflare block classification.
-- [ ] Complete keyboard-only, focus visibility, color contrast, zoom/reflow and critical checkout form checks; the homepage smoke is not a WCAG 2.2 AA audit.
-- [ ] Establish and enforce LCP/INP/CLS budgets from reproducible lab/field measurements. Event Timing lab samples are not field INP; no production pass or improvement is claimed.
+- [x] Add Playwright language, main-landmark, accessible-name and image-alt checks for home, cart, checkout and admin login.
+- [x] Run Axe checks against WCAG 2.0/2.1/2.2 A/AA tag sets on those routes.
+- [x] Add a keyboard first-focus accessible-name smoke and guard against app-authored inline styles.
+- [x] Extend the scheduled performance probe to report LCP, CLS and Event Timing interaction samples while preserving TTFB/DOMContentLoaded/load and edge-challenge classification.
+- [ ] Complete manual keyboard-only journeys, full focus-order review, contrast, zoom/reflow and screen-reader testing; automated Axe smoke is not WCAG certification.
+- [ ] Validate LCP/INP/CLS thresholds using reproducible lab/field evidence. Event Timing lab P98 is not field INP.
 
-### E — PaymentService and Worker architecture
+### E — Payment and Worker architecture
 
-- [x] Review PaymentService boundaries: Application depends on ports and the Payment domain is independent from Cloudflare/provider SDKs.
-- [x] Verify existing architecture checks and keep D1/provider adapters in Infrastructure.
-- [x] Preserve payment idempotency and refund recovery; no broad refactor was justified by the inspected dependency graph.
-- [ ] Refactor scheduled/Queue orchestration only if a concrete boundary or testability violation is identified; the Worker remains the Cloudflare composition root, not a domain service.
+- [x] Verify PaymentService uses Application-layer ports and Payment domain remains independent of Cloudflare/provider SDKs.
+- [x] Keep D1/provider adapters in Infrastructure and retain existing payment idempotency/finalization/refund-recovery behavior.
+- [x] Keep Worker as Cloudflare composition root; no speculative domain refactor was added.
 
-### F — Technical and operational documentation
+### F — Documentation and operational boundaries
 
-- [x] Update `docs/security.md` with current headers, session controls, logger privacy behavior and MFA limitation.
-- [x] Add `docs/production-hardening.md` with contracts, observability limits, security residual risks, operational checks and remaining work.
-- [ ] Complete the final acceptance update after the documentation-only HEAD passes Repository CI and Cloudflare reports the Preview build outcome.
+- [x] Update `docs/security.md` for per-request CSP nonces, exact Next Image style hash, step-up scope and current security boundaries.
+- [x] Update `docs/production-hardening.md` with request/outbox correlation, observability, accessibility, performance and migration ownership.
+- [x] Update this plan to reflect implemented code and the remaining acceptance items.
+- [ ] Record final Repository CI and Cloudflare Preview results on the exact latest PR HEAD; Preview URL is disabled and cannot be used for functional browser checks.
 
-## Verification required for the final PR HEAD
+## Required release evidence
 
-The current code HEAD `f20a35d5ed485ceb18c53b793b5fd2b5ec98e85d` passed all gates listed below in run [#41232292845](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/actions/runs/41232292845). Because this plan and the operations document are being updated in a new documentation-only commit, run the same workflow again on that exact new HEAD before marking the PR accepted:
+The final PR HEAD must have successful Repository CI covering:
 
-- Frozen-lockfile install and toolchain validation.
-- Full dependency audit.
-- Changed-file formatting, repository foundations and frontend production-data checks.
-- Architecture, ESLint and TypeScript.
-- Unit/integration suite, including new logger, request-correlation, security-header and session-authorization regressions.
-- Local D1 preparation, OpenNext/Cloudflare Worker build and generated artifact verification.
-- Playwright E2E, including the new platform-hardening smoke.
+- Frozen-lockfile install, toolchain and complete dependency audit.
+- Changed-file formatting, repository foundations, frontend-production-data and architecture checks.
+- ESLint, TypeScript and full unit/integration suite.
+- Isolated local D1 preparation.
+- OpenNext/Cloudflare Worker build and generated page/bundle verification.
+- Playwright E2E against local Wrangler, including CSP and accessibility checks.
+- Production branch guard and aggregate `CI required`.
 
-Review Cloudflare preview/build output separately. A Cloudflare edge challenge is inconclusive, not a storefront performance pass or regression. Do not mark the PR ready or merge it until all mandatory branch checks and review evidence are complete.
+Cloudflare Preview build status must be recorded separately. A Preview build is not a functional Preview test when the URL feature is disabled.
+
+## Exit criteria for Draft
+
+- [x] Implementation and targeted regression tests are committed to the existing PR branch.
+- [x] Documentation describes actual behavior and does not call password step-up MFA.
+- [ ] Mandatory Repository CI passes on the exact final HEAD.
+- [ ] Cloudflare Preview build result is confirmed for the exact final HEAD.
+- [ ] Provider-backed MFA/recovery, manual accessibility review and Web Vitals evidence are completed or explicitly accepted as residual risks by the project owner.
+
+Keep PR #26 in Draft until the remaining acceptance decisions are made. Do not merge or initiate a production deployment as part of this hardening work.
