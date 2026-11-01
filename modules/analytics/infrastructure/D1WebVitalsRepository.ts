@@ -1,45 +1,14 @@
 import type { D1Database } from "@cloudflare/workers-types";
 import type {
-  WebVitalDeviceType,
-  WebVitalMetricName,
-  WebVitalRating,
-} from "../application/WebVitals";
+  WebVitalDistributionRow,
+  WebVitalMeasurement,
+  WebVitalP75Row,
+  WebVitalTrendRow,
+  WebVitalsRepository,
+  WebVitalsSummary,
+} from "../application/WebVitalsRepository";
 
-export type WebVitalMeasurement = Readonly<{
-  metric: WebVitalMetricName;
-  metricId: string;
-  value: number;
-  rating: WebVitalRating;
-  route: string;
-  environment: string;
-  release: string | null;
-  deviceType: WebVitalDeviceType;
-  measuredAt: string;
-}>;
-type P75Row = {
-  metric: WebVitalMetricName;
-  route: string;
-  environment: string;
-  p75: number;
-  sample_count: number;
-};
-type DistributionRow = {
-  metric: WebVitalMetricName;
-  route: string;
-  environment: string;
-  rating: WebVitalRating;
-  sample_count: number;
-};
-type TrendRow = {
-  metric: WebVitalMetricName;
-  route: string;
-  environment: string;
-  period: string;
-  average: number;
-  sample_count: number;
-};
-
-export class D1WebVitalsRepository {
+export class D1WebVitalsRepository implements WebVitalsRepository {
   constructor(private readonly db: D1Database) {}
 
   async record(input: WebVitalMeasurement): Promise<boolean> {
@@ -69,14 +38,7 @@ export class D1WebVitalsRepository {
     return result.meta.changes === 1;
   }
 
-  async summary(days = 28): Promise<
-    Readonly<{
-      periodDays: number;
-      p75: P75Row[];
-      ratingDistribution: DistributionRow[];
-      weeklyTrend: TrendRow[];
-    }>
-  > {
+  async summary(days = 28): Promise<WebVitalsSummary> {
     const periodDays = Math.max(1, Math.min(90, Math.trunc(days)));
     const modifier = `-${periodDays} days`;
     const p75 = await this.db
@@ -92,7 +54,7 @@ export class D1WebVitalsRepository {
       ORDER BY metric,route,environment`,
       )
       .bind(modifier)
-      .all<P75Row>();
+      .all<WebVitalP75Row>();
     const ratingDistribution = await this.db
       .prepare(
         `SELECT metric,route,environment,rating,COUNT(*) AS sample_count
@@ -100,7 +62,7 @@ export class D1WebVitalsRepository {
        GROUP BY metric,route,environment,rating ORDER BY metric,route,environment,rating`,
       )
       .bind(modifier)
-      .all<DistributionRow>();
+      .all<WebVitalDistributionRow>();
     const weeklyTrend = await this.db
       .prepare(
         `SELECT metric,route,environment,strftime('%Y-%W', measured_at) AS period,AVG(value) AS average,COUNT(*) AS sample_count
@@ -108,7 +70,7 @@ export class D1WebVitalsRepository {
        GROUP BY metric,route,environment,period ORDER BY period,metric,route,environment`,
       )
       .bind(modifier)
-      .all<TrendRow>();
+      .all<WebVitalTrendRow>();
     return {
       periodDays,
       p75: p75.results,

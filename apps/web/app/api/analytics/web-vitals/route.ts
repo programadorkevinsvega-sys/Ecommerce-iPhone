@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { D1WebVitalsRepository } from "../../../../../../modules/analytics/infrastructure/D1WebVitalsRepository";
 import {
   parseWebVitalInput,
   rateWebVital,
 } from "../../../../../../modules/analytics/application/WebVitals";
 import { cloudflareEnv } from "../../../../lib/cloudflareContext";
+import { webVitalsApp } from "../../../../lib/analyticsApplication";
 
 const MAX_BODY_BYTES = 1024;
 
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Payload too large" }, { status: 413 });
     }
     const measurement = parseWebVitalInput(JSON.parse(raw) as unknown);
-    await new D1WebVitalsRepository(env.DB).record({
+    await webVitalsApp(env).record({
       ...measurement,
       rating: rateWebVital(measurement.metric, measurement.value),
       environment: runtimeEnvironment(request, env.APP_ENV),

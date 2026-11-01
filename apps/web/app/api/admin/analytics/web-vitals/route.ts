@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { D1WebVitalsRepository } from "../../../../../../../modules/analytics/infrastructure/D1WebVitalsRepository";
 import { requireAdmin } from "../../../../../lib/adminAuth";
 import { cloudflareEnv } from "../../../../../lib/cloudflareContext";
+import { webVitalsApp } from "../../../../../lib/analyticsApplication";
 
 export async function GET(request: Request) {
   try {
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     if (!Number.isInteger(days) || days < 1 || days > 90) {
       return NextResponse.json({ error: "days must be an integer from 1 to 90" }, { status: 400 });
     }
-    const report = await new D1WebVitalsRepository(cloudflareEnv().DB).summary(days);
+    const report = await webVitalsApp(cloudflareEnv()).summary(days);
     return NextResponse.json(report, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
