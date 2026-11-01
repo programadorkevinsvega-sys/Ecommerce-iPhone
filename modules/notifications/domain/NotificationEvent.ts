@@ -29,6 +29,7 @@ export type NotificationEvent = Readonly<{
   payload: Readonly<Record<string, unknown>>;
   createdAt: string;
   recipients?: readonly NotificationRecipient[] | undefined;
+  requestId?: string | undefined;
 }>;
 
 export type EmailTemplate =
@@ -58,7 +59,9 @@ const SAFE_NOTIFICATION_KEYS = new Set([
   "aggregateId",
 ]);
 
-export function safeNotificationPayload(event: NotificationEvent): Readonly<Record<string, unknown>> {
+export function safeNotificationPayload(
+  event: NotificationEvent,
+): Readonly<Record<string, unknown>> {
   const source = event.payload as Record<string, unknown>;
   const result: Record<string, unknown> = {
     eventType: event.eventType,
@@ -71,23 +74,32 @@ export function safeNotificationPayload(event: NotificationEvent): Readonly<Reco
   return result;
 }
 
-export function notificationContent(event: NotificationEvent): Pick<NotificationInboxItem, "title" | "body"> {
+export function notificationContent(
+  event: NotificationEvent,
+): Pick<NotificationInboxItem, "title" | "body"> {
   const payload = event.payload as Record<string, unknown>;
   const orderNumber = String(payload.orderNumber ?? payload.orderId ?? "");
   const serviceId = String(payload.serviceRequestId ?? payload.serviceId ?? "");
   const status = String(payload.status ?? "");
   const title =
     String(payload.notificationTitle ?? "").trim() ||
-    (event.eventType === "OrderPaid" ? "Pago confirmado" :
-     event.eventType === "OrderCreated" ? "Pedido recibido" :
-     event.eventType === "OrderStatusChanged" ? "Actualización de tu pedido" :
-     event.eventType === "ServiceRequestCreated" ? "Solicitud de servicio recibida" :
-     event.eventType === "ServiceStatusChanged" ? "Actualización de tu servicio" :
-     String(payload.messageTitle ?? event.eventType));
+    (event.eventType === "OrderPaid"
+      ? "Pago confirmado"
+      : event.eventType === "OrderCreated"
+        ? "Pedido recibido"
+        : event.eventType === "OrderStatusChanged"
+          ? "Actualización de tu pedido"
+          : event.eventType === "ServiceRequestCreated"
+            ? "Solicitud de servicio recibida"
+            : event.eventType === "ServiceStatusChanged"
+              ? "Actualización de tu servicio"
+              : String(payload.messageTitle ?? event.eventType));
   const body =
     String(payload.notificationBody ?? "").trim() ||
-    (event.eventType.startsWith("Order") ? `Tu pedido ${orderNumber} está en estado ${status || "actualizado"}.` :
-     event.eventType.startsWith("Service") ? `Tu solicitud de servicio ${serviceId} está en estado ${status || "actualizada"}.` :
-     String(payload.message ?? "Tienes una nueva notificación."));
+    (event.eventType.startsWith("Order")
+      ? `Tu pedido ${orderNumber} está en estado ${status || "actualizado"}.`
+      : event.eventType.startsWith("Service")
+        ? `Tu solicitud de servicio ${serviceId} está en estado ${status || "actualizada"}.`
+        : String(payload.message ?? "Tienes una nueva notificación."));
   return { title, body };
 }

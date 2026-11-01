@@ -1,12 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { resolveRequestId } from "./lib/requestCorrelation";
+import { buildContentSecurityPolicy, CONTENT_SECURITY_POLICY } from "./lib/securityHeaders";
 
 const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{8,128}$/;
-
-function requestId(request: NextRequest): string {
-  const supplied = request.headers.get("x-request-id")?.trim();
-  return supplied && REQUEST_ID_PATTERN.test(supplied) ? supplied : crypto.randomUUID();
-}
 
 function isPublicContentRequest(request: NextRequest): boolean {
   return (
@@ -16,30 +12,44 @@ function isPublicContentRequest(request: NextRequest): boolean {
   );
 }
 
-export function middleware(request: NextRequest): Response {
-  if (!request.nextUrl.pathname.startsWith("/api/")) {
-    return NextResponse.next();
-  }
+function pageResponse(request: NextRequest): Response {
+  const nonce = btoa(crypto.randomUUID()).replace(/=+$/g, "");
+  const policy = buildContentSecurityPolicy(nonce);
+  const forwardedHeaders = new Headers(request.headers);
+  forwardedHeaders.set("x-nonce", nonce);
+  forwardedHeaders.set("Content-Security-Policy", policy);
 
+  const response = NextResponse.next({ request: { headers: forwardedHeaders } });
+  response.headers.set("Content-Security-Policy", policy);
+  response.headers.set("Cache-Control", "private, no-store");
+  return response;
+}
+
+function apiResponse(request: NextRequest): Response {
+  const id = resolveRequestId(request.headers);
   const currentOrigin = request.nextUrl.origin;
   const origin = request.headers.get("origin");
   const isAllowedOrigin = !origin || origin === currentOrigin;
 
   if (!isAllowedOrigin && (request.method === "OPTIONS" || MUTATING_METHODS.has(request.method))) {
-    return NextResponse.json(
-      { error: { code: "ORIGIN_NOT_ALLOWED", message: "Request origin is not allowed." },
-      },
-      { status: 403, headers: { "X-Request-Id": requestId(request) } },
+    const denied = NextResponse.json(
+      { error: { code: "ORIGIN_NOT_ALLOWED", message: "Request origin is not allowed." } },
+      { status: 403, headers: { "X-Request-Id": id } },
     );
+    denied.headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
+    return denied;
   }
+
+  const forwardedHeaders = new Headers(request.headers);
+  forwardedHeaders.set("X-Request-Id", id);
 
   const response =
     request.method === "OPTIONS"
       ? new NextResponse(null, { status: 204 })
-      : NextResponse.next();
+      : NextResponse.next({ request: { headers: forwardedHeaders } });
 
-  const id = requestId(request);
   response.headers.set("X-Request-Id", id);
+  response.headers.set("Content-Security-Policy", CONTENT_SECURITY_POLICY);
 
   if (!isPublicContentRequest(request)) {
     response.headers.set("Cache-Control", "no-store");
@@ -63,6 +73,12 @@ export function middleware(request: NextRequest): Response {
   return response;
 }
 
+export function middleware(request: NextRequest): Response {
+  return request.nextUrl.pathname.startsWith("/api/")
+    ? apiResponse(request)
+    : pageResponse(request);
+}
+
 export const config = {
-  matcher: ["/api/:path*"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)"],
 };

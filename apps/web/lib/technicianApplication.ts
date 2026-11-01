@@ -30,16 +30,16 @@ export function technicianManagementApplication(env: CloudflareEnv) {
   return createTechnicianManagementApplication(env);
 }
 
-export function technicianDeviceApplication(env: CloudflareEnv) {
+export function technicianDeviceApplication(env: CloudflareEnv, requestId?: string) {
   return new TechnicianDeviceService(
     new D1CustomerDeviceRepository(env.DB),
-    new D1RepairOrderRepository(env.DB),
+    new D1RepairOrderRepository(env.DB, requestId),
     new D1TechnicianRepository(env.DB),
   );
 }
 
-export function technicianRepairOrderApplication(env: CloudflareEnv) {
-  return new RepairOrderManagement(new D1RepairOrderRepository(env.DB));
+export function technicianRepairOrderApplication(env: CloudflareEnv, requestId?: string) {
+  return new RepairOrderManagement(new D1RepairOrderRepository(env.DB, requestId));
 }
 
 export function technicianRepairEvidenceApplication(env: CloudflareEnv) {

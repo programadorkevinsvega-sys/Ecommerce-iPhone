@@ -30,6 +30,7 @@
     "eslint-config-next": "15.5.28",
     "typescript": "^5.9.0",
     "vitest": "^4.1.12",
-    "wrangler": "4.155.0"
+    "wrangler": "4.155.0",
+    "axe-core": "4.13.0"
   }
 }

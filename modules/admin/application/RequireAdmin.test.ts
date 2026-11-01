@@ -2,6 +2,27 @@ import { describe, expect, it } from "vitest";
 import { RequireAdmin } from "./RequireAdmin";
 
 describe("RequireAdmin", () => {
+  it("rejects missing authentication", async () => {
+    const requireAdmin = new RequireAdmin({
+      async execute() {
+        return null;
+      },
+    });
+    await expect(requireAdmin.execute(undefined)).rejects.toThrow("UNAUTHORIZED");
+  });
+
+  it("rejects an invalid or expired persisted session", async () => {
+    const requireAdmin = new RequireAdmin({
+      async execute(token) {
+        expect(token).toBe("expired-token");
+        return null;
+      },
+    });
+    await expect(requireAdmin.execute("expired-token", "refunds:create")).rejects.toThrow(
+      "UNAUTHORIZED",
+    );
+  });
+
   it("authorizes from effective permissions", async () => {
     const requireAdmin = new RequireAdmin({
       async execute() {
@@ -15,7 +36,9 @@ describe("RequireAdmin", () => {
         };
       },
     });
-    await expect(requireAdmin.execute("token", "orders:read")).resolves.toMatchObject({ id: "admin-1" });
+    await expect(requireAdmin.execute("token", "orders:read")).resolves.toMatchObject({
+      id: "admin-1",
+    });
   });
 
   it("rejects permissions outside the effective set", async () => {
@@ -47,7 +70,9 @@ describe("RequireAdmin", () => {
         };
       },
     });
-    await expect(requireAdmin.execute("token", "inventory:read")).resolves.toMatchObject({ id: "admin-1" });
+    await expect(requireAdmin.execute("token", "inventory:read")).resolves.toMatchObject({
+      id: "admin-1",
+    });
   });
 
   it("rejects a permission removed by an explicit deny", async () => {

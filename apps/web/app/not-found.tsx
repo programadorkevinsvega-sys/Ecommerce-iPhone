@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <main style={{ padding: 32, maxWidth: 720, margin: "0 auto" }}>
+    <main className="system-fallback-page">
       <h1>Página no encontrada</h1>
       <p>La página que buscas no existe o ya no está disponible.</p>
       <Link href="/">Volver al inicio</Link>

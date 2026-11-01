@@ -11,18 +11,56 @@ if (!baseUrl) {
   process.exit(1);
 }
 
-const routes = ["/", "/catalog", "/iphone/iphone-17-pro-max", "/cart", "/contacto"];
+const routes = ["/", "/catalog", "/iphone/iphone-17-pro-max", "/cart", "/checkout", "/contacto"];
 const browser = await chromium.launch({ headless: true });
 const results = [];
 try {
   for (const route of routes) {
     const page = await browser.newPage();
+    await page.addInitScript(() => {
+      const metrics = { lcpMs: null, cls: 0, interactionP98Ms: null };
+      const interactions = new Map();
+      try {
+        new PerformanceObserver((list) => {
+          const entries = list.getEntries();
+          const latest = entries[entries.length - 1];
+          if (latest) metrics.lcpMs = Math.round(latest.startTime);
+        }).observe({ type: "largest-contentful-paint", buffered: true });
+      } catch {}
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (!entry.hadRecentInput) metrics.cls += entry.value;
+          }
+        }).observe({ type: "layout-shift", buffered: true });
+      } catch {}
+      try {
+        new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (!entry.interactionId || entry.interactionId <= 0) continue;
+            interactions.set(
+              entry.interactionId,
+              Math.max(interactions.get(entry.interactionId) ?? 0, entry.duration),
+            );
+          }
+          const values = [...interactions.values()].sort((a, b) => a - b);
+          if (values.length > 0) {
+            const index = Math.min(values.length - 1, Math.ceil(values.length * 0.98) - 1);
+            metrics.interactionP98Ms = Math.round(values[index]);
+          }
+        }).observe({ type: "event", buffered: true, durationThreshold: 16 });
+      } catch {}
+      window.__productionHardeningVitals = metrics;
+    });
     const started = Date.now();
     const response = await page.goto(`${baseUrl}${route}`, {
       waitUntil: "domcontentloaded",
       timeout: 30000,
     });
     const domContentLoadedMs = Date.now() - started;
+    await page.waitForLoadState("load").catch(() => undefined);
+    await page.keyboard.press("Tab").catch(() => undefined);
+    await page.waitForTimeout(1000);
     const status = response?.status() ?? 0;
     const headers = response ? await response.allHeaders() : {};
     const bodyText = status === 403 && response ? (await response.text()).slice(0, 1200) : "";
@@ -38,6 +76,9 @@ try {
           resources.reduce((sum, item) => sum + (item.transferSize || 0), 0),
         ),
         resourceCount: resources.length,
+        lcpMs: window.__productionHardeningVitals?.lcpMs ?? null,
+        interactionP98Ms: window.__productionHardeningVitals?.interactionP98Ms ?? null,
+        cls: Number((window.__productionHardeningVitals?.cls ?? 0).toFixed(4)),
       };
     });
 
@@ -64,7 +105,14 @@ try {
 }
 
 console.table(results);
-const limits = { ttfbMs: 800, domContentLoadedMs: 2500, loadEventMs: 4000 };
+const limits = {
+  ttfbMs: 800,
+  domContentLoadedMs: 2500,
+  loadEventMs: 4000,
+  lcpMs: 2500,
+  cls: 0.1,
+  interactionP98Ms: 200,
+};
 const edgeBlockedRoutes = results.filter((result) => result.cloudflareEdgeBlocked);
 const measurableResults = results.filter((result) => !result.cloudflareEdgeBlocked);
 const failures = measurableResults.flatMap((r) =>

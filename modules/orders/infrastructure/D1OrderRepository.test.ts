@@ -24,6 +24,7 @@ const cart: CheckoutCart = {
 const input: CheckoutInput = {
   customerId: "customer-1",
   idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
+  requestId: "req_checkout_test_0001",
   email: "customer@example.com",
   shippingMethod: "PICKUP",
   shippingAddress: {
@@ -66,14 +67,16 @@ describe("D1OrderRepository checkout atomicity", () => {
       aggregate_id: string;
       payload_json: string;
       status: string;
+      request_id: string | null;
     }>(
-      "SELECT event_type,aggregate_id,payload_json,status FROM notification_outbox WHERE id=?",
+      "SELECT event_type,aggregate_id,payload_json,status,request_id FROM notification_outbox WHERE id=?",
       `order-created:${order.id}`,
     )[0];
     expect(outbox).toMatchObject({
       event_type: "OrderCreated",
       aggregate_id: order.id,
       status: "PENDING",
+      request_id: "req_checkout_test_0001",
     });
     expect(JSON.parse(outbox.payload_json)).toMatchObject({
       email: order.email,
@@ -309,10 +312,10 @@ describe("D1OrderRepository checkout concurrency", () => {
 });
 
 function createRepository(database: D1SqliteTestDatabase): D1OrderRepository {
-  return new D1OrderRepository(database.asD1(), (order, createdAt) =>
+  return new D1OrderRepository(database.asD1(), (order, createdAt, requestId) =>
     database
       .prepare(
-        "INSERT OR IGNORE INTO notification_outbox (id,event_key,event_type,event_version,aggregate_id,payload_json,recipients_json,created_at) VALUES (?,?,?,?,?,?,?,?)",
+        "INSERT OR IGNORE INTO notification_outbox (id,event_key,event_type,event_version,aggregate_id,payload_json,recipients_json,created_at,request_id) VALUES (?,?,?,?,?,?,?,?,?)",
       )
       .bind(
         `order-created:${order.id}`,
@@ -330,6 +333,7 @@ function createRepository(database: D1SqliteTestDatabase): D1OrderRepository {
         }),
         "[]",
         createdAt,
+        requestId ?? null,
       ),
   );
 }
@@ -353,7 +357,8 @@ function createDatabase(stock: number): D1SqliteTestDatabase {
       recipients_json TEXT NOT NULL DEFAULT '[]',
       terminal_at TEXT,
       queue_published_at TEXT,
-      lease_expires_at TEXT
+      lease_expires_at TEXT,
+      request_id TEXT
     );
   `);
   database.exec(

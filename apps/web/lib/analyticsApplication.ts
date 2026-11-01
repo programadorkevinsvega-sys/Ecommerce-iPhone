@@ -2,6 +2,7 @@ import {
   analyticsApplication as buildAnalyticsApplication,
   revenueAnalyticsApplication as buildRevenueAnalyticsApplication,
   revenueAnalyticsPersistence as buildRevenueAnalyticsPersistence,
+  webVitalsApplication as buildWebVitalsApplication,
 } from "@modules/analytics/infrastructure/analyticsComposition";
 
 export function analyticsApp(env: CloudflareEnv) {
@@ -14,4 +15,8 @@ export function revenueAnalyticsApp(env: CloudflareEnv) {
 
 export function revenueAnalyticsPersistence(env: CloudflareEnv) {
   return buildRevenueAnalyticsPersistence(env.DB);
+}
+
+export function webVitalsApp(env: CloudflareEnv) {
+  return buildWebVitalsApplication(env.DB);
 }

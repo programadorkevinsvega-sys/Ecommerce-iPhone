@@ -19,7 +19,8 @@ export function createNotificationTestDatabase(): D1SqliteTestDatabase {
       recipients_json TEXT NOT NULL DEFAULT '[]',
       terminal_at TEXT,
       queue_published_at TEXT,
-      lease_expires_at TEXT
+      lease_expires_at TEXT,
+      request_id TEXT
     );
     CREATE INDEX idx_notification_outbox_pending
       ON notification_outbox(status, available_at, created_at);

@@ -10,6 +10,10 @@ declare global {
     NOTIFICATION_HUB: DurableObjectNamespace;
     SENSITIVE_RATE_LIMITER: { limit(input: { key: string }): Promise<{ success: boolean }> };
     APP_ENV: string;
+    RELEASE_ID?: string;
+    ADMIN_MFA_ENCRYPTION_KEY?: string;
+    ADMIN_MFA_ENCRYPTION_KEY_PREVIOUS?: string;
+    ADMIN_MFA_ENCRYPTION_KEY_VERSION?: string;
     ALLOWED_ORIGIN: string;
     ADMIN_EMAIL?: string;
     ADMIN_PASSWORD?: string;

@@ -8,6 +8,7 @@ import AdminToolbar from "../AdminToolbar";
 import AdminTable from "../AdminTable";
 import AdminEmptyState from "../AdminEmptyState";
 import AdminLoadingState from "../AdminLoadingState";
+import AdminStepUpDialog from "../AdminStepUpDialog";
 
 type Payment = {
   id: string;
@@ -29,11 +30,22 @@ type PaymentDetails = {
   ledger: unknown[];
 };
 
-const STATUSES = ["", "CREATED", "PENDING", "PROCESSING", "PAID", "FAILED", "CANCELLED", "REFUNDED"];
+const STATUSES = [
+  "",
+  "CREATED",
+  "PENDING",
+  "PROCESSING",
+  "PAID",
+  "FAILED",
+  "CANCELLED",
+  "REFUNDED",
+];
 const PROVIDERS = ["", "WOMPI", "STRIPE", "MERCADOPAGO", "PAYPAL", "BINANCE_PAY"];
 
 const money = (value: number, currency: string) =>
-  new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(value / 100);
+  new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(
+    value / 100,
+  );
 
 export default function PaymentsPage() {
   const [items, setItems] = useState<Payment[]>([]);
@@ -43,6 +55,10 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [pendingOperation, setPendingOperation] = useState<{
+    id: string;
+    action: "refund" | "void";
+  } | null>(null);
 
   const query = useMemo(() => {
     const params = new URLSearchParams({ limit: "50", offset: "0" });
@@ -55,7 +71,10 @@ export default function PaymentsPage() {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("/api/admin/payments?" + query, { cache: "no-store", credentials: "same-origin" });
+      const response = await fetch("/api/admin/payments?" + query, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
       const data = (await response.json()) as { items?: Payment[]; error?: string };
       if (!response.ok) throw new Error(data.error ?? "No se pudieron cargar los pagos.");
       setItems(data.items ?? []);
@@ -75,7 +94,10 @@ export default function PaymentsPage() {
     setBusy(id);
     setError("");
     try {
-      const response = await fetch("/api/admin/payments/" + encodeURIComponent(id), { cache: "no-store", credentials: "same-origin" });
+      const response = await fetch("/api/admin/payments/" + encodeURIComponent(id), {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
       const data = (await response.json()) as PaymentDetails & { error?: string };
       if (!response.ok) throw new Error(data.error ?? "No se pudo consultar el pago.");
       setSelected(data);
@@ -89,6 +111,10 @@ export default function PaymentsPage() {
   async function operate(id: string, action: "refund" | "void") {
     const label = action === "refund" ? "reembolsar" : "anular";
     if (!window.confirm("¿Confirmas " + label + " este pago?")) return;
+    setPendingOperation({ id, action });
+  }
+
+  async function executeOperation(id: string, action: "refund" | "void") {
     const idempotencyKey = crypto.randomUUID();
     setBusy(id + action);
     setError("");
@@ -104,7 +130,9 @@ export default function PaymentsPage() {
       await load();
       await open(id);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "La operación de pago no pudo completarse.");
+      setError(
+        caught instanceof Error ? caught.message : "La operación de pago no pudo completarse.",
+      );
     } finally {
       setBusy("");
     }
@@ -117,13 +145,37 @@ export default function PaymentsPage() {
       title="Pagos"
       description="Consulta transacciones reales y ejecuta operaciones autorizadas sobre pagos existentes."
     >
-      {error && <p className="admin-error" role="alert">{error}</p>}
+      {error && (
+        <p className="admin-error" role="alert">
+          {error}
+        </p>
+      )}
 
       <AdminPanel className="admin-page-table-panel">
         <AdminToolbar>
-          <label>Estado<select value={status} onChange={(event) => setStatus(event.target.value)}>{STATUSES.map((value) => <option key={value} value={value}>{value || "Todos"}</option>)}</select></label>
-          <label>Proveedor<select value={provider} onChange={(event) => setProvider(event.target.value)}>{PROVIDERS.map((value) => <option key={value} value={value}>{value || "Todos"}</option>)}</select></label>
-          <button className="admin-button" type="button" onClick={() => void load()}>Actualizar</button>
+          <label>
+            Estado
+            <select value={status} onChange={(event) => setStatus(event.target.value)}>
+              {STATUSES.map((value) => (
+                <option key={value} value={value}>
+                  {value || "Todos"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Proveedor
+            <select value={provider} onChange={(event) => setProvider(event.target.value)}>
+              {PROVIDERS.map((value) => (
+                <option key={value} value={value}>
+                  {value || "Todos"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="admin-button" type="button" onClick={() => void load()}>
+            Actualizar
+          </button>
         </AdminToolbar>
 
         {loading ? (
@@ -131,17 +183,33 @@ export default function PaymentsPage() {
         ) : (
           <AdminTable
             headers={["Pago", "Pedido", "Proveedor", "Importe", "Estado", "Creado", "Acciones"]}
-            empty={!items.length ? <AdminEmptyState title="No hay pagos para los filtros actuales" /> : undefined}
+            empty={
+              !items.length ? (
+                <AdminEmptyState title="No hay pagos para los filtros actuales" />
+              ) : undefined
+            }
           >
             {items.map((item) => (
               <tr key={item.id}>
-                <td><strong>{item.id}</strong><span className="table-subtext">{item.providerReference}</span></td>
+                <td>
+                  <strong>{item.id}</strong>
+                  <span className="table-subtext">{item.providerReference}</span>
+                </td>
                 <td>{item.orderId}</td>
                 <td>{item.provider}</td>
                 <td>{money(item.amountInCents, item.currency)}</td>
                 <td>{item.status}</td>
                 <td>{new Date(item.createdAt).toLocaleString("es-CO")}</td>
-                <td><button className="table-action" type="button" disabled={Boolean(busy)} onClick={() => void open(item.id)}>Ver detalle</button></td>
+                <td>
+                  <button
+                    className="table-action"
+                    type="button"
+                    disabled={Boolean(busy)}
+                    onClick={() => void open(item.id)}
+                  >
+                    Ver detalle
+                  </button>
+                </td>
               </tr>
             ))}
           </AdminTable>
@@ -151,18 +219,54 @@ export default function PaymentsPage() {
       {selected && (
         <section className="admin-workspace admin-page-grid">
           <AdminPanel>
-            <AdminSectionHeading kicker="Detalle" title={"Pago " + selected.payment.id} meta={<span>{selected.payment.status}</span>} />
+            <AdminSectionHeading
+              kicker="Detalle"
+              title={"Pago " + selected.payment.id}
+              meta={<span>{selected.payment.status}</span>}
+            />
             <dl className="admin-definition-list">
-              <div><dt>Proveedor</dt><dd>{selected.payment.provider}</dd></div>
-              <div><dt>Referencia</dt><dd>{selected.payment.providerReference}</dd></div>
-              <div><dt>Transacción</dt><dd>{selected.payment.providerTransactionId ?? "—"}</dd></div>
-              <div><dt>Pedido</dt><dd>{selected.payment.orderId}</dd></div>
-              <div><dt>Cliente</dt><dd>{selected.payment.customerId}</dd></div>
-              <div><dt>Importe</dt><dd>{money(selected.payment.amountInCents, selected.payment.currency)}</dd></div>
+              <div>
+                <dt>Proveedor</dt>
+                <dd>{selected.payment.provider}</dd>
+              </div>
+              <div>
+                <dt>Referencia</dt>
+                <dd>{selected.payment.providerReference}</dd>
+              </div>
+              <div>
+                <dt>Transacción</dt>
+                <dd>{selected.payment.providerTransactionId ?? "—"}</dd>
+              </div>
+              <div>
+                <dt>Pedido</dt>
+                <dd>{selected.payment.orderId}</dd>
+              </div>
+              <div>
+                <dt>Cliente</dt>
+                <dd>{selected.payment.customerId}</dd>
+              </div>
+              <div>
+                <dt>Importe</dt>
+                <dd>{money(selected.payment.amountInCents, selected.payment.currency)}</dd>
+              </div>
             </dl>
             <div className="modal-actions">
-              <button className="admin-button" type="button" disabled={Boolean(busy)} onClick={() => void operate(selected.payment.id, "void")}>Anular</button>
-              <button className="admin-button danger" type="button" disabled={Boolean(busy)} onClick={() => void operate(selected.payment.id, "refund")}>Reembolsar</button>
+              <button
+                className="admin-button"
+                type="button"
+                disabled={Boolean(busy)}
+                onClick={() => void operate(selected.payment.id, "void")}
+              >
+                Anular
+              </button>
+              <button
+                className="admin-button danger"
+                type="button"
+                disabled={Boolean(busy)}
+                onClick={() => void operate(selected.payment.id, "refund")}
+              >
+                Reembolsar
+              </button>
             </div>
           </AdminPanel>
 
@@ -174,6 +278,18 @@ export default function PaymentsPage() {
           </AdminPanel>
         </section>
       )}
+      <AdminStepUpDialog
+        open={pendingOperation !== null}
+        scope={pendingOperation?.action === "refund" ? "payments:refund" : "payments:void"}
+        title="Autoriza la operación financiera"
+        description="Confirma tu contraseña administrativa y un código TOTP o de recuperación para autorizar este reembolso o anulación. La autorización se consume una sola vez y vence en cinco minutos."
+        onCancel={() => setPendingOperation(null)}
+        onVerified={async () => {
+          const pending = pendingOperation;
+          setPendingOperation(null);
+          if (pending) await executeOperation(pending.id, pending.action);
+        }}
+      />
     </AdminPageShell>
   );
 }

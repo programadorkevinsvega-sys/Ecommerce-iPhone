@@ -10,6 +10,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     private readonly prepareOrderCreatedOutbox?: (
       order: Order,
       createdAt: string,
+      requestId?: string,
     ) => ReturnType<D1Database["prepare"]>,
   ) {}
 
@@ -20,7 +21,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     if (existing) {
       if (existing.customerId !== input.customerId)
         throw new Error("Idempotency key belongs to another customer");
-      await this.ensureOrderCreatedOutbox(existing);
+      await this.ensureOrderCreatedOutbox(existing, input.requestId);
       return existing;
     }
 
@@ -217,7 +218,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
           }),
         ),
     );
-    statements.push(this.prepareOrderCreatedOutbox(order, createdAt));
+    statements.push(this.prepareOrderCreatedOutbox(order, createdAt, input.requestId));
     statements.push(this.db.prepare("INSERT INTO checkout_guards(id) SELECT 1 WHERE changes()=0"));
     statements.push(
       this.db.prepare("DELETE FROM cart_items WHERE cart_id=?").bind(effectiveCart.id),
@@ -238,7 +239,7 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
     return order;
   }
 
-  private async ensureOrderCreatedOutbox(order: Order): Promise<void> {
+  private async ensureOrderCreatedOutbox(order: Order, requestId?: string): Promise<void> {
     if (!this.prepareOrderCreatedOutbox) throw new Error("CHECKOUT_OUTBOX_NOT_CONFIGURED");
     const eventId = `order-created:${order.id}`;
     const existing = await this.db
@@ -246,7 +247,9 @@ export class D1OrderRepository implements OrderCheckoutRepository, OrderReposito
       .bind(eventId)
       .first<{ present: number }>();
     if (existing) return;
-    await this.db.batch([this.prepareOrderCreatedOutbox(order, new Date().toISOString())]);
+    await this.db.batch([
+      this.prepareOrderCreatedOutbox(order, new Date().toISOString(), requestId),
+    ]);
   }
 
   async findById(id: string): Promise<Order | null> {

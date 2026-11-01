@@ -10,7 +10,7 @@ import {
 } from "../../../lib/analyticsContext";
 import { cloudflareEnv } from "../../../lib/cloudflareContext";
 import { cloudflareWaitUntil } from "../../../lib/cloudflareContext";
-import { logServerError } from "../../../lib/serverLogger";
+import { logServerError } from "../../../server/serverLogger";
 
 const GENERIC_ERROR = "No pudimos completar la operación.";
 const VALIDATION_ERROR = "Revisa los datos ingresados e inténtalo nuevamente.";

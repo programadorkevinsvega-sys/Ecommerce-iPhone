@@ -22,10 +22,11 @@ export type AdminSidebarSection =
   | "inventory"
   | "notifications"
   | "cms"
-  | "seo";
+  | "seo"
+  | "security"
+  | "performance";
 
 type AdminSidebarProps = { active: AdminSidebarSection };
-
 const items: ReadonlyArray<{
   key: AdminSidebarSection;
   icon: string;
@@ -37,7 +38,12 @@ const items: ReadonlyArray<{
   { key: "products", icon: "▤", label: "Productos", href: "/admin/products" },
   { key: "categories", icon: "⌘", label: "Categorías", href: "/admin/categories" },
   { key: "customers", icon: "♙", label: "Clientes", href: "/admin/customers" },
-  { key: "customer-devices", icon: "▱", label: "Dispositivos de clientes", href: "/admin/customer-devices" },
+  {
+    key: "customer-devices",
+    icon: "▱",
+    label: "Dispositivos de clientes",
+    href: "/admin/customer-devices",
+  },
   { key: "service-types", icon: "◇", label: "Servicios ofrecidos", href: "/admin/service-types" },
   { key: "home-carousel", icon: "▧", label: "Carrusel de inicio", href: "/admin/home-carousel" },
   { key: "services", icon: "⚙", label: "Solicitudes", href: "/admin/services" },
@@ -48,6 +54,8 @@ const items: ReadonlyArray<{
   { key: "inventory", icon: "▥", label: "Inventario", href: "/admin/inventory" },
   { key: "payments", icon: "$", label: "Pagos", href: "/admin/payments" },
   { key: "audit", icon: "◌", label: "Auditoría", href: "/admin/audit" },
+  { key: "security", icon: "♙", label: "Seguridad MFA", href: "/admin/security/mfa" },
+  { key: "performance", icon: "◷", label: "Web Vitals", href: "/admin/analytics/web-vitals" },
   { key: "reviews", icon: "★", label: "Reseñas", href: "/admin/reviews" },
   { key: "promotions", icon: "%", label: "Promociones", href: "/admin/promotions" },
   { key: "promotions", icon: "◇", label: "Cupones", href: "/admin/coupons" },
@@ -71,12 +79,8 @@ export default function AdminSidebar({ active }: AdminSidebarProps) {
       </Link>
       <nav className="admin-nav" aria-label="Secciones administrativas">
         {items.map((item) => (
-          <Link
-            key={item.key}
-            className={active === item.key ? "active" : ""}
-            href={item.href}
-          >
-            <span>{item.icon}</span>
+          <Link key={item.href} className={active === item.key ? "active" : ""} href={item.href}>
+            <span aria-hidden="true">{item.icon}</span>
             {item.label}
           </Link>
         ))}

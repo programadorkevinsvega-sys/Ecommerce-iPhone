@@ -4,10 +4,7 @@ import { technicianRepairOrderApplication } from "../../../../../lib/technicianA
 
 const allowed = ["DIAGNOSING", "WAITING_PART", "IN_REPAIR", "QUALITY_CONTROL"];
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { env, technician } = await requireTechnician();
     const order = await technicianRepairOrderApplication(env).getAssigned(
@@ -21,31 +18,38 @@ export async function GET(
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     const status =
-      code === "UNAUTHORIZED" ? 401 :
-      code === "FORBIDDEN" ? 403 :
-      code === "REPAIR_ORDER_NOT_FOUND" ? 404 : 400;
+      code === "UNAUTHORIZED"
+        ? 401
+        : code === "FORBIDDEN"
+          ? 403
+          : code === "REPAIR_ORDER_NOT_FOUND"
+            ? 404
+            : 400;
     return NextResponse.json(
       {
         error:
-          status === 401 ? "Authentication required" :
-          status === 403 ? "Forbidden" :
-          status === 404 ? "Repair order not found" :
-          "Unable to load order",
+          status === 401
+            ? "Authentication required"
+            : status === 403
+              ? "Forbidden"
+              : status === 404
+                ? "Repair order not found"
+                : "Unable to load order",
       },
       { status },
     );
   }
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { env, technician } = await requireTechnician();
     const id = (await params).id;
-    const body = await request.json() as Record<string, unknown>;
-    const manager = technicianRepairOrderApplication(env);
+    const body = (await request.json()) as Record<string, unknown>;
+    const manager = technicianRepairOrderApplication(
+      env,
+      request.headers.get("x-request-id")?.trim() || undefined,
+    );
 
     if (typeof body.status === "string") {
       if (!allowed.includes(body.status)) {
@@ -69,10 +73,8 @@ export async function PATCH(
     const order = await manager.updateTechnicalRecordAssigned(
       id,
       {
-        diagnosisSummary:
-          typeof body.diagnosisSummary === "string" ? body.diagnosisSummary : null,
-        workSummary:
-          typeof body.workSummary === "string" ? body.workSummary : null,
+        diagnosisSummary: typeof body.diagnosisSummary === "string" ? body.diagnosisSummary : null,
+        workSummary: typeof body.workSummary === "string" ? body.workSummary : null,
         conditions,
       },
       technician.id,
@@ -81,18 +83,27 @@ export async function PATCH(
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     const status =
-      code === "UNAUTHORIZED" ? 401 :
-      code === "FORBIDDEN" ? 403 :
-      code === "REPAIR_ORDER_NOT_FOUND" ? 404 :
-      code === "INVALID_REPAIR_TRANSITION" ? 409 : 400;
+      code === "UNAUTHORIZED"
+        ? 401
+        : code === "FORBIDDEN"
+          ? 403
+          : code === "REPAIR_ORDER_NOT_FOUND"
+            ? 404
+            : code === "INVALID_REPAIR_TRANSITION"
+              ? 409
+              : 400;
     return NextResponse.json(
       {
         error:
-          status === 401 ? "Authentication required" :
-          status === 403 ? "Forbidden" :
-          status === 404 ? "Repair order not found" :
-          status === 409 ? "Invalid transition" :
-          "Unable to update order",
+          status === 401
+            ? "Authentication required"
+            : status === 403
+              ? "Forbidden"
+              : status === 404
+                ? "Repair order not found"
+                : status === 409
+                  ? "Invalid transition"
+                  : "Unable to update order",
       },
       { status },
     );

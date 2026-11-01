@@ -1,0 +1,100 @@
+name: Storefront Lighthouse baseline
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "modules/analytics/**"
+      - "migrations/**"
+      - "lighthouserc.json"
+      - "wrangler.jsonc"
+      - ".github/workflows/lighthouse.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lighthouse-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse:
+    name: Lighthouse lab baseline
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install reproducible dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare isolated local D1
+        run: pnpm db:prepare:e2e
+
+      - name: Build OpenNext and Worker without generating synthetic RUM
+        run: pnpm cloudflare:build
+        env:
+          NEXT_PUBLIC_WEB_VITALS_SAMPLE_RATE: "0"
+
+      - name: Start local Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec wrangler dev --config wrangler.jsonc --local --ip 127.0.0.1 --port 8787 > "$RUNNER_TEMP/wrangler-lighthouse.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/wrangler-lighthouse.pid"
+          for attempt in $(seq 1 90); do
+            if curl --fail --silent http://127.0.0.1:8787/api/health/live >/dev/null; then
+              echo "Local Worker is ready."
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/wrangler-lighthouse.log"
+          exit 1
+
+      - name: Collect Lighthouse measurements (3 runs per route)
+        run: pnpm dlx @lhci/cli@0.15.1 autorun --config=./lighthouserc.json
+
+      - name: Verify Lighthouse reports were generated
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          report_count="$(find lighthouseci -maxdepth 1 -type f -name '*.report.json' | wc -l | tr -d ' ')"
+          if [[ "$report_count" -ne 18 ]]; then
+            echo "::error::Expected 18 Lighthouse JSON reports (3 runs across 6 routes), found $report_count."
+            find lighthouseci -maxdepth 1 -type f -print 2>/dev/null || true
+            exit 1
+          fi
+          echo "Verified $report_count Lighthouse JSON reports."
+
+      - name: Upload laboratory reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lighthouse-lab-reports
+          path: lighthouseci/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Stop local Worker
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/wrangler-lighthouse.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/wrangler-lighthouse.pid")" || true
+          fi

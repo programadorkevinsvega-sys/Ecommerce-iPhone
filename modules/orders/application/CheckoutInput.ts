@@ -9,6 +9,7 @@ export type CheckoutInput = Readonly<{
   idempotencyKey: string;
   promotionCode?: string;
   couponCode?: string;
+  requestId?: string | undefined;
 }>;
 
 export interface OrderCheckoutRepository {
