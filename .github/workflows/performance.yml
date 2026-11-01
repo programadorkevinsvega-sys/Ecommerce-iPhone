@@ -48,7 +48,7 @@ jobs:
           PERF_BASE_URL: ${{ inputs.perf_base_url || env.PERF_BASE_URL }}
         run: |
           set +e
-          pnpm performance:production
+          (cd apps/web && node ../../scripts/performance-smoke.mjs)
           status=$?
           set -e
 
