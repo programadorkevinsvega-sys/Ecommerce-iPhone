@@ -27,3 +27,6 @@ Lighthouse mide un entorno sintético; no produce ni se mezcla con los registros
 ## Evidencia y configuración externa
 
 El código de captura y agregación no demuestra todavía que exista muestra real en producción. Para recibir datos, Cloudflare debe desplegar la migración 0046 en su mecanismo normal de despliegue y mantener la variable pública `NEXT_PUBLIC_WEB_VITALS_SAMPLE_RATE` configurada en el build de producción. Después del despliegue, revisar que haya muestras y tamaño suficiente por grupo antes de interpretar p75. GitHub Actions no ejecuta migraciones D1 remotas.
+
+
+`NEXT_PUBLIC_WEB_VITALS_SAMPLE_RATE` is a Next.js **build-time** variable, with a default of `0.1` when unset. Set it in the Cloudflare Workers Build environment, not only in Wrangler runtime vars. The Lighthouse workflow sets it to `0` during its build so synthetic lab visits do not populate the D1 field dataset.

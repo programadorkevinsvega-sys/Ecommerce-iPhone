@@ -597,7 +597,7 @@ export default function AdminUsersPage() {
         open={stepUpOpen}
         scope="admins:manage"
         title="Autoriza el cambio administrativo"
-        description="Confirma tu contraseña actual para crear, modificar, activar, desactivar o cambiar permisos de una cuenta administrativa. La confirmación dura cinco minutos."
+        description="Confirma tu contraseña actual y un código TOTP o de recuperación para crear, modificar, activar, desactivar o cambiar permisos de una cuenta administrativa. La autorización se consume una sola vez y vence en cinco minutos."
         onCancel={() => {
           stepUpAction.current = null;
           setStepUpOpen(false);

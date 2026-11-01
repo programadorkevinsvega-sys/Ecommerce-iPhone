@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 type AdminStepUpDialogProps = Readonly<{
   open: boolean;
@@ -19,14 +19,27 @@ export default function AdminStepUpDialog({
   onCancel,
   onVerified,
 }: AdminStepUpDialogProps) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
   const [password, setPassword] = useState("");
+  const [secondFactorCode, setSecondFactorCode] = useState("");
+  const [secondFactorCode, setSecondFactorCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const first = dialogRef.current?.querySelector<HTMLElement>("input:not([disabled])");
+    first?.focus();
+    return () => previousFocus.current?.focus();
+  }, [open]);
 
   if (!open) return null;
 
   function cancel() {
     setPassword("");
+    setSecondFactorCode("");
     setError("");
     onCancel();
   }
@@ -59,7 +72,7 @@ export default function AdminStepUpDialog({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!password || busy) return;
+    if (!password || !secondFactorCode || busy) return;
     setBusy(true);
     setError("");
     try {
@@ -68,7 +81,7 @@ export default function AdminStepUpDialog({
         headers: { "content-type": "application/json" },
         credentials: "same-origin",
         cache: "no-store",
-        body: JSON.stringify({ password, scope }),
+        body: JSON.stringify({ password, secondFactorCode, scope }),
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) {
@@ -76,6 +89,7 @@ export default function AdminStepUpDialog({
         return;
       }
       setPassword("");
+      setSecondFactorCode("");
       await onVerified();
     } catch {
       setError("No se pudo conectar con el servicio de autenticación.");
@@ -87,6 +101,7 @@ export default function AdminStepUpDialog({
   return (
     <div className="admin-step-up-backdrop">
       <section
+        ref={dialogRef}
         className="admin-step-up-dialog"
         role="dialog"
         aria-modal="true"
@@ -110,6 +125,30 @@ export default function AdminStepUpDialog({
             value={password}
             onChange={(event) => setPassword(event.target.value)}
           />
+          <label htmlFor="admin-step-up-mfa-code">Código de autenticación o recuperación</label>
+          <input
+            id="admin-step-up-mfa-code"
+            name="secondFactorCode"
+            type="text"
+            inputMode="text"
+            autoComplete="one-time-code"
+            required
+            maxLength={40}
+            value={secondFactorCode}
+            onChange={(event) => setSecondFactorCode(event.target.value)}
+          />
+          <label htmlFor="admin-step-up-mfa-code">Código de autenticación o recuperación</label>
+          <input
+            id="admin-step-up-mfa-code"
+            name="secondFactorCode"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            required
+            maxLength={40}
+            value={secondFactorCode}
+            onChange={(event) => setSecondFactorCode(event.target.value)}
+          />
           {error && (
             <p className="admin-error" role="alert">
               {error}
@@ -119,7 +158,7 @@ export default function AdminStepUpDialog({
             <button className="admin-button" type="button" disabled={busy} onClick={cancel}>
               Cancelar
             </button>
-            <button className="admin-button primary" type="submit" disabled={busy || !password}>
+            <button className="admin-button primary" type="submit" disabled={busy || !password || !secondFactorCode}>
               {busy ? "Verificando…" : "Confirmar identidad"}
             </button>
           </div>

@@ -12,7 +12,7 @@ export interface AdminStepUpRepository {
     }>,
   ): Promise<void>;
 
-  hasValid(
+  consumeValid(
     input: Readonly<{
       adminUserId: string;
       sessionTokenHash: string;

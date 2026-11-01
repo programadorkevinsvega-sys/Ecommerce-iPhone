@@ -16,6 +16,7 @@ describe("D1AdminStepUpRepository", () => {
         token_hash TEXT NOT NULL UNIQUE,
         scope TEXT NOT NULL,
         expires_at TEXT NOT NULL,
+        consumed_at TEXT,
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -39,12 +40,12 @@ describe("D1AdminStepUpRepository", () => {
       tokenHash: "proof-hash-a",
       scope: "payments:refund" as const,
     };
-    await expect(repository.hasValid(base)).resolves.toBe(true);
-    await expect(
-      repository.hasValid({ ...base, sessionTokenHash: "session-hash-b" }),
-    ).resolves.toBe(false);
+    await expect(repository.consumeValid({ ...base, sessionTokenHash: "session-hash-b" })).resolves.toBe(false);
     await expect(repository.hasValid({ ...base, tokenHash: "proof-hash-b" })).resolves.toBe(false);
     await expect(repository.hasValid({ ...base, scope: "payments:void" })).resolves.toBe(false);
+    await expect(repository.hasValid(base)).resolves.toBe(true);
+    await expect(repository.hasValid(base)).resolves.toBe(false);
+
   });
 
   it("rejects an expired grant using SQLite date semantics", async () => {

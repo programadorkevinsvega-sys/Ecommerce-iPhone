@@ -12,6 +12,7 @@ import { buildBootstrapAdmin, buildLogoutAdmin, buildRequireAdmin } from "./admi
 export { PERMISSIONS };
 export const ADMIN_COOKIE = "admin_session";
 export const ADMIN_STEP_UP_COOKIE = "admin_step_up";
+export const ADMIN_MFA_CHALLENGE_COOKIE = "admin_mfa_challenge";
 
 export async function currentAdmin(): Promise<CurrentAdmin | null> {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
@@ -43,7 +44,7 @@ export async function requireAdminStepUp(
   const { admin, env } = await requireAdmin(permission);
   if (!sessionToken || !proofToken) throw new Error("ADMIN_STEP_UP_REQUIRED");
 
-  const valid = await new D1AdminStepUpRepository(env.DB).hasValid({
+  const valid = await new D1AdminStepUpRepository(env.DB).consumeValid({
     adminUserId: admin.id,
     sessionTokenHash: await sha256(sessionToken),
     tokenHash: await sha256(proofToken),
@@ -71,6 +72,28 @@ export async function requestFingerprint() {
   const ip = h.get("CF-Connecting-IP") ?? h.get("X-Forwarded-For") ?? "unknown";
   const userAgent = h.get("User-Agent") ?? "unknown";
   return buildRequestFingerprint().execute(ip, userAgent);
+}
+
+export async function setAdminMfaChallenge(token: string, expires: Date) {
+  (await cookies()).set(ADMIN_MFA_CHALLENGE_COOKIE, token, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    path: "/api/admin/auth/mfa",
+    expires,
+    maxAge: 300,
+  });
+}
+
+export async function clearAdminMfaChallenge() {
+  (await cookies()).set(ADMIN_MFA_CHALLENGE_COOKIE, "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    path: "/api/admin/auth/mfa",
+    expires: new Date(0),
+    maxAge: 0,
+  });
 }
 
 export async function setAdminSession(token: string, expires: Date) {
@@ -103,7 +126,7 @@ export async function clearAdminSession() {
     path: "/",
     expires: new Date(0),
   });
-  store.set(ADMIN_STEP_UP_COOKIE, "", {
+  store.set(ADMIN_MFA_CHALLENGE_COOKIE, "", {\n    httpOnly: true,\n    secure: true,\n    sameSite: "strict",\n    path: "/api/admin/auth/mfa",\n    expires: new Date(0),\n    maxAge: 0,\n  });\n  store.set(ADMIN_STEP_UP_COOKIE, "", {
     httpOnly: true,
     secure: true,
     sameSite: "strict",

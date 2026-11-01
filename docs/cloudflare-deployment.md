@@ -177,3 +177,84 @@ Configure Worker secrets with `wrangler secret put <SECRET_NAME>`. Configure onl
 Production migrations are applied by the Cloudflare Workers Builds Deploy command immediately before publishing the Worker. Never edit an applied migration; add a new numbered migration.
 
 Rollback remains manual through `.github/workflows/rollback.yml` and must be followed by a passing `pnpm verify:production`.
+
+
+## Admin MFA — secretos y preparación previa al despliegue
+
+La migración `0047_admin_mfa_and_step_up_single_use.sql` crea el almacenamiento de credenciales cifradas, desafíos y hashes de recuperación, y añade el consumo de un solo uso a los grants de step-up. **Antes de desplegar esta migración y el nuevo login, configura la llave del Worker**. Sin ella, el login falla de forma cerrada (HTTP 503) y no emite sesiones.
+
+### Inicialización por entorno
+
+1. Genera 32 bytes aleatorios en un equipo de administración seguro:
+
+   ```bash
+   openssl rand -base64 32
+   ```
+
+2. Copia el resultado (no lo guardes en el repositorio) y configura el Worker de producción:
+
+   ```bash
+   pnpm exec wrangler secret put ADMIN_MFA_ENCRYPTION_KEY
+   ```
+
+   Pega el valor base64 generado cuando Wrangler lo solicite. Verifica que el secreto esté asociado al Worker `ecommerce-iphone` y a la cuenta correcta.
+
+3. La versión inicial de la llave es `1` por defecto. No es necesario ponerla en `wrangler.jsonc`; si se define explícitamente, debe ser `ADMIN_MFA_ENCRYPTION_KEY_VERSION=1` como variable normal, nunca como secreto separado.
+
+4. Crea una llave diferente para cada entorno Preview/local que vaya a procesar logins MFA. No reutilices la llave de producción. Para desarrollo local, usa el archivo local `.dev.vars` ignorado por Git y nunca compartas su contenido.
+
+5. Confirma que el Worker Secret está disponible antes de habilitar el build/deploy que contiene la migración 0047. Cloudflare Workers Builds continúa siendo quien aplica la migración D1 remota; GitHub Actions solo la prueba en una base local.
+
+### Rotación de llave
+
+La versión 2 permite rotación sin guardar secretos en Git:
+
+1. Guarda la llave actual v1 de forma segura.
+2. Establece la nueva llave base64 en `ADMIN_MFA_ENCRYPTION_KEY`, establece `ADMIN_MFA_ENCRYPTION_KEY_PREVIOUS` con la llave v1 y fija la variable `ADMIN_MFA_ENCRYPTION_KEY_VERSION=2`.
+3. Despliega el Worker. Cada acceso MFA que lea una credencial v1 la descifra con la llave anterior y reescribe el secreto cifrado con la llave v2.
+4. Conserva la llave anterior hasta comprobar en D1 que no quedan filas v1:
+
+   ```sql
+   SELECT key_version, COUNT(*) AS credentials
+   FROM admin_mfa_credentials
+   GROUP BY key_version;
+   ```
+
+5. Solo cuando el resultado confirme que todas las credenciales usan v2, elimina `ADMIN_MFA_ENCRYPTION_KEY_PREVIOUS`. No retires la llave antigua antes de completar esa comprobación.
+
+Mantén una copia de respaldo segura de la llave activa. Perder la única llave que cifra las credenciales impide validar los autenticadores existentes.
+
+### Recuperación de emergencia (break-glass)
+
+No existe un endpoint público para saltar MFA. Si una persona administradora pierde el autenticador y todos sus códigos de recuperación:
+
+1. Verifica su identidad y autorización por un canal fuera de banda; registra quién aprobó y quién ejecutó el procedimiento.
+2. Usa una sesión administrativa de Cloudflare con acceso D1 remoto y confirma el ID exacto de la cuenta administrativa.
+3. Ejecuta un reset dirigido a ese ID. Sustituye `ADMIN_ID_VERIFICADO` por el ID confirmado:
+
+   ```sql
+   INSERT INTO admin_audit_log
+     (id,admin_user_id,action,resource_type,resource_id,payload_json,ip_hash)
+   VALUES
+     (lower(hex(randomblob(16))), 'ADMIN_ID_VERIFICADO',
+      'ADMIN_MFA_BREAK_GLASS_RESET', 'admin_user', 'ADMIN_ID_VERIFICADO',
+      '{"reason":"operator-verified recovery"}', NULL);
+
+   DELETE FROM admin_mfa_recovery_codes WHERE admin_user_id='ADMIN_ID_VERIFICADO';
+   DELETE FROM admin_mfa_challenges WHERE admin_user_id='ADMIN_ID_VERIFICADO';
+   DELETE FROM admin_step_up_grants WHERE admin_user_id='ADMIN_ID_VERIFICADO';
+   DELETE FROM admin_mfa_credentials WHERE admin_user_id='ADMIN_ID_VERIFICADO';
+   UPDATE admin_sessions
+     SET revoked_at=CURRENT_TIMESTAMP
+     WHERE admin_user_id='ADMIN_ID_VERIFICADO' AND revoked_at IS NULL;
+   ```
+
+   Ejecuta estas sentencias en una operación D1 remota controlada; conserva el registro de auditoría y la evidencia de aprobación.
+
+4. El siguiente login del administrador exigirá inscripción TOTP nueva. No restaures sesiones anteriores ni entregues un código temporal por correo.
+
+El comando remoto de emergencia es una operación manual de Cloudflare con revisión y aprobación, **no forma parte de CI ni del pipeline de despliegue**.
+
+### Configuración RUM
+
+`NEXT_PUBLIC_WEB_VITALS_SAMPLE_RATE` es una variable de build de Next.js. Por defecto la aplicación muestrea el 10% de las páginas; se puede definir en Build variables de Workers Builds. El workflow Lighthouse la pone en `0` para que las pruebas sintéticas no se guarden como RUM. No la declares como sustituto de un Worker Secret ni la confundas con `APP_ENV`.

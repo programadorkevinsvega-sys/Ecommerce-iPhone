@@ -167,3 +167,21 @@ The scheduled browser performance smoke reports TTFB, DOMContentLoaded, load, LC
 The full workspace audit and build/test pipeline remain required on the final PR head. Cloudflare owns the configured Worker deployment and remote D1 migration sequence; GitHub Actions prepares isolated local D1 only and does not apply production migrations. Cloudflare Preview URLs are currently disabled, so a successful Preview build can be recorded but cannot be exercised through a public Preview URL.
 
 **Open acceptance items:** provider-backed MFA plus recovery/break-glass policy; manual accessibility review; reproducible field/lab Web Vitals evidence; final-head CI and Cloudflare Preview evidence. Global security certification remains pending.
+
+
+## Admin MFA — TOTP obligatorio
+
+A partir de la migración `0047_admin_mfa_and_step_up_single_use.sql`, toda cuenta administrativa debe completar inscripción TOTP antes de recibir una sesión autenticada. La contraseña por sí sola devuelve un desafío temporal; no crea `admin_sessions`. La resolución de sesión en D1 exige una credencial MFA habilitada, por lo que las sesiones antiguas sin segundo factor dejan de autorizar solicitudes.
+
+- TOTP compatible con RFC 6238: HMAC-SHA1, 6 dígitos y períodos de 30 segundos.
+- Ventana de tolerancia: paso anterior, actual o siguiente; el último paso aceptado se persiste para impedir replay.
+- Secreto TOTP cifrado con AES-256-GCM en D1. La clave de cifrado es un Worker Secret por entorno; nunca se guarda en Git, en D1 ni en logs.
+- Desafíos de autenticación/enrolamiento: cinco minutos y un máximo de cinco intentos.
+- Diez códigos de recuperación de 128 bits. D1 conserva hashes SHA-256; cada código se consume una sola vez y solo se muestra al emitir/regenerar.
+- Login emite sesión únicamente después de verificar TOTP o un código de recuperación válido.
+- Operaciones privilegiadas requieren contraseña y un segundo factor válido; el grant queda vinculado a admin, hash de sesión y scope, expira en cinco minutos y se consume atómicamente una sola vez.
+- Desactivar MFA exige contraseña y factor vigente, invalida códigos/grants y revoca todas las sesiones; el siguiente login vuelve a exigir enrolamiento.
+
+El código TOTP de RFC 6238, la persistencia de D1, el replay prevention, los códigos de recuperación, el bloqueo de desafíos y la revocación tienen pruebas unitarias/integración. La prueba manual de inscripción con una aplicación autenticadora real y la aceptación operativa de los secretos de Cloudflare se deben realizar antes de habilitar el cambio en producción.
+
+La recuperación de emergencia cuando el administrador pierde tanto el autenticador como sus códigos requiere verificación de identidad fuera de banda por el responsable de Cloudflare. El procedimiento está documentado en `docs/cloudflare-deployment.md`; no existe un bypass de MFA accesible mediante un endpoint público.

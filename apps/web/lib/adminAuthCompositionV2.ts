@@ -1,6 +1,4 @@
-import { AuthenticateAdminAtomic } from "../../../modules/admin/application/AuthenticateAdminAtomic";
 import { BootstrapAdmin } from "../../../modules/admin/application/BootstrapAdmin";
-import { CreateAdminSession } from "../../../modules/admin/application/CreateAdminSession";
 import { CreateAdminStepUp } from "../../../modules/admin/application/CreateAdminStepUp";
 import { LogoutAdmin } from "../../../modules/admin/application/LogoutAdmin";
 import { ResolveCurrentAdmin } from "../../../modules/admin/application/ResolveCurrentAdmin";
@@ -15,17 +13,6 @@ import { D1AdminPermissionRepository } from "../../../modules/admin/infrastructu
 
 function sessions(env: CloudflareEnv) {
   return new D1AdminAuthSessionRepository(env.DB);
-}
-
-export function buildAuthenticateAdmin(env: CloudflareEnv) {
-  const sessionRepository = sessions(env);
-  return new AuthenticateAdminAtomic(
-    new D1AdminAuthRepository(env.DB),
-    sessionRepository,
-    new D1AdminAuthPasswordHasher(),
-    new D1AuditPort(env.DB),
-    new CreateAdminSession(sessionRepository, sha256),
-  );
 }
 
 export function buildCreateAdminStepUp(env: CloudflareEnv) {

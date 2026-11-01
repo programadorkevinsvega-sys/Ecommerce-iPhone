@@ -282,7 +282,7 @@ export default function PaymentsPage() {
         open={pendingOperation !== null}
         scope={pendingOperation?.action === "refund" ? "payments:refund" : "payments:void"}
         title="Autoriza la operación financiera"
-        description="Confirma tu contraseña administrativa para autorizar este reembolso o anulación. La autorización dura cinco minutos y solo sirve para esta clase de operación."
+        description="Confirma tu contraseña administrativa y un código TOTP o de recuperación para autorizar este reembolso o anulación. La autorización se consume una sola vez y vence en cinco minutos."
         onCancel={() => setPendingOperation(null)}
         onVerified={async () => {
           const pending = pendingOperation;

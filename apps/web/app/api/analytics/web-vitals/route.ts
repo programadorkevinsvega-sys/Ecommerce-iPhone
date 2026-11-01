@@ -49,10 +49,12 @@ export async function POST(request: Request) {
       measuredAt: new Date().toISOString(),
     });
     return NextResponse.json({ accepted: true }, { status: 202, headers: { "cache-control": "no-store" } });
-  } catch {
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "UNKNOWN";
+    const invalidPayload = code.startsWith("INVALID_WEB_VITAL") || error instanceof SyntaxError;
     return NextResponse.json(
-      { error: "Invalid Web Vitals measurement" },
-      { status: 400, headers: { "cache-control": "no-store" } },
+      { error: invalidPayload ? "Invalid Web Vitals measurement" : "Unable to store Web Vitals measurement" },
+      { status: invalidPayload ? 400 : 500, headers: { "cache-control": "no-store" } },
     );
   }
 }

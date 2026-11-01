@@ -9,7 +9,8 @@ const sampledThisPage = Math.random() < sampleRate;
 
 export default function WebVitalsReporter() {
   useReportWebVitals((metric) => {
-    if (!sampledThisPage || !["LCP", "INP", "CLS"].includes(metric.name)) return;
+    if (!sampledThisPage) return;
+    if (metric.name !== "LCP" && metric.name !== "INP" && metric.name !== "CLS") return;
     const width = window.innerWidth;
     const deviceType = width < 600 ? "mobile" : width < 1024 ? "tablet" : "desktop";
     const payload = {

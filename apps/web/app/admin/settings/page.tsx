@@ -174,7 +174,7 @@ export default function SettingsPage() {
         open={stepUpOpen}
         scope="settings:write"
         title="Autoriza el cambio de configuración"
-        description="Confirma tu contraseña actual para modificar la configuración de producción. La confirmación dura cinco minutos."
+        description="Confirma tu contraseña actual y un código TOTP o de recuperación para modificar la configuración de producción. La autorización se consume una sola vez y vence en cinco minutos."
         onCancel={() => {
           stepUpAction.current = null;
           setStepUpOpen(false);

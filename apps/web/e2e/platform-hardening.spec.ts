@@ -350,4 +350,26 @@ test.describe("platform hardening", () => {
       error: "Tu sesión ya no es válida. Inicia sesión nuevamente.",
     });
   });
+
+  test("MFA challenge and recovery endpoints fail closed without an authenticated challenge", async ({ request }) => {
+    const challenge = await request.get("/api/admin/auth/mfa/challenge");
+    expect(challenge.status()).toBe(401);
+
+    const verify = await request.post("/api/admin/auth/mfa/verify", { data: { code: "123456" } });
+    expect(verify.status()).toBe(401);
+
+    const status = await request.get("/api/admin/auth/mfa/status");
+    expect(status.status()).toBe(401);
+
+    const recovery = await request.post("/api/admin/auth/mfa/recovery", {
+      data: { password: "not-a-real-password", code: "123456" },
+    });
+    expect(recovery.status()).toBe(401);
+
+    const disable = await request.post("/api/admin/auth/mfa/disable", {
+      data: { password: "not-a-real-password", code: "123456" },
+    });
+    expect(disable.status()).toBe(401);
+  });
+
 });

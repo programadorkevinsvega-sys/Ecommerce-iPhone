@@ -119,3 +119,14 @@ Cloudflare remains responsible for the configured Worker deployment and the remo
 3. Collect reproducible field/lab Web Vitals evidence and validate the performance thresholds against real usage.
 4. Confirm mandatory Repository CI and Cloudflare Preview build status on the exact final PR HEAD.
 5. Keep the PR in Draft until the residual security and accessibility risks are explicitly accepted; do not merge solely because a Worker build succeeds.
+
+
+## Admin MFA and acceptance evidence
+
+The existing Draft PR now contains mandatory TOTP before admin session creation, encrypted-at-rest TOTP seeds, single-use recovery codes, short-lived login/enrollment challenges, account lockout checks, replay prevention, and atomic single-use step-up grants. Existing sessions without an enabled MFA credential are rejected by the D1 session resolver. Recovery and key-rotation runbooks live in `docs/cloudflare-deployment.md`.
+
+The implementation does not claim that Cloudflare has been configured with the encryption Worker Secret or that the migration has been applied remotely. Those are deployment prerequisites for the owner of the Cloudflare environment. GitHub Actions remains local-only for D1 migrations.
+
+Field Web Vitals are now collected separately from the Lighthouse lab workflow. RUM records are not present until Cloudflare applies migration 0046 and real traffic produces sampled measurements. The p75 endpoint is restricted to administrators with `audit:read`; sample counts must be reviewed before interpreting percentiles.
+
+The automated accessibility suite includes Axe on home, catalogue, product, cart, checkout and admin login, keyboard navigation, visible focus, native required-field checks and narrow-width overflow checks. Manual screen-reader, 200/400% zoom, contrast, and browser/AT matrix execution remain explicitly pending; no manual result or WCAG certification is invented.

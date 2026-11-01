@@ -21,6 +21,16 @@ function testDb() {
       updated_at TEXT NOT NULL
     )
   `);
+  db.exec(`
+    CREATE TABLE admin_sessions (
+      id TEXT PRIMARY KEY, admin_user_id TEXT NOT NULL, token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL, revoked_at TEXT, ip_hash TEXT, user_agent_hash TEXT
+    );
+    CREATE TABLE admin_mfa_credentials (
+      admin_user_id TEXT PRIMARY KEY, enabled_at TEXT, encrypted_secret TEXT NOT NULL,
+      secret_iv TEXT NOT NULL, key_version INTEGER NOT NULL, last_used_step INTEGER
+    );
+  `);
   return db;
 }
 
@@ -45,6 +55,20 @@ describe("D1AdminRepository bootstrap guard", () => {
     expect(db.query<{ email: string; password_hash: string }>("SELECT email, password_hash FROM admin_users")).toEqual([
       { email: "one@example.com", password_hash: "pbkdf2-sha256$100000$hash" },
     ]);
+    db.close();
+  });
+
+  it("does not resolve a session until MFA is enabled for the administrator", async () => {
+    const db = testDb();
+    const repository = new D1AdminRepository(db.asD1());
+    await repository.createInitialSuperAdmin(admin("admin-mfa-1", "mfa@example.com"));
+    await repository.createSession("admin-mfa-1", "session-token-hash", new Date(Date.now() + 60_000).toISOString());
+    expect(await repository.findSession("session-token-hash")).toBeNull();
+    db.exec(
+      "INSERT INTO admin_mfa_credentials(admin_user_id,encrypted_secret,secret_iv,key_version,enabled_at) VALUES(?,?,?,?,?)",
+      "admin-mfa-1", "encrypted", "iv", 1, new Date().toISOString(),
+    );
+    expect(await repository.findSession("session-token-hash")).not.toBeNull();
     db.close();
   });
 

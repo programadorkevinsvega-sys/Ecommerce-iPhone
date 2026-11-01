@@ -32,7 +32,7 @@ export class D1AdminStepUpRepository implements AdminStepUpRepository {
     ]);
   }
 
-  async hasValid(
+  async consumeValid(
     input: Readonly<{
       adminUserId: string;
       sessionTokenHash: string;
@@ -40,12 +40,12 @@ export class D1AdminStepUpRepository implements AdminStepUpRepository {
       scope: AdminStepUpScope;
     }>,
   ): Promise<boolean> {
-    const row = await this.db
+    const result = await this.db
       .prepare(
-        "SELECT 1 AS valid FROM admin_step_up_grants WHERE admin_user_id=? AND session_token_hash=? AND token_hash=? AND scope=? AND datetime(expires_at)>CURRENT_TIMESTAMP LIMIT 1",
+        "UPDATE admin_step_up_grants SET consumed_at=CURRENT_TIMESTAMP WHERE admin_user_id=? AND session_token_hash=? AND token_hash=? AND scope=? AND consumed_at IS NULL AND datetime(expires_at)>CURRENT_TIMESTAMP",
       )
       .bind(input.adminUserId, input.sessionTokenHash, input.tokenHash, input.scope)
-      .first<{ valid: number }>();
-    return Boolean(row);
+      .run();
+    return result.meta.changes === 1;
   }
 }
