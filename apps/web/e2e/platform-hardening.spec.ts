@@ -38,7 +38,7 @@ test.describe("platform hardening", () => {
     expect(response.headers()["x-request-id"]).toBe(requestId);
   });
 
-  test("HTML responses carry nonces and produce no CSP violations in Next.js", async ({ page }) => {
+  test("HTML responses use nonces without CSP violations", async ({ page }) => {
     const cspViolations: string[] = [];
     page.on("console", (message) => {
       if (
@@ -99,7 +99,7 @@ test.describe("platform hardening", () => {
     expect(cspViolations).toEqual([]);
   });
 
-  test("critical storefront and admin entry pages expose accessible names and image alternatives", async ({
+  test("critical pages expose accessible names and image alternatives", async ({
     page,
   }) => {
     const routes = ["/", "/cart", "/checkout", "/admin/login"];
