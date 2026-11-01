@@ -244,7 +244,7 @@ summary:focus-visible {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #77766f;
+  color: #666660;
   margin-bottom: 20px;
 }
 .results-heading p {
@@ -283,7 +283,7 @@ summary:focus-visible {
 }
 .product-card p:not(.eyebrow) {
   margin: 0 0 12px;
-  color: #77766f;
+  color: #666660;
 }
 .product-card strong {
   font-size: 1rem;
@@ -291,7 +291,7 @@ summary:focus-visible {
 .stock-note {
   display: block;
   margin-top: 8px;
-  color: #77766f;
+  color: #666660;
   font-size: 0.8rem;
 }
 .empty-state {
@@ -305,7 +305,7 @@ summary:focus-visible {
   margin-top: 0;
 }
 .empty-state p {
-  color: #77766f;
+  color: #666660;
 }
 .empty-state a {
   text-decoration: underline;
@@ -327,7 +327,7 @@ summary:focus-visible {
   gap: 8px;
   align-items: center;
   padding-top: 18px;
-  color: #77766f;
+  color: #666660;
   font-size: 0.85rem;
 }
 .breadcrumbs a {
@@ -395,7 +395,7 @@ summary:focus-visible {
   grid-row: 1;
 }
 .product-model {
-  color: #77766f;
+  color: #666660;
 }
 .product-description {
   max-width: 580px;
@@ -437,7 +437,7 @@ summary:focus-visible {
   border-radius: 14px;
 }
 .specs dt {
-  color: #77766f;
+  color: #666660;
   font-size: 0.8rem;
 }
 .specs dd {
@@ -516,7 +516,7 @@ summary:focus-visible {
 }
 .review-summary span,
 .review-card small {
-  color: #77766f;
+  color: #666660;
 }
 .review-list {
   display: grid;
@@ -598,7 +598,7 @@ summary:focus-visible {
 }
 .review-empty {
   padding: 30px 0;
-  color: #77766f;
+  color: #666660;
 }
 .cart-layout {
   width: min(1180px, calc(100% - 32px));
@@ -628,7 +628,7 @@ summary:focus-visible {
 }
 .cart-item p {
   margin: 0;
-  color: #77766f;
+  color: #666660;
 }
 .quantity-control {
   display: flex;
@@ -659,7 +659,7 @@ summary:focus-visible {
   gap: 20px;
 }
 .cart-summary p {
-  color: #77766f;
+  color: #666660;
   line-height: 1.5;
 }
 .checkout-form {
@@ -1452,7 +1452,7 @@ summary:focus-visible {
   border-top: 1px solid #ecebe5;
 }
 .service-card-footer > span {
-  color: #77766f;
+  color: #666660;
   font-size: 0.78rem;
   line-height: 1.35;
 }
@@ -2188,7 +2188,7 @@ summary:focus-visible {
 }
 .account-row p {
   margin: 7px 0 0;
-  color: #77766f;
+  color: #666660;
 }
 .account-row span {
   color: #666660;
@@ -2905,7 +2905,7 @@ summary:focus-visible {
   text-overflow: ellipsis;
 }
 .account-record-main span {
-  color: #77766f;
+  color: #666660;
   font-size: 0.79rem;
   white-space: nowrap;
   overflow: hidden;
@@ -2955,7 +2955,7 @@ summary:focus-visible {
   text-overflow: ellipsis;
 }
 .account-compact-row span {
-  color: #77766f;
+  color: #666660;
   font-size: 0.74rem;
 }
 .account-compact-row > b {
@@ -2973,7 +2973,7 @@ summary:focus-visible {
   font-size: 0.88rem;
 }
 .account-empty span {
-  color: #77766f;
+  color: #666660;
   font-size: 0.82rem;
   line-height: 1.55;
 }
@@ -2985,7 +2985,7 @@ summary:focus-visible {
   place-items: center;
   align-content: center;
   gap: 12px;
-  color: #77766f;
+  color: #666660;
 }
 .account-spinner {
   width: 30px;
@@ -3196,7 +3196,7 @@ summary:focus-visible {
 }
 .technician-brand small {
   margin-top: 2px;
-  color: #77766f;
+  color: #666660;
   font-size: 0.68rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -3219,7 +3219,7 @@ summary:focus-visible {
 .technician-nav-links a {
   padding: 10px 13px;
   border-radius: 999px;
-  color: #77766f;
+  color: #666660;
   font-size: 0.82rem;
   font-weight: 700;
 }
@@ -3500,7 +3500,7 @@ summary:focus-visible {
   min-height: 170px;
   padding: 25px;
   text-align: center;
-  color: #77766f;
+  color: #666660;
 }
 .technician-empty strong {
   font-size: 0.9rem;
@@ -3547,7 +3547,7 @@ summary:focus-visible {
 }
 .technician-order-item small {
   margin-top: 4px;
-  color: #77766f;
+  color: #666660;
   font-size: 0.71rem;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3837,7 +3837,7 @@ summary:focus-visible {
   letter-spacing: -0.055em;
 }
 .technician-auth-card > p:not(.eyebrow) {
-  color: #77766f;
+  color: #666660;
   line-height: 1.6;
 }
 .technician-auth-card .technician-form {
@@ -5312,7 +5312,7 @@ div {
     justify-content: space-between;
     min-height: 64px;
     border-bottom: 1px solid #dddcd6;
-    color: #77766f;
+    color: #666660;
     font-size: 0.78rem;
     font-weight: 800;
     letter-spacing: 0.12em;
