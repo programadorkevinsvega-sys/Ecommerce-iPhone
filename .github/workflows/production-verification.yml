@@ -44,6 +44,7 @@ jobs:
     timeout-minutes: 20
     outputs:
       cloudflare_edge_blocked: ${{ steps.production-health.outputs.cloudflare_edge_blocked }}
+      production_health_verified: ${{ steps.production-health.outputs.production_health_verified }}
     steps:
       - name: Checkout deployed commit
         uses: actions/checkout@v7
@@ -75,6 +76,7 @@ jobs:
 
           if [ "$status" -eq 2 ]; then
             echo "cloudflare_edge_blocked=true" >> "$GITHUB_OUTPUT"
+            echo "production_health_verified=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=Production monitor blocked by Cloudflare::The edge returned a verified Cloudflare challenge/block response. Worker health is inconclusive; this is not reported as an application or deployment failure."
             {
               echo "### Production verification inconclusive"
@@ -88,10 +90,13 @@ jobs:
           fi
 
           if [ "$status" -ne 0 ]; then
+            echo "cloudflare_edge_blocked=false" >> "$GITHUB_OUTPUT"
+            echo "production_health_verified=false" >> "$GITHUB_OUTPUT"
             exit "$status"
           fi
 
           echo "cloudflare_edge_blocked=false" >> "$GITHUB_OUTPUT"
+          echo "production_health_verified=true" >> "$GITHUB_OUTPUT"
 
       - name: Verify Phase 08 public content and admin authorization
         if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
@@ -108,7 +113,7 @@ jobs:
   # Manual deep verification remains available for the full Phase 10.2–10.5 set.
   deep-production:
     needs: smoke
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_deep_checks && needs.smoke.result == 'success' && needs.smoke.outputs.cloudflare_edge_blocked != 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_deep_checks && needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -162,8 +167,7 @@ jobs:
         github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
         github.event.check_run.conclusion == 'success' &&
         github.event.check_run.check_suite.head_branch == 'main' &&
-        needs.smoke.result == 'success' &&
-        needs.smoke.outputs.cloudflare_edge_blocked != 'true' }}
+        needs.smoke.outputs.production_health_verified == 'true' }}
     name: Analytics Phase 10.4/10.5 production certification
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -292,7 +296,7 @@ jobs:
           cp "$RUNNER_TEMP/phase10.5-production.log" "$RUNNER_TEMP/analytics-phase10-evidence/" 2>/dev/null || true
           cat "$RUNNER_TEMP/analytics-phase10-evidence/summary.md" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload immutable run evidence
+      - name: Upload production run evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
@@ -321,7 +325,7 @@ jobs:
 
   admin-production:
     needs: smoke
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_admin_checks && needs.smoke.result == 'success' && needs.smoke.outputs.cloudflare_edge_blocked != 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_admin_checks && needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -337,7 +341,6 @@ jobs:
         uses: pnpm/action-setup@v6
         with:
           version: 12.4.1
-          node-version: 24.18.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
