@@ -15,19 +15,14 @@ export function analyticsPersistence(db: D1Database): D1AnalyticsRepository {
   return new D1AnalyticsRepository(db);
 }
 
-export function revenueAnalyticsApplication(
-  db: D1Database,
-  queue: Queue,
-): RevenueAnalyticsService {
+export function revenueAnalyticsApplication(db: D1Database, queue: Queue): RevenueAnalyticsService {
   return new RevenueAnalyticsService(
     new D1RevenueAnalyticsRepository(db),
     analyticsApplication(queue),
   );
 }
 
-export function revenueAnalyticsPersistence(
-  db: D1Database,
-): D1RevenueAnalyticsRepository {
+export function revenueAnalyticsPersistence(db: D1Database): D1RevenueAnalyticsRepository {
   return new D1RevenueAnalyticsRepository(db);
 }
 

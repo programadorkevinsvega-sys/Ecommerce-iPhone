@@ -47,10 +47,12 @@ describe("D1WebVitalsRepository", () => {
     const repository = setup();
     await repository.record(sample());
     await repository.record(sample({ value: 3000, rating: "needs-improvement" }));
-    await repository.record(sample({
-      metricId: "web-vitals-test-0002",
-      value: 1800,
-    }));
+    await repository.record(
+      sample({
+        metricId: "web-vitals-test-0002",
+        value: 1800,
+      }),
+    );
 
     const report = await repository.summary(28);
     expect(report.periodDays).toBe(28);
@@ -68,16 +70,21 @@ describe("D1WebVitalsRepository", () => {
 
   it("purges only expired measurements within the requested batch size", async () => {
     const repository = setup();
-    await repository.record(sample({
-      metricId: "web-vitals-expired-01",
-      measuredAt: "2025-01-01T00:00:00.000Z",
-    }));
+    await repository.record(
+      sample({
+        metricId: "web-vitals-expired-01",
+        measuredAt: "2025-01-01T00:00:00.000Z",
+      }),
+    );
     database.exec(
       "UPDATE web_vitals_measurements SET expires_at=datetime('now','-1 day') WHERE metric_id=?",
       "web-vitals-expired-01",
     );
     await repository.record(sample({ metricId: "web-vitals-current-01" }));
     expect(await repository.purgeExpired(10)).toBe(1);
-    expect(database.query<{ count: number }>("SELECT COUNT(*) AS count FROM web_vitals_measurements")[0]?.count).toBe(1);
+    expect(
+      database.query<{ count: number }>("SELECT COUNT(*) AS count FROM web_vitals_measurements")[0]
+        ?.count,
+    ).toBe(1);
   });
 });

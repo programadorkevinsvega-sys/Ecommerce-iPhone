@@ -1,8 +1,4 @@
-import type {
-  WebVitalDeviceType,
-  WebVitalMetricName,
-  WebVitalRating,
-} from "./WebVitals";
+import type { WebVitalDeviceType, WebVitalMetricName, WebVitalRating } from "./WebVitals";
 
 export type WebVitalMeasurement = Readonly<{
   metric: WebVitalMetricName;
