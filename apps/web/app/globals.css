@@ -5455,7 +5455,6 @@ div {
   }
 }
 
-
 /* Keep framework-owned inline presentation styles compatible with strict style-src-attr. */
 img {
   color: transparent;
