@@ -364,10 +364,7 @@ describe("D1RevenueAnalyticsRepository", () => {
         "ledger-sale-recent-transition",
         10000,
       );
-      database.exec(
-        "DELETE FROM payment_ledger WHERE payment_id=?",
-        "payment-recent-transition",
-      );
+      database.exec("DELETE FROM payment_ledger WHERE payment_id=?", "payment-recent-transition");
 
       const repository = new D1RevenueAnalyticsRepository(database.asD1());
       await expect(repository.pendingRevenueEntries(50)).resolves.toHaveLength(0);
@@ -396,22 +393,16 @@ describe("D1RevenueAnalyticsRepository", () => {
         "ledger-projection",
         10000,
       );
-      insertAnalyticsEvent(
-        database,
-        "revenue:ledger-projection",
-        "RevenueRecorded",
-        "server",
-        {
-          ledgerId: "ledger-projection",
-          paymentId: "payment-projection",
-          orderId: "order-projection",
-          entryType: "PAYMENT_CONFIRMED",
-          revenueDirection: "CREDIT",
-          amountInCents: 9000,
-          netAmountInCents: 9000,
-          currency: "COP",
-        },
-      );
+      insertAnalyticsEvent(database, "revenue:ledger-projection", "RevenueRecorded", "server", {
+        ledgerId: "ledger-projection",
+        paymentId: "payment-projection",
+        orderId: "order-projection",
+        entryType: "PAYMENT_CONFIRMED",
+        revenueDirection: "CREDIT",
+        amountInCents: 9000,
+        netAmountInCents: 9000,
+        currency: "COP",
+      });
 
       const repository = new D1RevenueAnalyticsRepository(database.asD1());
       await expect(repository.pendingRevenueEntries(50)).rejects.toThrow(
