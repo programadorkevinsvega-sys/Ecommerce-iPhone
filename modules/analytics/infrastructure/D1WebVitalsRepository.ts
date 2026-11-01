@@ -69,9 +69,7 @@ export class D1WebVitalsRepository {
     return result.meta.changes === 1;
   }
 
-  async summary(
-    days = 28,
-  ): Promise<
+  async summary(days = 28): Promise<
     Readonly<{
       periodDays: number;
       p75: P75Row[];
