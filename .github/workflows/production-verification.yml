@@ -180,7 +180,6 @@ jobs:
       - name: Verify Phase 10.3 catalog and search analytics
         run: pnpm verify:phase10.3:production
 
-
   # These phases are intentionally left to the responsible QA area for final
   # manual acceptance after the complete system has been implemented.
   # This informational job never gates CI, deployment or pull-request merging.
