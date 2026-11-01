@@ -43,7 +43,9 @@ describe("D1AdminStepUpRepository", () => {
     await expect(
       repository.consumeValid({ ...base, sessionTokenHash: "session-hash-b" }),
     ).resolves.toBe(false);
-    await expect(repository.consumeValid({ ...base, tokenHash: "proof-hash-b" })).resolves.toBe(false);
+    await expect(repository.consumeValid({ ...base, tokenHash: "proof-hash-b" })).resolves.toBe(
+      false,
+    );
     await expect(repository.consumeValid({ ...base, scope: "payments:void" })).resolves.toBe(false);
     await expect(repository.consumeValid(base)).resolves.toBe(true);
     await expect(repository.consumeValid(base)).resolves.toBe(false);
