@@ -41,6 +41,8 @@ export class D1RevenueAnalyticsRepository implements RevenueAnalyticsPort {
   private async assertEligibleLedgerIntegrity(): Promise<void> {
     const invalid = await this.db
       .prepare(
+        // Keep these integrity predicates separate: Cloudflare D1 has a lower
+        // compound SELECT limit than stock SQLite, so do not combine them with UNION.
         `SELECT 1 AS invalid
          WHERE EXISTS (
            SELECT 1
@@ -164,7 +166,7 @@ export class D1RevenueAnalyticsRepository implements RevenueAnalyticsPort {
          )
          LIMIT 1`,
       )
-      .first<{ id: string }>();
+      .first<{ invalid: number }>();
 
     if (invalid) throw new Error("PAYMENT_LEDGER_INTEGRITY_MISMATCH");
   }
