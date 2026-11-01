@@ -139,7 +139,7 @@ describe("D1RevenueAnalyticsRepository", () => {
       const underlying = database.asD1();
       const d1WithCompoundSelectLimit = {
         prepare(sql: string) {
-          const unionTerms = sql.match(/\\bUNION(?:\\s+ALL)?\\b/gi)?.length ?? 0;
+          const unionTerms = sql.match(/\bUNION(?:\s+ALL)?\b/gi)?.length ?? 0;
           if (unionTerms + 1 > 5) {
             throw new Error("D1_ERROR: too many terms in compound SELECT: SQLITE_ERROR");
           }
