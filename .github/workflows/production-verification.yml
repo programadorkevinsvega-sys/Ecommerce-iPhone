@@ -1,10 +1,12 @@
 name: Production Verification
 
 on:
+  check_run:
+    types: [completed]
   workflow_dispatch:
     inputs:
       run_deep_checks:
-        description: "Run Phase 10.2–10.5 production probes (writes unique probe data and cleans it up)"
+        description: "Run Phase 10.2–10.5 production probes (writes isolated probe data and cleans it up)"
         required: false
         default: false
         type: boolean
@@ -18,23 +20,38 @@ on:
 
 permissions:
   contents: read
+  checks: read
 
 concurrency:
-  group: production-verification
-  cancel-in-progress: true
+  # Serialize all production probes/certifications. Scheduled smoke checks are
+  # read-only and use a separate lane from manual/deployment deep checks.
+  group: production-verification-${{ github.event_name == 'schedule' && 'scheduled-smoke' || 'deep-production' }}
+  cancel-in-progress: false
 
 env:
   PRODUCTION_URL: https://iphone.jnmtortas.com
 
 jobs:
   smoke:
+    # A check_run event is accepted only for the exact production Workers Build
+    # check, created by Cloudflare's GitHub App, on main and with a successful
+    # deployment conclusion. Scheduled/manual smoke monitoring remains intact.
+    if: >-
+      ${{ github.event_name != 'check_run' ||
+        (github.event.check_run.name == 'Workers Builds: ecommerce-iphone' &&
+         github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
+         github.event.check_run.conclusion == 'success' &&
+         github.event.check_run.check_suite.head_branch == 'main') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
       cloudflare_edge_blocked: ${{ steps.production-health.outputs.cloudflare_edge_blocked }}
+      production_health_verified: ${{ steps.production-health.outputs.production_health_verified }}
     steps:
-      - name: Checkout
+      - name: Checkout deployed commit
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.check_run.head_sha || github.sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
@@ -61,23 +78,27 @@ jobs:
 
           if [ "$status" -eq 2 ]; then
             echo "cloudflare_edge_blocked=true" >> "$GITHUB_OUTPUT"
+            echo "production_health_verified=false" >> "$GITHUB_OUTPUT"
             echo "::warning title=Production monitor blocked by Cloudflare::The edge returned a verified Cloudflare challenge/block response. Worker health is inconclusive; this is not reported as an application or deployment failure."
             {
               echo "### Production verification inconclusive"
               echo
               echo "Cloudflare blocked the GitHub Actions monitor before the health endpoint could be verified. The response diagnostics above include the Cloudflare Ray ID where available."
-              echo "Phase 08, Phase 09 and notification HTTP probes are skipped for this run because they would use the same blocked public edge."
+              echo "Phase 08, Phase 09, notification checks and Analytics certification are skipped for this run because they use the same public edge."
               echo
-              echo "This does **not** certify production runtime health; check the Workers Builds deployment check and a real browser request separately."
+              echo "This does **not** certify production runtime health; inspect the Workers Builds deployment check and a real browser request separately."
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
           if [ "$status" -ne 0 ]; then
+            echo "cloudflare_edge_blocked=false" >> "$GITHUB_OUTPUT"
+            echo "production_health_verified=false" >> "$GITHUB_OUTPUT"
             exit "$status"
           fi
 
           echo "cloudflare_edge_blocked=false" >> "$GITHUB_OUTPUT"
+          echo "production_health_verified=true" >> "$GITHUB_OUTPUT"
 
       - name: Verify Phase 08 public content and admin authorization
         if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
@@ -91,11 +112,16 @@ jobs:
         if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
         run: pnpm verify:notifications:production
 
+  # Manual deep verification remains available for the full Phase 10.2–10.5 set.
   deep-production:
     needs: smoke
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_deep_checks && needs.smoke.outputs.cloudflare_edge_blocked != 'true' }}
+    environment: production
+    if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_deep_checks && needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -114,6 +140,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify Cloudflare D1 credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing GitHub Secret CLOUDFLARE_ACCOUNT_ID."; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing GitHub Secret CLOUDFLARE_API_TOKEN."; exit 1; }
+          echo "Cloudflare D1 verification credentials are available."
+
       - name: Verify Phase 10.2 analytics ingestion and idempotency
         run: pnpm verify:phase10.2:production
 
@@ -126,9 +160,176 @@ jobs:
       - name: Verify Phase 10.5 canonical revenue projection
         run: pnpm verify:phase10.5:production
 
+  # Automatically certify Analytics 10.4/10.5 after Cloudflare confirms that the
+  # production Worker build/deploy for main has completed successfully.
+  analytics-certification:
+    needs: smoke
+    if: >-
+      ${{ always() && github.event_name == 'check_run' &&
+        github.event.check_run.name == 'Workers Builds: ecommerce-iphone' &&
+        github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
+        github.event.check_run.conclusion == 'success' &&
+        github.event.check_run.check_suite.head_branch == 'main' &&
+        needs.smoke.outputs.production_health_verified == 'true' }}
+    name: Analytics Phase 10.4/10.5 production certification
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 45
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Checkout the exact deployed commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.check_run.head_sha }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify Cloudflare D1 credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing GitHub Secret CLOUDFLARE_ACCOUNT_ID."; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing GitHub Secret CLOUDFLARE_API_TOKEN."; exit 1; }
+          echo "Cloudflare D1 verification credentials are available."
+          echo "The token must include D1 Edit on the production account: Phase 10.4 inserts and deletes isolated cart probes; Phase 10.5 is read-only."
+
+      - name: Run Phase 10.4 cart, checkout and analytics verification
+        id: phase104
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          pnpm verify:phase10.4:production 2>&1 | tee "$RUNNER_TEMP/phase10.4-production.log"
+          status=${PIPESTATUS[0]}
+          case "$status" in
+            0) result="PASS" ;;
+            2)
+              result="INCONCLUSIVE"
+              echo "::warning title=Phase 10.4 inconclusive::Production did not contain sufficient real checkout/payment evidence for full certification."
+              ;;
+            *)
+              result="FAIL"
+              echo "::error title=Phase 10.4 failed::The production cart, checkout or analytics verifier reported a failure (exit $status)."
+              ;;
+          esac
+          {
+            echo "result=$result"
+            echo "exit_code=$status"
+          } >> "$GITHUB_OUTPUT"
+          echo "Phase 10.4 result: $result (exit $status)"
+
+      - name: Run Phase 10.5 canonical revenue and payment-ledger reconciliation
+        id: phase105
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          pnpm verify:phase10.5:production 2>&1 | tee "$RUNNER_TEMP/phase10.5-production.log"
+          status=${PIPESTATUS[0]}
+          case "$status" in
+            0) result="PASS" ;;
+            2)
+              result="INCONCLUSIVE"
+              echo "::warning title=Phase 10.5 inconclusive::Production does not contain both a real confirmed payment and a provider-confirmed refund. No synthetic payment/refund was created."
+              ;;
+            *)
+              result="FAIL"
+              echo "::error title=Phase 10.5 failed::The payment-ledger and RevenueRecorded reconciliation reported a production integrity failure (exit $status)."
+              ;;
+          esac
+          {
+            echo "result=$result"
+            echo "exit_code=$status"
+          } >> "$GITHUB_OUTPUT"
+          echo "Phase 10.5 result: $result (exit $status)"
+
+      - name: Prepare Analytics production certification report
+        if: always()
+        env:
+          PHASE10_4_RESULT: ${{ steps.phase104.outputs.result || 'NOT_RUN' }}
+          PHASE10_4_EXIT: ${{ steps.phase104.outputs.exit_code || 'N/A' }}
+          PHASE10_5_RESULT: ${{ steps.phase105.outputs.result || 'NOT_RUN' }}
+          PHASE10_5_EXIT: ${{ steps.phase105.outputs.exit_code || 'N/A' }}
+          DEPLOYED_SHA: ${{ github.event.check_run.head_sha }}
+          DEPLOYED_CHECK_URL: ${{ github.event.check_run.html_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/analytics-phase10-evidence"
+          {
+            echo "# Analytics Phase 10.4/10.5 production certification"
+            echo
+            echo "- Environment: $PRODUCTION_URL"
+            echo "- Deployed commit: $DEPLOYED_SHA"
+            echo "- Cloudflare deployment check: $DEPLOYED_CHECK_URL"
+            echo "- GitHub Actions run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "- Generated at (UTC): $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            echo "| Phase | Result | Exit code |"
+            echo "|---|---|---:|"
+            echo "| 10.4 cart, checkout and analytics | $PHASE10_4_RESULT | $PHASE10_4_EXIT |"
+            echo "| 10.5 revenue and payment ledger | $PHASE10_5_RESULT | $PHASE10_5_EXIT |"
+            echo
+            if [[ "$PHASE10_4_RESULT" == "PASS" && "$PHASE10_5_RESULT" == "PASS" ]]; then
+              echo "**Certification: PASS** — both production verifiers passed."
+            elif [[ "$PHASE10_4_RESULT" == "FAIL" || "$PHASE10_5_RESULT" == "FAIL" ]]; then
+              echo "**Certification: FAIL** — inspect the phase logs; production certification is blocked."
+            else
+              echo "**Certification: INCONCLUSIVE** — the evidence is insufficient. This is not a production certification."
+            fi
+            echo
+            echo "Phase 10.4 creates unique temporary cart/analytics probes and removes them in its cleanup handler. It does not create orders, charge cards or create refunds."
+            echo "Phase 10.5 only reads production data. Missing real payment/refund samples remain INCONCLUSIVE; no synthetic financial rows are created."
+          } > "$RUNNER_TEMP/analytics-phase10-evidence/summary.md"
+          cp "$RUNNER_TEMP/phase10.4-production.log" "$RUNNER_TEMP/analytics-phase10-evidence/" 2>/dev/null || true
+          cp "$RUNNER_TEMP/phase10.5-production.log" "$RUNNER_TEMP/analytics-phase10-evidence/" 2>/dev/null || true
+          cat "$RUNNER_TEMP/analytics-phase10-evidence/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload production run evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: analytics-phase10-production-evidence-${{ github.run_id }}
+          path: ${{ runner.temp }}/analytics-phase10-evidence/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Enforce Analytics production certification
+        if: always()
+        env:
+          PHASE10_4_RESULT: ${{ steps.phase104.outputs.result || 'NOT_RUN' }}
+          PHASE10_5_RESULT: ${{ steps.phase105.outputs.result || 'NOT_RUN' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$PHASE10_4_RESULT" == "FAIL" || "$PHASE10_5_RESULT" == "FAIL" ]]; then
+            echo "::error::Analytics Phase 10.4/10.5 certification failed. Keep P0-05 open."
+            exit 1
+          fi
+          if [[ "$PHASE10_4_RESULT" != "PASS" || "$PHASE10_5_RESULT" != "PASS" ]]; then
+            echo "::error::Analytics Phase 10.4/10.5 certification is INCONCLUSIVE or did not run. Keep P0-05 open; this is not a pass."
+            exit 2
+          fi
+          echo "Both production verifiers passed. Analytics Phase 10.4/10.5 certification evidence is complete."
+
   admin-production:
     needs: smoke
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_admin_checks && needs.smoke.outputs.cloudflare_edge_blocked != 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_admin_checks && needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
