@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Script from "next/script";
 import "./globals.css";
+import "./accessibility.css";
 import { organizationSchema, websiteSchema } from "../../../modules/seo/application/StructuredData";
 import { siteConfig } from "../../../modules/seo/application/SeoPolicy";
 import { serializeJsonLd } from "../lib/jsonLd";
+import WebVitalsReporter from "./components/WebVitalsReporter";
 
 const seoSite = siteConfig();
 const organizationJsonLd = serializeJsonLd(
@@ -48,6 +50,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         <Script id="website-jsonld" type="application/ld+json">
           {websiteJsonLd}
         </Script>
+        <WebVitalsReporter />
         {children}
       </body>
     </html>

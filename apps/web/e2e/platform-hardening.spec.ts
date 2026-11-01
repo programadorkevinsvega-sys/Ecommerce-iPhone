@@ -98,7 +98,7 @@ test.describe("platform hardening", () => {
   });
 
   test("critical pages expose accessible names and image alternatives", async ({ page }) => {
-    const routes = ["/", "/cart", "/checkout", "/admin/login"];
+    const routes = ["/", "/catalog", "/iphone/iphone-17-pro-max", "/cart", "/checkout", "/admin/login"];
     const axeViolationsByRoute: Array<{
       route: string;
       violations: Array<{
@@ -260,6 +260,85 @@ test.describe("platform hardening", () => {
     });
     expect(accessibleName).not.toBe("");
   });
+  test("keyboard traversal preserves visible focus and supports reverse navigation", async ({ page }) => {
+    const routes = ["/", "/catalog", "/iphone/iphone-17-pro-max", "/cart", "/checkout", "/admin/login"];
+    for (const route of routes) {
+      await page.goto(route);
+      await page.keyboard.press("Tab");
+      const first = await page.evaluate(() => {
+        const element = document.activeElement;
+        if (!(element instanceof HTMLElement)) return null;
+        const style = getComputedStyle(element);
+        return {
+          signature: [element.tagName, element.id, element.getAttribute("href"), element.getAttribute("name"), element.textContent?.trim().slice(0, 32)].join("|"),
+          visible: element.getClientRects().length > 0 &&
+            (element.matches(":focus-visible") ||
+             (style.outlineStyle !== "none" && Number.parseFloat(style.outlineWidth) > 0)),
+        };
+      });
+      expect(first, route).not.toBeNull();
+      expect(first?.visible, `focus indicator on ${route}`).toBe(true);
+      await page.keyboard.press("Tab");
+      expect(await page.evaluate(() => document.activeElement instanceof HTMLElement), route).toBe(true);
+      await page.keyboard.press("Shift+Tab");
+      const returned = await page.evaluate(() => {
+        const element = document.activeElement;
+        if (!(element instanceof HTMLElement)) return "";
+        return [element.tagName, element.id, element.getAttribute("href"), element.getAttribute("name"), element.textContent?.trim().slice(0, 32)].join("|");
+      });
+      expect(returned, route).toBe(first?.signature);
+      await page.keyboard.press("Escape");
+      expect(await page.evaluate(() => document.activeElement instanceof HTMLElement), route).toBe(true);
+    }
+  });
+
+  test("admin login form can be operated without a pointer", async ({ page }) => {
+    await page.goto("/admin/login");
+    await page.keyboard.press("Tab");
+    await expect(page.locator("#admin-login-email")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.locator("#admin-login-password")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("button", { name: "Iniciar sesión" })).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.locator("#admin-login-password")).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.locator("#admin-login-email")).toBeFocused();
+    expect(await page.locator("#admin-login-email").getAttribute("required")).not.toBeNull();
+  });
+
+  test("critical storefront pages reflow without horizontal document overflow", async ({ page }) => {
+    for (const route of ["/", "/catalog", "/iphone/iphone-17-pro-max", "/cart", "/checkout"]) {
+      await page.goto(route);
+      for (const width of [640, 320]) {
+        await page.setViewportSize({ width, height: 900 });
+        const dimensions = await page.evaluate(() => ({
+          document: document.documentElement.scrollWidth,
+          body: document.body.scrollWidth,
+        }));
+        expect(dimensions.document, `${route} document at ${width}px`).toBeLessThanOrEqual(width + 1);
+        expect(dimensions.body, `${route} body at ${width}px`).toBeLessThanOrEqual(width + 1);
+      }
+    }
+  });
+
+  test("Web Vitals ingestion validates an allowlisted field metric", async ({ request }) => {
+    const invalid = await request.post("/api/analytics/web-vitals", {
+      data: { metric: "FID", metricId: "pr26-vitals-invalid", value: 12, route: "/", deviceType: "desktop" },
+    });
+    expect(invalid.status()).toBe(400);
+    const accepted = await request.post("/api/analytics/web-vitals", {
+      data: { metric: "LCP", metricId: "pr26-vitals-field-01", value: 2300, route: "/", deviceType: "desktop" },
+    });
+    expect(accepted.status()).toBe(202);
+    expect(await accepted.json()).toMatchObject({ accepted: true });
+  });
+
+  test("Web Vitals aggregate report is not public", async ({ request }) => {
+    const response = await request.get("/api/admin/analytics/web-vitals?days=28");
+    expect(response.status()).toBe(401);
+  });
+
   test("step-up endpoint rejects missing admin sessions before evaluating credentials", async ({
     request,
   }) => {

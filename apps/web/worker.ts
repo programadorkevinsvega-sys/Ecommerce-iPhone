@@ -17,6 +17,7 @@ import {
 import { seoManagementApplication } from "./lib/seoApplication";
 import { D1ReservationRepository } from "../../modules/orders/infrastructure/D1ReservationRepository";
 import { analyticsPersistence } from "../../modules/analytics/infrastructure/analyticsComposition";
+import { D1WebVitalsRepository } from "../../modules/analytics/infrastructure/D1WebVitalsRepository";
 import { revenueAnalyticsApp } from "./lib/analyticsApplication";
 import type { AnalyticsEvent } from "../../modules/analytics/domain/AnalyticsEvent";
 import { NotificationTerminalError } from "../../modules/notifications/application/NotificationProcessingError";
@@ -444,6 +445,7 @@ const worker = {
       const now = new Date().toISOString();
       await processMediaCleanup(env);
       await analyticsPersistence(env.DB).purgeExpired(500);
+      await new D1WebVitalsRepository(env.DB).purgeExpired(500);
       await revenueAnalyticsApp(env).reconcile(500);
       await recordAbandonedCarts(env);
       await env.DB.batch([

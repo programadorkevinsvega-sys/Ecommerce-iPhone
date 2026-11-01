@@ -76,3 +76,12 @@ La implementación de Fase 2 puede considerarse cuantitativamente instrumentada 
 5. workflow para medir producción.
 
 La **medición de TTFB/DOMContentLoaded/load de producción debe ejecutarse desde GitHub Actions o una máquina con acceso de red al dominio**. Este entorno de trabajo no pudo resolver directamente el hostname de Cloudflare, por lo que no se inventan valores de latencia.
+
+
+## Core Web Vitals de campo y laboratorio
+
+La instrumentación RUM usa `useReportWebVitals` para LCP, INP y CLS y envía datos mínimos a `POST /api/analytics/web-vitals`. El endpoint valida el esquema, limita frecuencia y persiste en una tabla D1 dedicada con retención de 180 días. Los p75, distribuciones por rating y tendencias se consultan mediante un endpoint administrativo con permiso `audit:read`.
+
+La evidencia de campo de producción solo estará disponible después de aplicar la migración 0046 mediante el despliegue de Cloudflare y recibir visitas reales. Ninguna medición de laboratorio o E2E debe etiquetarse como muestra RUM.
+
+El workflow `Storefront Lighthouse baseline` ejecuta tres recorridos de laboratorio para cada ruta crítica y publica los informes como artefacto CI. La primera ejecución medirá la baseline del runner; no se fija un presupuesto duro arbitrario antes de revisar esos resultados.

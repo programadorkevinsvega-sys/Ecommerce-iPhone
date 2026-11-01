@@ -1,0 +1,17 @@
+{
+  "ci": {
+    "collect": {
+      "url": [
+        "http://127.0.0.1:8787/",
+        "http://127.0.0.1:8787/catalog",
+        "http://127.0.0.1:8787/iphone/iphone-17-pro-max",
+        "http://127.0.0.1:8787/cart",
+        "http://127.0.0.1:8787/checkout",
+        "http://127.0.0.1:8787/admin/login"
+      ],
+      "numberOfRuns": 3,
+      "settings": { "chromeFlags": "--no-sandbox --headless" }
+    },
+    "upload": { "target": "filesystem", "outputDir": ".lighthouseci" }
+  }
+}
