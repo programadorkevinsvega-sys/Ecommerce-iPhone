@@ -74,14 +74,14 @@ This is a focused automated regression suite, not a claim of WCAG 2.2 AA certifi
 
 The scheduled production smoke runs every six hours and measures TTFB, DOMContentLoaded, load, LCP, CLS and Event Timing interaction samples. Current thresholds include:
 
-| Metric                        | Threshold |
-| ----------------------------- | --------: |
-| TTFB                          | 800 ms    |
-| DOMContentLoaded              | 2,500 ms  |
-| Load event                    | 4,000 ms  |
-| LCP                           | 2,500 ms  |
-| CLS                           | 0.1       |
-| Event Timing interaction P98  | 200 ms    |
+| Metric                       | Threshold |
+| ---------------------------- | --------: |
+| TTFB                         |    800 ms |
+| DOMContentLoaded             |  2,500 ms |
+| Load event                   |  4,000 ms |
+| LCP                          |  2,500 ms |
+| CLS                          |       0.1 |
+| Event Timing interaction P98 |    200 ms |
 
 The interaction percentile is a lab sample, not field INP. Missing measurements remain inconclusive. Cloudflare edge challenges are classified as inconclusive instead of being reported as storefront failures or passes. No improvement or Core Web Vitals pass is claimed without reproducible production/field measurements.
 
