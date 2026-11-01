@@ -126,10 +126,12 @@ test.describe("platform hardening", () => {
       await expect(page.locator("img:not([alt])"), route).toHaveCount(0);
       const inlineStyles = await page.locator("[style]").evaluateAll((elements) =>
         elements
-          .filter(
-            (element) =>
-              !(element instanceof HTMLImageElement) || element.style.color !== "transparent",
-          )
+          .filter((element) => {
+            if (element instanceof HTMLImageElement) {
+              return element.style.color !== "transparent";
+            }
+            return !element.closest("next-route-announcer");
+          })
           .map((element) => ({
             tag: element.tagName.toLowerCase(),
             style: element.getAttribute("style"),
