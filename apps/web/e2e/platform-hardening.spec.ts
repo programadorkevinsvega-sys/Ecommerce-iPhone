@@ -92,16 +92,12 @@ test.describe("platform hardening", () => {
       .split(";")
       .find((directive) => directive.trim().startsWith("style-src-attr "));
     expect(styleAttr).toContain("'unsafe-hashes'");
-    expect(styleAttr).toContain(
-      "'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='",
-    );
+    expect(styleAttr).toContain("'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='");
     expect(styleAttr).not.toContain("unsafe-inline");
     expect(cspViolations).toEqual([]);
   });
 
-  test("critical pages expose accessible names and image alternatives", async ({
-    page,
-  }) => {
+  test("critical pages expose accessible names and image alternatives", async ({ page }) => {
     const routes = ["/", "/cart", "/checkout", "/admin/login"];
 
     for (const route of routes) {
