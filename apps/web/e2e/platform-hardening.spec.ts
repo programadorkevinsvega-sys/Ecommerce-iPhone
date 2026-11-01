@@ -99,6 +99,15 @@ test.describe("platform hardening", () => {
 
   test("critical pages expose accessible names and image alternatives", async ({ page }) => {
     const routes = ["/", "/cart", "/checkout", "/admin/login"];
+    const axeViolationsByRoute: Array<{
+      route: string;
+      violations: Array<{
+        id: string;
+        impact: string | null;
+        help: string;
+        targets: string[];
+      }>;
+    }> = [];
 
     for (const route of routes) {
       const response = await page.goto(route);
@@ -218,8 +227,12 @@ test.describe("platform hardening", () => {
           targets: violation.nodes.flatMap((node) => node.target),
         }));
       });
-      expect(axeViolations, `WCAG A/AA violations on ${route}`).toEqual([]);
+      if (axeViolations.length > 0) {
+        axeViolationsByRoute.push({ route, violations: axeViolations });
+      }
     }
+
+    expect(axeViolationsByRoute, "WCAG A/AA violations across critical routes").toEqual([]);
   });
 
   test("the first keyboard focus target has an accessible name", async ({ page }) => {
