@@ -355,7 +355,6 @@ jobs:
           fi
           echo "Both production verifiers passed. Analytics Phase 10.4/10.5 certification evidence is complete."
 
-
   analytics-certification-inconclusive:
     needs: smoke
     if: >-
