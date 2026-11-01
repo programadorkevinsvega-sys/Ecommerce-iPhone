@@ -33,7 +33,12 @@ describe("security response headers", () => {
     expect(styleSrc).toContain("'self'");
     expect(styleSrc).toContain("'nonce-test-nonce'");
     expect(styleSrc).not.toContain("unsafe-inline");
-    expect(buildContentSecurityPolicy("test-nonce")).toContain("style-src-attr 'none'");
+    const styleAttr = buildContentSecurityPolicy("test-nonce")
+      .split(";")
+      .find((value) => value.trim().startsWith("style-src-attr "));
+    expect(styleAttr).toContain("'unsafe-hashes'");
+    expect(styleAttr).toContain("'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='");
+    expect(styleAttr).not.toContain("unsafe-inline");
   });
 
   it("sets no inline allowances in static fallback or nonce policies", () => {
