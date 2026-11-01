@@ -25,7 +25,9 @@ class TestStatement {
 
   run(): { meta: { changes: number; last_row_id: number } } {
     const result = this.db.prepare(this.sql).run(...this.params);
-    return { meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) } };
+    return {
+      meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) },
+    };
   }
 
   descriptor(): BoundStatement {
@@ -84,6 +86,12 @@ export class D1SqliteTestDatabase {
         FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES products(id)
       );
+      CREATE TABLE payment_refund_locks (
+        payment_id TEXT PRIMARY KEY,
+        idempotency_key TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
       CREATE TABLE analytics_events (
         event_id TEXT PRIMARY KEY, event_type TEXT NOT NULL, event_version INTEGER NOT NULL,
         occurred_at TEXT NOT NULL, received_at TEXT NOT NULL, session_id TEXT NOT NULL,
@@ -97,7 +105,9 @@ export class D1SqliteTestDatabase {
     return new TestStatement(this.db, sql);
   }
 
-  batch(statements: TestStatement[]): readonly { meta: { changes: number; last_row_id: number } }[] {
+  batch(
+    statements: TestStatement[],
+  ): readonly { meta: { changes: number; last_row_id: number } }[] {
     this.db.exec("BEGIN IMMEDIATE");
     try {
       const results = statements.map((statement) => this.execute(statement.descriptor()));
@@ -131,6 +141,8 @@ export class D1SqliteTestDatabase {
 
   private execute(statement: BoundStatement): { meta: { changes: number; last_row_id: number } } {
     const result = this.db.prepare(statement.sql).run(...statement.params);
-    return { meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) } };
+    return {
+      meta: { changes: Number(result.changes), last_row_id: Number(result.lastInsertRowid) },
+    };
   }
 }

@@ -96,6 +96,67 @@ async function authorizedCartContext() {
   return { id, context };
 }
 
+async function deterministicCartEventId(
+  eventType: "CartItemAdded" | "CartItemRemoved",
+  cartId: string,
+  request: Request,
+  productId: string,
+  variantId?: string,
+): Promise<string> {
+  const operationKey =
+    request.headers.get("Idempotency-Key")?.trim() ||
+    request.headers.get("x-request-id")?.trim() ||
+    crypto.randomUUID();
+  const source = [eventType, cartId, productId, variantId ?? "", operationKey].join("\\u0000");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(source));
+  const fingerprint = Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `cart-${eventType === "CartItemAdded" ? "added" : "removed"}:${fingerprint}`;
+}
+
+function publishCartAnalytics(
+  eventType: "CartItemAdded" | "CartItemRemoved",
+  cartId: string,
+  request: Request,
+  analytics: Readonly<{ sessionId: string; visitorId: string }>,
+  payload: Readonly<Record<string, string | number | boolean | null>>,
+  operation: string,
+): Promise<void> {
+  let eventId: string | undefined;
+  const requestId = request.headers.get("x-request-id")?.trim() || undefined;
+  return deterministicCartEventId(
+    eventType,
+    cartId,
+    request,
+    String(payload.productId),
+    typeof payload.variantId === "string" ? payload.variantId : undefined,
+  )
+    .then((id) => {
+      eventId = id;
+      return analyticsApp(cloudflareEnv()).record({
+        eventId: id,
+        eventType,
+        source: "server",
+        occurredAt: new Date().toISOString(),
+        sessionId: analytics.sessionId,
+        visitorId: analytics.visitorId,
+        requestId,
+        payload,
+      });
+    })
+    .catch((error: unknown) => {
+      logServerError(operation, error, {
+        component: "analytics",
+        eventId,
+        eventType,
+        requestId,
+        cartId,
+        outcome: "failed",
+      });
+    });
+}
+
 export async function GET(request: Request) {
   try {
     const { id, context } = await authorizedCartContext();
@@ -132,33 +193,42 @@ export async function POST(request: Request) {
     if (!body.productId || body.quantity === undefined)
       return NextResponse.json({ error: VALIDATION_ERROR }, { status: 422 });
     const { id, context } = await authorizedCartContext();
-    const result = await context.cart.addItem({
+    const mutation = await context.cart.addItemWithMutation({
       cartId: id,
       productId: body.productId,
       quantity: body.quantity,
       ...(body.variantId ? { variantId: body.variantId } : {}),
     });
     const analytics = ensureAnalyticsContext(request);
-    cloudflareWaitUntil(
-      analyticsApp(cloudflareEnv())
-        .record({
-          eventId: crypto.randomUUID(),
-          eventType: "CartItemAdded",
-          source: "server",
-          occurredAt: new Date().toISOString(),
-          sessionId: analytics.sessionId,
-          visitorId: analytics.visitorId,
-          requestId: request.headers.get("x-request-id")?.trim() || undefined,
-          payload: {
+    if (mutation.changed) {
+      cloudflareWaitUntil(
+        publishCartAnalytics(
+          "CartItemAdded",
+          id,
+          request,
+          analytics,
+          {
+            cartId: id,
             productId: body.productId,
             quantity: body.quantity,
             ...(body.variantId ? { variantId: body.variantId } : {}),
           },
-        })
-        .catch(() => undefined),
-    );
-    const response = NextResponse.json(result, { headers: { "cache-control": "no-store" } });
+          "analytics.cart_item_added",
+        ),
+      );
+    }
+    const response = NextResponse.json(mutation.cart, { headers: { "cache-control": "no-store" } });
     if (!(await cookies()).get("cart_id")) setCartCookie(response, id);
+    if (analytics.setCookies) {
+      response.headers.append(
+        "Set-Cookie",
+        analyticsSetCookie(ANALYTICS_VISITOR_COOKIE, analytics.visitorId, 31536000),
+      );
+      response.headers.append(
+        "Set-Cookie",
+        analyticsSetCookie(ANALYTICS_SESSION_COOKIE, analytics.sessionId, 1800),
+      );
+    }
     return response;
   } catch (error) {
     logServerError("cart.add_item", error, {
@@ -174,30 +244,29 @@ export async function DELETE(request: Request) {
     const body = (await request.json()) as { productId?: string; variantId?: string };
     if (!body.productId) return NextResponse.json({ error: VALIDATION_ERROR }, { status: 422 });
     const { id, context } = await authorizedCartContext();
-    const result = await context.cart.removeItem({
+    const mutation = await context.cart.removeItemWithMutation({
       cartId: id,
       productId: body.productId,
       ...(body.variantId ? { variantId: body.variantId } : {}),
     });
     const analytics = ensureAnalyticsContext(request);
-    cloudflareWaitUntil(
-      analyticsApp(cloudflareEnv())
-        .record({
-          eventId: crypto.randomUUID(),
-          eventType: "CartItemRemoved",
-          source: "server",
-          occurredAt: new Date().toISOString(),
-          sessionId: analytics.sessionId,
-          visitorId: analytics.visitorId,
-          requestId: request.headers.get("x-request-id")?.trim() || undefined,
-          payload: {
+    if (mutation.changed) {
+      cloudflareWaitUntil(
+        publishCartAnalytics(
+          "CartItemRemoved",
+          id,
+          request,
+          analytics,
+          {
+            cartId: id,
             productId: body.productId,
             ...(body.variantId ? { variantId: body.variantId } : {}),
           },
-        })
-        .catch(() => undefined),
-    );
-    const response = NextResponse.json(result, { headers: { "cache-control": "no-store" } });
+          "analytics.cart_item_removed",
+        ),
+      );
+    }
+    const response = NextResponse.json(mutation.cart, { headers: { "cache-control": "no-store" } });
     if (analytics.setCookies) {
       response.headers.append(
         "Set-Cookie",

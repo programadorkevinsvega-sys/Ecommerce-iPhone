@@ -45,7 +45,7 @@ describe("AnalyticsService", () => {
 
   it("exposes only non-privileged events through the browser contract", () => {
     expect(isClientAnalyticsEventType("ProductViewed")).toBe(true);
-    expect(isClientAnalyticsEventType("ShippingMethodSelected")).toBe(true);
+    expect(isClientAnalyticsEventType("ShippingMethodSelected")).toBe(false);
 
     for (const eventType of SERVER_OWNED_ANALYTICS_EVENT_TYPES) {
       expect(isClientAnalyticsEventType(eventType)).toBe(false);

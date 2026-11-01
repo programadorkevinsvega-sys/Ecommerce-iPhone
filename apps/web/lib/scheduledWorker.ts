@@ -113,30 +113,44 @@ async function cleanupMediaKey(
 
 async function recordAbandonedCarts(env: CloudflareEnv): Promise<void> {
   const rows = await env.DB.prepare(
-    "SELECT c.id,c.updated_at,COUNT(ci.product_id) AS item_count FROM carts c INNER JOIN cart_items ci ON ci.cart_id=c.id WHERE c.updated_at<=datetime('now','-30 minutes') GROUP BY c.id,c.updated_at LIMIT 200",
+    `SELECT c.id,c.updated_at,COUNT(ci.product_id) AS item_count
+     FROM carts c
+     INNER JOIN cart_items ci ON ci.cart_id=c.id
+     WHERE c.updated_at<=datetime('now','-30 minutes')
+       AND NOT EXISTS (
+         SELECT 1 FROM analytics_events ae
+         WHERE ae.event_id='cart-abandoned:' || c.id || ':' || replace(replace(c.updated_at,' ','T'),':','-')
+       )
+     GROUP BY c.id,c.updated_at
+     ORDER BY c.updated_at ASC,c.id ASC
+     LIMIT 200`,
   ).all<{ id: string; updated_at: string; item_count: number }>();
 
   const analytics = analyticsPersistence(env.DB);
   for (const row of rows.results) {
     const occurredAt = new Date(row.updated_at).toISOString();
-    await analytics.record({
-      eventId: `cart-abandoned:${row.id}:${row.updated_at}`,
-      eventType: "CartAbandoned",
-      occurredAt,
-      receivedAt: new Date().toISOString(),
-      sessionId: `cart:${row.id}`,
-      visitorId: `cart:${row.id}`,
-      source: "server",
-      eventVersion: 1,
-      payload: {
-        cartId: row.id,
-        itemCount: Number(row.item_count),
-        abandonmentMinutes: Math.max(
-          30,
-          Math.floor((Date.now() - new Date(row.updated_at).getTime()) / 60000),
-        ),
+    await analytics.recordAbandonedCartIfStillEligible(
+      {
+        eventId: `cart-abandoned:${row.id}:${row.updated_at.replace(" ", "T").replaceAll(":", "-")}`,
+        eventType: "CartAbandoned",
+        occurredAt,
+        receivedAt: new Date().toISOString(),
+        sessionId: `cart:${row.id}`,
+        visitorId: `cart:${row.id}`,
+        source: "server",
+        eventVersion: 1,
+        payload: {
+          cartId: row.id,
+          itemCount: Number(row.item_count),
+          abandonmentMinutes: Math.max(
+            30,
+            Math.floor((Date.now() - new Date(row.updated_at).getTime()) / 60000),
+          ),
+        },
       },
-    });
+      row.id,
+      row.updated_at,
+    );
   }
 }
 
