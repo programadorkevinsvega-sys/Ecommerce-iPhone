@@ -74,7 +74,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          report_count="$(find lighthouseci -maxdepth 1 -type f -name 'lhr-*.json' | wc -l | tr -d ' ')"
+          report_count="$(find lighthouseci -maxdepth 1 -type f -name '*.report.json' | wc -l | tr -d ' ')"
           if [[ "$report_count" -ne 18 ]]; then
             echo "::error::Expected 18 Lighthouse JSON reports (3 runs across 6 routes), found $report_count."
             find lighthouseci -maxdepth 1 -type f -print 2>/dev/null || true
