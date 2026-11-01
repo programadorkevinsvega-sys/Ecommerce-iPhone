@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 import { D1RevenueAnalyticsRepository } from "./D1RevenueAnalyticsRepository";
 import { D1SqliteTestDatabase } from "../../shared-kernel/testing/D1SqliteTestDatabase";
 
+function createPaymentTables(database: D1SqliteTestDatabase) {
+  database.exec(
+    "CREATE TABLE payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, customer_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+  );
+  database.exec(
+    "CREATE TABLE payment_ledger (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, entry_type TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
+  );
+  database.exec(
+    "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
+  );
+}
+
 function insertPayment(
   database: D1SqliteTestDatabase,
   paymentId: string,
@@ -43,12 +55,57 @@ function insertPayment(
     currency,
   );
   database.exec(
-    "INSERT INTO payment_ledger (id, payment_id, entry_type, amount_in_cents, currency, created_at) VALUES (?, ?, 'PAYMENT_CONFIRMED', ?, ?, ?)",
+    "INSERT INTO payment_ledger (id,payment_id,entry_type,amount_in_cents,currency,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)",
     ledgerId,
     paymentId,
+    "PAYMENT_CONFIRMED",
     amount,
     currency,
+    "{}",
     "2026-09-15 12:01:00",
+  );
+}
+
+function insertConfirmedRefund(
+  database: D1SqliteTestDatabase,
+  input: Readonly<{
+    paymentId: string;
+    orderId: string;
+    amountInCents: number;
+    currency: string;
+    refundId: string;
+    providerRefundId: string;
+    ledgerId: string;
+    occurredAt?: string;
+  }>,
+) {
+  const occurredAt = input.occurredAt ?? "2026-09-16 12:01:00";
+  database.exec("UPDATE payments SET status='REFUNDED' WHERE id=?", input.paymentId);
+  database.exec("UPDATE orders SET status='REFUNDED' WHERE id=?", input.orderId);
+  database.exec(
+    "INSERT INTO payment_refunds (id,payment_id,idempotency_key,provider_refund_id,status,amount_in_cents,currency,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
+    input.refundId,
+    input.paymentId,
+    `key-${input.refundId}`,
+    input.providerRefundId,
+    "SUCCEEDED",
+    input.amountInCents,
+    input.currency,
+    occurredAt,
+    occurredAt,
+  );
+  database.exec(
+    "INSERT INTO payment_ledger (id,payment_id,entry_type,amount_in_cents,currency,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)",
+    input.ledgerId,
+    input.paymentId,
+    "PAYMENT_REFUNDED",
+    input.amountInCents,
+    input.currency,
+    JSON.stringify({
+      providerRefundId: input.providerRefundId,
+      idempotencyKey: `key-${input.refundId}`,
+    }),
+    occurredAt,
   );
 }
 
@@ -60,7 +117,7 @@ function insertAnalyticsEvent(
   payload: Record<string, unknown>,
 ) {
   database.exec(
-    "INSERT INTO analytics_events (event_id, event_type, event_version, occurred_at, received_at, session_id, visitor_id, request_id, source, payload_json, expires_at) VALUES (?, ?, 1, ?, ?, ?, ?, NULL, ?, ?, ?)",
+    "INSERT INTO analytics_events (event_id,event_type,event_version,occurred_at,received_at,session_id,visitor_id,request_id,source,payload_json,expires_at) VALUES (?,?,1,?,?,?, ?,NULL,?,?,?)",
     eventId,
     eventType,
     "2026-09-15T12:00:00.000Z",
@@ -74,44 +131,20 @@ function insertAnalyticsEvent(
 }
 
 describe("D1RevenueAnalyticsRepository", () => {
-  it("uses canonical server events for conversion and matches ledger amounts", async () => {
+  it("uses canonical server events for conversion and reconciles a provider-confirmed full refund", async () => {
     const database = new D1SqliteTestDatabase();
     try {
-      database.exec(
-        "CREATE TABLE payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, customer_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-      );
-      database.exec(
-        "CREATE TABLE payment_ledger (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, entry_type TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
-      );
-      partialDatabase.exec(
-        "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
-      );
+      createPaymentTables(database);
       insertPayment(database, "payment-1", "order-1", "COP", "ledger-sale-1", 10000);
-      database.exec(
-        "INSERT INTO payment_refunds (id,payment_id,idempotency_key,provider_refund_id,status,amount_in_cents,currency,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
-        "refund-1",
-        "payment-1",
-        "refund-key-1",
-        "provider-refund-1",
-        "SUCCEEDED",
-        10000,
-        "COP",
-        "2026-09-16 12:00:00",
-        "2026-09-16 12:00:00",
-      );
-      database.exec(
-        "INSERT INTO payment_ledger (id,payment_id,entry_type,amount_in_cents,currency,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)",
-        "ledger-refund-1",
-        "payment-1",
-        "PAYMENT_REFUNDED",
-        10000,
-        "COP",
-        JSON.stringify({ providerRefundId: "provider-refund-1", idempotencyKey: "refund-key-1" }),
-        "2026-09-16 12:01:00",
-      );
-
-      database.exec("UPDATE payments SET status='REFUNDED' WHERE id=?", "payment-1");
-      database.exec("UPDATE orders SET status='REFUNDED' WHERE id=?", "order-1");
+      insertConfirmedRefund(database, {
+        paymentId: "payment-1",
+        orderId: "order-1",
+        amountInCents: 10000,
+        currency: "COP",
+        refundId: "refund-1",
+        providerRefundId: "provider-refund-1",
+        ledgerId: "ledger-refund-1",
+      });
 
       insertAnalyticsEvent(database, "forged-checkout-1", "CheckoutStarted", "web", {
         orderId: "forged-order",
@@ -162,15 +195,7 @@ describe("D1RevenueAnalyticsRepository", () => {
   it("never adds monetary amounts across different currencies", async () => {
     const database = new D1SqliteTestDatabase();
     try {
-      database.exec(
-        "CREATE TABLE payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, customer_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-      );
-      database.exec(
-        "CREATE TABLE payment_ledger (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, entry_type TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
-      );
-      missingRefundDatabase.exec(
-        "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
-      );
+      createPaymentTables(database);
       insertPayment(database, "payment-cop", "order-cop", "COP", "ledger-cop", 100000);
       insertPayment(database, "payment-usd", "order-usd", "USD", "ledger-usd", 2500);
 
@@ -210,24 +235,18 @@ describe("D1RevenueAnalyticsRepository", () => {
   it("fails reconciliation selection instead of silently skipping orphan ledger entries", async () => {
     const database = new D1SqliteTestDatabase();
     try {
+      createPaymentTables(database);
       database.exec(
-        "CREATE TABLE payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, customer_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-      );
-      database.exec(
-        "CREATE TABLE payment_ledger (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, entry_type TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
-      );
-      database.exec(
-        "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
-      );
-      database.exec(
-        "INSERT INTO payment_ledger (id, payment_id, entry_type, amount_in_cents, currency, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO payment_ledger (id,payment_id,entry_type,amount_in_cents,currency,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)",
         "orphan-ledger",
         "missing-payment",
         "PAYMENT_CONFIRMED",
         500,
         "COP",
-        "2026-09-15T12:00:00.000Z",
+        "{}",
+        "2026-09-15 12:00:00",
       );
+
       const repository = new D1RevenueAnalyticsRepository(database.asD1());
       await expect(repository.pendingRevenueEntries(50)).rejects.toThrow(
         "PAYMENT_LEDGER_INTEGRITY_MISMATCH",
@@ -236,18 +255,11 @@ describe("D1RevenueAnalyticsRepository", () => {
       database.close();
     }
   });
+
   it("rejects unsupported partial refunds and refunded payments without a matching ledger entry", async () => {
     const partialDatabase = new D1SqliteTestDatabase();
     try {
-      partialDatabase.exec(
-        "CREATE TABLE payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, customer_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-      );
-      partialDatabase.exec(
-        "CREATE TABLE payment_ledger (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, entry_type TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
-      );
-      database.exec(
-        "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
-      );
+      createPaymentTables(partialDatabase);
       insertPayment(
         partialDatabase,
         "payment-partial",
@@ -256,33 +268,16 @@ describe("D1RevenueAnalyticsRepository", () => {
         "ledger-sale-partial",
         10000,
       );
-      partialDatabase.exec("UPDATE payments SET status='REFUNDED' WHERE id=?", "payment-partial");
-      partialDatabase.exec("UPDATE orders SET status='REFUNDED' WHERE id=?", "order-partial");
-      partialDatabase.exec(
-        "INSERT INTO payment_refunds (id,payment_id,idempotency_key,provider_refund_id,status,amount_in_cents,currency,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)",
-        "refund-partial",
-        "payment-partial",
-        "refund-key-partial",
-        "provider-refund-partial",
-        "SUCCEEDED",
-        5000,
-        "COP",
-        "2026-09-16 12:00:00",
-        "2026-09-16 12:00:00",
-      );
-      partialDatabase.exec(
-        "INSERT INTO payment_ledger (id,payment_id,entry_type,amount_in_cents,currency,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)",
-        "ledger-refund-partial",
-        "payment-partial",
-        "PAYMENT_REFUNDED",
-        5000,
-        "COP",
-        JSON.stringify({
-          providerRefundId: "provider-refund-partial",
-          idempotencyKey: "refund-key-partial",
-        }),
-        "2026-09-16 12:01:00",
-      );
+      insertConfirmedRefund(partialDatabase, {
+        paymentId: "payment-partial",
+        orderId: "order-partial",
+        amountInCents: 5000,
+        currency: "COP",
+        refundId: "refund-partial",
+        providerRefundId: "provider-refund-partial",
+        ledgerId: "ledger-refund-partial",
+      });
+
       const repository = new D1RevenueAnalyticsRepository(partialDatabase.asD1());
       await expect(repository.pendingRevenueEntries(50)).rejects.toThrow(
         "PAYMENT_LEDGER_INTEGRITY_MISMATCH",
@@ -293,15 +288,7 @@ describe("D1RevenueAnalyticsRepository", () => {
 
     const missingRefundDatabase = new D1SqliteTestDatabase();
     try {
-      missingRefundDatabase.exec(
-        "CREATE TABLE payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, customer_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-      );
-      missingRefundDatabase.exec(
-        "CREATE TABLE payment_ledger (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, entry_type TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
-      );
-      database.exec(
-        "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
-      );
+      createPaymentTables(missingRefundDatabase);
       insertPayment(
         missingRefundDatabase,
         "payment-missing-refund",
@@ -318,6 +305,7 @@ describe("D1RevenueAnalyticsRepository", () => {
         "UPDATE orders SET status='REFUNDED' WHERE id=?",
         "order-missing-refund",
       );
+
       const repository = new D1RevenueAnalyticsRepository(missingRefundDatabase.asD1());
       await expect(repository.pendingRevenueEntries(50)).rejects.toThrow(
         "PAYMENT_LEDGER_INTEGRITY_MISMATCH",
@@ -330,15 +318,7 @@ describe("D1RevenueAnalyticsRepository", () => {
   it("does not classify an in-flight succeeded refund as an orphan while its refund lock is held", async () => {
     const database = new D1SqliteTestDatabase();
     try {
-      database.exec(
-        "CREATE TABLE payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, customer_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-      );
-      database.exec(
-        "CREATE TABLE payment_ledger (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, entry_type TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
-      );
-      database.exec(
-        "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
-      );
+      createPaymentTables(database);
       insertPayment(
         database,
         "payment-in-flight-refund",
@@ -375,15 +355,7 @@ describe("D1RevenueAnalyticsRepository", () => {
   it("allows a recent paid transition to finish its ledger write but rejects a stale missing confirmation", async () => {
     const database = new D1SqliteTestDatabase();
     try {
-      database.exec(
-        "CREATE TABLE payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, customer_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-      );
-      database.exec(
-        "CREATE TABLE payment_ledger (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, entry_type TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
-      );
-      database.exec(
-        "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
-      );
+      createPaymentTables(database);
       insertPayment(
         database,
         "payment-recent-transition",
@@ -392,7 +364,10 @@ describe("D1RevenueAnalyticsRepository", () => {
         "ledger-sale-recent-transition",
         10000,
       );
-      database.exec("DELETE FROM payment_ledger WHERE payment_id=?", "payment-recent-transition");
+      database.exec(
+        "DELETE FROM payment_ledger WHERE payment_id=?",
+        "payment-recent-transition",
+      );
 
       const repository = new D1RevenueAnalyticsRepository(database.asD1());
       await expect(repository.pendingRevenueEntries(50)).resolves.toHaveLength(0);
@@ -412,15 +387,7 @@ describe("D1RevenueAnalyticsRepository", () => {
   it("rejects an existing RevenueRecorded event whose payload differs from its ledger row", async () => {
     const database = new D1SqliteTestDatabase();
     try {
-      database.exec(
-        "CREATE TABLE payments (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, customer_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-      );
-      database.exec(
-        "CREATE TABLE payment_ledger (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, entry_type TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, metadata_json TEXT NOT NULL DEFAULT '{}', created_at TEXT NOT NULL)",
-      );
-      database.exec(
-        "CREATE TABLE payment_refunds (id TEXT PRIMARY KEY, payment_id TEXT NOT NULL, idempotency_key TEXT NOT NULL, provider_refund_id TEXT NOT NULL, status TEXT NOT NULL, amount_in_cents INTEGER NOT NULL, currency TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)",
-      );
+      createPaymentTables(database);
       insertPayment(
         database,
         "payment-projection",
@@ -429,16 +396,22 @@ describe("D1RevenueAnalyticsRepository", () => {
         "ledger-projection",
         10000,
       );
-      insertAnalyticsEvent(database, "revenue:ledger-projection", "RevenueRecorded", "server", {
-        ledgerId: "ledger-projection",
-        paymentId: "payment-projection",
-        orderId: "order-projection",
-        entryType: "PAYMENT_CONFIRMED",
-        revenueDirection: "CREDIT",
-        amountInCents: 9000,
-        netAmountInCents: 9000,
-        currency: "COP",
-      });
+      insertAnalyticsEvent(
+        database,
+        "revenue:ledger-projection",
+        "RevenueRecorded",
+        "server",
+        {
+          ledgerId: "ledger-projection",
+          paymentId: "payment-projection",
+          orderId: "order-projection",
+          entryType: "PAYMENT_CONFIRMED",
+          revenueDirection: "CREDIT",
+          amountInCents: 9000,
+          netAmountInCents: 9000,
+          currency: "COP",
+        },
+      );
 
       const repository = new D1RevenueAnalyticsRepository(database.asD1());
       await expect(repository.pendingRevenueEntries(50)).rejects.toThrow(
