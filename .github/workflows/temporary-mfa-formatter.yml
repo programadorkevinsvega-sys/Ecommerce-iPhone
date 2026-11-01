@@ -1,0 +1,52 @@
+name: Temporary MFA formatter
+
+on:
+  push:
+    branches:
+      - chore/production-hardening
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.4.1
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - name: Install formatting toolchain
+        run: pnpm install --frozen-lockfile
+      - name: Format and verify MFA files
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            "apps/web/app/admin/AdminSidebar.tsx"
+            "apps/web/app/admin/AdminStepUpDialog.tsx"
+            "modules/admin/application/AdminMfaCrypto.ts"
+            "apps/web/lib/adminMfa.ts"
+          )
+          pnpm exec prettier --write "${files[@]}"
+          pnpm exec prettier --check "${files[@]}"
+          if git diff --quiet; then
+            echo "MFA files already formatted."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "${files[@]}"
+          git commit -m "chore: format MFA TypeScript changes"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
