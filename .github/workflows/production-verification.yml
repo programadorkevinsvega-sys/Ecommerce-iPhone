@@ -23,7 +23,9 @@ permissions:
   checks: read
 
 concurrency:
-  group: production-verification-${{ github.event.check_run.head_sha || github.sha }}
+  # Serialize all production probes/certifications. Scheduled smoke checks are
+  # read-only and use a separate lane from manual/deployment deep checks.
+  group: production-verification-${{ github.event_name == 'schedule' && 'scheduled-smoke' || 'deep-production' }}
   cancel-in-progress: false
 
 env:
@@ -113,6 +115,7 @@ jobs:
   # Manual deep verification remains available for the full Phase 10.2–10.5 set.
   deep-production:
     needs: smoke
+    environment: production
     if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.run_deep_checks && needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -170,6 +173,7 @@ jobs:
         needs.smoke.outputs.production_health_verified == 'true' }}
     name: Analytics Phase 10.4/10.5 production certification
     runs-on: ubuntu-latest
+    environment: production
     timeout-minutes: 45
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
