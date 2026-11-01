@@ -126,7 +126,15 @@ export async function clearAdminSession() {
     path: "/",
     expires: new Date(0),
   });
-  store.set(ADMIN_MFA_CHALLENGE_COOKIE, "", {\n    httpOnly: true,\n    secure: true,\n    sameSite: "strict",\n    path: "/api/admin/auth/mfa",\n    expires: new Date(0),\n    maxAge: 0,\n  });\n  store.set(ADMIN_STEP_UP_COOKIE, "", {
+  store.set(ADMIN_MFA_CHALLENGE_COOKIE, "", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict",
+    path: "/api/admin/auth/mfa",
+    expires: new Date(0),
+    maxAge: 0,
+  });
+  store.set(ADMIN_STEP_UP_COOKIE, "", {
     httpOnly: true,
     secure: true,
     sameSite: "strict",
