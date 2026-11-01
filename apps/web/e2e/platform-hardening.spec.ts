@@ -38,7 +38,16 @@ test.describe("platform hardening", () => {
     expect(response.headers()["x-request-id"]).toBe(requestId);
   });
 
-  test("HTML responses carry a per-request nonce used by Next inline scripts", async ({ page }) => {
+  test("HTML responses carry nonces and produce no CSP violations in Next.js", async ({ page }) => {
+    const cspViolations: string[] = [];
+    page.on("console", (message) => {
+      if (
+        message.type() === "error" &&
+        message.text().includes("violates the following Content Security Policy directive")
+      ) {
+        cspViolations.push(message.text());
+      }
+    });
     const response = await page.goto("/");
     expect(response?.ok()).toBe(true);
     const policy = response?.headers()["content-security-policy"] ?? "";
@@ -78,6 +87,14 @@ test.describe("platform hardening", () => {
       .locator("style")
       .evaluateAll((styles) => styles.map((style) => (style as HTMLStyleElement).nonce));
     expect(styleNonces.every((value) => value === nonce)).toBe(true);
+
+    const styleAttr = policy
+      .split(";")
+      .find((directive) => directive.trim().startsWith("style-src-attr "));
+    expect(styleAttr).toContain("'unsafe-hashes'");
+    expect(styleAttr).toContain("'sha256-zlqnbDt84zf1iSefLU/ImC54isoprH/MRiVZGskwexk='");
+    expect(styleAttr).not.toContain("unsafe-inline");
+    expect(cspViolations).toEqual([]);
   });
 
   test("critical storefront and admin entry pages expose accessible names and image alternatives", async ({
