@@ -40,7 +40,7 @@ export class D1CartRepository {
     if (result.meta.changes !== 1) throw new Error("Cart belongs to another customer");
   }
 
-  async upsertItem(cartId: string, productId: string, quantity: number, variantId?: string): Promise<void> {
+  async upsertItem(cartId: string, productId: string, quantity: number, variantId?: string): Promise<boolean> {
     assertCartQuantity(quantity);
     const product = await this.db.prepare("SELECT id,active,stock,price_in_cents FROM products WHERE id=?").bind(productId).first<ProductRow>();
     if (!product || !product.active) throw new Error("Product is unavailable");
@@ -59,16 +59,21 @@ export class D1CartRepository {
     }
 
     const cartItemId = crypto.randomUUID();
-    await this.db
+    const result = await this.db
       .prepare("INSERT INTO cart_items(id,cart_id,product_id,quantity,unit_price_in_cents,variant_id) VALUES(?,?,?,?,?,?) ON CONFLICT DO UPDATE SET quantity=excluded.quantity,unit_price_in_cents=excluded.unit_price_in_cents,variant_id=excluded.variant_id,updated_at=CURRENT_TIMESTAMP WHERE cart_items.cart_id=excluded.cart_id AND cart_items.product_id=excluded.product_id AND COALESCE(cart_items.variant_id,'')=COALESCE(excluded.variant_id,'')")
       .bind(cartItemId, cartId, productId, quantity, price, variantId ?? null)
       .run();
-    await this.touch(cartId);
+
+    const changed = result.meta.changes === 1;
+    if (changed) await this.touch(cartId);
+    return changed;
   }
 
-  async removeItem(cartId: string, productId: string, variantId?: string): Promise<void> {
-    await this.db.prepare("DELETE FROM cart_items WHERE cart_id=? AND product_id=? AND COALESCE(variant_id,'')=COALESCE(?, '')").bind(cartId, productId, variantId ?? null).run();
-    await this.touch(cartId);
+  async removeItem(cartId: string, productId: string, variantId?: string): Promise<boolean> {
+    const result = await this.db.prepare("DELETE FROM cart_items WHERE cart_id=? AND product_id=? AND COALESCE(variant_id,'')=COALESCE(?, '')").bind(cartId, productId, variantId ?? null).run();
+    const changed = result.meta.changes > 0;
+    if (changed) await this.touch(cartId);
+    return changed;
   }
 
   async clear(cartId: string): Promise<void> {

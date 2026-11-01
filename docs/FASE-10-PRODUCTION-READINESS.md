@@ -164,15 +164,15 @@ No se deben generar eventos de compra o revenue sin una operación real confirma
 - `CartItemRemoved` se emite después de una eliminación real y exitosa de `DELETE /api/cart`.
 - `CartAbandoned` se detecta server-side desde el scheduled Worker para carritos con items sin actividad durante al menos 30 minutos; usa un `eventId` determinista para idempotencia.
 - `CheckoutStarted` se emite server-side después de crear realmente una orden `PENDING_PAYMENT`, no desde un clic de frontend.
-- `ShippingMethodSelected` registra la selección real del formulario antes del checkout; no contiene datos financieros.
+- `ShippingMethodSelected` se emite desde el servidor después de persistir una orden con el método canónico validado (`PICKUP` o `DELIVERY`); no se publica desde el navegador ni contiene direcciones o datos personales.
 - `PaymentStarted` se emite server-side después de crear/recuperar correctamente el payment intent, usando importe, moneda, proveedor, order ID y payment ID provenientes del estado server-side.
 - `PurchaseCompleted` se emite desde la confirmación server-side de los webhooks de Wompi, Stripe, Mercado Pago, PayPal y Binance Pay, únicamente cuando payment y order quedan realmente en estado `PAID`.
 - El evento de compra usa `purchase-completed:<paymentId>` como clave idempotente y nunca depende de importe enviado por el navegador.
 - Las operaciones de analytics se envían mediante `waitUntil()` en las rutas HTTP para no añadir la publicación a Queue al camino crítico de checkout/cart/payment; Cloudflare recomienda este patrón para trabajo no crítico como analytics. citeturn6search1turn6search2
 - Se reutiliza `EVENTS_QUEUE` y la idempotencia D1 de 10.2; Cloudflare Queues entrega al menos una vez, por lo que el `eventId` estable evita doble contabilización. citeturn5search0
-- `verify:phase10.4:production` comprueba mutaciones reales de carrito contra un producto publicado, checkout público, protección del endpoint de payment intent, persistencia real de CartItemAdded/CartItemRemoved y la existencia/estado de los eventos server-side de abandono/compra.
+- `verify:phase10.4:production` comprueba add/remove y reintentos idempotentes, consulta Queue → D1, valida checkout y el guard de payment intent, crea un carrito técnico de más de 30 minutos para exigir `CartAbandoned` del Cron real y valida autorización/no-store del reporte administrativo. También inspecciona eventos históricos server-owned de checkout, envío, payment-start y compra.
 
-**Estado:** 🟡 implementación conectada; certificación productiva pendiente de un deploy que pase el gate 10.4.
+**Estado:** 🟡 implementación endurecida en esta rama; CI y certificación productiva pendientes.
 
 ### Regla crítica
 
@@ -192,17 +192,17 @@ Los valores financieros definitivos deben proceder del estado server-side, no de
 - Los voids no generan revenue porque no existe un `PAYMENT_CONFIRMED` válido.
 - Los refunds se proyectan únicamente desde entradas `PAYMENT_REFUNDED` realmente persistidas por el flujo de refund.
 - El Worker ejecuta reconciliación de revenue en el Cron existente de cada minuto; la reconciliación solo proyecta entradas del ledger que todavía no tienen su `RevenueRecorded`.
-- Se implementó reporte por periodo con revenue bruto, refunds, net revenue, pagos confirmados, refunds, `CheckoutStarted`, `PurchaseCompleted`, conversion rate y desglose por moneda.
-- El reporte está protegido por autorización administrativa `dashboardRead` y utiliza `Cache-Control: no-store`.
-- La conversión se define explícitamente como `PurchaseCompleted / CheckoutStarted` para el periodo consultado.
+- Se implementó reporte por periodo con revenue bruto, refunds, net revenue, conteos de pagos/refunds, `CheckoutStarted`, `PurchaseCompleted`, conversión y desglose por moneda. Los importes se agregan dentro de cada moneda; los totales globales quedan nulos cuando el periodo mezcla monedas.
+- El reporte está protegido por autorización administrativa `dashboardRead` y devuelve `Cache-Control: no-store` también en respuestas de error.
+- La conversión se define como `PurchaseCompleted / CheckoutStarted` desde eventos server-owned únicos en la misma ventana UTC; tasas superiores al 100% se advierten por posible desalineación de cohortes.
 - El payload de `RevenueRecorded` no incluye email, teléfono, dirección, tokens, secretos, tarjeta, IMEI o serial.
-- `verify:phase10.5:production` comprueba que el ledger canónico y `RevenueRecorded` coinciden en bruto, refunds, conteos y trazabilidad, además de validar conversión y ausencia de campos sensibles.
+- `verify:phase10.5:production` valida cada entrada elegible contra una sola proyección `RevenueRecorded`, incluyendo IDs ledger/payment/order, tipo, importe, moneda, dirección, duplicados, huérfanos, estado/refund completo, desglose por moneda, conversión y minimización de payload. Es de solo lectura en D1.
 
 ### Criterio
 
 No existe revenue analítico ficticio ni derivado exclusivamente de eventos frontend. La proyección nace de operaciones financieras server-side persistidas en `payment_ledger`.
 
-**Estado:** 🟡 implementación completada; pendiente certificación productiva mediante deploy y `verify:phase10.5:production`.
+**Estado:** 🟡 implementación endurecida en esta rama; CI y certificación productiva pendientes mediante deploy y `verify:phase10.5:production`.
 
 # 5. Observabilidad
 
@@ -1028,3 +1028,38 @@ Antes de cada bloque:
 **Siguiente tarea:** certificar 10.5 en producción.
 
 Las subfases posteriores continúan sin implementar hasta cerrar sus gaps con código, pruebas e integración real.
+
+---
+
+## Addendum — auditoría de integridad Analytics 10.4 / 10.5
+
+### Hallazgos de la revisión de main
+
+| Área | Hallazgo |
+|---|---|
+| CartItemAdded / CartItemRemoved | Las APIs emitían después de las llamadas de mutación, pero el contrato del repositorio no indicaba si D1 había cambiado realmente una fila; un DELETE no-op podía producir un evento falso. |
+| CartAbandoned | El Cron escaneaba siempre los mismos primeros 200 carritos y no revalidaba la actividad ni la existencia de artículos al persistir. |
+| ShippingMethodSelected | El evento podía originarse desde el navegador, aunque la selección válida se conoce en la orden persistida. |
+| RevenueRecorded | El reconciliador podía omitir ledger huérfano por el join interno y no validaba coherencia de importe/moneda contra Payment y Order. |
+| Revenue report | Los totales globales podían sumar monedas distintas y el funnel no se contaba directamente desde la definición oficial de eventos. |
+| Verificación 10.5 | La prueba se apoyaba en agregados y no comparaba cada relación `ledgerId → paymentId → orderId` con su evento. |
+
+### Endurecimiento
+
+- Los repositorios de carrito devuelven si hubo una fila afectada. Solo las mutaciones reales producen `CartItemAdded`/`CartItemRemoved`; el ID es determinista por operación y admite reintentos idempotentes.
+- El scanner de carritos abandonados ordena por antigüedad, omite IDs ya proyectados y la escritura condicional vuelve a verificar el `updated_at`, el umbral de 30 minutos y que aún existan artículos.
+- `ShippingMethodSelected` es server-owned y se publica únicamente después de crear una orden `PENDING_PAYMENT`, usando `order.shippingMethod` persistido. `CheckoutStarted` usa artículos y descuento de la orden persistida.
+- Los errores de publicación de Analytics en cart, shipping, checkout, payment-start y purchase-completed se registran sin cambiar el resultado transaccional de la compra.
+- La reconciliación de revenue compara los movimientos elegibles con Payment y Order, valida moneda e importes y falla ante ledger huérfano, movimiento duplicado, pago confirmado sin asiento o refund incompleto. El detector de pago confirmado sin asiento aplica una ventana de gracia de cinco minutos para no confundir una transición transaccional en curso con corrupción; los locks de refund evitan falsos positivos hasta que la finalización provider-confirmed concluya.
+- El flujo actual solo admite reembolso completo. `PAYMENT_REFUNDED` genera débito cuando la confirmación del proveedor termina y el ledger lo registra; intentos `PENDING`/`FAILED` no son revenue.
+- Los importes y conteos se calculan por moneda. Si un período contiene más de una moneda, los totales monetarios globales son `null` y se debe mostrar el desglose.
+- La conversión usa `PurchaseCompleted / CheckoutStarted` con IDs únicos server-owned dentro de la misma ventana UTC.
+
+### Certificación y límites
+
+- `verify:phase10.4:production` realiza probes de carrito aislados con un producto real, comprueba Queue → D1 y el Cron de abandono y los elimina en `finally`. No crea órdenes, pagos, capturas ni refunds.
+- `verify:phase10.4:production` inspecciona además eventos históricos reales de checkout, envío, payment-start y compra; si falta alguna clase, la salida es `INCONCLUSIVE`, no `PASS`.
+- `verify:phase10.5:production` es de solo lectura en D1 y valida cada asiento contra su proyección, además de monedas, estados, refund completo, duplicados, huérfanos, conversión y minimización de payload.
+- La certificación productiva no se ha ejecutado desde esta sesión porque requiere credenciales y acceso remoto a Wrangler/Cloudflare D1. Los scripts no deben marcarse como PASS por estar implementados o por compilar.
+- Las migraciones remotas permanecen en el mecanismo de despliegue de Cloudflare; CI no debe ejecutar `db:migrate:production`.
+- Issue #10 permanece abierto hasta contar con CI aprobada y evidencia real de producción para ambas subfases.

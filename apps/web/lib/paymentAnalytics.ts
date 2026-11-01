@@ -1,4 +1,5 @@
 import { analyticsApp } from "./analyticsApplication";
+import { logServerError } from "../server/serverLogger";
 import { cloudflareEnv, cloudflareWaitUntil } from "./cloudflareContext";
 import type { ProviderTransaction } from "../../../modules/payments/application/PaymentPorts";
 import type { D1OrderRepository } from "../../../modules/orders/infrastructure/D1OrderRepository";
@@ -15,7 +16,13 @@ export function recordPurchaseCompleted(
   transaction: ProviderTransaction,
 ): void {
   cloudflareWaitUntil(
-    recordPurchaseCompletedNow(repositories, transaction).catch(() => undefined),
+    recordPurchaseCompletedNow(repositories, transaction).catch((error: unknown) => {
+      logServerError("analytics.purchase_completed", error, {
+        component: "analytics",
+        provider: transaction.provider,
+        outcome: "failed",
+      });
+    }),
   );
 }
 

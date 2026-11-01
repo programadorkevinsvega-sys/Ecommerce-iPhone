@@ -11,22 +11,32 @@ export type RevenueLedgerEntry = Readonly<{
   occurredAt: string;
 }>;
 
-export type RevenueReport = Readonly<{
-  period: Readonly<{ from: string; to: string }>;
+export type RevenueCurrencyBreakdown = Readonly<{
+  currency: string;
   grossRevenueInCents: number;
   refundedRevenueInCents: number;
   netRevenueInCents: number;
   confirmedPaymentCount: number;
   refundCount: number;
+}>;
+
+export type RevenueReport = Readonly<{
+  period: Readonly<{ from: string; to: string }>;
+  /**
+   * Top-level amounts are null when the report spans multiple currencies.
+   * Consumers must render currencyBreakdown instead of summing currencies.
+   */
+  grossRevenueInCents: number | null;
+  refundedRevenueInCents: number | null;
+  netRevenueInCents: number | null;
+  financialTotalsCurrency: string | null;
+  confirmedPaymentCount: number;
+  refundCount: number;
   checkoutStartedCount: number;
   purchaseCompletedCount: number;
   conversionRate: number;
-  currencyBreakdown: readonly Readonly<{
-    currency: string;
-    grossRevenueInCents: number;
-    refundedRevenueInCents: number;
-    netRevenueInCents: number;
-  }>[];
+  conversionWarning?: string;
+  currencyBreakdown: readonly RevenueCurrencyBreakdown[];
 }>;
 
 export interface RevenueAnalyticsPort {
@@ -52,7 +62,11 @@ export class RevenueAnalyticsService {
   ) {}
 
   async reconcile(limit = 200): Promise<number> {
-    const entries = await this.source.pendingRevenueEntries(Math.max(1, Math.min(Math.trunc(limit), 500)));
+    const boundedLimit = Number.isFinite(limit)
+      ? Math.max(1, Math.min(Math.trunc(limit), 500))
+      : 200;
+    const entries = await this.source.pendingRevenueEntries(boundedLimit);
+
     for (const entry of entries) {
       const direction = entry.entryType === "PAYMENT_REFUNDED" ? "DEBIT" : "CREDIT";
       await this.analytics.record({
@@ -69,11 +83,13 @@ export class RevenueAnalyticsService {
           entryType: entry.entryType,
           revenueDirection: direction,
           amountInCents: entry.amountInCents,
-          netAmountInCents: direction === "DEBIT" ? -entry.amountInCents : entry.amountInCents,
+          netAmountInCents:
+            direction === "DEBIT" ? -entry.amountInCents : entry.amountInCents,
           currency: entry.currency,
         },
       });
     }
+
     return entries.length;
   }
 

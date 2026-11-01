@@ -56,6 +56,7 @@ describe("RevenueAnalyticsService", () => {
         grossRevenueInCents: 300000,
         refundedRevenueInCents: 50000,
         netRevenueInCents: 250000,
+        financialTotalsCurrency: "COP",
         confirmedPaymentCount: 3,
         refundCount: 1,
         checkoutStartedCount: 10,
@@ -66,6 +67,8 @@ describe("RevenueAnalyticsService", () => {
           grossRevenueInCents: 300000,
           refundedRevenueInCents: 50000,
           netRevenueInCents: 250000,
+          confirmedPaymentCount: 3,
+          refundCount: 1,
         }],
       }),
     };

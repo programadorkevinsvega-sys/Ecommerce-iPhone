@@ -11,6 +11,7 @@ import {
 } from "../../../../lib/analyticsContext";
 import { cloudflareEnv } from "../../../../lib/cloudflareContext";
 import { cloudflareWaitUntil } from "../../../../lib/cloudflareContext";
+import { logServerError } from "../../../../server/serverLogger";
 
 const ERROR_GENERIC = "No pudimos completar la operación.";
 const ERROR_VALIDATION = "Revisa los datos ingresados e inténtalo nuevamente.";
@@ -104,16 +105,18 @@ export async function POST(request: Request) {
       },
     });
     const analytics = ensureAnalyticsContext(request);
+    const paymentEventId = `payment-started:${result.payment.id}`;
+    const requestId = request.headers.get("x-request-id")?.trim() || undefined;
     cloudflareWaitUntil(
       analyticsApp(cloudflareEnv())
         .record({
-          eventId: `payment-started:${result.payment.id}`,
+          eventId: paymentEventId,
           eventType: "PaymentStarted",
           source: "server",
           occurredAt: new Date().toISOString(),
           sessionId: analytics.sessionId,
           visitorId: analytics.visitorId,
-          requestId: request.headers.get("x-request-id")?.trim() || undefined,
+          requestId,
           payload: {
             orderId: order.id,
             paymentId: result.payment.id,
@@ -122,7 +125,17 @@ export async function POST(request: Request) {
             currency: result.payment.currency,
           },
         })
-        .catch(() => undefined),
+        .catch((error: unknown) => {
+          logServerError("analytics.payment_started", error, {
+            component: "analytics",
+            eventId: paymentEventId,
+            eventType: "PaymentStarted",
+            requestId,
+            paymentId: result.payment.id,
+            orderId: order.id,
+            outcome: "failed",
+          });
+        }),
     );
     const response = NextResponse.json(
       {

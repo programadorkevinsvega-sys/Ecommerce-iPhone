@@ -17,6 +17,7 @@ import {
 } from "../../../lib/analyticsContext";
 import { cloudflareEnv } from "../../../lib/cloudflareContext";
 import { cloudflareWaitUntil } from "../../../lib/cloudflareContext";
+import { logServerError } from "../../../server/serverLogger";
 
 function safeError(error: unknown): { error: string; status: number } {
   if (
@@ -186,25 +187,65 @@ export async function POST(request: Request) {
       ...(couponCode ? { couponCode } : {}),
     });
     const analytics = ensureAnalyticsContext(request);
-    cloudflareWaitUntil(
-      analyticsApp(cloudflareEnv())
-        .record({
-          eventId: `checkout-started:${order.id}`,
-          eventType: "CheckoutStarted",
-          source: "server",
-          occurredAt: new Date().toISOString(),
-          sessionId: analytics.sessionId,
-          visitorId: analytics.visitorId,
-          requestId: request.headers.get("x-request-id")?.trim() || undefined,
-          payload: {
-            orderId: order.id,
-            itemCount: cart.items.length,
-            shippingMethod,
-            hasDiscount: Boolean(promotionCode || couponCode),
-          },
-        })
-        .catch(() => undefined),
-    );
+    if (order.status === "PENDING_PAYMENT") {
+      const requestId = request.headers.get("x-request-id")?.trim() || undefined;
+      const shippingEventId = `shipping-method-selected:${order.id}`;
+      cloudflareWaitUntil(
+        analyticsApp(cloudflareEnv())
+          .record({
+            eventId: shippingEventId,
+            eventType: "ShippingMethodSelected",
+            source: "server",
+            occurredAt: new Date().toISOString(),
+            sessionId: analytics.sessionId,
+            visitorId: analytics.visitorId,
+            requestId,
+            payload: {
+              orderId: order.id,
+              shippingMethodId: order.shippingMethod,
+            },
+          })
+          .catch((error: unknown) => {
+            logServerError("analytics.shipping_method_selected", error, {
+              component: "analytics",
+              eventId: shippingEventId,
+              eventType: "ShippingMethodSelected",
+              requestId,
+              orderId: order.id,
+              outcome: "failed",
+            });
+          }),
+      );
+      const checkoutEventId = `checkout-started:${order.id}`;
+      cloudflareWaitUntil(
+        analyticsApp(cloudflareEnv())
+          .record({
+            eventId: checkoutEventId,
+            eventType: "CheckoutStarted",
+            source: "server",
+            occurredAt: new Date().toISOString(),
+            sessionId: analytics.sessionId,
+            visitorId: analytics.visitorId,
+            requestId,
+            payload: {
+              orderId: order.id,
+              itemCount: order.items.length,
+              shippingMethod: order.shippingMethod,
+              hasDiscount: order.discountInCents > 0,
+            },
+          })
+          .catch((error: unknown) => {
+            logServerError("analytics.checkout_started", error, {
+              component: "analytics",
+              eventId: checkoutEventId,
+              eventType: "CheckoutStarted",
+              requestId,
+              orderId: order.id,
+              outcome: "failed",
+            });
+          }),
+      );
+    }
     await publishPersistedNotificationEvent(`order-created:${order.id}`);
     const response = NextResponse.json({ order }, { status: 201 });
     if (analytics.setCookies) {
