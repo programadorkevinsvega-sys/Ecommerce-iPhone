@@ -1,0 +1,43 @@
+name: Temporary PR 32 plan formatter
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.event.pull_request.head.ref == 'feat/phase-10-4-10-5-analytics-certification'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the existing PR branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: true
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.4.1
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - name: Install reproducible dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Format the remaining changed plan document
+        run: pnpm exec prettier --write docs/implementation/pr-plans/PR-10.4-10.5-analytics-certification.md
+      - name: Remove the temporary formatter from the PR
+        run: rm .github/workflows/temp-format-pr32-plan.yml
+      - name: Commit the formatted document to the existing PR branch
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "style(docs): apply repository Prettier to Phase 10.4 and 10.5 plan"
+          git push origin "HEAD:refs/heads/${BRANCH}"
