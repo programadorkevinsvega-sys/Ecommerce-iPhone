@@ -10,8 +10,13 @@
         "http://127.0.0.1:8787/admin/login"
       ],
       "numberOfRuns": 3,
-      "settings": { "chromeFlags": "--no-sandbox --headless" }
+      "settings": {
+        "chromeFlags": "--no-sandbox --headless"
+      }
     },
-    "upload": { "target": "filesystem", "outputDir": ".lighthouseci" }
+    "upload": {
+      "target": "filesystem",
+      "outputDir": "lighthouseci"
+    }
   }
 }

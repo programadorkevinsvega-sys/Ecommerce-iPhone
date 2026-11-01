@@ -69,12 +69,25 @@ jobs:
       - name: Collect Lighthouse measurements (3 runs per route)
         run: pnpm dlx @lhci/cli@0.15.1 autorun --config=./lighthouserc.json
 
+      - name: Verify Lighthouse reports were generated
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          report_count="$(find lighthouseci -maxdepth 1 -type f -name 'lhr-*.json' | wc -l | tr -d ' ')"
+          if [[ "$report_count" -ne 18 ]]; then
+            echo "::error::Expected 18 Lighthouse JSON reports (3 runs across 6 routes), found $report_count."
+            find lighthouseci -maxdepth 1 -type f -print 2>/dev/null || true
+            exit 1
+          fi
+          echo "Verified $report_count Lighthouse JSON reports."
+
       - name: Upload laboratory reports
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: lighthouse-lab-reports
-          path: .lighthouseci/
+          path: lighthouseci/
           if-no-files-found: warn
           retention-days: 14
 
