@@ -142,17 +142,20 @@ test.describe("platform hardening", () => {
       const unapprovedInlineStyles = await page.locator("[style]").evaluateAll((elements) =>
         elements
           .filter((element) => {
+            const inlineStyle = element.getAttribute("style")?.trim() ?? "";
+            if (!inlineStyle) return false;
+
             // Next.js emits this presentation hint on optimized images; it is not an app style.
             if (
               element instanceof HTMLImageElement &&
-              element.getAttribute("style")?.trim() === "color:transparent" &&
+              inlineStyle.replace(/\s/g, "") === "color:transparent" &&
               element.hasAttribute("alt")
             ) {
               return false;
             }
 
             // App Router injects a visually-hidden live region for route announcements.
-            if (element.closest("#__next-route-announcer__")) return false;
+            if (element.closest("next-route-announcer")) return false;
             return true;
           })
           .map((element) => ({
