@@ -61,7 +61,7 @@ describe("D1WebVitalsRepository", () => {
         metric: "LCP",
         route: "/",
         environment: "preview",
-        p75: 1800,
+        p75: 3000,
         sample_count: 2,
       }),
     ]);
