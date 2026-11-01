@@ -168,7 +168,6 @@ The full workspace audit and build/test pipeline remain required on the final PR
 
 **Open acceptance items:** provider-backed MFA plus recovery/break-glass policy; manual accessibility review; reproducible field/lab Web Vitals evidence; final-head CI and Cloudflare Preview evidence. Global security certification remains pending.
 
-
 ## Admin MFA — TOTP obligatorio
 
 A partir de la migración `0047_admin_mfa_and_step_up_single_use.sql`, toda cuenta administrativa debe completar inscripción TOTP antes de recibir una sesión autenticada. La contraseña por sí sola devuelve un desafío temporal; no crea `admin_sessions`. La resolución de sesión en D1 exige una credencial MFA habilitada, por lo que las sesiones antiguas sin segundo factor dejan de autorizar solicitudes.

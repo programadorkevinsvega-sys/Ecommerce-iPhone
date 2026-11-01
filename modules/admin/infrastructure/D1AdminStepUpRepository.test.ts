@@ -40,12 +40,13 @@ describe("D1AdminStepUpRepository", () => {
       tokenHash: "proof-hash-a",
       scope: "payments:refund" as const,
     };
-    await expect(repository.consumeValid({ ...base, sessionTokenHash: "session-hash-b" })).resolves.toBe(false);
+    await expect(
+      repository.consumeValid({ ...base, sessionTokenHash: "session-hash-b" }),
+    ).resolves.toBe(false);
     await expect(repository.hasValid({ ...base, tokenHash: "proof-hash-b" })).resolves.toBe(false);
     await expect(repository.hasValid({ ...base, scope: "payments:void" })).resolves.toBe(false);
     await expect(repository.hasValid(base)).resolves.toBe(true);
     await expect(repository.hasValid(base)).resolves.toBe(false);
-
   });
 
   it("rejects an expired grant using SQLite date semantics", async () => {

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { normalizeWebVitalRoute, parseWebVitalInput, percentile75, rateWebVital } from "./WebVitals";
+import {
+  normalizeWebVitalRoute,
+  parseWebVitalInput,
+  percentile75,
+  rateWebVital,
+} from "./WebVitals";
 
 describe("Web Vitals policy", () => {
   it("normalizes product routes and strips unknown path dimensions", () => {
@@ -16,9 +21,33 @@ describe("Web Vitals policy", () => {
     expect(rateWebVital("CLS", 0.251)).toBe("poor");
   });
   it("rejects unknown metrics, unsafe route values and out-of-range inputs", () => {
-    expect(() => parseWebVitalInput({ metric: "FID", metricId: "metric-invalid-001", value: 12, route: "/", deviceType: "desktop" })).toThrow("INVALID_WEB_VITAL_METRIC");
-    expect(() => parseWebVitalInput({ metric: "LCP", metricId: "metric-invalid-002", value: 60001, route: "/", deviceType: "desktop" })).toThrow("INVALID_WEB_VITAL_VALUE");
-    expect(() => parseWebVitalInput({ metric: "CLS", metricId: "metric-invalid-003", value: 0.1, route: "/checkout?email=x", deviceType: "desktop" })).toThrow("INVALID_WEB_VITAL_ROUTE");
+    expect(() =>
+      parseWebVitalInput({
+        metric: "FID",
+        metricId: "metric-invalid-001",
+        value: 12,
+        route: "/",
+        deviceType: "desktop",
+      }),
+    ).toThrow("INVALID_WEB_VITAL_METRIC");
+    expect(() =>
+      parseWebVitalInput({
+        metric: "LCP",
+        metricId: "metric-invalid-002",
+        value: 60001,
+        route: "/",
+        deviceType: "desktop",
+      }),
+    ).toThrow("INVALID_WEB_VITAL_VALUE");
+    expect(() =>
+      parseWebVitalInput({
+        metric: "CLS",
+        metricId: "metric-invalid-003",
+        value: 0.1,
+        route: "/checkout?email=x",
+        deviceType: "desktop",
+      }),
+    ).toThrow("INVALID_WEB_VITAL_ROUTE");
   });
   it("computes p75 without mutating source values", () => {
     const source = [300, 100, 400, 200];

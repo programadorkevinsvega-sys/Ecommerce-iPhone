@@ -4,14 +4,14 @@
 
 El build de producción de Next.js/OpenNext genera estos tamaños de First Load JS:
 
-| Ruta | First Load JS |
-|---|---:|
-| `/` | 106 kB |
-| `/catalog` | 111 kB |
-| `/iphone/[slug]` | 113 kB |
-| `/cart` | 107 kB |
-| `/checkout` | 107 kB |
-| `/contacto` | 106 kB |
+| Ruta             | First Load JS |
+| ---------------- | ------------: |
+| `/`              |        106 kB |
+| `/catalog`       |        111 kB |
+| `/iphone/[slug]` |        113 kB |
+| `/cart`          |        107 kB |
+| `/checkout`      |        107 kB |
+| `/contacto`      |        106 kB |
 
 El bundle compartido entre las rutas es de aproximadamente **102 kB** y middleware de **34.6 kB**.
 
@@ -40,12 +40,12 @@ Rutas medidas:
 
 Umbrales iniciales del gate:
 
-| Métrica | Umbral |
-|---|---:|
-| TTFB | <= 800 ms |
+| Métrica          |     Umbral |
+| ---------------- | ---------: |
+| TTFB             |  <= 800 ms |
 | DOMContentLoaded | <= 2500 ms |
-| Load | <= 4000 ms |
-| HTTP status | 2xx/3xx |
+| Load             | <= 4000 ms |
+| HTTP status      |    2xx/3xx |
 
 Los umbrales son **gates internos del proyecto**, no una afirmación de estándar universal.
 
@@ -76,7 +76,6 @@ La implementación de Fase 2 puede considerarse cuantitativamente instrumentada 
 5. workflow para medir producción.
 
 La **medición de TTFB/DOMContentLoaded/load de producción debe ejecutarse desde GitHub Actions o una máquina con acceso de red al dominio**. Este entorno de trabajo no pudo resolver directamente el hostname de Cloudflare, por lo que no se inventan valores de latencia.
-
 
 ## Core Web Vitals de campo y laboratorio
 

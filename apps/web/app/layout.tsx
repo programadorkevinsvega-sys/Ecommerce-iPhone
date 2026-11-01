@@ -12,9 +12,7 @@ const seoSite = siteConfig();
 const organizationJsonLd = serializeJsonLd(
   organizationSchema({ name: seoSite.name, url: seoSite.origin }),
 );
-const websiteJsonLd = serializeJsonLd(
-  websiteSchema({ name: seoSite.name, url: seoSite.origin }),
-);
+const websiteJsonLd = serializeJsonLd(websiteSchema({ name: seoSite.name, url: seoSite.origin }));
 
 export const metadata: Metadata = {
   metadataBase: new URL(seoSite.origin),

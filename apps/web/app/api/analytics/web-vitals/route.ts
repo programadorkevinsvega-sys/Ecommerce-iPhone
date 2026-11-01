@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { D1WebVitalsRepository } from "../../../../../../modules/analytics/infrastructure/D1WebVitalsRepository";
-import { parseWebVitalInput, rateWebVital } from "../../../../../../modules/analytics/application/WebVitals";
+import {
+  parseWebVitalInput,
+  rateWebVital,
+} from "../../../../../../modules/analytics/application/WebVitals";
 import { cloudflareEnv } from "../../../../lib/cloudflareContext";
 
 const MAX_BODY_BYTES = 1024;
@@ -12,9 +15,12 @@ async function hash(value: string): Promise<string> {
 
 function runtimeEnvironment(request: Request, configured: string): string {
   const hostname = new URL(request.url).hostname.toLowerCase();
-  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost")) return "local";
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".localhost"))
+    return "local";
   if (hostname.endsWith(".workers.dev")) return "preview";
-  return ["production", "preview", "development", "local"].includes(configured) ? configured : "unknown";
+  return ["production", "preview", "development", "local"].includes(configured)
+    ? configured
+    : "unknown";
 }
 
 export async function POST(request: Request) {
@@ -48,12 +54,19 @@ export async function POST(request: Request) {
       release: typeof env.RELEASE_ID === "string" ? env.RELEASE_ID.slice(0, 64) : null,
       measuredAt: new Date().toISOString(),
     });
-    return NextResponse.json({ accepted: true }, { status: 202, headers: { "cache-control": "no-store" } });
+    return NextResponse.json(
+      { accepted: true },
+      { status: 202, headers: { "cache-control": "no-store" } },
+    );
   } catch (error) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     const invalidPayload = code.startsWith("INVALID_WEB_VITAL") || error instanceof SyntaxError;
     return NextResponse.json(
-      { error: invalidPayload ? "Invalid Web Vitals measurement" : "Unable to store Web Vitals measurement" },
+      {
+        error: invalidPayload
+          ? "Invalid Web Vitals measurement"
+          : "Unable to store Web Vitals measurement",
+      },
       { status: invalidPayload ? 400 : 500, headers: { "cache-control": "no-store" } },
     );
   }

@@ -50,11 +50,17 @@ describe("D1AdminRepository bootstrap guard", () => {
   it("allows only one active SUPER_ADMIN through the atomic insert", async () => {
     const db = testDb();
     const repository = new D1AdminRepository(db.asD1());
-    expect(await repository.createInitialSuperAdmin(admin("admin-1", "one@example.com"))).toBe(true);
-    expect(await repository.createInitialSuperAdmin(admin("admin-2", "two@example.com"))).toBe(false);
-    expect(db.query<{ email: string; password_hash: string }>("SELECT email, password_hash FROM admin_users")).toEqual([
-      { email: "one@example.com", password_hash: "pbkdf2-sha256$100000$hash" },
-    ]);
+    expect(await repository.createInitialSuperAdmin(admin("admin-1", "one@example.com"))).toBe(
+      true,
+    );
+    expect(await repository.createInitialSuperAdmin(admin("admin-2", "two@example.com"))).toBe(
+      false,
+    );
+    expect(
+      db.query<{ email: string; password_hash: string }>(
+        "SELECT email, password_hash FROM admin_users",
+      ),
+    ).toEqual([{ email: "one@example.com", password_hash: "pbkdf2-sha256$100000$hash" }]);
     db.close();
   });
 
@@ -62,11 +68,19 @@ describe("D1AdminRepository bootstrap guard", () => {
     const db = testDb();
     const repository = new D1AdminRepository(db.asD1());
     await repository.createInitialSuperAdmin(admin("admin-mfa-1", "mfa@example.com"));
-    await repository.createSession("admin-mfa-1", "session-token-hash", new Date(Date.now() + 60_000).toISOString());
+    await repository.createSession(
+      "admin-mfa-1",
+      "session-token-hash",
+      new Date(Date.now() + 60_000).toISOString(),
+    );
     expect(await repository.findSession("session-token-hash")).toBeNull();
     db.exec(
       "INSERT INTO admin_mfa_credentials(admin_user_id,encrypted_secret,secret_iv,key_version,enabled_at) VALUES(?,?,?,?,?)",
-      "admin-mfa-1", "encrypted", "iv", 1, new Date().toISOString(),
+      "admin-mfa-1",
+      "encrypted",
+      "iv",
+      1,
+      new Date().toISOString(),
     );
     expect(await repository.findSession("session-token-hash")).not.toBeNull();
     db.close();
@@ -75,9 +89,15 @@ describe("D1AdminRepository bootstrap guard", () => {
   it("does not create a second record for an existing email", async () => {
     const db = testDb();
     const repository = new D1AdminRepository(db.asD1());
-    expect(await repository.createInitialSuperAdmin(admin("admin-1", "one@example.com"))).toBe(true);
-    expect(await repository.createInitialSuperAdmin(admin("admin-2", "ONE@EXAMPLE.COM"))).toBe(false);
-    expect(db.query<{ count: number }>("SELECT COUNT(*) AS count FROM admin_users")[0]?.count).toBe(1);
+    expect(await repository.createInitialSuperAdmin(admin("admin-1", "one@example.com"))).toBe(
+      true,
+    );
+    expect(await repository.createInitialSuperAdmin(admin("admin-2", "ONE@EXAMPLE.COM"))).toBe(
+      false,
+    );
+    expect(db.query<{ count: number }>("SELECT COUNT(*) AS count FROM admin_users")[0]?.count).toBe(
+      1,
+    );
     db.close();
   });
 });

@@ -120,7 +120,6 @@ Cloudflare remains responsible for the configured Worker deployment and the remo
 4. Confirm mandatory Repository CI and Cloudflare Preview build status on the exact final PR HEAD.
 5. Keep the PR in Draft until the residual security and accessibility risks are explicitly accepted; do not merge solely because a Worker build succeeds.
 
-
 ## Admin MFA and acceptance evidence
 
 The existing Draft PR now contains mandatory TOTP before admin session creation, encrypted-at-rest TOTP seeds, single-use recovery codes, short-lived login/enrollment challenges, account lockout checks, replay prevention, and atomic single-use step-up grants. Existing sessions without an enabled MFA credential are rejected by the D1 session resolver. Recovery and key-rotation runbooks live in `docs/cloudflare-deployment.md`.

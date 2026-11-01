@@ -9,7 +9,10 @@ import {
 } from "../../../modules/admin/application/AdminMfaCrypto";
 import { D1AdminAuthPasswordHasher } from "../../../modules/admin/infrastructure/D1AdminAuthPasswordHasher";
 import { D1AdminAuthSessionRepository } from "../../../modules/admin/infrastructure/D1AdminAuthSessionRepository";
-import { D1AdminMfaRepository, type AdminMfaCredential } from "../../../modules/admin/infrastructure/D1AdminMfaRepository";
+import {
+  D1AdminMfaRepository,
+  type AdminMfaCredential,
+} from "../../../modules/admin/infrastructure/D1AdminMfaRepository";
 import { D1AdminRepository } from "../../../modules/admin/infrastructure/D1AdminRepository";
 import { D1AuditPort } from "../../../modules/admin/infrastructure/D1AuditPort";
 import { sha256 } from "../../../modules/admin/infrastructure/AdminSecurity";
@@ -44,9 +47,10 @@ function environment(env: CloudflareEnv): MfaEnvironment {
 }
 
 function activeKeyVersion(env: MfaEnvironment): 1 | 2 {
-  const version = env.ADMIN_MFA_ENCRYPTION_KEY_VERSION === undefined
-    ? 1
-    : Number(env.ADMIN_MFA_ENCRYPTION_KEY_VERSION);
+  const version =
+    env.ADMIN_MFA_ENCRYPTION_KEY_VERSION === undefined
+      ? 1
+      : Number(env.ADMIN_MFA_ENCRYPTION_KEY_VERSION);
   if (version !== 1 && version !== 2) throw new Error("ADMIN_MFA_CONFIGURATION_INVALID");
   return version;
 }
@@ -66,22 +70,40 @@ function decodeEncryptionKey(value: string | undefined): Uint8Array {
 }
 
 async function importAesKey(value: string | undefined): Promise<CryptoKey> {
-  return crypto.subtle.importKey("raw", decodeEncryptionKey(value), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+  return crypto.subtle.importKey("raw", decodeEncryptionKey(value), { name: "AES-GCM" }, false, [
+    "encrypt",
+    "decrypt",
+  ]);
 }
 
-async function encryptTotpSecret(env: MfaEnvironment, secret: string): Promise<Readonly<{
-  encryptedSecret: string; secretIv: string; keyVersion: number;
-}>> {
+async function encryptTotpSecret(
+  env: MfaEnvironment,
+  secret: string,
+): Promise<
+  Readonly<{
+    encryptedSecret: string;
+    secretIv: string;
+    keyVersion: number;
+  }>
+> {
   const keyVersion = activeKeyVersion(env);
   const key = await importAesKey(env.ADMIN_MFA_ENCRYPTION_KEY);
   const iv = crypto.getRandomValues(new Uint8Array(12));
-  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(secret));
+  const encrypted = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    key,
+    new TextEncoder().encode(secret),
+  );
   const toBase64 = (bytes: Uint8Array) => {
     let binary = "";
     for (const byte of bytes) binary += String.fromCharCode(byte);
     return btoa(binary);
   };
-  return { encryptedSecret: toBase64(new Uint8Array(encrypted)), secretIv: toBase64(iv), keyVersion };
+  return {
+    encryptedSecret: toBase64(new Uint8Array(encrypted)),
+    secretIv: toBase64(iv),
+    keyVersion,
+  };
 }
 
 async function decryptTotpSecret(
@@ -95,12 +117,12 @@ async function decryptTotpSecret(
     throw new Error("ADMIN_MFA_CONFIGURATION_INVALID");
   }
   if (credential.keyVersion > activeVersion) throw new Error("ADMIN_MFA_CONFIGURATION_INVALID");
-  const previousKey = credential.keyVersion < activeVersion
-    ? env.ADMIN_MFA_ENCRYPTION_KEY_PREVIOUS
-    : undefined;
+  const previousKey =
+    credential.keyVersion < activeVersion ? env.ADMIN_MFA_ENCRYPTION_KEY_PREVIOUS : undefined;
   const sourceKey = previousKey ?? env.ADMIN_MFA_ENCRYPTION_KEY;
   const key = await importAesKey(sourceKey);
-  const fromBase64 = (value: string) => Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+  const fromBase64 = (value: string) =>
+    Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
   let plaintext: ArrayBuffer;
   try {
     plaintext = await crypto.subtle.decrypt(
@@ -318,7 +340,8 @@ export async function completeAdminMfaLogin(
   const account = await repos.admins.findById(challenge.adminUserId);
   if (!account || !account.toPrimitives().active) throw new Error("UNAUTHORIZED");
   const lockedUntil = account.toPrimitives().lockedUntil;
-  if (lockedUntil && new Date(lockedUntil).getTime() > Date.now()) throw new Error("ACCOUNT_LOCKED");
+  if (lockedUntil && new Date(lockedUntil).getTime() > Date.now())
+    throw new Error("ACCOUNT_LOCKED");
   const credential = await repos.mfa.getCredential(challenge.adminUserId);
   if (!credential) throw new Error("MFA_CHALLENGE_INVALID");
   const secret = await decryptTotpSecret(env, challenge.adminUserId, credential, repos.mfa);
@@ -333,10 +356,11 @@ export async function completeAdminMfaLogin(
     matchedStep = await matchTotpStep(secret, input.code, Date.now(), credential.lastUsedStep);
     if (matchedStep === null) {
       const normalized = normalizeRecoveryCode(input.code);
-      if (normalized) recoveryUsed = await repos.mfa.consumeRecoveryCode(
-        challenge.adminUserId,
-        await sha256Hex(normalized),
-      );
+      if (normalized)
+        recoveryUsed = await repos.mfa.consumeRecoveryCode(
+          challenge.adminUserId,
+          await sha256Hex(normalized),
+        );
     }
   }
 
@@ -349,9 +373,14 @@ export async function completeAdminMfaLogin(
     throw new Error("MFA_CHALLENGE_INVALID");
   }
   if (matchedStep !== null) {
-    const updated = challenge.purpose === "enroll"
-      ? await repos.mfa.enableAfterEnrollment(challenge.adminUserId, matchedStep, new Date().toISOString())
-      : await repos.mfa.advanceTotpStep(challenge.adminUserId, matchedStep);
+    const updated =
+      challenge.purpose === "enroll"
+        ? await repos.mfa.enableAfterEnrollment(
+            challenge.adminUserId,
+            matchedStep,
+            new Date().toISOString(),
+          )
+        : await repos.mfa.advanceTotpStep(challenge.adminUserId, matchedStep);
     if (!updated) throw new Error("MFA_CODE_REUSED");
   }
 
@@ -365,14 +394,26 @@ export async function completeAdminMfaLogin(
   }
   const session = await finishAuthenticatedSession(env, challenge.adminUserId, input);
   if (challenge.purpose === "enroll") {
-    await repos.audit.audit(challenge.adminUserId, "ADMIN_MFA_ENROLLED", "admin_user", challenge.adminUserId, {
-      recoveryCodeCount: recoveryCodes?.length ?? 0,
-    });
+    await repos.audit.audit(
+      challenge.adminUserId,
+      "ADMIN_MFA_ENROLLED",
+      "admin_user",
+      challenge.adminUserId,
+      {
+        recoveryCodeCount: recoveryCodes?.length ?? 0,
+      },
+    );
   } else {
-    await repos.audit.audit(challenge.adminUserId, "ADMIN_LOGIN_MFA_SUCCESS", "admin_user", challenge.adminUserId, {
-      recoveryCodeUsed: recoveryUsed,
-      ipHash: input.ipHash ?? null,
-    });
+    await repos.audit.audit(
+      challenge.adminUserId,
+      "ADMIN_LOGIN_MFA_SUCCESS",
+      "admin_user",
+      challenge.adminUserId,
+      {
+        recoveryCodeUsed: recoveryUsed,
+        ipHash: input.ipHash ?? null,
+      },
+    );
   }
   return {
     ...session,
@@ -415,17 +456,20 @@ export async function verifyAdminMfaFactor(
   const admin = await repos.admins.findById(adminUserId);
   if (!admin || !admin.toPrimitives().active) throw new Error("UNAUTHORIZED");
   const lockedUntil = admin.toPrimitives().lockedUntil;
-  if (lockedUntil && new Date(lockedUntil).getTime() > Date.now()) throw new Error("ACCOUNT_LOCKED");
+  if (lockedUntil && new Date(lockedUntil).getTime() > Date.now())
+    throw new Error("ACCOUNT_LOCKED");
   const credential = await repos.mfa.getCredential(adminUserId);
   if (!credential?.enabledAt) throw new Error("ADMIN_MFA_REQUIRED");
   const secret = await decryptTotpSecret(env, adminUserId, credential, repos.mfa);
   const matchedStep = await matchTotpStep(secret, code, Date.now(), credential.lastUsedStep);
   if (matchedStep !== null) {
-    if (!(await repos.mfa.advanceTotpStep(adminUserId, matchedStep))) throw new Error("MFA_CODE_REUSED");
+    if (!(await repos.mfa.advanceTotpStep(adminUserId, matchedStep)))
+      throw new Error("MFA_CODE_REUSED");
     return;
   }
   const normalized = normalizeRecoveryCode(code);
-  if (normalized && await repos.mfa.consumeRecoveryCode(adminUserId, await sha256Hex(normalized))) return;
+  if (normalized && (await repos.mfa.consumeRecoveryCode(adminUserId, await sha256Hex(normalized))))
+    return;
   await recordMfaFailure(repos, adminUserId);
   throw new Error("INVALID_MFA_CODE");
 }
@@ -438,7 +482,9 @@ export async function getAdminMfaStatus(
   const credential = await repos.mfa.getCredential(adminUserId);
   return {
     enabled: Boolean(credential?.enabledAt),
-    recoveryCodesRemaining: credential?.enabledAt ? await repos.mfa.recoveryCodeCount(adminUserId) : 0,
+    recoveryCodesRemaining: credential?.enabledAt
+      ? await repos.mfa.recoveryCodeCount(adminUserId)
+      : 0,
   };
 }
 
@@ -454,9 +500,15 @@ export async function regenerateAdminMfaRecoveryCodes(
     input.adminUserId,
     await Promise.all(codes.map((code) => sha256Hex(normalizeRecoveryCode(code)!))),
   );
-  await repos.audit.audit(input.adminUserId, "ADMIN_MFA_RECOVERY_CODES_REGENERATED", "admin_user", input.adminUserId, {
-    recoveryCodeCount: codes.length,
-  });
+  await repos.audit.audit(
+    input.adminUserId,
+    "ADMIN_MFA_RECOVERY_CODES_REGENERATED",
+    "admin_user",
+    input.adminUserId,
+    {
+      recoveryCodeCount: codes.length,
+    },
+  );
   return codes;
 }
 
@@ -467,9 +519,15 @@ export async function disableAdminMfa(
   await verifyAdminPasswordForPrivilegedAction(env, input.adminUserId, input.password);
   await verifyAdminMfaFactor(env, input.adminUserId, input.code);
   const repos = repositories(env);
-  await repos.audit.audit(input.adminUserId, "ADMIN_MFA_DISABLED", "admin_user", input.adminUserId, {
-    sessionsRevoked: true,
-    stepUpGrantsRevoked: true,
-  });
+  await repos.audit.audit(
+    input.adminUserId,
+    "ADMIN_MFA_DISABLED",
+    "admin_user",
+    input.adminUserId,
+    {
+      sessionsRevoked: true,
+      stepUpGrantsRevoked: true,
+    },
+  );
   await repos.mfa.disable(input.adminUserId);
 }

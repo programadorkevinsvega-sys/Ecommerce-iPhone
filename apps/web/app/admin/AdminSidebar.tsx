@@ -1,19 +1,48 @@
 import Link from "next/link";
 
 export type AdminSidebarSection =
-  | "dashboard" | "orders" | "products" | "categories" | "customers" | "services"
-  | "home-carousel" | "customer-devices" | "service-types" | "technicians" | "users"
-  | "repair-orders" | "repair-parts" | "payments" | "audit" | "reviews" | "promotions"
-  | "settings" | "inventory" | "notifications" | "cms" | "seo" | "security";
+  | "dashboard"
+  | "orders"
+  | "products"
+  | "categories"
+  | "customers"
+  | "services"
+  | "home-carousel"
+  | "customer-devices"
+  | "service-types"
+  | "technicians"
+  | "users"
+  | "repair-orders"
+  | "repair-parts"
+  | "payments"
+  | "audit"
+  | "reviews"
+  | "promotions"
+  | "settings"
+  | "inventory"
+  | "notifications"
+  | "cms"
+  | "seo"
+  | "security";
 
 type AdminSidebarProps = { active: AdminSidebarSection };
-const items: ReadonlyArray<{ key: AdminSidebarSection; icon: string; label: string; href: string }> = [
+const items: ReadonlyArray<{
+  key: AdminSidebarSection;
+  icon: string;
+  label: string;
+  href: string;
+}> = [
   { key: "dashboard", icon: "⌂", label: "Dashboard", href: "/admin" },
   { key: "orders", icon: "▣", label: "Pedidos", href: "/admin/orders" },
   { key: "products", icon: "▤", label: "Productos", href: "/admin/products" },
   { key: "categories", icon: "⌘", label: "Categorías", href: "/admin/categories" },
   { key: "customers", icon: "♙", label: "Clientes", href: "/admin/customers" },
-  { key: "customer-devices", icon: "▱", label: "Dispositivos de clientes", href: "/admin/customer-devices" },
+  {
+    key: "customer-devices",
+    icon: "▱",
+    label: "Dispositivos de clientes",
+    href: "/admin/customer-devices",
+  },
   { key: "service-types", icon: "◇", label: "Servicios ofrecidos", href: "/admin/service-types" },
   { key: "home-carousel", icon: "▧", label: "Carrusel de inicio", href: "/admin/home-carousel" },
   { key: "services", icon: "⚙", label: "Solicitudes", href: "/admin/services" },
@@ -42,7 +71,10 @@ export default function AdminSidebar({ active }: AdminSidebarProps) {
     <aside className="admin-sidebar">
       <Link className="admin-brand" href="/admin">
         <span className="admin-brand-mark">K</span>
-        <span><strong>KEVINS</strong><small>Administración</small></span>
+        <span>
+          <strong>KEVINS</strong>
+          <small>Administración</small>
+        </span>
       </Link>
       <nav className="admin-nav" aria-label="Secciones administrativas">
         {items.map((item) => (
@@ -52,7 +84,9 @@ export default function AdminSidebar({ active }: AdminSidebarProps) {
           </Link>
         ))}
       </nav>
-      <div className="admin-sidebar-footer"><span className="admin-status-dot" /> Sistema operativo</div>
+      <div className="admin-sidebar-footer">
+        <span className="admin-status-dot" /> Sistema operativo
+      </div>
     </aside>
   );
 }

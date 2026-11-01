@@ -14,12 +14,19 @@ export default function WebVitalsReporter() {
     const width = window.innerWidth;
     const deviceType = width < 600 ? "mobile" : width < 1024 ? "tablet" : "desktop";
     const payload = {
-      metric: metric.name, metricId: metric.id, value: metric.value,
-      route: normalizeWebVitalRoute(window.location.pathname), deviceType,
+      metric: metric.name,
+      metricId: metric.id,
+      value: metric.value,
+      route: normalizeWebVitalRoute(window.location.pathname),
+      deviceType,
     };
     void fetch("/api/analytics/web-vitals", {
-      method: "POST", headers: { "content-type": "application/json" },
-      credentials: "same-origin", cache: "no-store", keepalive: true, body: JSON.stringify(payload),
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "same-origin",
+      cache: "no-store",
+      keepalive: true,
+      body: JSON.stringify(payload),
     }).catch(() => undefined);
   });
   return null;

@@ -10,11 +10,11 @@ Los agregados p75, conteos por rating y tendencia semanal se consultan mediante 
 
 ## Umbrales
 
-| Métrica | Buena | Necesita mejora | Deficiente |
-|---|---:|---:|---:|
-| LCP | <= 2.5 s | <= 4 s | > 4 s |
-| INP | <= 200 ms | <= 500 ms | > 500 ms |
-| CLS | <= 0.1 | <= 0.25 | > 0.25 |
+| Métrica |     Buena | Necesita mejora | Deficiente |
+| ------- | --------: | --------------: | ---------: |
+| LCP     |  <= 2.5 s |          <= 4 s |      > 4 s |
+| INP     | <= 200 ms |       <= 500 ms |   > 500 ms |
+| CLS     |    <= 0.1 |         <= 0.25 |     > 0.25 |
 
 LCP e INP se expresan en milisegundos y CLS no tiene unidad. El p75 debe interpretarse junto con el conteo del grupo; muestras pequeñas no son representativas.
 
@@ -27,6 +27,5 @@ Lighthouse mide un entorno sintético; no produce ni se mezcla con los registros
 ## Evidencia y configuración externa
 
 El código de captura y agregación no demuestra todavía que exista muestra real en producción. Para recibir datos, Cloudflare debe desplegar la migración 0046 en su mecanismo normal de despliegue y mantener la variable pública `NEXT_PUBLIC_WEB_VITALS_SAMPLE_RATE` configurada en el build de producción. Después del despliegue, revisar que haya muestras y tamaño suficiente por grupo antes de interpretar p75. GitHub Actions no ejecuta migraciones D1 remotas.
-
 
 `NEXT_PUBLIC_WEB_VITALS_SAMPLE_RATE` is a Next.js **build-time** variable, with a default of `0.1` when unset. Set it in the Cloudflare Workers Build environment, not only in Wrangler runtime vars. The Lighthouse workflow sets it to `0` during its build so synthetic lab visits do not populate the D1 field dataset.

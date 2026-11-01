@@ -1,20 +1,51 @@
 import type { D1Database } from "@cloudflare/workers-types";
-import type { WebVitalDeviceType, WebVitalMetricName, WebVitalRating } from "../application/WebVitals";
+import type {
+  WebVitalDeviceType,
+  WebVitalMetricName,
+  WebVitalRating,
+} from "../application/WebVitals";
 
 export type WebVitalMeasurement = Readonly<{
-  metric: WebVitalMetricName; metricId: string; value: number; rating: WebVitalRating; route: string;
-  environment: string; release: string | null; deviceType: WebVitalDeviceType; measuredAt: string;
+  metric: WebVitalMetricName;
+  metricId: string;
+  value: number;
+  rating: WebVitalRating;
+  route: string;
+  environment: string;
+  release: string | null;
+  deviceType: WebVitalDeviceType;
+  measuredAt: string;
 }>;
-type P75Row = { metric: WebVitalMetricName; route: string; environment: string; p75: number; sample_count: number };
-type DistributionRow = { metric: WebVitalMetricName; route: string; environment: string; rating: WebVitalRating; sample_count: number };
-type TrendRow = { metric: WebVitalMetricName; route: string; environment: string; period: string; average: number; sample_count: number };
+type P75Row = {
+  metric: WebVitalMetricName;
+  route: string;
+  environment: string;
+  p75: number;
+  sample_count: number;
+};
+type DistributionRow = {
+  metric: WebVitalMetricName;
+  route: string;
+  environment: string;
+  rating: WebVitalRating;
+  sample_count: number;
+};
+type TrendRow = {
+  metric: WebVitalMetricName;
+  route: string;
+  environment: string;
+  period: string;
+  average: number;
+  sample_count: number;
+};
 
 export class D1WebVitalsRepository {
   constructor(private readonly db: D1Database) {}
 
   async record(input: WebVitalMeasurement): Promise<boolean> {
-    const result = await this.db.prepare(
-      `INSERT INTO web_vitals_measurements
+    const result = await this.db
+      .prepare(
+        `INSERT INTO web_vitals_measurements
        (metric_id,metric,value,rating,route,environment,release,device_type,measured_at,expires_at)
        VALUES (?,?,?,?,?,?,?,?,?,datetime('now','+180 days'))
        ON CONFLICT(metric_id) DO UPDATE SET
@@ -22,15 +53,37 @@ export class D1WebVitalsRepository {
          environment=excluded.environment,release=excluded.release,
          device_type=excluded.device_type,measured_at=excluded.measured_at,
          expires_at=excluded.expires_at`,
-    ).bind(input.metricId,input.metric,input.value,input.rating,input.route,input.environment,input.release,input.deviceType,input.measuredAt).run();
+      )
+      .bind(
+        input.metricId,
+        input.metric,
+        input.value,
+        input.rating,
+        input.route,
+        input.environment,
+        input.release,
+        input.deviceType,
+        input.measuredAt,
+      )
+      .run();
     return result.meta.changes === 1;
   }
 
-  async summary(days = 28): Promise<Readonly<{ periodDays: number; p75: P75Row[]; ratingDistribution: DistributionRow[]; weeklyTrend: TrendRow[] }>> {
+  async summary(
+    days = 28,
+  ): Promise<
+    Readonly<{
+      periodDays: number;
+      p75: P75Row[];
+      ratingDistribution: DistributionRow[];
+      weeklyTrend: TrendRow[];
+    }>
+  > {
     const periodDays = Math.max(1, Math.min(90, Math.trunc(days)));
     const modifier = `-${periodDays} days`;
-    const p75 = await this.db.prepare(
-      `WITH ranked AS (
+    const p75 = await this.db
+      .prepare(
+        `WITH ranked AS (
         SELECT metric,route,environment,value,
           COUNT(*) OVER (PARTITION BY metric,route,environment) AS sample_count,
           ROW_NUMBER() OVER (PARTITION BY metric,route,environment ORDER BY value ASC) AS row_number
@@ -39,27 +92,43 @@ export class D1WebVitalsRepository {
       SELECT metric,route,environment,value AS p75,sample_count FROM ranked
       WHERE row_number = MAX(1, CAST(sample_count * 0.75 + 0.999999 AS INTEGER))
       ORDER BY metric,route,environment`,
-    ).bind(modifier).all<P75Row>();
-    const ratingDistribution = await this.db.prepare(
-      `SELECT metric,route,environment,rating,COUNT(*) AS sample_count
+      )
+      .bind(modifier)
+      .all<P75Row>();
+    const ratingDistribution = await this.db
+      .prepare(
+        `SELECT metric,route,environment,rating,COUNT(*) AS sample_count
        FROM web_vitals_measurements WHERE measured_at >= datetime('now', ?)
        GROUP BY metric,route,environment,rating ORDER BY metric,route,environment,rating`,
-    ).bind(modifier).all<DistributionRow>();
-    const weeklyTrend = await this.db.prepare(
-      `SELECT metric,route,environment,strftime('%Y-%W', measured_at) AS period,AVG(value) AS average,COUNT(*) AS sample_count
+      )
+      .bind(modifier)
+      .all<DistributionRow>();
+    const weeklyTrend = await this.db
+      .prepare(
+        `SELECT metric,route,environment,strftime('%Y-%W', measured_at) AS period,AVG(value) AS average,COUNT(*) AS sample_count
        FROM web_vitals_measurements WHERE measured_at >= datetime('now', ?)
        GROUP BY metric,route,environment,period ORDER BY period,metric,route,environment`,
-    ).bind(modifier).all<TrendRow>();
-    return { periodDays, p75: p75.results, ratingDistribution: ratingDistribution.results, weeklyTrend: weeklyTrend.results };
+      )
+      .bind(modifier)
+      .all<TrendRow>();
+    return {
+      periodDays,
+      p75: p75.results,
+      ratingDistribution: ratingDistribution.results,
+      weeklyTrend: weeklyTrend.results,
+    };
   }
 
   async purgeExpired(limit = 500): Promise<number> {
     const safeLimit = Math.max(1, Math.min(5000, Math.trunc(limit)));
-    const result = await this.db.prepare(
-      `DELETE FROM web_vitals_measurements WHERE metric_id IN (
+    const result = await this.db
+      .prepare(
+        `DELETE FROM web_vitals_measurements WHERE metric_id IN (
         SELECT metric_id FROM web_vitals_measurements WHERE expires_at <= CURRENT_TIMESTAMP LIMIT ?
       )`,
-    ).bind(safeLimit).run();
+      )
+      .bind(safeLimit)
+      .run();
     return result.meta.changes;
   }
 }

@@ -51,17 +51,20 @@ export default function WebVitalsPage() {
       credentials: "same-origin",
     })
       .then(async (response) => {
-        const data = await response.json() as Report & { error?: string };
+        const data = (await response.json()) as Report & { error?: string };
         if (!response.ok) throw new Error(data.error ?? "No se pudo consultar Web Vitals.");
         if (active) setReport(data);
       })
       .catch((caught: unknown) => {
-        if (active) setError(caught instanceof Error ? caught.message : "No se pudo consultar Web Vitals.");
+        if (active)
+          setError(caught instanceof Error ? caught.message : "No se pudo consultar Web Vitals.");
       })
       .finally(() => {
         if (active) setLoading(false);
       });
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [days]);
 
   return (
@@ -75,19 +78,36 @@ export default function WebVitalsPage() {
         <AdminPanel>
           <AdminSectionHeading kicker="Período de análisis" title="Muestras de campo" />
           <label htmlFor="web-vitals-period">Ventana de datos</label>
-          <select id="web-vitals-period" value={days} onChange={(event) => setDays(event.target.value)}>
+          <select
+            id="web-vitals-period"
+            value={days}
+            onChange={(event) => setDays(event.target.value)}
+          >
             <option value="7">Últimos 7 días</option>
             <option value="28">Últimos 28 días</option>
             <option value="90">Últimos 90 días</option>
           </select>
-          <p role="status">{loading ? "Cargando mediciones…" : report ? `Ventana: ${report.periodDays} días` : "Sin datos disponibles."}</p>
-          {error && <p className="admin-error" role="alert">{error}</p>}
+          <p role="status">
+            {loading
+              ? "Cargando mediciones…"
+              : report
+                ? `Ventana: ${report.periodDays} días`
+                : "Sin datos disponibles."}
+          </p>
+          {error && (
+            <p className="admin-error" role="alert">
+              {error}
+            </p>
+          )}
         </AdminPanel>
 
         <AdminPanel>
           <AdminSectionHeading kicker="Distribución" title="Percentil 75 (p75)" />
           {!loading && report?.p75.length === 0 && (
-            <p>No hay muestras RUM para el período seleccionado. Los datos aparecerán después de desplegar la migración y recibir visitas muestreadas.</p>
+            <p>
+              No hay muestras RUM para el período seleccionado. Los datos aparecerán después de
+              desplegar la migración y recibir visitas muestreadas.
+            </p>
           )}
           {report && report.p75.length > 0 && (
             <div className="admin-table-wrap">
@@ -104,7 +124,9 @@ export default function WebVitalsPage() {
                 <tbody>
                   {report.p75.map((row) => (
                     <tr key={`${row.metric}:${row.route}:${row.environment}`}>
-                      <td><strong>{row.metric}</strong></td>
+                      <td>
+                        <strong>{row.metric}</strong>
+                      </td>
                       <td>{row.route}</td>
                       <td>{row.environment}</td>
                       <td>{formatP75(row.metric, row.p75)}</td>
@@ -119,7 +141,9 @@ export default function WebVitalsPage() {
 
         <AdminPanel>
           <AdminSectionHeading kicker="Calidad" title="Distribución por rating" />
-          {!loading && report?.ratingDistribution.length === 0 && <p>No hay ratings registrados para este período.</p>}
+          {!loading && report?.ratingDistribution.length === 0 && (
+            <p>No hay ratings registrados para este período.</p>
+          )}
           {report && report.ratingDistribution.length > 0 && (
             <div className="admin-table-wrap">
               <table>
@@ -135,7 +159,9 @@ export default function WebVitalsPage() {
                 <tbody>
                   {report.ratingDistribution.map((row) => (
                     <tr key={`${row.metric}:${row.route}:${row.environment}:${row.rating}`}>
-                      <td><strong>{row.metric}</strong></td>
+                      <td>
+                        <strong>{row.metric}</strong>
+                      </td>
                       <td>{row.route}</td>
                       <td>{row.environment}</td>
                       <td>{ratingLabels[row.rating]}</td>
@@ -146,7 +172,10 @@ export default function WebVitalsPage() {
               </table>
             </div>
           )}
-          <p>LCP e INP se muestran en milisegundos; CLS no tiene unidad. Revisa el tamaño de muestra antes de comparar grupos o sacar conclusiones.</p>
+          <p>
+            LCP e INP se muestran en milisegundos; CLS no tiene unidad. Revisa el tamaño de muestra
+            antes de comparar grupos o sacar conclusiones.
+          </p>
         </AdminPanel>
       </section>
     </AdminPageShell>

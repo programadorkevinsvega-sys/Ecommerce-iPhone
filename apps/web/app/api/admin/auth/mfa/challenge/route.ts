@@ -14,7 +14,10 @@ export async function GET() {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     const status = code.startsWith("ADMIN_MFA_CONFIGURATION") ? 503 : 401;
     return NextResponse.json(
-      { error: status === 503 ? "MFA configuration unavailable" : "MFA challenge expired or invalid" },
+      {
+        error:
+          status === 503 ? "MFA configuration unavailable" : "MFA challenge expired or invalid",
+      },
       { status, headers: { "cache-control": "no-store" } },
     );
   }

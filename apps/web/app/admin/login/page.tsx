@@ -34,7 +34,7 @@ export default function AdminLoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: normalizeEmail(email), password }),
       });
-      const data = await response.json() as { error?: string; mfaRequired?: boolean };
+      const data = (await response.json()) as { error?: string; mfaRequired?: boolean };
       if (!response.ok || response.status !== 202 || !data.mfaRequired) {
         setError(safeFormError(response.status, data.error ?? "No se pudo iniciar sesión."));
         return;
@@ -44,7 +44,7 @@ export default function AdminLoginPage() {
         cache: "no-store",
         credentials: "same-origin",
       });
-      const challengeData = await challengeResponse.json() as MfaChallenge & { error?: string };
+      const challengeData = (await challengeResponse.json()) as MfaChallenge & { error?: string };
       if (!challengeResponse.ok) {
         setError(challengeData.error ?? "No se pudo iniciar el segundo factor.");
         return;
@@ -73,7 +73,7 @@ export default function AdminLoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: code.trim() }),
       });
-      const data = await response.json() as { error?: string; recoveryCodes?: string[] };
+      const data = (await response.json()) as { error?: string; recoveryCodes?: string[] };
       if (!response.ok) {
         setError(data.error ?? "No se pudo verificar el segundo factor.");
         return;
@@ -138,7 +138,11 @@ export default function AdminLoginPage() {
             onChange={(event) => setPassword(event.target.value)}
             aria-invalid={Boolean(error)}
           />
-          {error && <p id="admin-login-error" role="alert">{error}</p>}
+          {error && (
+            <p id="admin-login-error" role="alert">
+              {error}
+            </p>
+          )}
           <button disabled={loading} type="submit">
             {loading ? "Verificando…" : "Iniciar sesión"}
           </button>
@@ -146,9 +150,17 @@ export default function AdminLoginPage() {
       )}
 
       {stage === "mfa" && challenge && (
-        <form className="admin-login-form" onSubmit={verifySecondFactor} aria-describedby={error ? "admin-mfa-error" : "admin-mfa-help"}>
+        <form
+          className="admin-login-form"
+          onSubmit={verifySecondFactor}
+          aria-describedby={error ? "admin-mfa-error" : "admin-mfa-help"}
+        >
           <div>
-            <h1>{challenge.purpose === "enroll" ? "Activa la autenticación MFA" : "Verifica tu identidad"}</h1>
+            <h1>
+              {challenge.purpose === "enroll"
+                ? "Activa la autenticación MFA"
+                : "Verifica tu identidad"}
+            </h1>
             <p id="admin-mfa-help">
               {challenge.purpose === "enroll"
                 ? "Añade esta clave en tu aplicación autenticadora como una cuenta TOTP y confirma el primer código. La sesión solo se abrirá después de verificarlo."
@@ -157,7 +169,8 @@ export default function AdminLoginPage() {
           </div>
           {challenge.purpose === "enroll" && challenge.otpauthUri && (
             <p>
-              URI de configuración manual: <code className="admin-mfa-uri">{challenge.otpauthUri}</code>
+              URI de configuración manual:{" "}
+              <code className="admin-mfa-uri">{challenge.otpauthUri}</code>
             </p>
           )}
           {challenge.purpose === "enroll" && challenge.secret && (
@@ -166,7 +179,9 @@ export default function AdminLoginPage() {
             </p>
           )}
           <label htmlFor="admin-login-mfa-code">
-            {challenge.purpose === "enroll" ? "Código de seis dígitos" : "Código MFA o de recuperación"}
+            {challenge.purpose === "enroll"
+              ? "Código de seis dígitos"
+              : "Código MFA o de recuperación"}
           </label>
           <input
             id="admin-login-mfa-code"
@@ -181,11 +196,24 @@ export default function AdminLoginPage() {
             onChange={(event) => setCode(event.target.value)}
             autoFocus
           />
-          {error && <p id="admin-mfa-error" role="alert">{error}</p>}
+          {error && (
+            <p id="admin-mfa-error" role="alert">
+              {error}
+            </p>
+          )}
           <button disabled={loading || !code.trim()} type="submit">
             {loading ? "Verificando…" : "Verificar y continuar"}
           </button>
-          <button type="button" disabled={loading} onClick={() => { setStage("password"); setChallenge(null); setCode(""); setError(""); }}>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => {
+              setStage("password");
+              setChallenge(null);
+              setCode("");
+              setError("");
+            }}
+          >
             Volver al inicio de sesión
           </button>
         </form>
@@ -195,13 +223,19 @@ export default function AdminLoginPage() {
         <section className="admin-login-form" aria-labelledby="admin-recovery-title">
           <h1 id="admin-recovery-title">Guarda tus códigos de recuperación</h1>
           <p role="alert">
-            Estos códigos se muestran una sola vez. Guárdalos fuera del dispositivo y no los compartas.
-            Cada código se invalida automáticamente después de utilizarlo.
+            Estos códigos se muestran una sola vez. Guárdalos fuera del dispositivo y no los
+            compartas. Cada código se invalida automáticamente después de utilizarlo.
           </p>
           <ul>
-            {recoveryCodes.map((recoveryCode) => <li key={recoveryCode}><code>{recoveryCode}</code></li>)}
+            {recoveryCodes.map((recoveryCode) => (
+              <li key={recoveryCode}>
+                <code>{recoveryCode}</code>
+              </li>
+            ))}
           </ul>
-          <button type="button" onClick={continueAfterRecovery}>He guardado los códigos</button>
+          <button type="button" onClick={continueAfterRecovery}>
+            He guardado los códigos
+          </button>
         </section>
       )}
     </main>

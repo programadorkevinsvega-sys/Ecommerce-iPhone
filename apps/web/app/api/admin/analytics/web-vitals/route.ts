@@ -16,7 +16,14 @@ export async function GET(request: Request) {
     const code = error instanceof Error ? error.message : "UNKNOWN";
     const status = code === "UNAUTHORIZED" ? 401 : code === "FORBIDDEN" ? 403 : 500;
     return NextResponse.json(
-      { error: status === 401 ? "Authentication required" : status === 403 ? "Insufficient permissions" : "Unable to load Web Vitals report" },
+      {
+        error:
+          status === 401
+            ? "Authentication required"
+            : status === 403
+              ? "Insufficient permissions"
+              : "Unable to load Web Vitals report",
+      },
       { status, headers: { "cache-control": "no-store" } },
     );
   }

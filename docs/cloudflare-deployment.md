@@ -178,7 +178,6 @@ Production migrations are applied by the Cloudflare Workers Builds Deploy comman
 
 Rollback remains manual through `.github/workflows/rollback.yml` and must be followed by a passing `pnpm verify:production`.
 
-
 ## Admin MFA — secretos y preparación previa al despliegue
 
 La migración `0047_admin_mfa_and_step_up_single_use.sql` crea el almacenamiento de credenciales cifradas, desafíos y hashes de recuperación, y añade el consumo de un solo uso a los grants de step-up. **Antes de desplegar esta migración y el nuevo login, configura la llave del Worker**. Sin ella, el login falla de forma cerrada (HTTP 503) y no emite sesiones.

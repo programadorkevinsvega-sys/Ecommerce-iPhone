@@ -29,7 +29,8 @@ export default function AdminStepUpDialog({
 
   useEffect(() => {
     if (!open) return;
-    previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    previousFocus.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const first = dialogRef.current?.querySelector<HTMLElement>("input:not([disabled])");
     first?.focus();
     return () => previousFocus.current?.focus();
@@ -158,7 +159,11 @@ export default function AdminStepUpDialog({
             <button className="admin-button" type="button" disabled={busy} onClick={cancel}>
               Cancelar
             </button>
-            <button className="admin-button primary" type="submit" disabled={busy || !password || !secondFactorCode}>
+            <button
+              className="admin-button primary"
+              type="submit"
+              disabled={busy || !password || !secondFactorCode}
+            >
               {busy ? "Verificando…" : "Confirmar identidad"}
             </button>
           </div>

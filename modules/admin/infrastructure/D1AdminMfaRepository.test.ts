@@ -42,17 +42,33 @@ function setup() {
 describe("D1AdminMfaRepository", () => {
   it("stores a pending encrypted secret and atomically enables it once", async () => {
     const repository = setup();
-    expect(await repository.savePendingCredential({
-      adminUserId: "admin-1", encryptedSecret: "ciphertext", secretIv: "iv", keyVersion: 1,
-    })).toBe(true);
-    expect(await repository.savePendingCredential({
-      adminUserId: "admin-1", encryptedSecret: "replacement", secretIv: "iv2", keyVersion: 1,
-    })).toBe(true);
+    expect(
+      await repository.savePendingCredential({
+        adminUserId: "admin-1",
+        encryptedSecret: "ciphertext",
+        secretIv: "iv",
+        keyVersion: 1,
+      }),
+    ).toBe(true);
+    expect(
+      await repository.savePendingCredential({
+        adminUserId: "admin-1",
+        encryptedSecret: "replacement",
+        secretIv: "iv2",
+        keyVersion: 1,
+      }),
+    ).toBe(true);
     expect(await repository.getCredential("admin-1")).toMatchObject({
-      encryptedSecret: "replacement", enabledAt: null, keyVersion: 1,
+      encryptedSecret: "replacement",
+      enabledAt: null,
+      keyVersion: 1,
     });
-    expect(await repository.enableAfterEnrollment("admin-1", 120, new Date().toISOString())).toBe(true);
-    expect(await repository.enableAfterEnrollment("admin-1", 121, new Date().toISOString())).toBe(false);
+    expect(await repository.enableAfterEnrollment("admin-1", 120, new Date().toISOString())).toBe(
+      true,
+    );
+    expect(await repository.enableAfterEnrollment("admin-1", 121, new Date().toISOString())).toBe(
+      false,
+    );
     expect(await repository.advanceTotpStep("admin-1", 120)).toBe(false);
     expect(await repository.advanceTotpStep("admin-1", 121)).toBe(true);
   });
@@ -61,15 +77,25 @@ describe("D1AdminMfaRepository", () => {
     const repository = setup();
     const expiresAt = new Date(Date.now() + 60_000).toISOString();
     await repository.createChallenge({
-      challengeHash: "challenge-1", adminUserId: "admin-1", purpose: "login", expiresAt,
+      challengeHash: "challenge-1",
+      adminUserId: "admin-1",
+      purpose: "login",
+      expiresAt,
     });
-    expect(await repository.getChallenge("challenge-1")).toMatchObject({ adminUserId: "admin-1", attempts: 0 });
-    for (let attempt = 0; attempt < 5; attempt += 1) await repository.incrementChallengeAttempts("challenge-1");
+    expect(await repository.getChallenge("challenge-1")).toMatchObject({
+      adminUserId: "admin-1",
+      attempts: 0,
+    });
+    for (let attempt = 0; attempt < 5; attempt += 1)
+      await repository.incrementChallengeAttempts("challenge-1");
     expect(await repository.getChallenge("challenge-1")).toBeNull();
     expect(await repository.consumeChallenge("challenge-1")).toBe(false);
 
     await repository.createChallenge({
-      challengeHash: "challenge-2", adminUserId: "admin-1", purpose: "login", expiresAt,
+      challengeHash: "challenge-2",
+      adminUserId: "admin-1",
+      purpose: "login",
+      expiresAt,
     });
     expect(await repository.consumeChallenge("challenge-2")).toBe(true);
     expect(await repository.consumeChallenge("challenge-2")).toBe(false);
@@ -87,17 +113,30 @@ describe("D1AdminMfaRepository", () => {
   it("disables MFA by deleting factors and revoking sessions and step-up grants", async () => {
     const repository = setup();
     await repository.savePendingCredential({
-      adminUserId: "admin-1", encryptedSecret: "ciphertext", secretIv: "iv", keyVersion: 1,
+      adminUserId: "admin-1",
+      encryptedSecret: "ciphertext",
+      secretIv: "iv",
+      keyVersion: 1,
     });
     await repository.replaceRecoveryCodes("admin-1", ["hash-a"]);
     await repository.createChallenge({
-      challengeHash: "challenge-3", adminUserId: "admin-1", purpose: "enroll",
+      challengeHash: "challenge-3",
+      adminUserId: "admin-1",
+      purpose: "enroll",
       expiresAt: new Date(Date.now() + 60_000).toISOString(),
     });
     await repository.disable("admin-1");
     expect(await repository.getCredential("admin-1")).toBeNull();
     expect(await repository.recoveryCodeCount("admin-1")).toBe(0);
-    expect(database.query<{ revoked_at: string | null }>("SELECT revoked_at FROM admin_sessions WHERE id='session-1'")[0]?.revoked_at).not.toBeNull();
-    expect(database.query<{ consumed_at: string | null }>("SELECT consumed_at FROM admin_step_up_grants WHERE id='grant-1'")).toHaveLength(0);
+    expect(
+      database.query<{ revoked_at: string | null }>(
+        "SELECT revoked_at FROM admin_sessions WHERE id='session-1'",
+      )[0]?.revoked_at,
+    ).not.toBeNull();
+    expect(
+      database.query<{ consumed_at: string | null }>(
+        "SELECT consumed_at FROM admin_step_up_grants WHERE id='grant-1'",
+      ),
+    ).toHaveLength(0);
   });
 });

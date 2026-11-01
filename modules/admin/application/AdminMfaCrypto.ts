@@ -44,7 +44,11 @@ export async function totpAtStep(secret: string, step: number): Promise<string> 
   const counter = new Uint8Array(8);
   new DataView(counter.buffer).setBigUint64(0, BigInt(step), false);
   const key = await crypto.subtle.importKey(
-    "raw", decodeBase32(secret), { name: "HMAC", hash: "SHA-1" }, false, ["sign"],
+    "raw",
+    decodeBase32(secret),
+    { name: "HMAC", hash: "SHA-1" },
+    false,
+    ["sign"],
   );
   const signature = new Uint8Array(await crypto.subtle.sign("HMAC", key, counter));
   const offset = signature[signature.length - 1]! & 0x0f;
@@ -68,7 +72,8 @@ export async function matchTotpStep(
     if (step < 0 || (lastUsedStep !== null && step <= lastUsedStep)) continue;
     const expected = await totpAtStep(secret, step);
     let difference = 0;
-    for (let index = 0; index < 6; index += 1) difference |= expected.charCodeAt(index) ^ code.charCodeAt(index);
+    for (let index = 0; index < 6; index += 1)
+      difference |= expected.charCodeAt(index) ^ code.charCodeAt(index);
     if (difference === 0) return step;
   }
   return null;
@@ -77,7 +82,9 @@ export async function matchTotpStep(
 export function createRecoveryCodes(count = 10): string[] {
   return Array.from({ length: count }, () => {
     const bytes = crypto.getRandomValues(new Uint8Array(16));
-    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"))
+      .join("")
+      .toUpperCase();
     return hex.match(/.{1,8}/g)!.join("-");
   });
 }
