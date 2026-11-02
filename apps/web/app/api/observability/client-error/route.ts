@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { normalizeOperationalRoute } from "../../../../../lib/operationalTelemetry";
-import { logServerError } from "../../../../../server/serverLogger";
+import { normalizeOperationalRoute } from "../../../../lib/operationalTelemetry";
+import { logServerError } from "../../../../server/serverLogger";
 
 const MAX_BODY_BYTES = 1024;
 const DIGEST_PATTERN = /^[A-Za-z0-9._-]{1,128}$/;

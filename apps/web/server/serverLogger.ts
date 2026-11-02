@@ -40,7 +40,13 @@ function sanitizeContext(
   return safe;
 }
 
-function writeRecord(level: "info" | "error", source: string, operation: string, context: LogContext, error?: unknown): void {
+function writeRecord(
+  level: "info" | "error",
+  source: string,
+  operation: string,
+  context: LogContext,
+  error?: unknown,
+): void {
   const record = {
     timestamp: new Date().toISOString(),
     level,

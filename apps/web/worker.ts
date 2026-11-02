@@ -37,7 +37,7 @@ export class NotificationHub extends DurableObject {
     const url = new URL(request.url);
 
     if (request.method === "GET" && url.pathname === "/healthz") {
-      return Response.json({ status: "ok" }, { headers: { "cache-control": "no-store" } });
+      return new Response(JSON.stringify({ status: "ok" }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
     }
 
     if (request.method === "POST" && url.pathname === "/publish") {
@@ -123,7 +123,7 @@ type NotificationQueueMessage = Readonly<{
 
 function clientKey(request: Request, pathname: string): string {
   const address = request.headers.get("cf-connecting-ip") ?? "local";
-  return `${address}:${pathname}`;
+  return `${address}:${normalizeOperationalRoute(pathname)}`;
 }
 
 async function enforceRateLimit(request: Request, env: Env, pathname: string): Promise<boolean> {
