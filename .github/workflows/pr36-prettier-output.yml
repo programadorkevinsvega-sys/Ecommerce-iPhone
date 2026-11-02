@@ -6,7 +6,7 @@ on:
       - feat/phase10-production-readiness
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   prettier-output:
@@ -48,10 +48,20 @@ jobs:
             cp "$file" "$RUNNER_TEMP/prettier-output/$file"
           done
 
-      - name: Upload formatted source artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: pr36-prettier-output
-          path: ${{ runner.temp }}/prettier-output/
-          if-no-files-found: error
-          retention-days: 1
+      - name: Verify Prettier output
+        run: pnpm format:check:changed
+
+      - name: Commit formatted source files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR "${BASE_SHA}...HEAD")
+          git add -- "${files[@]}"
+          if ! git diff --cached --quiet; then
+            git commit -m "style(phase10): apply repository Prettier formatting [prettier-output]"
+            git push origin HEAD:feat/phase10-production-readiness
+          else
+            echo "No formatting changes were required."
+          fi
