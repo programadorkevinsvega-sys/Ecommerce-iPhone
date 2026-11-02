@@ -1,10 +1,9 @@
 name: Temporary PR 37 Prettier formatter
 
 on:
-  pull_request:
+  push:
     branches:
-      - main
-    types: [opened, synchronize, reopened]
+      - fix/production-monitor-cloudflare-challenge
 
 permissions:
   contents: write
