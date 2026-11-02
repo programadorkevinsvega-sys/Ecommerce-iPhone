@@ -168,10 +168,11 @@ export function isWorkersDevHostname(hostname: string): boolean {
 export function isProductionMonitorHostname(hostname: string): boolean {
   const labels = hostname.toLowerCase().split(".");
   return (
-    labels.length === 3 &&
+    labels.length === 4 &&
     labels[0] === WORKER_NAME &&
     (labels[1]?.length ?? 0) > 0 &&
-    labels[2] === "workers.dev"
+    labels[2] === "workers" &&
+    labels[3] === "dev"
   );
 }
 
