@@ -1,0 +1,72 @@
+name: Temporary PR 37 Prettier formatter
+
+on:
+  push:
+    branches:
+      - fix/production-monitor-cloudflare-challenge
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    if: github.event.head_commit.message != 'chore(format): apply repository Prettier to PR 37'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/production-monitor-cloudflare-challenge
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 12.4.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply exact repository Prettier output
+        run: |
+          pnpm exec prettier --write \
+            apps/web/lib/githubActionsMonitorAccess.test.ts \
+            apps/web/lib/githubActionsMonitorAccess.ts \
+            docs/production-monitoring.md \
+            scripts/production-monitor-auth.mjs \
+            scripts/verify-notifications-production.mjs \
+            scripts/verify-phase08-production.mjs \
+            scripts/verify-phase09-production.mjs \
+            scripts/verify-phase10.2-production.mjs \
+            scripts/verify-phase10.3-production.mjs \
+            scripts/verify-production-edge.mjs
+          pnpm exec prettier --check \
+            apps/web/lib/githubActionsMonitorAccess.test.ts \
+            apps/web/lib/githubActionsMonitorAccess.ts \
+            docs/production-monitoring.md \
+            scripts/production-monitor-auth.mjs \
+            scripts/verify-notifications-production.mjs \
+            scripts/verify-phase08-production.mjs \
+            scripts/verify-phase09-production.mjs \
+            scripts/verify-phase10.2-production.mjs \
+            scripts/verify-phase10.3-production.mjs \
+            scripts/verify-production-edge.mjs
+      - name: Commit formatted files to the existing PR branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            apps/web/lib/githubActionsMonitorAccess.test.ts \
+            apps/web/lib/githubActionsMonitorAccess.ts \
+            docs/production-monitoring.md \
+            scripts/production-monitor-auth.mjs \
+            scripts/verify-notifications-production.mjs \
+            scripts/verify-phase08-production.mjs \
+            scripts/verify-phase09-production.mjs \
+            scripts/verify-phase10.2-production.mjs \
+            scripts/verify-phase10.3-production.mjs \
+            scripts/verify-production-edge.mjs
+          if git diff --cached --quiet; then
+            echo "Prettier produced no source changes."
+            exit 0
+          fi
+          git commit -m "chore(format): apply repository Prettier to PR 37"
+          git push origin HEAD:fix/production-monitor-cloudflare-challenge
