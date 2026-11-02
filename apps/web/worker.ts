@@ -26,7 +26,8 @@ import type {
   NotificationInboxItem,
 } from "../../modules/notifications/domain/NotificationEvent";
 import { mediaKeyFromUrl } from "../../modules/shared-kernel/MediaReference";
-import { logServerError } from "./server/serverLogger";
+import { logServerError, logServerMetric } from "./server/serverLogger";
+import { classifyRateLimitPath, normalizeOperationalRoute } from "./lib/operationalTelemetry";
 import { isValidRequestId, resolveRequestId } from "./lib/requestCorrelation";
 import { resolveQueueCorrelation } from "./lib/queueCorrelation";
 import { SECURITY_RESPONSE_HEADERS } from "./lib/securityHeaders";
@@ -34,6 +35,15 @@ import { SECURITY_RESPONSE_HEADERS } from "./lib/securityHeaders";
 export class NotificationHub extends DurableObject {
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
+
+    if (request.method === "GET" && url.pathname === "/healthz") {
+      return new Response(JSON.stringify({ status: "ok" }), {
+        headers: {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "no-store",
+        },
+      });
+    }
 
     if (request.method === "POST" && url.pathname === "/publish") {
       const item = (await request.json()) as NotificationInboxItem;
@@ -116,30 +126,15 @@ type NotificationQueueMessage = Readonly<{
   requestId?: string | undefined;
 }>;
 
-const SENSITIVE_PREFIXES = [
-  "/api/checkout",
-  "/api/customer",
-  "/api/admin",
-  "/api/services",
-  "/api/auth",
-  "/api/payments",
-  "/api/notifications",
-];
-
 function clientKey(request: Request, pathname: string): string {
   const address = request.headers.get("cf-connecting-ip") ?? "local";
-  return `${address}:${pathname}`;
-}
-
-function sensitive(pathname: string): boolean {
-  return SENSITIVE_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
+  return `${address}:${normalizeOperationalRoute(pathname)}`;
 }
 
 async function enforceRateLimit(request: Request, env: Env, pathname: string): Promise<boolean> {
-  if (!pathname.startsWith("/api/") || pathname.startsWith("/api/health")) return true;
-  const limiter = sensitive(pathname) ? env.SENSITIVE_RATE_LIMITER : env.API_RATE_LIMITER;
+  const tier = classifyRateLimitPath(pathname);
+  if (tier === "none") return true;
+  const limiter = tier === "sensitive" ? env.SENSITIVE_RATE_LIMITER : env.API_RATE_LIMITER;
   if (!limiter) return env.APP_ENV !== "production";
   const { success } = await limiter.limit({ key: clientKey(request, pathname) });
   return success;
@@ -159,7 +154,7 @@ function withHeaders(response: Response, headers: Record<string, string>): Respo
 }
 
 function healthResponse(
-  status: "ok" | "ready",
+  status: "ok" | "ready" | "not_ready",
   extra: Record<string, unknown> = {},
   code = 200,
 ): Response {
@@ -178,6 +173,62 @@ function healthResponse(
       },
     },
   );
+}
+
+type DependencyStatus = "ok" | "configured" | "unavailable";
+
+async function checkDependency(
+  name: string,
+  probe: () => Promise<boolean>,
+): Promise<"ok" | "unavailable"> {
+  try {
+    return (await probe()) ? "ok" : "unavailable";
+  } catch (error) {
+    logServerError("health.readiness_dependency", error, {
+      component: "health",
+      dependency: name,
+      outcome: "unavailable",
+    });
+    return "unavailable";
+  }
+}
+
+async function checkReadiness(env: Env): Promise<{
+  ready: boolean;
+  dependencies: Record<string, DependencyStatus>;
+}> {
+  const [d1, r2, notificationHub] = await Promise.all([
+    checkDependency("d1", async () => {
+      const row = await env.DB.prepare("SELECT 1 AS ok").first<{ ok: number }>();
+      return row?.ok === 1;
+    }),
+    checkDependency("r2", async () => {
+      await env.MEDIA_BUCKET.list({ limit: 1 });
+      return true;
+    }),
+    checkDependency("notification_hub", async () => {
+      if (!env.NOTIFICATION_HUB) return false;
+      const namespace = env.NOTIFICATION_HUB;
+      const stub = namespace.get(namespace.idFromName("readiness"));
+      const response = await stub.fetch("https://notification-hub/healthz");
+      return response.ok;
+    }),
+  ]);
+
+  // Queue bindings expose no non-mutating health API. Their status is explicitly
+  // reported as configured, not as a claim that the remote queue is consuming.
+  const dependencies: Record<string, DependencyStatus> = {
+    d1,
+    r2,
+    eventsQueue: env.EVENTS_QUEUE ? "configured" : "unavailable",
+    notificationsQueue: env.NOTIFICATIONS_QUEUE ? "configured" : "unavailable",
+    notificationsDlqQueue: env.NOTIFICATIONS_DLQ_QUEUE ? "configured" : "unavailable",
+    notificationHub,
+  };
+  const ready = Object.values(dependencies).every(
+    (status) => status === "ok" || status === "configured",
+  );
+  return { ready, dependencies };
 }
 
 function parseLegacyNotification(body: unknown): NotificationEvent | null {
@@ -355,92 +406,143 @@ async function processNotificationMessage(
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext) {
     const url = new URL(request.url);
+    const startedAt = Date.now();
+    const route = normalizeOperationalRoute(url.pathname);
     let id = resolveRequestId(request.headers);
 
-    if (url.pathname === "/api/health/live") {
-      return withHeaders(healthResponse("ok"), { "X-Request-Id": id });
-    }
+    const recordResponse = (response: Response): Response => {
+      logServerMetric("http.request", {
+        component: "cloudflare-worker",
+        requestId: id,
+        method: request.method,
+        route,
+        status: response.status,
+        durationMs: Math.max(0, Date.now() - startedAt),
+        outcome: response.status >= 500 ? "error" : response.status >= 400 ? "rejected" : "success",
+      });
+      return response;
+    };
 
-    if (url.pathname === "/api/health/ready") {
-      try {
-        await env.DB.prepare("SELECT 1 AS ok").first();
-        return withHeaders(
-          healthResponse("ready", { dependencies: { d1: "ok", notifications: "configured" } }),
-          { "X-Request-Id": id },
-        );
-      } catch {
-        return withHeaders(healthResponse("ready", { dependencies: { d1: "unavailable" } }, 503), {
-          "X-Request-Id": id,
-        });
+    try {
+      if (url.pathname === "/api/health/live") {
+        return recordResponse(withHeaders(healthResponse("ok"), { "X-Request-Id": id }));
       }
-    }
 
-    if (!(await enforceRateLimit(request, env, url.pathname))) {
-      return withHeaders(
-        new Response(
-          JSON.stringify({
-            error: { code: "RATE_LIMITED", message: "Too many requests." },
-          }),
-          {
-            status: 429,
-            headers: {
-              "content-type": "application/json; charset=utf-8",
-              "cache-control": "no-store",
-              "Retry-After": "60",
-            },
-          },
+      if (url.pathname === "/api/health/ready") {
+        const readiness = await checkReadiness(env);
+        return recordResponse(
+          withHeaders(
+            healthResponse(
+              readiness.ready ? "ready" : "not_ready",
+              { ready: readiness.ready, dependencies: readiness.dependencies },
+              readiness.ready ? 200 : 503,
+            ),
+            { "X-Request-Id": id },
+          ),
+        );
+      }
+
+      if (!(await enforceRateLimit(request, env, url.pathname))) {
+        return recordResponse(
+          withHeaders(
+            new Response(
+              JSON.stringify({
+                error: { code: "RATE_LIMITED", message: "Too many requests." },
+              }),
+              {
+                status: 429,
+                headers: {
+                  "content-type": "application/json; charset=utf-8",
+                  "cache-control": "no-store",
+                  "Retry-After": "60",
+                },
+              },
+            ),
+            { "X-Request-Id": id },
+          ),
+        );
+      }
+
+      const response = await nextWorker.fetch(request, env, ctx);
+      const middlewareRequestId = response.headers.get("X-Request-Id");
+      if (isValidRequestId(middlewareRequestId)) id = middlewareRequestId.trim();
+
+      if (
+        (request.method === "GET" || request.method === "HEAD") &&
+        response.status === 404 &&
+        !url.pathname.startsWith("/api/") &&
+        !url.pathname.startsWith("/_next/")
+      ) {
+        const redirect = await seoManagementApplication(env).resolveRedirect(url.pathname);
+        if (redirect?.statusCode === 301 && redirect.targetUrl) {
+          return recordResponse(
+            withHeaders(
+              new Response(null, {
+                status: 301,
+                headers: { Location: redirect.targetUrl, "Cache-Control": "public, max-age=3600" },
+              }),
+              { "X-Request-Id": id },
+            ),
+          );
+        }
+        if (redirect?.statusCode === 410) {
+          return recordResponse(
+            withHeaders(
+              new Response(null, {
+                status: 410,
+                headers: { "Cache-Control": "public, max-age=300" },
+              }),
+              { "X-Request-Id": id },
+            ),
+          );
+        }
+      }
+
+      const publicContentResponse =
+        response.status === 200 &&
+        (url.pathname === "/api/content" || url.pathname.startsWith("/api/content/"));
+      return recordResponse(
+        withHeaders(
+          response,
+          publicContentResponse
+            ? {
+                "X-Request-Id": id,
+                "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
+              }
+            : { "X-Request-Id": id },
         ),
-        { "X-Request-Id": id },
+      );
+    } catch (error) {
+      logServerError("http.request", error, {
+        component: "cloudflare-worker",
+        requestId: id,
+        method: request.method,
+        route,
+        outcome: "failed",
+      });
+      return recordResponse(
+        withHeaders(
+          new Response(
+            JSON.stringify({
+              error: { code: "INTERNAL_SERVER_ERROR", message: "Internal server error." },
+            }),
+            {
+              status: 500,
+              headers: {
+                "content-type": "application/json; charset=utf-8",
+                "cache-control": "no-store",
+              },
+            },
+          ),
+          { "X-Request-Id": id },
+        ),
       );
     }
-
-    const response = await nextWorker.fetch(request, env, ctx);
-    const middlewareRequestId = response.headers.get("X-Request-Id");
-    if (isValidRequestId(middlewareRequestId)) id = middlewareRequestId.trim();
-
-    if (
-      (request.method === "GET" || request.method === "HEAD") &&
-      response.status === 404 &&
-      !url.pathname.startsWith("/api/") &&
-      !url.pathname.startsWith("/_next/")
-    ) {
-      const redirect = await seoManagementApplication(env).resolveRedirect(url.pathname);
-      if (redirect?.statusCode === 301 && redirect.targetUrl) {
-        return withHeaders(
-          new Response(null, {
-            status: 301,
-            headers: { Location: redirect.targetUrl, "Cache-Control": "public, max-age=3600" },
-          }),
-          { "X-Request-Id": id },
-        );
-      }
-      if (redirect?.statusCode === 410) {
-        return withHeaders(
-          new Response(null, {
-            status: 410,
-            headers: { "Cache-Control": "public, max-age=300" },
-          }),
-          { "X-Request-Id": id },
-        );
-      }
-    }
-
-    const publicContentResponse =
-      response.status === 200 &&
-      (url.pathname === "/api/content" || url.pathname.startsWith("/api/content/"));
-    return withHeaders(
-      response,
-      publicContentResponse
-        ? {
-            "X-Request-Id": id,
-            "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
-          }
-        : { "X-Request-Id": id },
-    );
   },
 
   async scheduled(event: ScheduledEvent, env: Env) {
     const correlationId = `scheduled:${event.scheduledTime}`;
+    const startedAt = Date.now();
     try {
       const now = new Date().toISOString();
       await processMediaCleanup(env);
@@ -467,7 +569,17 @@ const worker = {
         try {
           await publisher.publish(outboxEvent);
           await repo.markQueued(outboxEvent.id);
+          logServerMetric("queue.publish.notification", {
+            component: "cloudflare-worker",
+            queue: "ecommerce-iphone-events",
+            outcome: "published",
+          });
         } catch (error) {
+          logServerMetric("queue.publish.notification", {
+            component: "cloudflare-worker",
+            queue: "ecommerce-iphone-events",
+            outcome: "retry",
+          });
           logServerError("queue.publish.notification", error, {
             component: "cloudflare-worker",
             queue: "ecommerce-iphone-events",
@@ -481,11 +593,24 @@ const worker = {
           );
         }
       }
+      logServerMetric("scheduled.run", {
+        component: "cloudflare-worker",
+        schedule: event.cron,
+        durationMs: Math.max(0, Date.now() - startedAt),
+        pendingOutboxBatchSize: pending.length,
+        outcome: "success",
+      });
     } catch (error) {
       logServerError("scheduled.run", error, {
         component: "cloudflare-worker",
         schedule: event.cron,
         correlationId,
+        outcome: "failed",
+      });
+      logServerMetric("scheduled.run", {
+        component: "cloudflare-worker",
+        schedule: event.cron,
+        durationMs: Math.max(0, Date.now() - startedAt),
         outcome: "failed",
       });
       throw error;
@@ -494,14 +619,17 @@ const worker = {
 
   async queue(batch: MessageBatch<string>, env: Env) {
     if (batch.queue === "ecommerce-iphone-events") {
+      const metrics = { acknowledged: 0, retried: 0, deadLettered: 0 };
       for (const message of batch.messages) {
         try {
           const analytics = parseAnalyticsMessage(message.body);
           if (analytics) {
             await processAnalyticsMessage(message, env);
+            metrics.acknowledged += 1;
             continue;
           }
           await processNotificationMessage(message, env, true);
+          metrics.acknowledged += 1;
         } catch (error) {
           const queueMessageId = (message as Message<string> & { id?: string }).id;
           const correlationId = queueCorrelationId(message.body, queueMessageId);
@@ -516,16 +644,27 @@ const worker = {
           if (terminal) {
             await env.NOTIFICATIONS_DLQ_QUEUE.send(message.body);
             message.ack();
+            metrics.deadLettered += 1;
             continue;
           }
           message.retry();
+          metrics.retried += 1;
         }
       }
+      logServerMetric("queue.batch", {
+        component: "cloudflare-worker",
+        queue: batch.queue,
+        batchSize: batch.messages.length,
+        ...metrics,
+        outcome:
+          metrics.retried > 0 ? "partial" : metrics.deadLettered > 0 ? "dead_lettered" : "success",
+      });
       return;
     }
 
     if (batch.queue === "ecommerce-iphone-notifications-dlq") {
       const deadLetters = notificationDeadLetterApplication(env);
+      const metrics = { acknowledged: 0, retried: 0, deadLettered: 0 };
       for (const message of batch.messages) {
         const raw = message as Message<string> & { id?: string };
         try {
@@ -536,6 +675,7 @@ const worker = {
             messageBody: raw.body,
           });
           message.ack();
+          metrics.acknowledged += 1;
         } catch (error) {
           logServerError("queue.consume.dead_letter", error, {
             component: "cloudflare-worker",
@@ -545,14 +685,24 @@ const worker = {
             outcome: "retry",
           });
           message.retry();
+          metrics.retried += 1;
         }
       }
+      logServerMetric("queue.batch", {
+        component: "cloudflare-worker",
+        queue: batch.queue,
+        batchSize: batch.messages.length,
+        ...metrics,
+        outcome: metrics.retried > 0 ? "partial" : "success",
+      });
       return;
     }
 
+    const metrics = { acknowledged: 0, retried: 0, deadLettered: 0 };
     for (const message of batch.messages) {
       try {
         await processNotificationMessage(message, env, batch.queue === "ecommerce-iphone-events");
+        metrics.acknowledged += 1;
       } catch (error) {
         const queueMessageId = (message as Message<string> & { id?: string }).id;
         const correlationId = queueCorrelationId(message.body, queueMessageId);
@@ -567,11 +717,21 @@ const worker = {
         if (terminal) {
           await env.NOTIFICATIONS_DLQ_QUEUE.send(message.body);
           message.ack();
+          metrics.deadLettered += 1;
           continue;
         }
         message.retry();
+        metrics.retried += 1;
       }
     }
+    logServerMetric("queue.batch", {
+      component: "cloudflare-worker",
+      queue: batch.queue,
+      batchSize: batch.messages.length,
+      ...metrics,
+      outcome:
+        metrics.retried > 0 ? "partial" : metrics.deadLettered > 0 ? "dead_lettered" : "success",
+    });
   },
 };
 

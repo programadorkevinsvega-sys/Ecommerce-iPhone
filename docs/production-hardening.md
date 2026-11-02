@@ -1,9 +1,8 @@
 # Production hardening and operational evidence
 
-**Updated:** 2026-10-31  
-**Branch:** `chore/production-hardening`  
-**Pull request:** [#26 — production hardening and documentation](https://github.com/programadorkevinsvega-sys/Ecommerce-iPhone/pull/26)  
-**Status:** Hardening controls are implemented in the existing PR branch. Final acceptance remains tied to the required CI checks on the exact latest HEAD and external review of the residual risks below. The PR remains Draft.
+**Updated:** 2026-11-02  
+**Branch:** `feat/phase10-production-readiness`  
+**Status:** This document consolidates the production-hardening baseline already integrated into `main` and the additional operational telemetry/readiness work in this continuation. CI and external operational acceptance remain pending on the final PR HEAD.
 
 ## HTTP request correlation
 
@@ -62,7 +61,9 @@ Sensitive operations additionally require password reauthentication through the 
 - Failed password attempts are tracked and lockout is enforced.
 - API routes return HTTP 428 when step-up proof is required; the admin UI obtains it before retrying the operation.
 
-The step-up grant is fresh authentication using the existing password. **It is not MFA and does not provide a second independent factor.** No fake factor has been introduced. Provider-backed MFA and a secure recovery/break-glass policy remain open before high-assurance security certification.
+TOTP is mandatory before an administrative session is issued. The seed is encrypted at rest with the Worker Secret, recovery codes are hashed and single-use, accepted TOTP time steps are persisted to block replay, and privileged step-up requires password plus a valid second factor. The emergency break-glass procedure remains an operator-controlled, out-of-band process; it is not exposed as a public bypass.
+
+The implementation is present in `main`, but production acceptance still requires the operator to confirm the Cloudflare encryption secret and migration 0047, enroll and log in with a real authenticator, consume/reissue recovery codes, and exercise a privileged step-up operation.
 
 ## Accessibility verification
 
@@ -114,18 +115,20 @@ Cloudflare remains responsible for the configured Worker deployment and the remo
 
 ## Remaining acceptance items
 
-1. Integrate provider-backed MFA and define recovery/break-glass policy; current password step-up is not MFA.
-2. Complete manual accessibility validation for keyboard journeys, focus, contrast, reflow and assistive technology.
-3. Collect reproducible field/lab Web Vitals evidence and validate the performance thresholds against real usage.
-4. Confirm mandatory Repository CI and Cloudflare Preview build status on the exact final PR HEAD.
-5. Keep the PR in Draft until the residual security and accessibility risks are explicitly accepted; do not merge solely because a Worker build succeeds.
+1. Confirm the Cloudflare `ADMIN_MFA_ENCRYPTION_KEY` Worker Secret and migration 0047; manually validate TOTP enrollment/login, one-time recovery-code consumption/regeneration, and privileged step-up using a real authenticator.
+2. Complete manual accessibility validation for keyboard journeys, focus, contrast, 200/400% zoom/reflow and assistive technology.
+3. Deploy migration 0046 through Cloudflare, confirm the production build-time RUM sample rate, collect real LCP/INP/CLS observations, and review sample counts before interpreting p75.
+4. Confirm Repository CI and the Cloudflare Workers Build result for the exact final PR HEAD. Preview functional checks remain unavailable until isolated preview resources are configured.
+5. Validate the rollback/recovery runbook in an isolated environment when one exists; do not claim a production rollback exercise that has not been performed.
 
-## Admin MFA and acceptance evidence
+## Admin MFA, error tracking and operational telemetry
 
-The existing Draft PR now contains mandatory TOTP before admin session creation, encrypted-at-rest TOTP seeds, single-use recovery codes, short-lived login/enrollment challenges, account lockout checks, replay prevention, and atomic single-use step-up grants. Existing sessions without an enabled MFA credential are rejected by the D1 session resolver. Recovery and key-rotation runbooks live in `docs/cloudflare-deployment.md`.
+Admin TOTP is implemented in the application and D1 repository. The production Worker Secret and remote migration 0047 remain external deployment prerequisites. The manual production smoke now verifies the mandatory password-to-TOTP challenge and proves that the challenge cookie cannot access admin APIs; it deliberately does not submit a generated code, read a TOTP seed, or claim successful authenticator acceptance.
 
-The implementation does not claim that Cloudflare has been configured with the encryption Worker Secret or that the migration has been applied remotely. Those are deployment prerequisites for the owner of the Cloudflare environment. GitHub Actions remains local-only for D1 migrations.
+The Worker emits one structured `http.request` metric record per HTTP request with a low-cardinality route group, method, status, duration and request ID. Unhandled Worker HTTP exceptions are logged with a safe generic 500 response. Next.js segment and global error boundaries report only the framework digest and a normalized route group; browser messages, stacks, URLs and form values are not accepted by the endpoint. Queue and scheduled failures retain their existing structured error logs.
 
-Field Web Vitals are now collected separately from the Lighthouse lab workflow. RUM records are not present until Cloudflare applies migration 0046 and real traffic produces sampled measurements. The p75 endpoint is restricted to administrators with `audit:read`; sample counts must be reviewed before interpreting percentiles.
+Readiness checks execute D1 `SELECT 1`, an R2 list operation and a Notification Hub Durable Object health request. Queue bindings are reported as `configured`, not as a proof of queue consumption; external email/payment connectivity is not probed by readiness. See `docs/phase10-operational-acceptance.md` for the exact evidence boundary and remaining manual acceptance.
+
+Field Web Vitals remain separate from Lighthouse lab reports. RUM records still depend on Cloudflare applying migration 0046 and real traffic producing sampled observations. The p75 endpoint is restricted to administrators with `audit:read`; sample counts must be reviewed before interpreting percentiles.
 
 The automated accessibility suite includes Axe on home, catalogue, product, cart, checkout and admin login, keyboard navigation, visible focus, native required-field checks and narrow-width overflow checks. Manual screen-reader, 200/400% zoom, contrast, and browser/AT matrix execution remain explicitly pending; no manual result or WCAG certification is invented.

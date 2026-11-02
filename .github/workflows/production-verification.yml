@@ -11,7 +11,7 @@ on:
         default: false
         type: boolean
       run_admin_checks:
-        description: "Run the authenticated production RBAC smoke test (requires admin credentials in GitHub Secrets)"
+        description: "Verify the mandatory password-to-TOTP gate without storing a TOTP seed (requires admin credentials in GitHub Secrets)"
         required: false
         default: false
         type: boolean
@@ -216,7 +216,7 @@ jobs:
             echo "No production probes, synthetic payments or refunds are created by this job."
           } >> "$GITHUB_STEP_SUMMARY"
 
-  admin-production:
+  admin-mfa-gate-production:
     needs: [smoke, production_ref_guard]
     if: >-
       ${{ always() && github.event_name == 'workflow_dispatch' &&
@@ -228,8 +228,6 @@ jobs:
     env:
       ADMIN_EMAIL: ${{ secrets.ADMIN_RBAC_ALLOWED_EMAIL }}
       ADMIN_PASSWORD: ${{ secrets.ADMIN_RBAC_ALLOWED_PASSWORD }}
-      ADMIN_RBAC_DENIED_EMAIL: ${{ secrets.ADMIN_RBAC_DENIED_EMAIL }}
-      ADMIN_RBAC_DENIED_PASSWORD: ${{ secrets.ADMIN_RBAC_DENIED_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -248,5 +246,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify production admin authentication, RBAC and session revocation
+      - name: Verify production password-to-TOTP challenge and session gate
         run: pnpm verify:admin:production
+      - name: Record remaining manual MFA acceptance
+        if: always()
+        run: |
+          {
+            echo "## Admin MFA operational acceptance"
+            echo
+            echo "The automated smoke proves password-only login cannot create an admin session."
+            echo "A human operator must still verify authenticator enrollment/login, single-use recovery codes, key rotation and privileged step-up with the real authenticator."
+            echo "No TOTP seed or one-time code is stored in GitHub Actions."
+          } >> "$GITHUB_STEP_SUMMARY"

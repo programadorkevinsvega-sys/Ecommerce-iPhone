@@ -6,6 +6,11 @@
 **Objetivo:** determinar qué existe realmente antes de implementar 10.2–10.39.
 
 > Esta auditoría no implementa funcionalidades de las subfases posteriores. Clasifica el estado real en **implementado**, **parcial/incompleto**, **pendiente** o **no verificable desde el repositorio**.
+>
+> **Nota histórica (2026-11-02):** esta fotografía corresponde al 2026-09-29 y está conservada como evidencia de 10.1.
+> Sus afirmaciones de que Analytics y MFA no estaban implementados ya no describen `main`.
+> Para el estado vigente usa [`docs/phase10-operational-acceptance.md`](./phase10-operational-acceptance.md)
+> y [`docs/FASE-10-PRODUCTION-READINESS.md`](./FASE-10-PRODUCTION-READINESS.md).
 
 ---
 
@@ -31,44 +36,44 @@ Los gaps principales detectados son:
 
 # 2. Estado por bloque
 
-| Área | Estado | Evidencia / hallazgo |
-|---|---|---|
-| Arquitectura DDD/Clean | 🟢 Implementado | `check-architecture.mjs`, bounded contexts y composition roots existentes |
-| Foundation/build reproducible | 🟢 Implementado | Node 24.18.0, pnpm 12.4.1, frozen lockfile, gates de foundation |
-| Analytics | 🔴 Pendiente | Existe `modules/analytics/README.md`, pero no existe implementación del bounded context |
-| Structured logging | 🟡 Parcial | Cloudflare Observability habilitado; no existe capa completa de logs estructurados/correlación |
-| Request ID | 🟢 Parcial/implementado | Worker y middleware generan/propagan `X-Request-Id` |
-| Correlation tracing | 🟡 Parcial | Request ID existe; falta correlación extremo a extremo API→Queue→processor/webhook |
-| Error tracking | 🟡 Parcial | Existe manejo de errores en varios límites; falta sistema consistente de clasificación/tracking |
-| Métricas operacionales | 🟡 Parcial | Cloudflare Observability + performance smoke; faltan métricas de negocio/Queue normalizadas |
-| Health/readiness | 🟢 Implementado | `/api/health/live` y `/api/health/ready`; readiness consulta D1 |
-| Security headers/CSP | 🟢 Implementado | CSP, HSTS, XCTO, XFO, Referrer, Permissions, COOP, CORP |
-| CORS | 🟢 Parcial | Middleware restringe orígenes y métodos; falta auditoría completa por superficie |
-| Rate limiting | 🟢 Implementado base | API y sensitive limiters en Worker/Wrangler |
-| WAF/Bot/Turnstile | ⚪ No verificable desde código | Debe auditarse en configuración externa de Cloudflare |
-| Secret management | 🟢 Base implementada | secretos no versionados; `.env*` ignorados; bindings/vars en Wrangler |
-| MFA/step-up | 🟡 Pendiente de auditoría/implementación | No existe evidencia suficiente para declarar controles de step-up de operaciones sensibles |
-| Input validation | 🟢/🟡 Parcial | Existe validación en distintos bounded contexts; falta auditoría transversal |
-| Webhook security | 🟡 Parcial | Existen adapters/proveedores y controles previos; falta matriz completa de firma/replay/idempotencia |
-| PII protection | 🟡 Parcial | Existen restricciones para IMEI/serial y frontend; falta auditoría completa de almacenamiento/logs/respuestas |
-| Unit tests | 🟢 Base implementada | Vitest configurado y ejecutado por pipeline |
-| Integration tests | 🟡 Pendiente | No existe evidencia de cobertura integral real D1/R2/Queue/DO/proveedores |
-| E2E | 🟡 Parcial | Playwright existe; falta cobertura transversal completa |
-| Contract tests | 🔴 Pendiente | No se identificó una suite contractual formal para adapters |
-| Payment sandbox | 🟡 Parcial | Proveedores reales/adapters existen; falta matriz de pruebas sandbox completa |
-| Security tests | 🔴 Pendiente | No existe suite transversal dedicada a regresiones de seguridad |
-| Concurrency tests | 🟡 Parcial | Hay hardening/concurrencia en dominios previos; falta suite Fase 10 integral |
-| Regression suite | 🟡 Parcial | Verificaciones por fases existen; falta suite consolidada de regresión 01–09 |
-| Quality pipeline | 🟢 Base implementada | `cloudflare:build` contiene audit/foundation/data/architecture/format/lint/typecheck/test/build |
-| Security gates | 🟡 Parcial | `pnpm audit --prod` y checks existentes; faltan secret/security regression gates |
-| Production deploy gate | 🟢 Parcial | Cloudflare deploy + D1 + verify:production + phase08/09 |
-| Release evidence | 🟡 Parcial | Hay evidencia por releases, pero falta formato único y automatizado |
-| Cloudflare production config | 🟡 Parcial | Wrangler declara bindings; WAF/DNS/TLS/cache externos requieren verificación |
-| Cache strategy | 🟡 Parcial | Content público tiene cache explícito; APIs generales reciben no-store; falta matriz completa |
-| Rollback | 🟢 Base implementada | workflow `rollback.yml` y `docs/rollback.md` |
-| Recovery validation | 🔴 Pendiente | Falta evidencia de ejecución real del procedimiento completo |
-| Production smoke | 🟢 Base implementada | `verify:production`, phase08 y phase09; falta ampliar Fase 10 |
-| Performance | 🟡 Parcial | performance smoke periódico; falta benchmark/capacity completo |
+| Área                          | Estado                                   | Evidencia / hallazgo                                                                                          |
+| ----------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Arquitectura DDD/Clean        | 🟢 Implementado                          | `check-architecture.mjs`, bounded contexts y composition roots existentes                                     |
+| Foundation/build reproducible | 🟢 Implementado                          | Node 24.18.0, pnpm 12.4.1, frozen lockfile, gates de foundation                                               |
+| Analytics                     | 🔴 Pendiente                             | Existe `modules/analytics/README.md`, pero no existe implementación del bounded context                       |
+| Structured logging            | 🟡 Parcial                               | Cloudflare Observability habilitado; no existe capa completa de logs estructurados/correlación                |
+| Request ID                    | 🟢 Parcial/implementado                  | Worker y middleware generan/propagan `X-Request-Id`                                                           |
+| Correlation tracing           | 🟡 Parcial                               | Request ID existe; falta correlación extremo a extremo API→Queue→processor/webhook                            |
+| Error tracking                | 🟡 Parcial                               | Existe manejo de errores en varios límites; falta sistema consistente de clasificación/tracking               |
+| Métricas operacionales        | 🟡 Parcial                               | Cloudflare Observability + performance smoke; faltan métricas de negocio/Queue normalizadas                   |
+| Health/readiness              | 🟢 Implementado                          | `/api/health/live` y `/api/health/ready`; readiness consulta D1                                               |
+| Security headers/CSP          | 🟢 Implementado                          | CSP, HSTS, XCTO, XFO, Referrer, Permissions, COOP, CORP                                                       |
+| CORS                          | 🟢 Parcial                               | Middleware restringe orígenes y métodos; falta auditoría completa por superficie                              |
+| Rate limiting                 | 🟢 Implementado base                     | API y sensitive limiters en Worker/Wrangler                                                                   |
+| WAF/Bot/Turnstile             | ⚪ No verificable desde código           | Debe auditarse en configuración externa de Cloudflare                                                         |
+| Secret management             | 🟢 Base implementada                     | secretos no versionados; `.env*` ignorados; bindings/vars en Wrangler                                         |
+| MFA/step-up                   | 🟡 Pendiente de auditoría/implementación | No existe evidencia suficiente para declarar controles de step-up de operaciones sensibles                    |
+| Input validation              | 🟢/🟡 Parcial                            | Existe validación en distintos bounded contexts; falta auditoría transversal                                  |
+| Webhook security              | 🟡 Parcial                               | Existen adapters/proveedores y controles previos; falta matriz completa de firma/replay/idempotencia          |
+| PII protection                | 🟡 Parcial                               | Existen restricciones para IMEI/serial y frontend; falta auditoría completa de almacenamiento/logs/respuestas |
+| Unit tests                    | 🟢 Base implementada                     | Vitest configurado y ejecutado por pipeline                                                                   |
+| Integration tests             | 🟡 Pendiente                             | No existe evidencia de cobertura integral real D1/R2/Queue/DO/proveedores                                     |
+| E2E                           | 🟡 Parcial                               | Playwright existe; falta cobertura transversal completa                                                       |
+| Contract tests                | 🔴 Pendiente                             | No se identificó una suite contractual formal para adapters                                                   |
+| Payment sandbox               | 🟡 Parcial                               | Proveedores reales/adapters existen; falta matriz de pruebas sandbox completa                                 |
+| Security tests                | 🔴 Pendiente                             | No existe suite transversal dedicada a regresiones de seguridad                                               |
+| Concurrency tests             | 🟡 Parcial                               | Hay hardening/concurrencia en dominios previos; falta suite Fase 10 integral                                  |
+| Regression suite              | 🟡 Parcial                               | Verificaciones por fases existen; falta suite consolidada de regresión 01–09                                  |
+| Quality pipeline              | 🟢 Base implementada                     | `cloudflare:build` contiene audit/foundation/data/architecture/format/lint/typecheck/test/build               |
+| Security gates                | 🟡 Parcial                               | `pnpm audit --prod` y checks existentes; faltan secret/security regression gates                              |
+| Production deploy gate        | 🟢 Parcial                               | Cloudflare deploy + D1 + verify:production + phase08/09                                                       |
+| Release evidence              | 🟡 Parcial                               | Hay evidencia por releases, pero falta formato único y automatizado                                           |
+| Cloudflare production config  | 🟡 Parcial                               | Wrangler declara bindings; WAF/DNS/TLS/cache externos requieren verificación                                  |
+| Cache strategy                | 🟡 Parcial                               | Content público tiene cache explícito; APIs generales reciben no-store; falta matriz completa                 |
+| Rollback                      | 🟢 Base implementada                     | workflow `rollback.yml` y `docs/rollback.md`                                                                  |
+| Recovery validation           | 🔴 Pendiente                             | Falta evidencia de ejecución real del procedimiento completo                                                  |
+| Production smoke              | 🟢 Base implementada                     | `verify:production`, phase08 y phase09; falta ampliar Fase 10                                                 |
+| Performance                   | 🟡 Parcial                               | performance smoke periódico; falta benchmark/capacity completo                                                |
 
 ---
 
@@ -227,20 +232,20 @@ Pero `docs/rollback.md` todavía describe un flujo con staging, mientras la oper
 
 # 4. Riesgos que bloquean el cierre de Fase 10
 
-| ID | Riesgo | Severidad |
-|---|---|---|
-| F10-001 | Analytics no implementado funcionalmente | Alta |
-| F10-002 | Falta observabilidad transversal/correlación | Alta |
-| F10-003 | Falta suite dedicada de security regression | Alta |
-| F10-004 | Falta contract testing de adapters | Media/Alta |
-| F10-005 | Falta concurrency suite integral | Alta |
-| F10-006 | WAF/bot protection externo no auditado desde repo | Alta |
-| F10-007 | MFA/step-up no certificado para operaciones sensibles | Alta |
-| F10-008 | Recovery/rollback no validado con evidencia reciente | Alta |
-| F10-009 | Métricas de negocio/operación no normalizadas | Media/Alta |
-| F10-010 | Release evidence no está consolidada en un formato único | Media |
-| F10-011 | Cache strategy todavía requiere matriz completa por superficie | Media |
-| F10-012 | `docs/rollback.md` contiene supuestos de staging que no representan exactamente la operación actual | Media |
+| ID      | Riesgo                                                                                              | Severidad  |
+| ------- | --------------------------------------------------------------------------------------------------- | ---------- |
+| F10-001 | Analytics no implementado funcionalmente                                                            | Alta       |
+| F10-002 | Falta observabilidad transversal/correlación                                                        | Alta       |
+| F10-003 | Falta suite dedicada de security regression                                                         | Alta       |
+| F10-004 | Falta contract testing de adapters                                                                  | Media/Alta |
+| F10-005 | Falta concurrency suite integral                                                                    | Alta       |
+| F10-006 | WAF/bot protection externo no auditado desde repo                                                   | Alta       |
+| F10-007 | MFA/step-up no certificado para operaciones sensibles                                               | Alta       |
+| F10-008 | Recovery/rollback no validado con evidencia reciente                                                | Alta       |
+| F10-009 | Métricas de negocio/operación no normalizadas                                                       | Media/Alta |
+| F10-010 | Release evidence no está consolidada en un formato único                                            | Media      |
+| F10-011 | Cache strategy todavía requiere matriz completa por superficie                                      | Media      |
+| F10-012 | `docs/rollback.md` contiene supuestos de staging que no representan exactamente la operación actual | Media      |
 
 ---
 

@@ -40,6 +40,26 @@ function sanitizeContext(
   return safe;
 }
 
+function writeRecord(
+  level: "info" | "error",
+  source: string,
+  operation: string,
+  context: LogContext,
+  error?: unknown,
+): void {
+  const record = {
+    timestamp: new Date().toISOString(),
+    level,
+    source,
+    operation: sanitizeText(operation).slice(0, 120),
+    ...sanitizeContext(context),
+    ...(error === undefined ? {} : { error: serializeError(error) }),
+  };
+  const serialized = JSON.stringify(record);
+  if (level === "error") globalThis["console"]["error"](serialized);
+  else globalThis["console"]["log"](serialized);
+}
+
 function serializeError(error: unknown): Record<string, string> {
   if (error instanceof Error) {
     return {
@@ -51,14 +71,10 @@ function serializeError(error: unknown): Record<string, string> {
 }
 
 export function logServerError(operation: string, error: unknown, context: LogContext = {}): void {
-  globalThis["console"]["error"](
-    JSON.stringify({
-      timestamp: new Date().toISOString(),
-      level: "error",
-      source: "server",
-      operation: sanitizeText(operation).slice(0, 120),
-      ...sanitizeContext(context),
-      error: serializeError(error),
-    }),
-  );
+  writeRecord("error", "server", operation, context, error);
+}
+
+/** Structured, low-cardinality operational measurements for Cloudflare Observability logs. */
+export function logServerMetric(operation: string, context: LogContext = {}): void {
+  writeRecord("info", "operational_metric", operation, context);
 }

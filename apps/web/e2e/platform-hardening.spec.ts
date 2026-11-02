@@ -406,7 +406,9 @@ test.describe("platform hardening", () => {
     const challenge = await request.get("/api/admin/auth/mfa/challenge");
     expect(challenge.status()).toBe(401);
 
-    const verify = await request.post("/api/admin/auth/mfa/verify", { data: { code: "123456" } });
+    const verify = await request.post("/api/admin/auth/mfa/verify", {
+      data: { code: "123456" },
+    });
     expect(verify.status()).toBe(401);
 
     const status = await request.get("/api/admin/auth/mfa/status");
@@ -421,5 +423,90 @@ test.describe("platform hardening", () => {
       data: { password: "not-a-real-password", code: "123456" },
     });
     expect(disable.status()).toBe(401);
+  });
+
+  test("readiness probes D1, R2 and Notification Hub and distinguishes configured Queues", async ({
+    request,
+  }) => {
+    const response = await request.get("/api/health/ready");
+    const payload = (await response.json()) as {
+      status: string;
+      ready: boolean;
+      dependencies: Record<string, string>;
+    };
+
+    expect(response.status()).toBe(200);
+    expect(payload.status).toBe("ready");
+    expect(payload.ready).toBe(true);
+    expect(payload.dependencies).toMatchObject({
+      d1: "ok",
+      r2: "ok",
+      eventsQueue: "configured",
+      notificationsQueue: "configured",
+      notificationsDlqQueue: "configured",
+      notificationHub: "ok",
+    });
+  });
+
+  test("CORS rejects untrusted preflight and mutating origins", async ({ request }) => {
+    const live = await request.get("/api/health/live");
+    const allowedOrigin = new URL(live.url()).origin;
+
+    const sameOriginPreflight = await request.fetch("/api/checkout", {
+      method: "OPTIONS",
+      headers: {
+        origin: allowedOrigin,
+        "access-control-request-method": "POST",
+      },
+    });
+    expect(sameOriginPreflight.status()).toBe(204);
+    expect(sameOriginPreflight.headers()["access-control-allow-origin"]).toBe(allowedOrigin);
+    expect(sameOriginPreflight.headers()["access-control-allow-credentials"]).toBe("true");
+
+    const deniedPreflight = await request.fetch("/api/checkout", {
+      method: "OPTIONS",
+      headers: {
+        origin: "https://attacker.example",
+        "access-control-request-method": "POST",
+      },
+    });
+    expect(deniedPreflight.status()).toBe(403);
+    expect(deniedPreflight.headers()["access-control-allow-origin"]).toBeUndefined();
+    await expect(deniedPreflight.json()).resolves.toMatchObject({
+      error: { code: "ORIGIN_NOT_ALLOWED" },
+    });
+
+    const deniedMutation = await request.post("/api/checkout", {
+      headers: { origin: "https://attacker.example" },
+      data: {},
+    });
+    expect(deniedMutation.status()).toBe(403);
+    await expect(deniedMutation.json()).resolves.toMatchObject({
+      error: { code: "ORIGIN_NOT_ALLOWED" },
+    });
+  });
+
+  test("client runtime error reports accept only bounded metadata", async ({ request }) => {
+    const accepted = await request.post("/api/observability/client-error", {
+      data: {
+        digest: "NEXT_RENDER_FAILURE_01",
+        routeGroup: "/iphone/iphone-18-pro-max",
+      },
+    });
+    expect(accepted.status()).toBe(202);
+    await expect(accepted.json()).resolves.toMatchObject({ accepted: true });
+    expect(accepted.headers()["cache-control"]).toBe("no-store");
+
+    const malformed = await request.post("/api/observability/client-error", {
+      headers: { "content-type": "application/json" },
+      data: Buffer.from("{", "utf8"),
+    });
+    expect(malformed.status()).toBe(400);
+
+    const wrongContentType = await request.post("/api/observability/client-error", {
+      headers: { "content-type": "text/plain" },
+      data: "error",
+    });
+    expect(wrongContentType.status()).toBe(415);
   });
 });
