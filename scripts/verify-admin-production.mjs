@@ -77,7 +77,9 @@ async function main() {
   console.log("Unauthenticated admin API: 401 PASS");
   console.log("MFA challenge cookie cannot access admin APIs: 401 PASS");
   console.log("No admin session issued before TOTP: PASS");
-  console.log("Manual operational acceptance remains required for authenticator login, recovery code consumption and privileged step-up.");
+  console.log(
+    "Manual operational acceptance remains required for authenticator login, recovery code consumption and privileged step-up.",
+  );
 }
 
 await main();

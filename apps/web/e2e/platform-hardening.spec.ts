@@ -400,9 +400,9 @@ test.describe("platform hardening", () => {
     });
   });
 
-  test("MFA challenge and recovery endpoints fail closed without an authenticated challenge", async ({
-    request,
-  }) => {
+  test(
+    "MFA challenge and recovery endpoints fail closed without an authenticated challenge",
+    async ({ request }) => {
     const challenge = await request.get("/api/admin/auth/mfa/challenge");
     expect(challenge.status()).toBe(401);
 
@@ -423,9 +423,9 @@ test.describe("platform hardening", () => {
     expect(disable.status()).toBe(401);
   });
 
-  test("readiness probes D1, R2 and Notification Hub and distinguishes configured Queues", async ({
-    request,
-  }) => {
+  test(
+    "readiness probes D1, R2 and Notification Hub and distinguishes configured Queues",
+    async ({ request }) => {
     const response = await request.get("/api/health/ready");
     const payload = (await response.json()) as {
       status: string;
@@ -507,5 +507,4 @@ test.describe("platform hardening", () => {
     });
     expect(wrongContentType.status()).toBe(415);
   });
-
 });

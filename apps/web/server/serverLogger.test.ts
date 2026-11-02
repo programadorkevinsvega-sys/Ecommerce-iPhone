@@ -65,8 +65,10 @@ describe("structured server logging", () => {
     expect(serialized).not.toContain("queue-secret-value");
     expect(serialized).toContain("token=[REDACTED]");
   });
-  
-  it("emits structured request metrics without retaining arbitrary identifiers or secrets", () => {
+
+  it(
+    "emits structured request metrics without retaining arbitrary identifiers or secrets",
+    () => {
     const output = vi.spyOn(console, "log").mockImplementation(() => undefined);
     logServerMetric("http.request", {
       component: "cloudflare-worker",
@@ -86,5 +88,6 @@ describe("structured server logging", () => {
     expect(record.durationMs).toBe(42);
     expect(record.authorization).toBe("[REDACTED]");
     expect(JSON.stringify(record)).not.toContain("metric-secret");
-  });
+    },
+  );
 });

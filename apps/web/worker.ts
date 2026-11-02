@@ -736,7 +736,12 @@ const worker = {
       queue: batch.queue,
       batchSize: batch.messages.length,
       ...metrics,
-      outcome: metrics.retried > 0 ? "partial" : metrics.deadLettered > 0 ? "dead_lettered" : "success",
+      outcome:
+        metrics.retried > 0
+          ? "partial"
+          : metrics.deadLettered > 0
+            ? "dead_lettered"
+            : "success",
     });
   },
 };

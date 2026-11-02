@@ -7,7 +7,10 @@ const DIGEST_PATTERN = /^[A-Za-z0-9._-]{1,128}$/;
 
 export async function POST(request: Request): Promise<Response> {
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
-    return NextResponse.json({ error: "Content-Type must be application/json" }, { status: 415 });
+    return NextResponse.json(
+      { error: "Content-Type must be application/json" },
+      { status: 415 },
+    );
   }
 
   const declaredLength = Number(request.headers.get("content-length") ?? "0");
