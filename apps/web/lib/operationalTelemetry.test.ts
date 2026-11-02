@@ -13,6 +13,7 @@ describe("operational route and rate-limit classification", () => {
     expect(classifyRateLimitPath("/api/admin/users/123")).toBe("sensitive");
     expect(classifyRateLimitPath("/api/checkout")).toBe("sensitive");
     expect(classifyRateLimitPath("/api/observability/client-error")).toBe("sensitive");
+    expect(classifyRateLimitPath("/api/webhooks/wompi")).toBe("sensitive");
     expect(classifyRateLimitPath("/api/administer")).toBe("api");
     expect(classifyRateLimitPath("/api/catalog")).toBe("api");
     expect(classifyRateLimitPath("/catalog")).toBe("none");

@@ -539,6 +539,7 @@ const worker = {
 
   async scheduled(event: ScheduledEvent, env: Env) {
     const correlationId = `scheduled:${event.scheduledTime}`;
+    const startedAt = Date.now();
     try {
       const now = new Date().toISOString();
       await processMediaCleanup(env);
@@ -565,7 +566,17 @@ const worker = {
         try {
           await publisher.publish(outboxEvent);
           await repo.markQueued(outboxEvent.id);
+          logServerMetric("queue.publish.notification", {
+            component: "cloudflare-worker",
+            queue: "ecommerce-iphone-events",
+            outcome: "published",
+          });
         } catch (error) {
+          logServerMetric("queue.publish.notification", {
+            component: "cloudflare-worker",
+            queue: "ecommerce-iphone-events",
+            outcome: "retry",
+          });
           logServerError("queue.publish.notification", error, {
             component: "cloudflare-worker",
             queue: "ecommerce-iphone-events",
@@ -579,11 +590,24 @@ const worker = {
           );
         }
       }
+      logServerMetric("scheduled.run", {
+        component: "cloudflare-worker",
+        schedule: event.cron,
+        durationMs: Math.max(0, Date.now() - startedAt),
+        pendingOutboxBatchSize: pending.length,
+        outcome: "success",
+      });
     } catch (error) {
       logServerError("scheduled.run", error, {
         component: "cloudflare-worker",
         schedule: event.cron,
         correlationId,
+        outcome: "failed",
+      });
+      logServerMetric("scheduled.run", {
+        component: "cloudflare-worker",
+        schedule: event.cron,
+        durationMs: Math.max(0, Date.now() - startedAt),
         outcome: "failed",
       });
       throw error;
@@ -592,14 +616,17 @@ const worker = {
 
   async queue(batch: MessageBatch<string>, env: Env) {
     if (batch.queue === "ecommerce-iphone-events") {
+      const metrics = { acknowledged: 0, retried: 0, deadLettered: 0 };
       for (const message of batch.messages) {
         try {
           const analytics = parseAnalyticsMessage(message.body);
           if (analytics) {
             await processAnalyticsMessage(message, env);
+            metrics.acknowledged += 1;
             continue;
           }
           await processNotificationMessage(message, env, true);
+          metrics.acknowledged += 1;
         } catch (error) {
           const queueMessageId = (message as Message<string> & { id?: string }).id;
           const correlationId = queueCorrelationId(message.body, queueMessageId);
@@ -614,16 +641,26 @@ const worker = {
           if (terminal) {
             await env.NOTIFICATIONS_DLQ_QUEUE.send(message.body);
             message.ack();
+            metrics.deadLettered += 1;
             continue;
           }
           message.retry();
+          metrics.retried += 1;
         }
       }
+      logServerMetric("queue.batch", {
+        component: "cloudflare-worker",
+        queue: batch.queue,
+        batchSize: batch.messages.length,
+        ...metrics,
+        outcome: metrics.retried > 0 ? "partial" : metrics.deadLettered > 0 ? "dead_lettered" : "success",
+      });
       return;
     }
 
     if (batch.queue === "ecommerce-iphone-notifications-dlq") {
       const deadLetters = notificationDeadLetterApplication(env);
+      const metrics = { acknowledged: 0, retried: 0, deadLettered: 0 };
       for (const message of batch.messages) {
         const raw = message as Message<string> & { id?: string };
         try {
@@ -634,6 +671,7 @@ const worker = {
             messageBody: raw.body,
           });
           message.ack();
+          metrics.acknowledged += 1;
         } catch (error) {
           logServerError("queue.consume.dead_letter", error, {
             component: "cloudflare-worker",
@@ -643,14 +681,24 @@ const worker = {
             outcome: "retry",
           });
           message.retry();
+          metrics.retried += 1;
         }
       }
+      logServerMetric("queue.batch", {
+        component: "cloudflare-worker",
+        queue: batch.queue,
+        batchSize: batch.messages.length,
+        ...metrics,
+        outcome: metrics.retried > 0 ? "partial" : "success",
+      });
       return;
     }
 
+    const metrics = { acknowledged: 0, retried: 0, deadLettered: 0 };
     for (const message of batch.messages) {
       try {
         await processNotificationMessage(message, env, batch.queue === "ecommerce-iphone-events");
+        metrics.acknowledged += 1;
       } catch (error) {
         const queueMessageId = (message as Message<string> & { id?: string }).id;
         const correlationId = queueCorrelationId(message.body, queueMessageId);
@@ -665,11 +713,20 @@ const worker = {
         if (terminal) {
           await env.NOTIFICATIONS_DLQ_QUEUE.send(message.body);
           message.ack();
+          metrics.deadLettered += 1;
           continue;
         }
         message.retry();
+        metrics.retried += 1;
       }
     }
+    logServerMetric("queue.batch", {
+      component: "cloudflare-worker",
+      queue: batch.queue,
+      batchSize: batch.messages.length,
+      ...metrics,
+      outcome: metrics.retried > 0 ? "partial" : metrics.deadLettered > 0 ? "dead_lettered" : "success",
+    });
   },
 };
 
