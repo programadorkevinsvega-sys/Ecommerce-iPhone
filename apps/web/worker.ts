@@ -37,7 +37,12 @@ export class NotificationHub extends DurableObject {
     const url = new URL(request.url);
 
     if (request.method === "GET" && url.pathname === "/healthz") {
-      return new Response(JSON.stringify({ status: "ok" }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
+      return new Response(JSON.stringify({ status: "ok" }), {
+        headers: {
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "no-store",
+        },
+      });
     }
 
     if (request.method === "POST" && url.pathname === "/publish") {
@@ -415,7 +420,8 @@ const worker = {
         route,
         status: response.status,
         durationMs: Math.max(0, Date.now() - startedAt),
-        outcome: response.status >= 500 ? "error" : response.status >= 400 ? "rejected" : "success",
+        outcome:
+          response.status >= 500 ? "error" : response.status >= 400 ? "rejected" : "success",
       });
       return response;
     };
@@ -653,7 +659,12 @@ const worker = {
         queue: batch.queue,
         batchSize: batch.messages.length,
         ...metrics,
-        outcome: metrics.retried > 0 ? "partial" : metrics.deadLettered > 0 ? "dead_lettered" : "success",
+        outcome:
+          metrics.retried > 0
+            ? "partial"
+            : metrics.deadLettered > 0
+              ? "dead_lettered"
+              : "success",
       });
       return;
     }

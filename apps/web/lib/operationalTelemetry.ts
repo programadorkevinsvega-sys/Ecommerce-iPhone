@@ -7,6 +7,7 @@ const SENSITIVE_RATE_LIMIT_PREFIXES = [
   "/api/payments",
   "/api/notifications",
   "/api/observability",
+  "/api/webhooks",
 ] as const;
 
 const API_ROUTE_GROUPS = new Set([
