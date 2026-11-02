@@ -210,8 +210,7 @@ async function checkReadiness(env: Env): Promise<{
       if (!env.NOTIFICATION_HUB) return false;
       const namespace = env.NOTIFICATION_HUB;
       const stub = namespace.get(namespace.idFromName("readiness"));
-      const response = await stub.fetch("https://notification-hub/healthz", {
-      });
+      const response = await stub.fetch("https://notification-hub/healthz");
       return response.ok;
     }),
   ]);
