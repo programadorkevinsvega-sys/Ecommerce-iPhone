@@ -6,6 +6,8 @@
 **Objetivo:** determinar qué existe realmente antes de implementar 10.2–10.39.
 
 > Esta auditoría no implementa funcionalidades de las subfases posteriores. Clasifica el estado real en **implementado**, **parcial/incompleto**, **pendiente** o **no verificable desde el repositorio**.
+>
+> **Nota histórica (2026-11-02):** esta fotografía corresponde al 2026-09-29 y está conservada como evidencia de 10.1. Sus afirmaciones de que Analytics y MFA no estaban implementados ya no describen `main`. Para el estado vigente usa [`docs/phase10-operational-acceptance.md`](./phase10-operational-acceptance.md) y [`docs/FASE-10-PRODUCTION-READINESS.md`](./FASE-10-PRODUCTION-READINESS.md).
 
 ---
 

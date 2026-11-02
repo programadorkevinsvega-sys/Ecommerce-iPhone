@@ -172,7 +172,7 @@ No se deben generar eventos de compra o revenue sin una operación real confirma
 - Se reutiliza `EVENTS_QUEUE` y la idempotencia D1 de 10.2; Cloudflare Queues entrega al menos una vez, por lo que el `eventId` estable evita doble contabilización. citeturn5search0
 - `verify:phase10.4:production` comprueba add/remove y reintentos idempotentes, consulta Queue → D1, valida checkout y el guard de payment intent, crea un carrito técnico de más de 30 minutos para exigir `CartAbandoned` del Cron real y valida autorización/no-store del reporte administrativo. También inspecciona eventos históricos server-owned de checkout, envío, payment-start y compra.
 
-**Estado:** 🟡 implementación endurecida en esta rama; CI y certificación productiva pendientes.
+**Estado:** 🟢 implementación y hardening integrados en `main` mediante PR #32. **Aceptación productiva:** pendiente de revisión manual por QA (PR #35); CI no certifica esta fase y no se reporta `PASS` todavía.
 
 ### Regla crítica
 
@@ -202,7 +202,9 @@ Los valores financieros definitivos deben proceder del estado server-side, no de
 
 No existe revenue analítico ficticio ni derivado exclusivamente de eventos frontend. La proyección nace de operaciones financieras server-side persistidas en `payment_ledger`.
 
-**Estado:** 🟡 implementación endurecida en esta rama; CI y certificación productiva pendientes mediante deploy y `verify:phase10.5:production`.
+**Estado:** 🟢 proyección y reconciliación implementadas e integradas en `main` mediante PR #32. **Aceptación productiva:** pendiente de revisión manual por QA (PR #35), incluida la conciliación real con `payment_ledger`; no se reporta `PASS` hasta revisar evidencia.
+
+**Matriz de aceptación operativa actualizada:** consultar [`docs/phase10-operational-acceptance.md`](./phase10-operational-acceptance.md). Este documento separa código, automatización, configuración externa y aceptación humana.
 
 # 5. Observabilidad
 
