@@ -1,9 +1,10 @@
 name: Temporary PR 37 Prettier formatter
 
 on:
-  push:
+  pull_request:
     branches:
-      - fix/production-monitor-cloudflare-challenge
+      - main
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
@@ -14,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: fix/production-monitor-cloudflare-challenge
+          ref: ${{ github.event.pull_request.head.sha }}
           token: ${{ secrets.GITHUB_TOKEN }}
       - uses: pnpm/action-setup@v6
         with:
