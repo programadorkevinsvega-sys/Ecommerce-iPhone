@@ -172,7 +172,10 @@ function isSafeSlug(value: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(value);
 }
 
-async function hasSmallJsonBody(request: Request, predicate: (body: Record<string, unknown>) => boolean) {
+async function hasSmallJsonBody(
+  request: Request,
+  predicate: (body: Record<string, unknown>) => boolean,
+) {
   const contentType = request.headers.get("content-type") ?? "";
   if (!contentType.toLowerCase().includes("application/json")) return false;
 
@@ -219,7 +222,11 @@ export async function isAllowedProductionMonitorRequest(
         "/api/admin/notifications/dead-letter",
       ].includes(pathname)
     ) {
-      if (pathname === "/catalog") return searchParams.size === 0 || (searchParams.size === 1 && (searchParams.get("q") ?? "").length <= 128);
+      if (pathname === "/catalog")
+        return (
+          searchParams.size === 0 ||
+          (searchParams.size === 1 && (searchParams.get("q") ?? "").length <= 128)
+        );
       return searchParams.size === 0;
     }
 
@@ -240,7 +247,14 @@ export async function isAllowedProductionMonitorRequest(
       return isSafeSlug(pathname.slice("/api/content/blog/".length));
     }
 
-    if (["/api/notifications", "/api/notifications/unread-count", "/api/notifications/preferences", "/api/notifications/realtime"].includes(pathname)) {
+    if (
+      [
+        "/api/notifications",
+        "/api/notifications/unread-count",
+        "/api/notifications/preferences",
+        "/api/notifications/realtime",
+      ].includes(pathname)
+    ) {
       return searchParams.size === 1 && searchParams.get("scope") === "customer";
     }
 

@@ -1,6 +1,9 @@
 import { isCloudflareEdgeBlock } from "./cloudflare-edge-response.mjs";
 
-const baseUrl = (process.env.PUBLIC_PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
+const baseUrl = (process.env.PUBLIC_PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(
+  /\/$/,
+  "",
+);
 const response = await fetch(`${baseUrl}/api/health/live`, {
   headers: { accept: "application/json" },
   redirect: "manual",
@@ -46,6 +49,8 @@ if (isCloudflareEdgeBlock(response, body)) {
   }
 
   await writeOutput("true");
-  await writeSummary("### Public edge monitor\n\nThe unauthenticated public health endpoint returned HTTP 200 with a Worker request ID.\n");
+  await writeSummary(
+    "### Public edge monitor\n\nThe unauthenticated public health endpoint returned HTTP 200 with a Worker request ID.\n",
+  );
   console.log(`PASS public edge: HTTP 200, request_id=${requestId}`);
 }

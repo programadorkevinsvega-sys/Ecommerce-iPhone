@@ -10,7 +10,9 @@ export async function getProductionMonitorHeaders(targetUrl) {
     labels[2] === "workers.dev";
   if (!isRestrictedMonitorHost) {
     if (target.hostname.toLowerCase().endsWith(".workers.dev")) {
-      throw new Error("Refusing to send a GitHub OIDC token to an unrecognized workers.dev hostname.");
+      throw new Error(
+        "Refusing to send a GitHub OIDC token to an unrecognized workers.dev hostname.",
+      );
     }
     return {};
   }

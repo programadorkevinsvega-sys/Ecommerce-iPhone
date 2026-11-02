@@ -62,11 +62,12 @@ describe("GitHub Actions production monitor access", () => {
     resetGitHubMonitorJwksCacheForTests();
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        new Response(JSON.stringify({ keys: [publicJwk] }), {
-          status: 200,
-          headers: { "content-type": "application/json" },
-        }),
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ keys: [publicJwk] }), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
       ),
     );
   });
@@ -87,11 +88,16 @@ describe("GitHub Actions production monitor access", () => {
     expect(isTrustedGitHubActionsClaims(claims())).toBe(true);
     expect(isTrustedGitHubActionsClaims(claims({ ref: "refs/heads/feature" }))).toBe(false);
     expect(isTrustedGitHubActionsClaims(claims({ repository: "attacker/repository" }))).toBe(false);
-    expect(isTrustedGitHubActionsClaims(claims({ workflow_ref: "attacker.yml@refs/heads/main" }))).toBe(false);
+    expect(
+      isTrustedGitHubActionsClaims(claims({ workflow_ref: "attacker.yml@refs/heads/main" })),
+    ).toBe(false);
     expect(isTrustedGitHubActionsClaims(claims({ event_name: "pull_request" }))).toBe(false);
     expect(
       isTrustedGitHubActionsClaims(
-        claims({ event_name: "workflow_dispatch", sub: `repo:${repository}:environment:production` }),
+        claims({
+          event_name: "workflow_dispatch",
+          sub: `repo:${repository}:environment:production`,
+        }),
       ),
     ).toBe(true);
     expect(

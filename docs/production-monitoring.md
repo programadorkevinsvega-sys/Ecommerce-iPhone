@@ -39,7 +39,7 @@ For Cloudflare production-build events and the scheduled smoke:
 
 For an explicitly dispatched workflow from \`main\`:
 
-- the isolated Phase 10.2/10.3 analytics ingestion probes using only \`phase10-2-*\` / \`phase10-3-*\` event IDs and the existing D1 cleanup path;
+- the isolated Phase 10.2/10.3 analytics ingestion probes using only \`phase10-2-_\` / \`phase10-3-_\` event IDs and the existing D1 cleanup path;
 - the admin password-to-MFA-challenge check. It does not generate a session and does not automate TOTP enrollment, recovery-code use or privileged step-up.
 
 The OIDC token is short-lived and audience-specific. The monitor workflow is the only permitted workflow identity. The API allowlist is intentionally narrower than the application's route surface.
