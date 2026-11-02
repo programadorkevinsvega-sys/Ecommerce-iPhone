@@ -22,16 +22,21 @@ type GitHubActionsClaims = {
   event_name: string;
 };
 
-type JwksResponse = { keys?: JsonWebKey[] };
+type GitHubJwk = JsonWebKey & { kid?: string; kty?: string };
+type JwksResponse = { keys?: GitHubJwk[] };
 
-let cachedJwks: { keys: JsonWebKey[]; expiresAt: number } | undefined;
+let cachedJwks: { keys: GitHubJwk[]; expiresAt: number } | undefined;
 const importedKeys = new Map<string, CryptoKey>();
 
-function base64UrlDecode(value: string): Uint8Array {
+function base64UrlDecode(value: string): Uint8Array<ArrayBuffer> {
   const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
   const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
   const binary = atob(padded);
-  return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  const bytes = new Uint8Array(new ArrayBuffer(binary.length));
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
 }
 
 function decodeJsonSegment(value: string): Record<string, unknown> | null {
@@ -79,7 +84,7 @@ export function isTrustedGitHubActionsClaims(
   );
 }
 
-async function getGitHubJwks(): Promise<JsonWebKey[] | null> {
+async function getGitHubJwks(): Promise<GitHubJwk[] | null> {
   if (cachedJwks && cachedJwks.expiresAt > Date.now()) return cachedJwks.keys;
 
   try {
@@ -98,7 +103,7 @@ async function getGitHubJwks(): Promise<JsonWebKey[] | null> {
   }
 }
 
-async function getVerificationKey(jwk: JsonWebKey): Promise<CryptoKey | null> {
+async function getVerificationKey(jwk: GitHubJwk): Promise<CryptoKey | null> {
   const kid = typeof jwk.kid === "string" ? jwk.kid : "";
   if (!kid) return null;
   const cached = importedKeys.get(kid);
@@ -128,9 +133,11 @@ export async function verifyGitHubActionsMonitorToken(
 
   const parts = token.split(".");
   if (parts.length !== 3) return null;
+  const [encodedHeader, encodedClaims, encodedSignature] = parts;
+  if (!encodedHeader || !encodedClaims || !encodedSignature) return null;
 
-  const header = decodeJsonSegment(parts[0]);
-  const claims = decodeJsonSegment(parts[1]);
+  const header = decodeJsonSegment(encodedHeader);
+  const claims = decodeJsonSegment(encodedClaims);
   if (!header || !claims || header.alg !== "RS256" || typeof header.kid !== "string") return null;
   if (!isTrustedGitHubActionsClaims(claims)) return null;
 
@@ -145,8 +152,8 @@ export async function verifyGitHubActionsMonitorToken(
     const valid = await crypto.subtle.verify(
       { name: "RSASSA-PKCS1-v1_5" },
       key,
-      base64UrlDecode(parts[2]),
-      new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
+      base64UrlDecode(encodedSignature),
+      new TextEncoder().encode(`${encodedHeader}.${encodedClaims}`),
     );
     return valid ? (claims as GitHubActionsClaims) : null;
   } catch {
@@ -163,7 +170,7 @@ export function isProductionMonitorHostname(hostname: string): boolean {
   return (
     labels.length === 3 &&
     labels[0] === WORKER_NAME &&
-    labels[1].length > 0 &&
+    (labels[1]?.length ?? 0) > 0 &&
     labels[2] === "workers.dev"
   );
 }
