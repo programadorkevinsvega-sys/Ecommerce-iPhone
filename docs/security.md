@@ -158,7 +158,11 @@ Next.js Image emits the exact inline presentation hint `style="color:transparent
 
 API request IDs are validated and forwarded from middleware to route handlers. The Worker preserves the middleware response ID so route logs and `X-Request-Id` remain aligned. Checkout passes that ID into the order application and the transactional Notification Outbox; `request_id` is persisted by migration `0045_production_hardening.sql` and is propagated into the notification queue event when present. Analytics producers also preserve optional request IDs. Structured Worker/application errors redact sensitive context and omit raw stack traces; Queue logs do not include message bodies.
 
-Sensitive admin mutations require password reauthentication through a short-lived, scope-bound step-up grant. The grant stores hashes, is bound to the current admin session, expires after five minutes, and is audited. It is enforced for payment refunds/voids, admin-user/permission management and settings writes. **This is password-based reauthentication, not MFA**: no second factor or provider-backed MFA has been integrated.
+Administrative login requires password verification followed by TOTP before an admin session is issued. TOTP credentials are encrypted at rest with AES-256-GCM using the per-environment Worker Secret; recovery codes are stored as hashes and consumed once. Challenges expire after five minutes, invalid attempts are bounded, and accepted TOTP steps are persisted to prevent replay.
+
+Privileged mutations require a short-lived, scope-bound step-up grant after password and second-factor verification. The grant is bound to the current admin and session hash, is consumed atomically, and is audited. Recovery and key-rotation procedures are documented in `docs/cloudflare-deployment.md`.
+
+**Operational acceptance remains pending:** confirm Worker Secret configuration and migration 0047 in Cloudflare, enroll/log in with a real authenticator, consume a recovery code once, regenerate codes, and verify privileged step-up. GitHub Actions checks the password-to-TOTP challenge boundary only; it does not store a TOTP seed or claim that a real authenticator flow passed.
 
 Playwright scans the storefront home, cart, checkout and admin login for accessible names, image alternatives, document language, a main landmark and Axe rules tagged WCAG 2.0/2.1/2.2 A/AA. These automated checks are targeted regressions, not a WCAG 2.2 AA certification. Full keyboard journeys, contrast/reflow review and assistive-technology testing still require manual acceptance.
 
@@ -166,7 +170,7 @@ The scheduled browser performance smoke reports TTFB, DOMContentLoaded, load, LC
 
 The full workspace audit and build/test pipeline remain required on the final PR head. Cloudflare owns the configured Worker deployment and remote D1 migration sequence; GitHub Actions prepares isolated local D1 only and does not apply production migrations. Cloudflare Preview URLs are currently disabled, so a successful Preview build can be recorded but cannot be exercised through a public Preview URL.
 
-**Open acceptance items:** provider-backed MFA plus recovery/break-glass policy; manual accessibility review; reproducible field/lab Web Vitals evidence; final-head CI and Cloudflare Preview evidence. Global security certification remains pending.
+**Open acceptance items:** operational confirmation of the Cloudflare MFA encryption secret and migration 0047; real-authenticator enrollment/login, recovery and step-up; manual accessibility review; representative field Web Vitals evidence; and the final-head CI/deployment evidence. Global security certification remains pending.
 
 ## Admin MFA — TOTP obligatorio
 

@@ -9,25 +9,27 @@ Permitir recuperar una versión estable del Worker sin introducir inconsistencia
 1. El rollback de aplicación debe ser reversible.
 2. Las migraciones de D1 deben diseñarse backward-compatible cuando exista despliegue progresivo.
 3. Una migración destructiva no debe formar parte del mismo release que requiere rollback del código a la versión anterior.
-4. Staging debe validar el procedimiento antes de producción.
+4. Un entorno Preview solo puede validar el procedimiento cuando tenga D1, R2, Queues, Durable Objects y secretos completamente aislados de producción. El Preview actual no se considera un entorno de staging certificado.
 
 ## Estrategia de despliegue
 
 ```text
-Release candidate
-      ↓
-Staging migration
-      ↓
-Staging Worker
-      ↓
-Smoke/E2E
-      ↓
-Production migration
-      ↓
-Production Worker
-      ↓
-Health + metrics
+Pull request
+    ↓
+GitHub Actions: quality gates + local D1 + E2E + OpenNext build
+    ↓
+Merge to main
+    ↓
+Cloudflare Workers Builds: main guard
+    ↓
+Remote D1 migrations
+    ↓
+Cloudflare Worker deployment
+    ↓
+Health/readiness + production verification
 ```
+
+GitHub Actions no aplica migraciones remotas ni despliega el Worker. Cloudflare Workers Builds es responsable del Deploy command y de las migraciones D1 de producción. Las ramas que no son `main` no deben ejecutar el comando de deploy productivo.
 
 ## Rollback del Worker
 
@@ -101,6 +103,15 @@ Los mensajes deben ser compatibles con consumidores anteriores durante despliegu
 - [ ] Verificar notificaciones pendientes.
 - [ ] Registrar incidente y causa raíz.
 
-## Prueba obligatoria
+## Estado de validación
 
-Antes de declarar Foundation `COMPLETE`, ejecutar en staging un despliegue y rollback controlado y conservar evidencia del resultado en el sistema de CI/CD o en el registro operativo del proyecto.
+El procedimiento está documentado, pero **no hay evidencia de una ejecución controlada de rollback** en un entorno aislado. Preview no debe utilizarse para este propósito mientras sus bindings y datos no estén separados de producción.
+
+Antes de certificar recovery:
+
+1. Confirmar una versión Worker estable y la compatibilidad de su esquema D1.
+2. Probar rollback de Worker en un entorno aislado con recursos propios.
+3. Verificar liveness/readiness, rutas críticas, colas y logs después de la reversión.
+4. Registrar deployment/version IDs, migraciones, hora, operador, resultado y cualquier acción de recuperación.
+
+No ejecutar deliberadamente un rollback de producción como sustituto de esta validación sin autorización operativa y plan de recuperación aprobado.
