@@ -69,25 +69,25 @@ describe("structured server logging", () => {
   it(
     "emits structured request metrics without retaining arbitrary identifiers or secrets",
     () => {
-    const output = vi.spyOn(console, "log").mockImplementation(() => undefined);
-    logServerMetric("http.request", {
-      component: "cloudflare-worker",
-      method: "GET",
-      route: "/api/orders",
-      status: 500,
-      durationMs: 42,
-      requestId: "req_metric_123456",
-      authorization: "Bearer metric-secret",
-    });
-    const record = JSON.parse(String(output.mock.calls[0]?.[0])) as Record<string, unknown>;
-    expect(record.level).toBe("info");
-    expect(record.source).toBe("operational_metric");
-    expect(record.operation).toBe("http.request");
-    expect(record.route).toBe("/api/orders");
-    expect(record.status).toBe(500);
-    expect(record.durationMs).toBe(42);
-    expect(record.authorization).toBe("[REDACTED]");
-    expect(JSON.stringify(record)).not.toContain("metric-secret");
+      const output = vi.spyOn(console, "log").mockImplementation(() => undefined);
+      logServerMetric("http.request", {
+        component: "cloudflare-worker",
+        method: "GET",
+        route: "/api/orders",
+        status: 500,
+        durationMs: 42,
+        requestId: "req_metric_123456",
+        authorization: "Bearer metric-secret",
+      });
+      const record = JSON.parse(String(output.mock.calls[0]?.[0])) as Record<string, unknown>;
+      expect(record.level).toBe("info");
+      expect(record.source).toBe("operational_metric");
+      expect(record.operation).toBe("http.request");
+      expect(record.route).toBe("/api/orders");
+      expect(record.status).toBe(500);
+      expect(record.durationMs).toBe(42);
+      expect(record.authorization).toBe("[REDACTED]");
+      expect(JSON.stringify(record)).not.toContain("metric-secret");
     },
   );
 });

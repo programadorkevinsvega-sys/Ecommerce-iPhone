@@ -421,7 +421,11 @@ const worker = {
         status: response.status,
         durationMs: Math.max(0, Date.now() - startedAt),
         outcome:
-          response.status >= 500 ? "error" : response.status >= 400 ? "rejected" : "success",
+          response.status >= 500
+            ? "error"
+            : response.status >= 400
+              ? "rejected"
+              : "success",
       });
       return response;
     };
