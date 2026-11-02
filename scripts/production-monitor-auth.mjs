@@ -4,10 +4,11 @@ export async function getProductionMonitorHeaders(targetUrl) {
   const target = new URL(targetUrl);
   const labels = target.hostname.toLowerCase().split(".");
   const isRestrictedMonitorHost =
-    labels.length === 3 &&
+    labels.length === 4 &&
     labels[0] === "ecommerce-iphone" &&
-    /^[a-z0-9-]{1,63}$/.test(labels[1]) &&
-    labels[2] === "workers.dev";
+    /^[a-z0-9-]{1,63}$/.test(labels[1] ?? "") &&
+    labels[2] === "workers" &&
+    labels[3] === "dev";
   if (!isRestrictedMonitorHost) {
     if (target.hostname.toLowerCase().endsWith(".workers.dev")) {
       throw new Error(
