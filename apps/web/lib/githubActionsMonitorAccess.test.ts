@@ -39,7 +39,7 @@ function claims(overrides: Record<string, unknown> = {}) {
 
 describe("GitHub Actions production monitor access", () => {
   let privateKey: CryptoKey;
-  let publicJwk: JsonWebKey;
+  let publicJwk: JsonWebKey & { kid?: string; kty?: string };
 
   beforeAll(async () => {
     const pair = await crypto.subtle.generateKey(
