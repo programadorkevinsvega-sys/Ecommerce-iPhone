@@ -211,7 +211,6 @@ async function checkReadiness(env: Env): Promise<{
       const namespace = env.NOTIFICATION_HUB;
       const stub = namespace.get(namespace.idFromName("readiness"));
       const response = await stub.fetch("https://notification-hub/healthz", {
-        signal: AbortSignal.timeout(1500),
       });
       return response.ok;
     }),
