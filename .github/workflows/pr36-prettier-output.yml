@@ -1,0 +1,56 @@
+name: Temporary Prettier output for PR 36
+
+on:
+  push:
+    branches:
+      - feat/phase10-production-readiness
+
+permissions:
+  contents: read
+
+jobs:
+  prettier-output:
+    if: contains(github.event.head_commit.message, '[prettier-output]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_SHA: 03a490bec41e660fa65fb1c02d7fbef213177868
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v7
+        with:
+          ref: feat/phase10-production-readiness
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 12.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format changed files with repository Prettier
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(git diff --name-only --diff-filter=ACMR "${BASE_SHA}...HEAD")
+          pnpm exec prettier --write --ignore-unknown "${files[@]}"
+          mkdir -p "$RUNNER_TEMP/prettier-output"
+          for file in "${files[@]}"; do
+            mkdir -p "$RUNNER_TEMP/prettier-output/$(dirname "$file")"
+            cp "$file" "$RUNNER_TEMP/prettier-output/$file"
+          done
+
+      - name: Upload formatted source artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr36-prettier-output
+          path: ${{ runner.temp }}/prettier-output/
+          if-no-files-found: error
+          retention-days: 1
