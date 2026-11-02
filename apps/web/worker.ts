@@ -420,12 +420,7 @@ const worker = {
         route,
         status: response.status,
         durationMs: Math.max(0, Date.now() - startedAt),
-        outcome:
-          response.status >= 500
-            ? "error"
-            : response.status >= 400
-              ? "rejected"
-              : "success",
+        outcome: response.status >= 500 ? "error" : response.status >= 400 ? "rejected" : "success",
       });
       return response;
     };
@@ -664,11 +659,7 @@ const worker = {
         batchSize: batch.messages.length,
         ...metrics,
         outcome:
-          metrics.retried > 0
-            ? "partial"
-            : metrics.deadLettered > 0
-              ? "dead_lettered"
-              : "success",
+          metrics.retried > 0 ? "partial" : metrics.deadLettered > 0 ? "dead_lettered" : "success",
       });
       return;
     }
@@ -741,11 +732,7 @@ const worker = {
       batchSize: batch.messages.length,
       ...metrics,
       outcome:
-        metrics.retried > 0
-          ? "partial"
-          : metrics.deadLettered > 0
-            ? "dead_lettered"
-            : "success",
+        metrics.retried > 0 ? "partial" : metrics.deadLettered > 0 ? "dead_lettered" : "success",
     });
   },
 };

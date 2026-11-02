@@ -7,10 +7,7 @@ const DIGEST_PATTERN = /^[A-Za-z0-9._-]{1,128}$/;
 
 export async function POST(request: Request): Promise<Response> {
   if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
-    return NextResponse.json(
-      { error: "Content-Type must be application/json" },
-      { status: 415 },
-    );
+    return NextResponse.json({ error: "Content-Type must be application/json" }, { status: 415 });
   }
 
   const declaredLength = Number(request.headers.get("content-length") ?? "0");
@@ -38,9 +35,7 @@ export async function POST(request: Request): Promise<Response> {
   const digest =
     typeof value.digest === "string" && DIGEST_PATTERN.test(value.digest) ? value.digest : null;
   const routeGroup =
-    typeof value.routeGroup === "string"
-      ? normalizeOperationalRoute(value.routeGroup)
-      : "/other";
+    typeof value.routeGroup === "string" ? normalizeOperationalRoute(value.routeGroup) : "/other";
 
   // Do not accept or log browser-provided messages, stacks, URLs, cookies or form data.
   logServerError("client.runtime", new Error("NEXTJS_CLIENT_RUNTIME_ERROR"), {

@@ -64,9 +64,7 @@ async function main() {
     headers: { cookie: challengeCookie },
   });
   if (protectedResource.status !== 401) {
-    throw new Error(
-      `expected 401 before TOTP verification, got ${protectedResource.status}`,
-    );
+    throw new Error(`expected 401 before TOTP verification, got ${protectedResource.status}`);
   }
 
   if (loginBody.enrollmentRequired) {

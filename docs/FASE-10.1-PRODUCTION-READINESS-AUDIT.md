@@ -50,7 +50,7 @@ Los gaps principales detectados son:
 | Security headers/CSP          | 🟢 Implementado                          | CSP, HSTS, XCTO, XFO, Referrer, Permissions, COOP, CORP                                                       |
 | CORS                          | 🟢 Parcial                               | Middleware restringe orígenes y métodos; falta auditoría completa por superficie                              |
 | Rate limiting                 | 🟢 Implementado base                     | API y sensitive limiters en Worker/Wrangler                                                                   |
-| WAF/Bot/Turnstile             | ⚪ No verificable desde código            | Debe auditarse en configuración externa de Cloudflare                                                         |
+| WAF/Bot/Turnstile             | ⚪ No verificable desde código           | Debe auditarse en configuración externa de Cloudflare                                                         |
 | Secret management             | 🟢 Base implementada                     | secretos no versionados; `.env*` ignorados; bindings/vars en Wrangler                                         |
 | MFA/step-up                   | 🟡 Pendiente de auditoría/implementación | No existe evidencia suficiente para declarar controles de step-up de operaciones sensibles                    |
 | Input validation              | 🟢/🟡 Parcial                            | Existe validación en distintos bounded contexts; falta auditoría transversal                                  |

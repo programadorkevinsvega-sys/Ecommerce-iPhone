@@ -400,55 +400,53 @@ test.describe("platform hardening", () => {
     });
   });
 
-  test(
-    "MFA challenge and recovery endpoints fail closed without an authenticated challenge",
-    async ({ request }) => {
-      const challenge = await request.get("/api/admin/auth/mfa/challenge");
-      expect(challenge.status()).toBe(401);
+  test("MFA challenge and recovery endpoints fail closed without an authenticated challenge", async ({
+    request,
+  }) => {
+    const challenge = await request.get("/api/admin/auth/mfa/challenge");
+    expect(challenge.status()).toBe(401);
 
-      const verify = await request.post("/api/admin/auth/mfa/verify", {
-        data: { code: "123456" },
-      });
-      expect(verify.status()).toBe(401);
+    const verify = await request.post("/api/admin/auth/mfa/verify", {
+      data: { code: "123456" },
+    });
+    expect(verify.status()).toBe(401);
 
-      const status = await request.get("/api/admin/auth/mfa/status");
-      expect(status.status()).toBe(401);
+    const status = await request.get("/api/admin/auth/mfa/status");
+    expect(status.status()).toBe(401);
 
-      const recovery = await request.post("/api/admin/auth/mfa/recovery", {
-        data: { password: "not-a-real-password", code: "123456" },
-      });
-      expect(recovery.status()).toBe(401);
+    const recovery = await request.post("/api/admin/auth/mfa/recovery", {
+      data: { password: "not-a-real-password", code: "123456" },
+    });
+    expect(recovery.status()).toBe(401);
 
-      const disable = await request.post("/api/admin/auth/mfa/disable", {
-        data: { password: "not-a-real-password", code: "123456" },
-      });
-      expect(disable.status()).toBe(401);
-    },
-  );
+    const disable = await request.post("/api/admin/auth/mfa/disable", {
+      data: { password: "not-a-real-password", code: "123456" },
+    });
+    expect(disable.status()).toBe(401);
+  });
 
-  test(
-    "readiness probes D1, R2 and Notification Hub and distinguishes configured Queues",
-    async ({ request }) => {
-      const response = await request.get("/api/health/ready");
-      const payload = (await response.json()) as {
-        status: string;
-        ready: boolean;
-        dependencies: Record<string, string>;
-      };
+  test("readiness probes D1, R2 and Notification Hub and distinguishes configured Queues", async ({
+    request,
+  }) => {
+    const response = await request.get("/api/health/ready");
+    const payload = (await response.json()) as {
+      status: string;
+      ready: boolean;
+      dependencies: Record<string, string>;
+    };
 
-      expect(response.status()).toBe(200);
-      expect(payload.status).toBe("ready");
-      expect(payload.ready).toBe(true);
-      expect(payload.dependencies).toMatchObject({
-        d1: "ok",
-        r2: "ok",
-        eventsQueue: "configured",
-        notificationsQueue: "configured",
-        notificationsDlqQueue: "configured",
-        notificationHub: "ok",
-      });
-    },
-  );
+    expect(response.status()).toBe(200);
+    expect(payload.status).toBe("ready");
+    expect(payload.ready).toBe(true);
+    expect(payload.dependencies).toMatchObject({
+      d1: "ok",
+      r2: "ok",
+      eventsQueue: "configured",
+      notificationsQueue: "configured",
+      notificationsDlqQueue: "configured",
+      notificationHub: "ok",
+    });
+  });
 
   test("CORS rejects untrusted preflight and mutating origins", async ({ request }) => {
     const live = await request.get("/api/health/live");
