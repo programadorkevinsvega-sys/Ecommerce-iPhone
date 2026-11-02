@@ -3,6 +3,8 @@ const BASE_URL = (
 ).replace(/\/$/, "");
 
 const timeoutMs = Number(process.env.PHASE08_TIMEOUT_MS ?? "15000");
+const { getProductionMonitorHeaders } = await import("./production-monitor-auth.mjs");
+const monitorHeaders = await getProductionMonitorHeaders(BASE_URL);
 
 async function request(path) {
   const controller = new AbortController();
@@ -11,7 +13,7 @@ async function request(path) {
     return await fetch(`${BASE_URL}${path}`, {
       redirect: "manual",
       signal: controller.signal,
-      headers: { accept: "application/json,text/html" },
+      headers: { accept: "application/json,text/html", ...monitorHeaders },
     });
   } finally {
     clearTimeout(timer);

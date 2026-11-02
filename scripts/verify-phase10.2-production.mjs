@@ -2,6 +2,8 @@ const BASE_URL = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").
 const timeoutMs = Number(process.env.PHASE10_2_TIMEOUT_MS ?? "15000");
 const pollIntervalMs = Number(process.env.PHASE10_2_POLL_INTERVAL_MS ?? "3000");
 const pollAttempts = Number(process.env.PHASE10_2_POLL_ATTEMPTS ?? "20");
+const { getProductionMonitorHeaders } = await import("./production-monitor-auth.mjs");
+const monitorHeaders = await getProductionMonitorHeaders(BASE_URL);
 const { execFile } = await import("node:child_process");
 const { promisify } = await import("node:util");
 
@@ -22,6 +24,7 @@ async function request(path, init = {}) {
       headers: {
         accept: "application/json",
         ...(init.headers ?? {}),
+        ...monitorHeaders,
       },
     });
   } finally {

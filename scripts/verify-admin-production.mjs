@@ -1,6 +1,8 @@
 const baseUrl = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
 const email = process.env.ADMIN_EMAIL;
 const password = process.env.ADMIN_PASSWORD;
+const { getProductionMonitorHeaders } = await import("./production-monitor-auth.mjs");
+const monitorHeaders = await getProductionMonitorHeaders(baseUrl);
 
 if (!email || !password) {
   throw new Error("Missing production admin credentials: set ADMIN_EMAIL and ADMIN_PASSWORD.");
@@ -19,6 +21,7 @@ async function request(path, init = {}) {
     headers: {
       accept: "application/json",
       ...(init.headers ?? {}),
+      ...monitorHeaders,
     },
   });
 }

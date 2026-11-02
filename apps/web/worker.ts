@@ -31,6 +31,11 @@ import { classifyRateLimitPath, normalizeOperationalRoute } from "./lib/operatio
 import { isValidRequestId, resolveRequestId } from "./lib/requestCorrelation";
 import { resolveQueueCorrelation } from "./lib/queueCorrelation";
 import { SECURITY_RESPONSE_HEADERS } from "./lib/securityHeaders";
+import {
+  isAllowedProductionMonitorRequest,
+  isWorkersDevHostname,
+  verifyGitHubActionsMonitorToken,
+} from "./lib/githubActionsMonitorAccess";
 
 export class NotificationHub extends DurableObject {
   async fetch(request: Request): Promise<Response> {
@@ -424,6 +429,24 @@ const worker = {
     };
 
     try {
+      // The workers.dev hostname is a restricted CI-only path around the
+      // zone-level WAF. It can expose only the exact probe routes allowed by
+      // a short-lived GitHub Actions OIDC token; all other traffic is hidden.
+      if (isWorkersDevHostname(url.hostname)) {
+        const claims = await verifyGitHubActionsMonitorToken(request.headers.get("authorization"));
+        if (!claims || !(await isAllowedProductionMonitorRequest(request, claims))) {
+          return recordResponse(
+            withHeaders(new Response("Not found", { status: 404 }), { "X-Request-Id": id }),
+          );
+        }
+
+        // Do not forward the GitHub OIDC bearer token into Next.js application
+        // handlers after the Worker has validated it.
+        const forwardedHeaders = new Headers(request.headers);
+        forwardedHeaders.delete("authorization");
+        request = new Request(request, { headers: forwardedHeaders });
+      }
+
       if (url.pathname === "/api/health/live") {
         return recordResponse(withHeaders(healthResponse("ok"), { "X-Request-Id": id }));
       }

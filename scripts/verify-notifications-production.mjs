@@ -1,4 +1,6 @@
-const BASE_URL = process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com";
+const BASE_URL = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
+const { getProductionMonitorHeaders } = await import("./production-monitor-auth.mjs");
+const monitorHeaders = await getProductionMonitorHeaders(BASE_URL);
 
 async function request(path, init = {}) {
   const response = await fetch(new URL(path, BASE_URL), {
@@ -7,6 +9,7 @@ async function request(path, init = {}) {
     headers: {
       accept: "application/json",
       ...(init.headers ?? {}),
+      ...monitorHeaders,
     },
   });
   let body = "";

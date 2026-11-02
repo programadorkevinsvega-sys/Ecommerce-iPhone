@@ -1,8 +1,8 @@
 # Fase 10 — Matriz de aceptación operativa
 
 **Fecha de actualización:** 2026-11-02  
-**Rama de continuación:** `feat/phase10-production-readiness`  
-**Base auditada:** `main` en `03a490bec41e660fa65fb1c02d7fbef213177868`
+**Rama de continuación:** `fix/production-monitor-cloudflare-challenge`  
+**Base auditada:** `main` en `c3b88d5ef37a31901c3cb3b2ed4b6f5ee19ebc62`
 
 Este documento separa la implementación en código, las pruebas automatizadas y la evidencia operativa/manual. Una prueba local o un build exitoso no certifican dependencias remotas, WAF, MFA real, accesibilidad manual ni métricas de campo.
 
@@ -58,7 +58,7 @@ Las Queues no tienen una lectura de salud no mutativa en este contrato. `configu
 ## Reglas de aceptación
 
 1. No convertir `configured` en `healthy` para dependencias que no fueron llamadas.
-2. No convertir un challenge WAF o un bloqueo del monitor en un PASS/FAIL del runtime; clasificarlo como inconcluso y usar evidencia de Workers Builds y una solicitud de operador.
+2. Ejecutar los probes del runtime por el host `workers.dev` restringido con OIDC de GitHub Actions. El dominio público conserva WAF/Bot Protection y se verifica por separado; un challenge del edge se registra como inconcluso, pero no debe suprimir los probes autenticados del Worker. Ver `docs/production-monitoring.md`.
 3. No compartir seeds TOTP, OTPs temporales, recovery codes, contraseñas ni secrets con GitHub Actions o logs.
 4. No crear pagos/refunds, datos financieros ni tráfico comercial ficticio para conseguir una certificación.
 5. No aplicar D1 migrations remotas desde CI. Cloudflare Workers Builds sigue siendo responsable del deploy y migraciones productivas.

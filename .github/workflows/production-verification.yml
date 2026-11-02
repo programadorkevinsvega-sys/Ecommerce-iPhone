@@ -66,9 +66,14 @@ jobs:
          !contains(github.event.check_run.details_url, '/previews/')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      checks: read
+      id-token: write
     outputs:
-      cloudflare_edge_blocked: ${{ steps.production-health.outputs.cloudflare_edge_blocked }}
       production_health_verified: ${{ steps.production-health.outputs.production_health_verified }}
+      production_monitor_url: ${{ steps.monitor-url.outputs.monitor_url }}
+      public_edge_verified: ${{ steps.public-edge.outputs.public_edge_verified }}
     steps:
       - name: Checkout deployed commit
         uses: actions/checkout@v7
@@ -89,49 +94,43 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Verify production Worker health and rate limiting
+      - name: Resolve restricted Cloudflare workers.dev monitor host
+        id: monitor-url
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/resolve-workers-monitor-url.mjs
+
+      - name: Verify authenticated Worker health and rate limiting
         id: production-health
+        env:
+          PRODUCTION_URL: ${{ steps.monitor-url.outputs.monitor_url }}
         shell: bash
         run: |
-          set +e
+          set -euo pipefail
           pnpm verify:production
-          status=$?
-          set -e
-
-          if [ "$status" -eq 2 ]; then
-            echo "cloudflare_edge_blocked=true" >> "$GITHUB_OUTPUT"
-            echo "production_health_verified=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Production monitor blocked by Cloudflare::The edge returned a verified Cloudflare challenge/block response. Worker health is inconclusive; this is not reported as an application or deployment failure."
-            {
-              echo "### Production verification inconclusive"
-              echo
-              echo "Cloudflare blocked the GitHub Actions monitor before the health endpoint could be verified. The response diagnostics above include the Cloudflare Ray ID where available."
-              echo "Phase 08, Phase 09, notification checks and Analytics certification are skipped for this run because they use the same public edge."
-              echo
-              echo "This does **not** certify production runtime health; inspect the Workers Builds deployment check and a real browser request separately."
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-
-          if [ "$status" -ne 0 ]; then
-            echo "cloudflare_edge_blocked=false" >> "$GITHUB_OUTPUT"
-            echo "production_health_verified=false" >> "$GITHUB_OUTPUT"
-            exit "$status"
-          fi
-
-          echo "cloudflare_edge_blocked=false" >> "$GITHUB_OUTPUT"
           echo "production_health_verified=true" >> "$GITHUB_OUTPUT"
 
+      - name: Verify public edge health without bypassing Cloudflare
+        id: public-edge
+        env:
+          PUBLIC_PRODUCTION_URL: https://iphone.jnmtortas.com
+        run: node scripts/verify-production-edge.mjs
+
       - name: Verify Phase 08 public content and admin authorization
-        if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
+        env:
+          PRODUCTION_URL: ${{ steps.monitor-url.outputs.monitor_url }}
         run: pnpm verify:phase08:production
 
       - name: Verify Phase 09 SEO
-        if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
+        env:
+          PRODUCTION_URL: ${{ steps.monitor-url.outputs.monitor_url }}
+          PUBLIC_PRODUCTION_URL: https://iphone.jnmtortas.com
         run: pnpm verify:phase09:production
 
       - name: Verify notification authorization boundaries
-        if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
+        env:
+          PRODUCTION_URL: ${{ steps.monitor-url.outputs.monitor_url }}
         run: pnpm verify:notifications:production
 
   # Manual engineering probes cover Phase 10.2–10.3. Analytics 10.4/10.5 are reserved for final manual review by the responsible QA area.
@@ -145,7 +144,11 @@ jobs:
         needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    permissions:
+      contents: read
+      id-token: write
     env:
+      PRODUCTION_URL: ${{ needs.smoke.outputs.production_monitor_url }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
@@ -225,7 +228,11 @@ jobs:
         needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
     env:
+      PRODUCTION_URL: ${{ needs.smoke.outputs.production_monitor_url }}
       ADMIN_EMAIL: ${{ secrets.ADMIN_RBAC_ALLOWED_EMAIL }}
       ADMIN_PASSWORD: ${{ secrets.ADMIN_RBAC_ALLOWED_PASSWORD }}
     steps:

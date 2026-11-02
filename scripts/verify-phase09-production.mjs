@@ -1,9 +1,12 @@
-const BASE_URL = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
+const BASE_URL = (process.env.PUBLIC_PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
+const REQUEST_BASE_URL = (process.env.PRODUCTION_URL ?? BASE_URL).replace(/\/$/, "");
+const { getProductionMonitorHeaders } = await import("./production-monitor-auth.mjs");
+const monitorHeaders = await getProductionMonitorHeaders(REQUEST_BASE_URL);
 
 async function request(path) {
-  const response = await fetch(BASE_URL + path, {
+  const response = await fetch(REQUEST_BASE_URL + path, {
     redirect: "manual",
-    headers: { accept: "text/html,application/xml,text/plain" },
+    headers: { accept: "text/html,application/xml,text/plain", ...monitorHeaders },
   });
   const body = await response.text();
   return { response, body };
