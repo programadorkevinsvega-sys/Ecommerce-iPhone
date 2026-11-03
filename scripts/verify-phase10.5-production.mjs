@@ -6,7 +6,16 @@ const { execFile } = await import("node:child_process");
 const { promisify } = await import("node:util");
 const execFileAsync = promisify(execFile);
 
-const BASE_URL = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
+const BASE_URL = (process.env.PRODUCTION_URL ?? "").replace(/\/$/, "");
+const monitor = new URL(BASE_URL);
+if (!monitor.hostname.toLowerCase().endsWith(".workers.dev")) {
+  throw new Error("Production certification must use the protected workers.dev monitor, not the public WAF edge.");
+}
+const { getProductionMonitorHeaders } = await import("./production-monitor-auth.mjs");
+const monitorHeaders = await getProductionMonitorHeaders(BASE_URL);
+if (typeof monitorHeaders.authorization !== "string") {
+  throw new Error("GitHub Actions OIDC authorization is required for production certification.");
+}
 const to = new Date();
 const from = new Date(
   to.getTime() - (Number.isFinite(periodDays) ? periodDays : 30) * 24 * 60 * 60 * 1000,
@@ -25,11 +34,14 @@ function equal(actual, expected, label) {
 async function request(path) {
   return fetch(`${BASE_URL}${path}`, {
     redirect: "manual",
-    headers: { accept: "application/json" },
+    headers: { accept: "application/json", ...monitorHeaders },
   });
 }
 
 async function d1(sql) {
+  if (!/^\s*SELECT\b/i.test(sql) || /;\s*\S/.test(sql)) {
+    throw new Error("Phase 10.5 production certification permits single SELECT statements only.");
+  }
   const { stdout } = await execFileAsync(
     "pnpm",
     ["exec", "wrangler", "d1", "execute", "DB", "--remote", "--json", "--command", sql],
