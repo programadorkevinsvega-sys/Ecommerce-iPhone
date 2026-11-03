@@ -4,14 +4,14 @@
 
 La Fase 10 sigue en ejecución; no debe marcarse completa por la integración de una subfase ni por CI verde. Situación verificada en `main` (`ba0b9d484c6fbdba95a650ed008d0fa4a3ccad6d`):
 
-| Subfase | Estado vigente |
-|---|---|
-| 10.1 | 🟢 Auditoría completada; el informe original es una fotografía histórica del 2026-09-29. |
-| 10.2–10.3 | 🟢 Certificadas en producción el 2026-09-29; conservar como evidencia histórica. |
-| 10.4 | 🟢 Implementación y verificador read-only integrados (PR #32/#38); 🟡 aceptación productiva pendiente de muestras reales y ejecución protegida. |
-| 10.5 | 🟢 Reconciliación y verificador read-only integrados (PR #32/#38); 🟡 aceptación productiva pendiente de ledger/payment/order real y evidencia protegida. |
-| 10.6 | 🟢 Logging estructurado integrado por PR #39; CI y Lighthouse pasaron. 🟡 Retención/acceso en Cloudflare Observability pendientes de aceptación manual. |
-| 10.7 | ⬜ Siguiente subfase de implementación: Correlation IDs y request tracing. |
+| Subfase   | Estado vigente                                                                                                                                            |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 10.1      | 🟢 Auditoría completada; el informe original es una fotografía histórica del 2026-09-29.                                                                  |
+| 10.2–10.3 | 🟢 Certificadas en producción el 2026-09-29; conservar como evidencia histórica.                                                                          |
+| 10.4      | 🟢 Implementación y verificador read-only integrados (PR #32/#38); 🟡 aceptación productiva pendiente de muestras reales y ejecución protegida.           |
+| 10.5      | 🟢 Reconciliación y verificador read-only integrados (PR #32/#38); 🟡 aceptación productiva pendiente de ledger/payment/order real y evidencia protegida. |
+| 10.6      | 🟢 Logging estructurado integrado por PR #39; CI y Lighthouse pasaron. 🟡 Retención/acceso en Cloudflare Observability pendientes de aceptación manual.   |
+| 10.7      | ⬜ Siguiente subfase de implementación: Correlation IDs y request tracing.                                                                                 |
 
 El Repository CI del merge a `main` pasó. El Production Verification del 2026-11-03 falló en el preflight del monitor Worker (HTTP 401; `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` no estaba configurada), por lo que runtime smoke no se completó y 10.4/10.5 quedaron `skipped`/`PENDING_MANUAL_REVIEW`. No se declara una nueva certificación de producción.
 
@@ -398,7 +398,6 @@ Descuentos y cupones deben validarse server-side y sus eventos deben ser auditab
 
 ---
 
-
 ## Fase 08 — 08.1 Auditoría de estado existente
 
 La auditoría inicial del 2026-09-25 revisó el código real de `main` antes de reconstruir funcionalidades. Hallazgos principales:
@@ -420,7 +419,6 @@ La auditoría inicial del 2026-09-25 revisó el código real de `main` antes de 
 6. Completar reviews públicas, compra verificada, moderación, respuesta y reportes.
 7. Integrar auditoría, RBAC, idempotencia, concurrencia y tests.
 8. Build, deploy y certificación productiva.
-
 
 ## Fase 08 — 08.4 Certificación productiva y hardening final
 
@@ -681,16 +679,16 @@ Ejemplo para la Fase 01:
 
 ## Registro histórico — estado vivo del 2026-09-21
 
-| Área | Estado |
-|---|---|
-| Foundation | 🟡 Implementada + hardening; certificación final pendiente |
-| Storefront | 🟡 Implementada + hardening de navegación pública; certificación E2E/accessibility/performance/SEO pendiente |
-| Commerce Core | 🟢 Implementación cerrada; certificación productiva pendiente |
-| Payments | 🟡 Cinco adapters implementados; certificación real pendiente |
-| Services | 🟢 Implementación + hardening; certificación pendiente |
-| Admin/RBAC | 🟡 Implementación avanzada; certificación pendiente |
-| Notifications | 🟡 Outbox/Queue/Resend funcional; arquitectura realtime definida; Durable Objects/WebSocket + inbox + DLQ/replay pendientes |
-| Technicians | 🟡 Identidad independiente implementada; portal funcional + hardening visual/UX implementado; certificación productiva pendiente |
+| Área          | Estado                                                                                                                           |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Foundation    | 🟡 Implementada + hardening; certificación final pendiente                                                                       |
+| Storefront    | 🟡 Implementada + hardening de navegación pública; certificación E2E/accessibility/performance/SEO pendiente                     |
+| Commerce Core | 🟢 Implementación cerrada; certificación productiva pendiente                                                                    |
+| Payments      | 🟡 Cinco adapters implementados; certificación real pendiente                                                                    |
+| Services      | 🟢 Implementación + hardening; certificación pendiente                                                                           |
+| Admin/RBAC    | 🟡 Implementación avanzada; certificación pendiente                                                                              |
+| Notifications | 🟡 Outbox/Queue/Resend funcional; arquitectura realtime definida; Durable Objects/WebSocket + inbox + DLQ/replay pendientes      |
+| Technicians   | 🟡 Identidad independiente implementada; portal funcional + hardening visual/UX implementado; certificación productiva pendiente |
 
 ### Última producción certificada
 
@@ -736,21 +734,20 @@ Una fase se considera terminada únicamente cuando:
 **Estado:** 🟢 implementación de 08.2 cerrada. La certificación de release permanece separada y requiere build/deploy/verify exitoso sobre el commit final.
 ## Estado del roadmap
 
-| Fase | Issue | Estado |
-|---|---:|---|
-| 01 — Foundation | #1 | 🟡 Implementada, certificación pendiente |
-| 02 — Storefront Premium | #2 | 🟡 Implementada + hardening de navegación, certificación pendiente |
-| 03 — Commerce Core | #3 | 🟢 Implementación cerrada, certificación pendiente |
-| 04 — Payments | #4 | 🟡 Implementado, certificación real pendiente |
-| 05 — Services | #5 | 🟢 Implementado + hardening, certificación pendiente |
-| 06 — Admin + RBAC | #6 | 🟡 Implementación avanzada, certificación pendiente |
-| 07 — Notifications realtime + Email | #7 | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente |
-| 08 — CMS + Marketing + Reviews | #8 | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify |
-| 09 — SEO | #9 | 🟢 **Cerrada y certificada en producción** |
-| 10 — Production Readiness | #10 | 🟡 En ejecución: 10.1–10.3 completadas según evidencia histórica; 10.4–10.5 aceptación productiva pendiente; 10.6 integrada con aceptación Cloudflare pendiente; siguiente 10.7 |
+| Fase                                | Issue | Estado                                                                                                                                                                          |
+| ----------------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 01 — Foundation                     | #1    | 🟡 Implementada, certificación pendiente                                                                                                                                        |
+| 02 — Storefront Premium             | #2    | 🟡 Implementada + hardening de navegación, certificación pendiente                                                                                                              |
+| 03 — Commerce Core                  | #3    | 🟢 Implementación cerrada, certificación pendiente                                                                                                                              |
+| 04 — Payments                       | #4    | 🟡 Implementado, certificación real pendiente                                                                                                                                   |
+| 05 — Services                       | #5    | 🟢 Implementado + hardening, certificación pendiente                                                                                                                            |
+| 06 — Admin + RBAC                   | #6    | 🟡 Implementación avanzada, certificación pendiente                                                                                                                             |
+| 07 — Notifications realtime + Email | #7    | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente                                                                     |
+| 08 — CMS + Marketing + Reviews      | #8    | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify                                                                              |
+| 09 — SEO                            | #9    | 🟢 **Cerrada y certificada en producción**                                                                                                                                      |
+| 10 — Production Readiness           | #10   | 🟡 En ejecución: 10.1–10.3 completadas según evidencia histórica; 10.4–10.5 aceptación productiva pendiente; 10.6 integrada con aceptación Cloudflare pendiente; siguiente 10.7 |
 
 > Este archivo es la referencia central del roadmap. El detalle operativo de cada fase vive en su Issue correspondiente y posteriormente en sus sub-Issues técnicos.
-
 
 ## Actualización viva — 2026-09-21
 
@@ -772,7 +769,6 @@ Por lo tanto, el estado oficial sigue siendo **implementado/hardening, certifica
 ### Build Cloudflare — hallazgo 2026-09-21 22:58 UTC
 
 Un build de producción con Node.js 24.18.0, pnpm 12.4.1, Next.js 15.5.25 y OpenNext Cloudflare 1.20.6 compiló Next.js correctamente y falló durante typecheck por `exactOptionalPropertyTypes` en `modules/repairs/application/RepairOrderManagement.ts:102`. La causa fue pasar `diagnosisSummary` y `workSummary` opcionales como propiedades explícitas con valor `undefined`. La corrección aplicada usa propagación condicional para omitir las propiedades cuando son `undefined` y se añadió una regresión específica. `exactOptionalPropertyTypes` permanece habilitado.
-
 
 ## Actualización viva — 2026-09-25 — Fase 07
 
@@ -801,8 +797,6 @@ Deployment 2026-09-25: **🟢 SUCCESS**. OpenNext build, bundle y Wrangler deplo
 
 Certificación de fase: **🟡 pendiente** de migraciones D1 remotas verificadas, tests E2E/security/load, pruebas reales de retry/DLQ/replay/idempotencia/reconnect y `verify:production`.
 
-
-
 ### Actualización 2026-09-28 — cierre de hallazgos de trazabilidad 08.4
 
 La auditoría profunda de rutas frontend/API detectó y corrigió los defectos concretos encontrados:
@@ -817,7 +811,6 @@ La auditoría profunda de rutas frontend/API detectó y corrigió los defectos c
 **Estado de implementación 08.4:** 🟢 corregido e integrado a nivel de código.
 
 **Certificación:** permanece separada de la implementación y solo se marcará como cerrada cuando el commit final pase tests, lint/typecheck, arquitectura, build Cloudflare, migraciones/verificación D1, deploy real, `verify:production` y smoke funcional contra producción.
-
 
 ### Estado actual — 10.1 Auditoría de Production Readiness — 2026-09-29
 
