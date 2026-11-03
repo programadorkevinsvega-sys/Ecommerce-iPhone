@@ -1,8 +1,8 @@
 # Fase 10 — Matriz de aceptación operativa
 
 **Fecha de actualización:** 2026-11-03  
-**Rama de continuación:** `feat/phase10-4-10-5-readonly-certification`  
-**Base auditada:** `main` en `cc181dce59a4fed9df5b27576c5c16871fa31c19`
+**Rama de continuación:** `feat/phase10-6-structured-logging`  
+**Base auditada:** `main` en `57286eae79f9bbc2b9ba44e28431ecf121011e74`
 
 Este documento separa la implementación en código, las pruebas automatizadas y la evidencia operativa/manual. Una prueba local o un build exitoso no certifican dependencias remotas, WAF, MFA real, accesibilidad manual ni métricas de campo.
 
@@ -10,7 +10,7 @@ Este documento separa la implementación en código, las pruebas automatizadas y
 
 | Área                  | Implementación comprobada en código                                                                                                               | Evidencia automatizada                                                                              | Aceptación pendiente                                                                                                                                                  |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Error tracking        | Logger JSON con redacción; logging de Worker/Queue/Cron; captura mínima de errores de React y excepciones HTTP no controladas                     | Tests de redacción y endpoint de error; CI en la rama                                               | Revisar eventos reales en Cloudflare Observability, correlacionar incidentes y confirmar retención/señales                                                            |
+| Logging estructurado / error tracking | Logger JSON uniforme con service/environment/source/operation y metadatos operacionales; sanitización de credenciales y PII; Worker/Queue/Cron | Tests de esquema y redacción; CI del PR 10.6 pendiente | Confirmar retención y control de acceso en Cloudflare Observability; correlación y clasificación transversal quedan en 10.7/10.8 |
 | Métricas HTTP         | Evento estructurado por solicitud con route group, método, estado, duración y request ID                                                          | Unit tests de normalización; E2E del Worker                                                         | Confirmar volumen/retención en Cloudflare y crear consultas/alertas de error rate y latencia                                                                          |
 | Métricas Queue/DLQ    | Batch metrics de mensajes acknowledged/retried/dead-lettered; errores individuales conservan correlación                                          | Tests de procesamiento y CI                                                                         | Medir profundidad y lag desde Cloudflare; no se afirma que los contadores de batch los sustituyan                                                                     |
 | Health/liveness       | `/api/health/live` no depende de D1                                                                                                               | E2E de liveness                                                                                     | Validar respuesta desde el dominio real después del deploy                                                                                                            |
@@ -24,6 +24,14 @@ Este documento separa la implementación en código, las pruebas automatizadas y
 | Accesibilidad         | Semántica, Axe, navegación de teclado automatizada, foco, controles nombrados y reflow en 320/640 px                                              | Playwright + Axe sobre rutas críticas                                                               | Ejecución humana de teclado completo, contraste, 200/400% zoom, NVDA/VoiceOver/TalkBack y matriz de navegador/AT                                                      |
 | Web Vitals            | Captura RUM de LCP/INP/CLS, normalización y minimización, agregados p75                                                                           | Unit/E2E de ingestión y Lighthouse laboratorio separado                                             | Cloudflare debe aplicar migration 0046 y build var `NEXT_PUBLIC_WEB_VITALS_SAMPLE_RATE`; recolectar tráfico real y revisar conteos/tamaño de muestra                  |
 | Rollback/recovery     | Workflow `wrangler rollback` y runbook alineado a Cloudflare                                                                                      | CI valida estructura/documentación, no ejecuta rollback productivo                                  | Ensayo controlado en entorno realmente aislado; Preview no es staging certificado                                                                                     |
+
+## Aceptación específica — 10.6 Logging estructurado
+
+El logger compartido emite JSON con timestamp, level, service, environment, source y operation; opcionalmente requestId, correlationId, route, durationMs, status y errorCode. Normaliza debug/info/warn/error; debug está desactivado salvo habilitación explícita. La redacción cubre claves y texto de credenciales, sesiones, PII, tarjetas, teléfonos, IMEI/serial etiquetados y claves privadas. Los errores no incluyen stack traces.
+
+El destino de logs runtime es Cloudflare Observability; no se persisten en D1/R2 ni se usan como audit trail. Warn/error no se muestrean. La retención real y los controles de acceso de la cuenta Cloudflare no se pueden acreditar desde Git y deben ser revisados en el dashboard. No se silencia salida de GitHub Actions, OpenNext o Cloudflare Builds.
+
+La rama 10.6 incluye pruebas unitarias del contrato y sanitización; el PASS final depende del CI del SHA definitivo y la aceptación externa de retención/acceso.
 
 ## Contratos de observabilidad añadidos
 
@@ -68,7 +76,7 @@ Las Queues no tienen una lectura de salud no mutativa en este contrato. `configu
 
 Las certificaciones se ejecutan manualmente desde **Actions → Production Verification**, con la rama `main`, el Environment protegido `production` y el smoke autenticado de Worker en verde. Los inputs son independientes: `run_phase10_4_checks` y `run_phase10_5_checks`.
 
-La certificación de 10.4 registrada para el 2026-09-29 se conserva como evidencia histórica. Este PR prepara la revalidación read-only del verificador actual; no se considera recertificada hasta ejecutar el gate después de integrar el código en `main`.
+La certificación de 10.4 registrada para el 2026-09-29 se conserva como evidencia histórica. El PR #38 integró la revalidación read-only del verificador actual en `main`; no se considera recertificada hasta ejecutar los gates protegidos después del deploy y reunir muestras reales suficientes.
 
 - **10.4** consulta únicamente registros de eventos server-owned ya existentes en D1 y los relaciona con órdenes, items y pagos canónicos. Comprueba CartItemAdded, CartItemRemoved, CartAbandoned, CheckoutStarted, ShippingMethodSelected, PaymentStarted y PurchaseCompleted, incluida su correlación temporal y de sesión/visitante, idempotency key, cantidad/item count y consistencia de importes/monedas de orden y pago. El flag `hasDiscount` se contrasta con `orders.discount_in_cents`; el evento no contiene el importe numérico del descuento.
 - **10.5** consulta únicamente payment_ledger, payments, orders, payment_refunds y RevenueRecorded. Compara cada asiento y proyección, separa monedas, verifica reembolsos confirmados por el proveedor y calcula conversión desde CheckoutStarted/PurchaseCompleted server-owned en la misma ventana UTC.
