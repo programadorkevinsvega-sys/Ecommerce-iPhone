@@ -750,21 +750,22 @@ Una fase se considera terminada únicamente cuando:
 - Tests de dominio y persistencia para descuentos y redención.
 - UI administrativa incorporada para promociones, cupones, campañas y contenido editorial.
 
-**Estado:** 🟢 implementación de 08.2 cerrada. La certificación de release permanece separada y requiere build/deploy/verify exitoso sobre el commit final. 
+**Estado:** 🟢 implementación de 08.2 cerrada. La certificación de release permanece separada y requiere build/deploy/verify exitoso sobre el commit final.
+
 ## Estado del roadmap
 
 | Fase                                | Issue | Estado                                                                                                                                                                          |
 | ----------------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 01 — Foundation                     | #1    | 🟡 Implementada, certificación pendiente                                                                                                                                        |
-| 02 — Storefront Premium             | #2    | 🟡 Implementada + hardening de navegación, certificación pendiente                                                                                                              |
-| 03 — Commerce Core                  | #3    | 🟢 Implementación cerrada, certificación pendiente                                                                                                                              |
-| 04 — Payments                       | #4    | 🟡 Implementado, certificación real pendiente                                                                                                                                   |
-| 05 — Services                       | #5    | 🟢 Implementado + hardening, certificación pendiente                                                                                                                            |
-| 06 — Admin + RBAC                   | #6    | 🟡 Implementación avanzada, certificación pendiente                                                                                                                             |
-| 07 — Notifications realtime + Email | #7    | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente                                                                     |
-| 08 — CMS + Marketing + Reviews      | #8    | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify                                                                              |
-| 09 — SEO                            | #9    | 🟢 **Cerrada y certificada en producción**                                                                                                                                      |
-| 10 — Production Readiness           | #10   | 🟡 En ejecución: 10.1–10.3 completadas según evidencia histórica; 10.4–10.5 aceptación productiva pendiente; 10.6 integrada con aceptación Cloudflare pendiente; siguiente 10.7 |
+| 01 — Foundation                     |    #1 | 🟡 Implementada, certificación pendiente                                                                                                                                        |
+| 02 — Storefront Premium             |    #2 | 🟡 Implementada + hardening de navegación, certificación pendiente                                                                                                              |
+| 03 — Commerce Core                  |    #3 | 🟢 Implementación cerrada, certificación pendiente                                                                                                                              |
+| 04 — Payments                       |    #4 | 🟡 Implementado, certificación real pendiente                                                                                                                                   |
+| 05 — Services                       |    #5 | 🟢 Implementado + hardening, certificación pendiente                                                                                                                            |
+| 06 — Admin + RBAC                   |    #6 | 🟡 Implementación avanzada, certificación pendiente                                                                                                                             |
+| 07 — Notifications realtime + Email |    #7 | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente                                                                     |
+| 08 — CMS + Marketing + Reviews      |    #8 | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify                                                                              |
+| 09 — SEO                            |    #9 | 🟢 **Cerrada y certificada en producción**                                                                                                                                      |
+| 10 — Production Readiness           |   #10 | 🟡 En ejecución: 10.1–10.3 completadas según evidencia histórica; 10.4–10.5 aceptación productiva pendiente; 10.6 integrada con aceptación Cloudflare pendiente; siguiente 10.7 |
 
 > Este archivo es la referencia central del roadmap. El detalle operativo de cada fase vive en su Issue correspondiente y posteriormente en sus sub-Issues técnicos.
 
