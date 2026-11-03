@@ -1,5 +1,14 @@
 # Ecommerce iPhone — Roadmap
 
+## Actualización viva — 2026-11-03
+
+La certificación productiva histórica de Analytics 10.4 registrada el 2026-09-29 se conserva como evidencia de aquella versión. No sustituye la revalidación read-only que prepara el PR #38.
+
+- **10.4:** certificación histórica registrada; revalidación con el verificador de solo lectura pendiente de ejecutarse después de integrar el PR #38 en `main`, con el Environment `production` aprobado y eventos reales suficientes.
+- **10.5:** implementación completada; certificación productiva pendiente de conciliación real de `RevenueRecorded` con `payment_ledger`, incluyendo pagos y reembolsos confirmados por el proveedor.
+- CI verde y Cloudflare Preview validan el código y el despliegue de Preview; no certifican evidencia financiera ni eventos persistidos en producción.
+- No se generan carritos, pedidos, pagos, reembolsos ni escrituras D1 artificiales para cerrar estas fases. La falta de evidencia real conserva el resultado `INCONCLUSIVE`.
+
 ## Actualización viva — 2026-09-29
 
 La Fase 09 — SEO Avanzado quedó implementada, desplegada y certificada en producción. El release final fue verificado contra `https://iphone.jnmtortas.com` con `verify:production`, `verify:phase08:production` y `verify:phase09:production`. La versión desplegada fue `04c77cdd-4af1-4258-a76a-5a34140a9478` a partir del commit `dcfb1ad`. El warning de ESLint de `apps/web/worker.ts` fue posteriormente corregido separando el objeto Worker en una constante antes del `export default`.
