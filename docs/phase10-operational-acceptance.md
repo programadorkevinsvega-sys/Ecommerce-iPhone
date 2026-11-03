@@ -1,10 +1,12 @@
 # Fase 10 — Matriz de aceptación operativa
 
-**Fecha de actualización:** 2026-11-03  
-**Rama de continuación:** `feat/phase10-6-structured-logging`  
+**Fecha de actualización:** 2026-11-03
+**Rama de continuación:** `feat/phase10-6-structured-logging`
 **Base auditada:** `main` en `57286eae79f9bbc2b9ba44e28431ecf121011e74`
 
-Este documento separa la implementación en código, las pruebas automatizadas y la evidencia operativa/manual. Una prueba local o un build exitoso no certifican dependencias remotas, WAF, MFA real, accesibilidad manual ni métricas de campo.
+Este documento separa la implementación en código, las pruebas automatizadas y la evidencia
+operativa/manual. Una prueba local o un build exitoso no certifican dependencias remotas, WAF, MFA
+real, accesibilidad manual ni métricas de campo.
 
 ## Estado por área
 
@@ -27,11 +29,19 @@ Este documento separa la implementación en código, las pruebas automatizadas y
 
 ## Aceptación específica — 10.6 Logging estructurado
 
-El logger compartido emite JSON con timestamp, level, service, environment, source y operation; opcionalmente requestId, correlationId, route, durationMs, status y errorCode. Normaliza debug/info/warn/error; debug está desactivado salvo habilitación explícita. La redacción cubre claves y texto de credenciales, sesiones, PII, tarjetas, teléfonos, IMEI/serial etiquetados y claves privadas. Los errores no incluyen stack traces.
+El logger compartido emite JSON con timestamp, level, service, environment, source y operation;
+opcionalmente requestId, correlationId, route, durationMs, status y errorCode. Normaliza
+debug/info/warn/error; debug está desactivado salvo habilitación explícita. La redacción cubre
+claves y texto de credenciales, sesiones, PII, tarjetas, teléfonos, IMEI/serial etiquetados y claves
+privadas. Los errores no incluyen stack traces.
 
-El destino de logs runtime es Cloudflare Observability; no se persisten en D1/R2 ni se usan como audit trail. Warn/error no se muestrean. La retención real y los controles de acceso de la cuenta Cloudflare no se pueden acreditar desde Git y deben ser revisados en el dashboard. No se silencia salida de GitHub Actions, OpenNext o Cloudflare Builds.
+El destino de logs runtime es Cloudflare Observability; no se persisten en D1/R2 ni se usan como
+audit trail. Warn/error no se muestrean. La retención real y los controles de acceso de la cuenta
+Cloudflare no se pueden acreditar desde Git y deben ser revisados en el dashboard. No se silencia
+salida de GitHub Actions, OpenNext o Cloudflare Builds.
 
-La rama 10.6 incluye pruebas unitarias del contrato y sanitización; el PASS final depende del CI del SHA definitivo y la aceptación externa de retención/acceso.
+La rama 10.6 incluye pruebas unitarias del contrato y sanitización; el PASS final depende del CI del
+SHA definitivo y la aceptación externa de retención/acceso.
 
 ## Contratos de observabilidad añadidos
 
@@ -42,7 +52,9 @@ Los límites Next.js envían a `POST /api/observability/client-error` únicament
 - digest opaco de Next.js, cuando existe;
 - grupo de ruta normalizado, sin ID, slug, query string ni URL completa.
 
-El endpoint rechaza content types incorrectos, JSON inválido y payloads mayores de 1 KiB. No acepta mensajes, stack traces, cookies, formularios ni cuerpos de solicitudes. El Worker aplica el rate limiter sensible a `/api/observability/**`.
+El endpoint rechaza content types incorrectos, JSON inválido y payloads mayores de 1 KiB. No acepta
+mensajes, stack traces, cookies, formularios ni cuerpos de solicitudes. El Worker aplica el rate
+limiter sensible a `/api/observability/**`.
 
 ### Métrica HTTP
 
@@ -55,38 +67,77 @@ Cada respuesta procesada por el Worker emite un registro JSON `http.request` con
 - duración en milisegundos;
 - outcome (`success`, `rejected` o `error`).
 
-No se registran query strings ni segmentos arbitrarios de rutas. Este evento es telemetría basada en logs de Cloudflare Observability, no una tabla de métricas D1 ni una promesa de alerta configurada.
+No se registran query strings ni segmentos arbitrarios de rutas. Este evento es telemetría basada en
+logs de Cloudflare Observability, no una tabla de métricas D1 ni una promesa de alerta configurada.
 
 ### Readiness
 
-`/api/health/ready` devuelve `200` si D1, R2, Notification Hub y las referencias de Queue configuradas cumplen su comprobación disponible; en otro caso devuelve `503` con dependencias degradadas. Nunca incluye mensajes internos, secretos o credenciales.
+`/api/health/ready` devuelve `200` si D1, R2, Notification Hub y las referencias de Queue
+configuradas cumplen su comprobación disponible; en otro caso devuelve `503` con dependencias
+degradadas. Nunca incluye mensajes internos, secretos o credenciales.
 
-Las Queues no tienen una lectura de salud no mutativa en este contrato. `configured` solo significa que el binding está presente. Los proveedores externos de email/pago no forman parte de readiness global para no declarar caída toda la tienda por una integración opcional.
+Las Queues no tienen una lectura de salud no mutativa en este contrato. `configured` solo significa
+que el binding está presente. Los proveedores externos de email/pago no forman parte de readiness
+global para no declarar caída toda la tienda por una integración opcional.
 
 ## Reglas de aceptación
 
 1. No convertir `configured` en `healthy` para dependencias que no fueron llamadas.
-2. Ejecutar los probes del runtime por el host `workers.dev` restringido con OIDC de GitHub Actions. El dominio público conserva WAF/Bot Protection y se verifica por separado; un challenge del edge se registra como inconcluso, pero no debe suprimir los probes autenticados del Worker. Ver `docs/production-monitoring.md`.
-3. No compartir seeds TOTP, OTPs temporales, recovery codes, contraseñas ni secrets con GitHub Actions o logs.
-4. No crear pagos/refunds, datos financieros ni tráfico comercial ficticio para conseguir una certificación.
-5. No aplicar D1 migrations remotas desde CI. Cloudflare Workers Builds sigue siendo responsable del deploy y migraciones productivas.
-6. Mantener Issue #10 y P0-05 abiertos hasta que cada aceptación aplicable tenga evidencia verificable y revisión del responsable.
+2. Ejecutar los probes del runtime por el host `workers.dev` restringido con OIDC de GitHub Actions.
+   El dominio público conserva WAF/Bot Protection y se verifica por separado; un challenge del edge
+   se registra como inconcluso, pero no debe suprimir los probes autenticados del Worker. Ver
+   `docs/production-monitoring.md`.
+3. No compartir seeds TOTP, OTPs temporales, recovery codes, contraseñas ni secrets con GitHub
+   Actions o logs.
+4. No crear pagos/refunds, datos financieros ni tráfico comercial ficticio para conseguir una
+   certificación.
+5. No aplicar D1 migrations remotas desde CI. Cloudflare Workers Builds sigue siendo responsable del
+   deploy y migraciones productivas.
+6. Mantener Issue #10 y P0-05 abiertos hasta que cada aceptación aplicable tenga evidencia
+   verificable y revisión del responsable.
 
 ## Certificación Analytics 10.4 / 10.5 en producción
 
-Las certificaciones se ejecutan manualmente desde **Actions → Production Verification**, con la rama `main`, el Environment protegido `production` y el smoke autenticado de Worker en verde. Los inputs son independientes: `run_phase10_4_checks` y `run_phase10_5_checks`.
+Las certificaciones se ejecutan manualmente desde **Actions → Production Verification**, con la rama
+`main`, el Environment protegido `production` y el smoke autenticado de Worker en verde. Los inputs
+son independientes: `run_phase10_4_checks` y `run_phase10_5_checks`.
 
-La certificación de 10.4 registrada para el 2026-09-29 se conserva como evidencia histórica. El PR #38 integró la revalidación read-only del verificador actual en `main`; no se considera recertificada hasta ejecutar los gates protegidos después del deploy y reunir muestras reales suficientes.
+La certificación de 10.4 registrada para el 2026-09-29 se conserva como evidencia histórica. El PR
+#38 integró la revalidación read-only del verificador actual en `main`; no se considera
+recertificada hasta ejecutar los gates protegidos después del deploy y reunir muestras reales
+suficientes.
 
-- **10.4** consulta únicamente registros de eventos server-owned ya existentes en D1 y los relaciona con órdenes, items y pagos canónicos. Comprueba CartItemAdded, CartItemRemoved, CartAbandoned, CheckoutStarted, ShippingMethodSelected, PaymentStarted y PurchaseCompleted, incluida su correlación temporal y de sesión/visitante, idempotency key, cantidad/item count y consistencia de importes/monedas de orden y pago. El flag `hasDiscount` se contrasta con `orders.discount_in_cents`; el evento no contiene el importe numérico del descuento.
-- **10.5** consulta únicamente payment_ledger, payments, orders, payment_refunds y RevenueRecorded. Compara cada asiento y proyección, separa monedas, verifica reembolsos confirmados por el proveedor y calcula conversión desde CheckoutStarted/PurchaseCompleted server-owned en la misma ventana UTC.
-- Ambos verificadores permiten exclusivamente sentencias D1 `SELECT` y una lectura HTTP del endpoint administrativo para confirmar que el acceso no autenticado responde 401 con `Cache-Control: no-store`.
-- No crean carritos, órdenes, eventos, intents, pagos, reembolsos ni filas financieras. La falta de datos reales se informa como `INCONCLUSIVE`; nunca se sustituye por tráfico sintético.
-- Las pruebas automatizadas locales cubren reintentos/idempotencia; la certificación productiva comprueba formato determinista y unicidad de los IDs observados, sin volver a enviar operaciones comerciales.
+- **10.4** consulta únicamente registros de eventos server-owned ya existentes en D1 y los relaciona
+  con órdenes, items y pagos canónicos. Comprueba CartItemAdded, CartItemRemoved, CartAbandoned,
+  CheckoutStarted, ShippingMethodSelected, PaymentStarted y PurchaseCompleted, incluida su
+  correlación temporal y de sesión/visitante, idempotency key, cantidad/item count y consistencia de
+  importes/monedas de orden y pago. El flag `hasDiscount` se contrasta con
+  `orders.discount_in_cents`; el evento no contiene el importe numérico del descuento.
+- **10.5** consulta únicamente payment_ledger, payments, orders, payment_refunds y RevenueRecorded.
+  Compara cada asiento y proyección, separa monedas, verifica reembolsos confirmados por el
+  proveedor y calcula conversión desde CheckoutStarted/PurchaseCompleted server-owned en la misma
+  ventana UTC.
+- Ambos verificadores permiten exclusivamente sentencias D1 `SELECT` y una lectura HTTP del endpoint
+  administrativo para confirmar que el acceso no autenticado responde 401 con `Cache-Control:
+  no-store`.
+- No crean carritos, órdenes, eventos, intents, pagos, reembolsos ni filas financieras. La falta de
+  datos reales se informa como `INCONCLUSIVE`; nunca se sustituye por tráfico sintético.
+- Las pruebas automatizadas locales cubren reintentos/idempotencia; la certificación productiva
+  comprueba formato determinista y unicidad de los IDs observados, sin volver a enviar operaciones
+  comerciales.
 
-**Requisito de monitor protegido:** definir la variable de repositorio `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` con el subdominio de cuenta `workers.dev` (solo el subdominio, sin protocolo), o reparar `CLOUDFLARE_API_TOKEN` con permiso Workers Scripts Read. `CLOUDFLARE_ACCOUNT_ID` y `CLOUDFLARE_API_TOKEN` deben estar disponibles como secrets de repositorio u organización porque el job `smoke` los utiliza sin declarar `environment`; los jobs de certificación 10.4/10.5 los reciben también con el Environment `production`. El token usado por Wrangler necesita D1 Read. Configurar `production` con reviewers requeridos y despliegues limitados a `main`. La existencia de la variable, los secrets y los reviewers debe verificarse en GitHub Settings; el YAML por sí solo no la demuestra.
+**Requisito de monitor protegido:** definir la variable de repositorio
+`CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` con el subdominio de cuenta `workers.dev` (solo el subdominio,
+sin protocolo), o reparar `CLOUDFLARE_API_TOKEN` con permiso Workers Scripts Read.
+`CLOUDFLARE_ACCOUNT_ID` y `CLOUDFLARE_API_TOKEN` deben estar disponibles como secrets de repositorio
+u organización porque el job `smoke` los utiliza sin declarar `environment`; los jobs de
+certificación 10.4/10.5 los reciben también con el Environment `production`. El token usado por
+Wrangler necesita D1 Read. Configurar `production` con reviewers requeridos y despliegues limitados
+a `main`. La existencia de la variable, los secrets y los reviewers debe verificarse en GitHub
+Settings; el YAML por sí solo no la demuestra.
 
-La implementación/CI verde no cierra estas fases. Para marcar PASS hacen falta las dos ejecuciones manuales aprobadas con muestra real suficiente y revisión del responsable de QA.
+La implementación/CI verde no cierra estas fases. Para marcar PASS hacen falta las dos ejecuciones
+manuales aprobadas con muestra real suficiente y revisión del responsable de QA.
 
 ## Evidencia manual que debe adjuntarse al cierre
 
@@ -101,4 +152,6 @@ La implementación/CI verde no cierra estas fases. Para marcar PASS hacen falta 
 | RUM                    | periodo, migration 0046, tasa de muestreo, conteos por métrica/device/route y p75                                               | Pendiente |
 | Recovery               | version IDs, verificación D1 compatible, pasos y resultado de rollback aislado                                                  | Pendiente |
 
-**Conclusión:** el código y la automatización pueden reducir brechas, pero la aceptación integral continúa pendiente de CI de la rama, despliegue Cloudflare y evidencias humanas/operativas descritas arriba.
+**Conclusión:** el código y la automatización pueden reducir brechas, pero la aceptación integral
+continúa pendiente de CI de la rama, despliegue Cloudflare y evidencias humanas/operativas descritas
+arriba.
