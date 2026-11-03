@@ -128,7 +128,9 @@ describe("structured server logging", () => {
 
   it("derives only a stable code from typed errors", () => {
     const output = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const error = Object.assign(new Error("payment provider failed"), { code: "PAYMENT_PROVIDER_UNAVAILABLE" });
+    const error = Object.assign(new Error("payment provider failed"), {
+      code: "PAYMENT_PROVIDER_UNAVAILABLE",
+    });
     logServerError("payment.intent", error);
     const record = JSON.parse(String(output.mock.calls[0]?.[0])) as Record<string, unknown>;
     expect(record.errorCode).toBe("PAYMENT_PROVIDER_UNAVAILABLE");
