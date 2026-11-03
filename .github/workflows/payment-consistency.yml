@@ -63,12 +63,6 @@ jobs:
       - name: Audit all dependencies
         run: pnpm audit
 
-      - name: Temporary Prettier output for roadmap formatting
-        run: pnpm exec prettier roadmap.md > /tmp/roadmap.prettier.md
-
-      - name: Temporary roadmap formatting diff
-        run: diff -u roadmap.md /tmp/roadmap.prettier.md || true
-
       - name: Check formatting of changed files
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
