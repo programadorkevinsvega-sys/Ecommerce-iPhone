@@ -63,11 +63,6 @@ jobs:
       - name: Audit all dependencies
         run: pnpm audit
 
-      - name: Capture Prettier output for Phase 10.6 documentation
-        run: |
-          pnpm exec prettier --write docs/observability-logging.md docs/phase10-operational-acceptance.md
-          git diff -- docs/observability-logging.md docs/phase10-operational-acceptance.md
-
       - name: Check formatting of changed files
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
