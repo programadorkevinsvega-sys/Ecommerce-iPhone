@@ -181,6 +181,42 @@ describe("GitHub Actions production monitor access", () => {
     ).toBe(false);
   });
 
+  it("allows the read-only revenue authorization probe only for manual production runs", async () => {
+    const automated = claims() as ReturnType<typeof claims> & {
+      iss: string;
+      aud: string;
+      sub: string;
+      exp: number;
+      iat: number;
+      repository: string;
+      repository_owner: string;
+      ref: string;
+      workflow_ref: string;
+      event_name: string;
+    };
+    const manual = claims({ event_name: "workflow_dispatch" }) as typeof automated;
+    const url = "https://ecommerce-iphone.account.workers.dev/api/admin/analytics/revenue";
+
+    expect(
+      await isAllowedProductionMonitorRequest(new Request(url), automated),
+    ).toBe(false);
+    expect(
+      await isAllowedProductionMonitorRequest(new Request(url), manual),
+    ).toBe(true);
+    expect(
+      await isAllowedProductionMonitorRequest(
+        new Request(`${url}?period=30`),
+        manual,
+      ),
+    ).toBe(false);
+    expect(
+      await isAllowedProductionMonitorRequest(
+        new Request(url, { method: "POST" }),
+        manual,
+      ),
+    ).toBe(false);
+  });
+
   it("allows explicit deep-production and MFA probes only from workflow_dispatch", async () => {
     const manual = claims({ event_name: "workflow_dispatch" }) as ReturnType<typeof claims> & {
       iss: string;
