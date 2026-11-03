@@ -1,6 +1,23 @@
 # Ecommerce iPhone — Roadmap
 
-## Actualización viva — 2026-09-29
+## Estado vigente — 2026-11-03
+
+La Fase 10 sigue en ejecución; no debe marcarse completa por la integración de una subfase ni por CI verde. Situación verificada en `main` (`ba0b9d484c6fbdba95a650ed008d0fa4a3ccad6d`):
+
+| Subfase   | Estado vigente                                                                                                                                            |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 10.1      | 🟢 Auditoría completada; el informe original es una fotografía histórica del 2026-09-29.                                                                  |
+| 10.2–10.3 | 🟢 Certificadas en producción el 2026-09-29; conservar como evidencia histórica.                                                                          |
+| 10.4      | 🟢 Implementación y verificador read-only integrados (PR #32/#38); 🟡 aceptación productiva pendiente de muestras reales y ejecución protegida.           |
+| 10.5      | 🟢 Reconciliación y verificador read-only integrados (PR #32/#38); 🟡 aceptación productiva pendiente de ledger/payment/order real y evidencia protegida. |
+| 10.6      | 🟢 Logging estructurado integrado por PR #39; CI y Lighthouse pasaron. 🟡 Retención/acceso en Cloudflare Observability pendientes de aceptación manual.   |
+| 10.7      | ⬜ Siguiente subfase de implementación: Correlation IDs y request tracing.                                                                                |
+
+El Repository CI del merge a `main` pasó. El Production Verification del 2026-11-03 falló en el preflight del monitor Worker (HTTP 401; `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` no estaba configurada), por lo que runtime smoke no se completó y 10.4/10.5 quedaron `skipped`/`PENDING_MANUAL_REVIEW`. No se declara una nueva certificación de producción.
+
+---
+
+## Registro histórico — actualización del 2026-09-29
 
 La Fase 09 — SEO Avanzado quedó implementada, desplegada y certificada en producción. El release final fue verificado contra `https://iphone.jnmtortas.com` con `verify:production`, `verify:phase08:production` y `verify:phase09:production`. La versión desplegada fue `04c77cdd-4af1-4258-a76a-5a34140a9478` a partir del commit `dcfb1ad`. El warning de ESLint de `apps/web/worker.ts` fue posteriormente corregido separando el objeto Worker en una constante antes del `export default`.
 
@@ -39,6 +56,7 @@ Las reparaciones y técnicos atraviesan Services, Admin/RBAC, Commerce y Notific
 **Issue:** #1 — Foundation: Monolito modular + DDD + Clean Architecture + Cloudflare
 
 ### Objetivo
+
 Establecer la base técnica del e-commerce como monolito modular, preparado para evolucionar posteriormente hacia servicios independientes sin reescritura del dominio.
 
 ### Alcance
@@ -60,6 +78,7 @@ Establecer la base técnica del e-commerce como monolito modular, preparado para
 - Documentación de arquitectura.
 
 ### Criterio de salida
+
 El proyecto debe poder clonarse, configurarse y ejecutarse desde cero, con las fronteras modulares establecidas y verificables.
 
 ---
@@ -69,6 +88,7 @@ El proyecto debe poder clonarse, configurarse y ejecutarse desde cero, con las f
 **Issue:** #2 — Storefront premium: Home, catálogo, búsqueda y producto
 
 ### Objetivo
+
 Construir una experiencia pública premium, mobile-first, accesible, rápida y orientada a conversión.
 
 ### Alcance
@@ -94,6 +114,7 @@ Construir una experiencia pública premium, mobile-first, accesible, rápida y o
 - Performance y accesibilidad.
 
 ### Criterio de salida
+
 Storefront funcional y conectado a datos reales, sin mocks como fuente definitiva de productos.
 
 ---
@@ -103,6 +124,7 @@ Storefront funcional y conectado a datos reales, sin mocks como fuente definitiv
 **Issue:** #3 — Commerce Core: clientes, carrito, checkout, pedidos e inventario
 
 ### Objetivo
+
 Implementar el núcleo transaccional del e-commerce.
 
 ### Alcance
@@ -122,6 +144,7 @@ Implementar el núcleo transaccional del e-commerce.
 - Tests de concurrencia.
 
 ### Regla crítica
+
 El frontend nunca podrá marcar un pedido como pagado ni alterar unilateralmente precio o stock.
 
 ---
@@ -131,6 +154,7 @@ El frontend nunca podrá marcar un pedido como pagado ni alterar unilateralmente
 **Issue:** #4 — Payments: Wompi, Stripe, Mercado Pago, PayPal y Binance Pay
 
 ### Objetivo
+
 Crear un dominio de pagos desacoplado de proveedores mediante adapters.
 
 ### Arquitectura
@@ -169,6 +193,7 @@ PaymentProvider
 - Binance Pay cuando la operación sea elegible.
 
 ### Regla crítica
+
 Los redirects del navegador nunca serán la fuente definitiva para confirmar un pago. La confirmación deberá basarse en mecanismos server-side y webhooks verificados.
 
 ---
@@ -178,6 +203,7 @@ Los redirects del navegador nunca serán la fuente definitiva para confirmar un 
 **Issue:** #5 — Servicios: desbloqueo legítimo, diagnóstico, reparación y solicitudes
 
 ### Objetivo
+
 Crear el sistema de servicios técnicos y solicitudes de atención.
 
 ### Alcance
@@ -202,6 +228,7 @@ Crear el sistema de servicios técnicos y solicitudes de atención.
 - Nunca utilizar IMEI/serial en URLs públicas.
 
 ### Restricción
+
 No se implementarán bypass de Activation Lock, cuentas de terceros, credenciales ajenas ni mecanismos para evadir controles de seguridad del fabricante.
 
 ---
@@ -211,6 +238,7 @@ No se implementarán bypass de Activation Lock, cuentas de terceros, credenciale
 **Issue:** #6 — Admin: dashboard, productos, pedidos, inventario, pagos, clientes y RBAC
 
 ### Objetivo
+
 Construir el panel administrativo completo para operar el negocio sin manipulación manual de la base de datos.
 
 ### Alcance
@@ -244,6 +272,7 @@ Construir el panel administrativo completo para operar el negocio sin manipulaci
 - CONTENT_EDITOR
 
 ### Seguridad
+
 Los permisos deberán validarse server-side por recurso y acción. Ocultar botones en el frontend no constituye autorización.
 
 ---
@@ -345,6 +374,7 @@ Fase 07 solo podrá declararse completa cuando la notificación sea durable, el 
 **Estado previo auditado para 08.1:** 🟡 existen piezas funcionales heredadas de Fase 06 (CMS básico, promociones y reviews), pero Fase 08 no se considera iniciada/implementada hasta completar la auditoría y cerrar los gaps descritos en `docs/auditoria-fase-8.md`.
 
 ### Objetivo
+
 Convertir el e-commerce en una plataforma administrable de contenido, marketing y reputación.
 
 ### CMS
@@ -377,10 +407,10 @@ Convertir el e-commerce en una plataforma administrable de contenido, marketing 
 - Reportes.
 
 ### Regla crítica
+
 Descuentos y cupones deben validarse server-side y sus eventos deben ser auditables.
 
 ---
-
 
 ## Fase 08 — 08.1 Auditoría de estado existente
 
@@ -403,7 +433,6 @@ La auditoría inicial del 2026-09-25 revisó el código real de `main` antes de 
 6. Completar reviews públicas, compra verificada, moderación, respuesta y reportes.
 7. Integrar auditoría, RBAC, idempotencia, concurrencia y tests.
 8. Build, deploy y certificación productiva.
-
 
 ## Fase 08 — 08.4 Certificación productiva y hardening final
 
@@ -428,6 +457,7 @@ La auditoría inicial del 2026-09-25 revisó el código real de `main` antes de 
 **Issue:** #9 — SEO máximo: técnico, contenido, structured data y crecimiento orgánico
 
 ### Objetivo
+
 Implementar SEO técnico y de contenido al máximo nivel razonable, sin prometer rankings que dependen de los algoritmos de los buscadores.
 
 ### Technical SEO
@@ -492,6 +522,7 @@ Crear únicamente páginas con contenido útil y diferenciado. Evitar thin conte
 La Fase 09 fue implementada completamente sobre `main`, desplegada en Cloudflare Workers y certificada contra producción.
 
 Implementado en código:
+
 - bounded context SEO con política central de canonical/indexability;
 - metadata dinámica centralizada con canonical, robots, Open Graph y Twitter;
 - Organization/WebSite/BreadcrumbList;
@@ -510,6 +541,7 @@ Implementado en código:
 - tests unitarios para política SEO, metadata, structured data y validación de administración.
 
 Decisiones explícitas:
+
 - `hreflang` no se genera mientras no existan variantes lingüísticas reales y URLs localizadas recíprocas.
 - `LocalBusiness` no se genera porque el modelo público actual no aporta datos verificados suficientes.
 - Las superficies de más de 50.000 URLs deberán dividirse mediante sitemaps separados cuando los datos reales del catálogo/CMS alcancen ese límite; el generador actual respeta el máximo de un sitemap.
@@ -517,6 +549,7 @@ Decisiones explícitas:
 Estado: 🟢 **Fase 09 cerrada y certificada en producción.**
 
 Evidencia del release certificado del 2026-09-29:
+
 - Cloudflare Workers Build: `#6539623a`.
 - Commit desplegado: `dcfb1ad`.
 - Worker Version ID: `04c77cdd-4af1-4258-a76a-5a34140a9478`.
@@ -531,9 +564,10 @@ Los cambios posteriores de limpieza del warning ESLint en `worker.ts` son un aju
 
 **Issue:** #10 — Analytics, observabilidad, seguridad avanzada y producción
 
-**Estado actual:** 🟡 En ejecución — 10.1 completada; 10.2 Analytics Foundation y 10.3 catálogo/búsqueda certificadas en producción; 10.4 carrito/checkout implementada con gate productivo automatizado, pendiente de certificación.
+**Estado registrado en esta entrada histórica (2026-09-29):** 10.1 completada; 10.2 y 10.3 certificadas en producción; 10.4 en implementación con aceptación productiva pendiente. Para el estado vigente consulta la actualización del 2026-11-03 al inicio de este documento y `docs/phase10-operational-acceptance.md`.
 
 ### Objetivo
+
 Preparar la plataforma para producción real con testing completo, seguridad, observabilidad, analítica y despliegue controlado.
 
 ### Analytics
@@ -662,18 +696,18 @@ Ejemplo para la Fase 01:
 └── 01.10 Architecture Documentation
 ```
 
-## Estado vivo — 2026-09-21
+## Registro histórico — estado vivo del 2026-09-21
 
-| Área | Estado |
-|---|---|
-| Foundation | 🟡 Implementada + hardening; certificación final pendiente |
-| Storefront | 🟡 Implementada + hardening de navegación pública; certificación E2E/accessibility/performance/SEO pendiente |
-| Commerce Core | 🟢 Implementación cerrada; certificación productiva pendiente |
-| Payments | 🟡 Cinco adapters implementados; certificación real pendiente |
-| Services | 🟢 Implementación + hardening; certificación pendiente |
-| Admin/RBAC | 🟡 Implementación avanzada; certificación pendiente |
-| Notifications | 🟡 Outbox/Queue/Resend funcional; arquitectura realtime definida; Durable Objects/WebSocket + inbox + DLQ/replay pendientes |
-| Technicians | 🟡 Identidad independiente implementada; portal funcional + hardening visual/UX implementado; certificación productiva pendiente |
+| Área          | Estado                                                                                                                           |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Foundation    | 🟡 Implementada + hardening; certificación final pendiente                                                                       |
+| Storefront    | 🟡 Implementada + hardening de navegación pública; certificación E2E/accessibility/performance/SEO pendiente                     |
+| Commerce Core | 🟢 Implementación cerrada; certificación productiva pendiente                                                                    |
+| Payments      | 🟡 Cinco adapters implementados; certificación real pendiente                                                                    |
+| Services      | 🟢 Implementación + hardening; certificación pendiente                                                                           |
+| Admin/RBAC    | 🟡 Implementación avanzada; certificación pendiente                                                                              |
+| Notifications | 🟡 Outbox/Queue/Resend funcional; arquitectura realtime definida; Durable Objects/WebSocket + inbox + DLQ/replay pendientes      |
+| Technicians   | 🟡 Identidad independiente implementada; portal funcional + hardening visual/UX implementado; certificación productiva pendiente |
 
 ### Última producción certificada
 
@@ -717,23 +751,23 @@ Una fase se considera terminada únicamente cuando:
 - UI administrativa incorporada para promociones, cupones, campañas y contenido editorial.
 
 **Estado:** 🟢 implementación de 08.2 cerrada. La certificación de release permanece separada y requiere build/deploy/verify exitoso sobre el commit final.
+
 ## Estado del roadmap
 
-| Fase | Issue | Estado |
-|---|---:|---|
-| 01 — Foundation | #1 | 🟡 Implementada, certificación pendiente |
-| 02 — Storefront Premium | #2 | 🟡 Implementada + hardening de navegación, certificación pendiente |
-| 03 — Commerce Core | #3 | 🟢 Implementación cerrada, certificación pendiente |
-| 04 — Payments | #4 | 🟡 Implementado, certificación real pendiente |
-| 05 — Services | #5 | 🟢 Implementado + hardening, certificación pendiente |
-| 06 — Admin + RBAC | #6 | 🟡 Implementación avanzada, certificación pendiente |
-| 07 — Notifications realtime + Email | #7 | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente |
-| 08 — CMS + Marketing + Reviews | #8 | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify |
-| 09 — SEO | #9 | 🟢 **Cerrada y certificada en producción** |
-| 10 — Production Readiness | #10 | ⬜ Pendiente |
+| Fase                                | Issue | Estado                                                                                                                                                                          |
+| ----------------------------------- | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 01 — Foundation                     |    #1 | 🟡 Implementada, certificación pendiente                                                                                                                                        |
+| 02 — Storefront Premium             |    #2 | 🟡 Implementada + hardening de navegación, certificación pendiente                                                                                                              |
+| 03 — Commerce Core                  |    #3 | 🟢 Implementación cerrada, certificación pendiente                                                                                                                              |
+| 04 — Payments                       |    #4 | 🟡 Implementado, certificación real pendiente                                                                                                                                   |
+| 05 — Services                       |    #5 | 🟢 Implementado + hardening, certificación pendiente                                                                                                                            |
+| 06 — Admin + RBAC                   |    #6 | 🟡 Implementación avanzada, certificación pendiente                                                                                                                             |
+| 07 — Notifications realtime + Email |    #7 | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente                                                                     |
+| 08 — CMS + Marketing + Reviews      |    #8 | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify                                                                              |
+| 09 — SEO                            |    #9 | 🟢 **Cerrada y certificada en producción**                                                                                                                                      |
+| 10 — Production Readiness           |   #10 | 🟡 En ejecución: 10.1–10.3 completadas según evidencia histórica; 10.4–10.5 aceptación productiva pendiente; 10.6 integrada con aceptación Cloudflare pendiente; siguiente 10.7 |
 
 > Este archivo es la referencia central del roadmap. El detalle operativo de cada fase vive en su Issue correspondiente y posteriormente en sus sub-Issues técnicos.
-
 
 ## Actualización viva — 2026-09-21
 
@@ -755,7 +789,6 @@ Por lo tanto, el estado oficial sigue siendo **implementado/hardening, certifica
 ### Build Cloudflare — hallazgo 2026-09-21 22:58 UTC
 
 Un build de producción con Node.js 24.18.0, pnpm 12.4.1, Next.js 15.5.25 y OpenNext Cloudflare 1.20.6 compiló Next.js correctamente y falló durante typecheck por `exactOptionalPropertyTypes` en `modules/repairs/application/RepairOrderManagement.ts:102`. La causa fue pasar `diagnosisSummary` y `workSummary` opcionales como propiedades explícitas con valor `undefined`. La corrección aplicada usa propagación condicional para omitir las propiedades cuando son `undefined` y se añadió una regresión específica. `exactOptionalPropertyTypes` permanece habilitado.
-
 
 ## Actualización viva — 2026-09-25 — Fase 07
 
@@ -784,8 +817,6 @@ Deployment 2026-09-25: **🟢 SUCCESS**. OpenNext build, bundle y Wrangler deplo
 
 Certificación de fase: **🟡 pendiente** de migraciones D1 remotas verificadas, tests E2E/security/load, pruebas reales de retry/DLQ/replay/idempotencia/reconnect y `verify:production`.
 
-
-
 ### Actualización 2026-09-28 — cierre de hallazgos de trazabilidad 08.4
 
 La auditoría profunda de rutas frontend/API detectó y corrigió los defectos concretos encontrados:
@@ -800,7 +831,6 @@ La auditoría profunda de rutas frontend/API detectó y corrigió los defectos c
 **Estado de implementación 08.4:** 🟢 corregido e integrado a nivel de código.
 
 **Certificación:** permanece separada de la implementación y solo se marcará como cerrada cuando el commit final pase tests, lint/typecheck, arquitectura, build Cloudflare, migraciones/verificación D1, deploy real, `verify:production` y smoke funcional contra producción.
-
 
 ### Estado actual — 10.1 Auditoría de Production Readiness — 2026-09-29
 

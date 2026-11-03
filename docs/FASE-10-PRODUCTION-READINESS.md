@@ -4,6 +4,10 @@
 >
 > **Regla global:** ninguna subfase se considera terminada por compilar. El cierre exige código real, integración, tests, seguridad, arquitectura, reproducibilidad, deploy y verificación productiva cuando corresponda.
 
+**Estado vigente — 2026-11-03 (commit `ba0b9d484c6fbdba95a650ed008d0fa4a3ccad6d`):** 10.1 completada; 10.2 y 10.3 certificadas históricamente en producción; 10.4 y 10.5 implementadas con verificadores read-only integrados en `main`, pero su aceptación productiva actual sigue pendiente de muestras reales y ejecución protegida; 10.6 implementada y fusionada mediante PR #39. El CI del PR #39 pasó (86 archivos de pruebas, 357 tests, 23 E2E, verificación de artefactos Cloudflare y audit sin vulnerabilidades conocidas); Lighthouse verificó 18 informes y Cloudflare Preview Build/Deployment pasó. La aceptación externa de retención/acceso de Cloudflare Observability sigue pendiente. El siguiente bloque de implementación es 10.7.
+
+**Última ejecución de Production Verification en `main` (2026-11-03):** Repository CI pasó en el commit de merge, pero el workflow `Production Verification` falló en `smoke` antes de probar el runtime: `scripts/resolve-workers-monitor-url.mjs` recibió HTTP 401 al resolver el subdominio `workers.dev`; `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` estaba vacío y el token no tenía permiso `Workers Scripts Read` (o no pudo consultar la cuenta). Los pasos autenticados de runtime quedaron omitidos y los jobs de certificación 10.4/10.5 también quedaron `skipped`; el agregador registró `PENDING_MANUAL_REVIEW`. Esto no prueba que la aplicación productiva esté caída, pero tampoco permite declarar el smoke ni las fases 10.4/10.5 aprobados. Corregir la variable de repositorio o los permisos mínimos del token y volver a ejecutar el workflow protegido.
+
 ## 1. Objetivo
 
 Preparar la plataforma para operación real de producción mediante:
@@ -170,9 +174,9 @@ No se deben generar eventos de compra o revenue sin una operación real confirma
 - El evento de compra usa `purchase-completed:<paymentId>` como clave idempotente y nunca depende de importe enviado por el navegador.
 - Las operaciones de analytics se envían mediante `waitUntil()` en las rutas HTTP para no añadir la publicación a Queue al camino crítico de checkout/cart/payment; Cloudflare recomienda este patrón para trabajo no crítico como analytics. citeturn6search1turn6search2
 - Se reutiliza `EVENTS_QUEUE` y la idempotencia D1 de 10.2; Cloudflare Queues entrega al menos una vez, por lo que el `eventId` estable evita doble contabilización. citeturn5search0
-- `verify:phase10.4:production` comprueba add/remove y reintentos idempotentes, consulta Queue → D1, valida checkout y el guard de payment intent, crea un carrito técnico de más de 30 minutos para exigir `CartAbandoned` del Cron real y valida autorización/no-store del reporte administrativo. También inspecciona eventos históricos server-owned de checkout, envío, payment-start y compra.
+- `verify:phase10.4:production` es de solo lectura en producción: inspecciona eventos server-owned ya persistidos y los relaciona con órdenes, items y pagos canónicos. Comprueba las clases de eventos requeridas, correlación temporal y de sesión/visitante, idempotencia y coherencia de importes/monedas. No crea, muta ni limpia carritos, órdenes, eventos, intents, pagos o refunds; si falta una clase de evento real, devuelve `INCONCLUSIVE`.
 
-**Estado:** 🟢 implementación y hardening integrados en `main` mediante PR #32. **Aceptación productiva:** pendiente de revisión manual por QA (PR #35); CI no certifica esta fase y no se reporta `PASS` todavía.
+**Implementación:** 🟢 integrada en `main` mediante PR #32. **Verificador read-only:** integrado mediante PR #38. **Aceptación productiva:** `PENDING_MANUAL_REVIEW`; se requieren muestras reales de todas las clases de evento y ejecución satisfactoria del workflow protegido. En la ejecución del 2026-11-03, el job 10.4 quedó `skipped` porque falló antes el preflight `smoke` al resolver el monitor Worker (HTTP 401); no existe PASS nuevo.
 
 ### Regla crítica
 
@@ -202,7 +206,7 @@ Los valores financieros definitivos deben proceder del estado server-side, no de
 
 No existe revenue analítico ficticio ni derivado exclusivamente de eventos frontend. La proyección nace de operaciones financieras server-side persistidas en `payment_ledger`.
 
-**Estado:** 🟢 proyección y reconciliación implementadas e integradas en `main` mediante PR #32. **Aceptación productiva:** pendiente de revisión manual por QA (PR #35), incluida la conciliación real con `payment_ledger`; no se reporta `PASS` hasta revisar evidencia.
+**Implementación:** 🟢 proyección y reconciliación integradas en `main` mediante PR #32. **Verificador read-only por asiento:** integrado mediante PR #38. **Aceptación productiva:** `PENDING_MANUAL_REVIEW`; exige pagos reales y refund confirmado por proveedor cuando corresponda, conciliación ledger→payment→order→RevenueRecorded y workflow protegido aprobado. En la ejecución del 2026-11-03, el job 10.5 quedó `skipped` por el fallo previo del preflight `smoke` (HTTP 401 al resolver el monitor); no existe PASS nuevo.
 
 **Matriz de aceptación operativa actualizada:** consultar [`docs/phase10-operational-acceptance.md`](./phase10-operational-acceptance.md). Este documento separa código, automatización, configuración externa y aceptación humana.
 
@@ -237,9 +241,9 @@ Se revisó la separación entre logs runtime y salida de CI/Cloudflare Builds. N
 
 ### Validación
 
-Las pruebas de `serverLogger.test.ts` cubren contrato JSON, niveles, debug opt-in, metadatos, validación de campos, sanitización de secretos/PII/tarjetas/teléfonos/IMEI/serial y emisión individual. CI del PR debe validar el SHA final antes de integrar.
+Las pruebas de `serverLogger.test.ts` cubren contrato JSON, niveles, debug opt-in, metadatos, validación de campos, sanitización de secretos/PII/tarjetas/teléfonos/IMEI/serial y emisión individual. En PR #39, Repository CI pasó sobre SHA `4f4f352c7f42aa77ab8b9c3e564eb55c90323d4b`: 86 archivos de pruebas/357 tests aprobados, 23 E2E aprobados, auditoría de dependencias sin vulnerabilidades conocidas y verificación de artefactos Cloudflare aprobada (46 páginas HTML estáticas, bundle Worker y 204 assets). Lighthouse verificó 18 informes y Cloudflare Preview Build/Deployment pasó.
 
-**Estado:** implementación en rama; CI y aceptación de retención/acceso Cloudflare pendientes.
+**Estado:** 🟢 implementación integrada en `main` mediante PR #39 (merge commit `ba0b9d484c6fbdba95a650ed008d0fa4a3ccad6d`). **Aceptación externa pendiente:** confirmar en Cloudflare Observability la retención efectiva y los controles de acceso. Este merge no certifica retención ni configuración externa.
 
 Ver `docs/observability-logging.md` para contrato, seguridad, volumen y límites.
 
@@ -1005,17 +1009,16 @@ Antes de cada bloque:
 
 ---
 
-## Estado inicial
+## Estado vigente — 2026-11-03
 
-**Fase 10:** 🟡 En ejecución — 10.1 auditada.
+- **10.1:** 🟢 auditoría completada. El documento de auditoría original se conserva como fotografía histórica del 2026-09-29.
+- **10.2 y 10.3:** 🟢 certificadas en producción el 2026-09-29; la evidencia es histórica y no sustituye una nueva verificación del release actual.
+- **10.4:** 🟢 implementación integrada (PR #32) y verificador read-only integrado (PR #38); 🟡 aceptación productiva pendiente (`PENDING_MANUAL_REVIEW`).
+- **10.5:** 🟢 reconciliación y verificador read-only integrados (PR #32/#38); 🟡 aceptación productiva pendiente (`PENDING_MANUAL_REVIEW`).
+- **10.6:** 🟢 logging estructurado integrado por PR #39; Repository CI, Lighthouse y Cloudflare Preview pasaron. La retención y el acceso de Cloudflare Observability requieren aceptación manual.
+- **Siguiente subfase de implementación:** 10.7 — Correlation IDs y request tracing.
 
-**10.1:** 🟢 Completada. Evidencia: `docs/FASE-10.1-PRODUCTION-READINESS-AUDIT.md`.
-
-**10.5:** 🟡 implementación completada; certificación productiva pendiente del deploy/gate 10.5.
-
-**Siguiente tarea de implementación:** 10.6 — Logging estructurado. La aceptación productiva de 10.4/10.5 continúa pendiente por separado.
-
-Las subfases posteriores continúan sin implementar hasta cerrar sus gaps con código, pruebas e integración real.
+**Estado de verificación del merge a `main`:** CI requerido pasó. El workflow de producción del 2026-11-03 no pudo completar el smoke porque la resolución del monitor `workers.dev` recibió HTTP 401 con `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` vacío; los jobs 10.4/10.5 se omitieron. No se declara certificación productiva nueva para el commit de merge.
 
 ---
 
@@ -1045,9 +1048,9 @@ Las subfases posteriores continúan sin implementar hasta cerrar sus gaps con c�
 
 ### Certificación y límites
 
-- `verify:phase10.4:production` realiza probes de carrito aislados con un producto real, comprueba Queue → D1 y el Cron de abandono y los elimina en `finally`. No crea órdenes, pagos, capturas ni refunds.
+- `verify:phase10.4:production` es read-only: inspecciona datos ya persistidos y no crea, actualiza ni elimina carritos, eventos, órdenes, intents, pagos o refunds.
 - `verify:phase10.4:production` inspecciona además eventos históricos reales de checkout, envío, payment-start y compra; si falta alguna clase, la salida es `INCONCLUSIVE`, no `PASS`.
 - `verify:phase10.5:production` es de solo lectura en D1 y valida cada asiento contra su proyección, además de monedas, estados, refund completo, duplicados, huérfanos, conversión y minimización de payload.
-- La certificación productiva no se ha ejecutado desde esta sesión porque requiere credenciales y acceso remoto a Wrangler/Cloudflare D1. Los scripts no deben marcarse como PASS por estar implementados o por compilar.
+- La certificación productiva continúa pendiente. El workflow de `main` del 2026-11-03 no llegó a ejecutar los jobs 10.4/10.5: el preflight de `smoke` falló al resolver el host `workers.dev` (HTTP 401; `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` vacío y token sin `Workers Scripts Read`). La salida agregada fue `PENDING_MANUAL_REVIEW`; los scripts no deben marcarse PASS por estar implementados, por compilar o por tener jobs omitidos.
 - Las migraciones remotas permanecen en el mecanismo de despliegue de Cloudflare; CI no debe ejecutar `db:migrate:production`.
-- Issue #10 permanece abierto hasta contar con CI aprobada y evidencia real de producción para ambas subfases.
+- Issue #10 permanece abierto hasta contar con CI aprobada, preflight del monitor resuelto y evidencia real de producción suficiente para ambas subfases.
