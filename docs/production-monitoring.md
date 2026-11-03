@@ -82,9 +82,13 @@ it against GitHub's published public keys.
 
 ## Operational boundaries
 
+### Latest main verification observed — 2026-11-03
+
+The Repository CI for merge commit `ba0b9d484c6fbdba95a650ed008d0fa4a3ccad6d` passed. The `Production Verification` workflow did not reach the authenticated runtime checks: `scripts/resolve-workers-monitor-url.mjs` received HTTP 401 while resolving the Cloudflare `workers.dev` subdomain because `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` was unset and the API token lacked (or could not use) `Workers Scripts Read`. The `smoke` job failed at this preflight; later runtime steps and the 10.4/10.5 certification jobs were skipped. The workflow's acceptance aggregator recorded `PENDING_MANUAL_REVIEW`. This is a monitor configuration/access failure, not proof that the production storefront is unavailable. Configure the repository variable with the account subdomain (without protocol) or grant the minimum read permission, then rerun the protected workflow.
+
 - This monitor does not change Cloudflare zone WAF/Bot settings or allowlist GitHub-hosted runner IPs.
 - It does not apply D1 migrations. Cloudflare Workers Builds retains deploy/migration responsibility.
 - It does not create payment or refund transactions.
 - Analytics 10.4/10.5 use read-only D1 `SELECT` queries. Missing real event classes or a missing provider-confirmed refund produce `INCONCLUSIVE`, never synthetic data.
-- Both analytics phases remain `PENDING_MANUAL_REVIEW` until their protected manual workflows pass and QA records final acceptance.
+- Both analytics phases remain `PENDING_MANUAL_REVIEW` until their protected manual workflows execute successfully with sufficient real data and QA records final acceptance. The 2026-11-03 workflow did not execute those jobs because the monitor preflight failed.
 - Real MFA, manual accessibility, real-traffic RUM, queue depth/lag, provider health and rollback/recovery exercises remain separate acceptance activities.
