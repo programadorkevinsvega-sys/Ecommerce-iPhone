@@ -1,6 +1,6 @@
 # Fase 10.6 — Logging estructurado
 
-**Estado:** implementación en rama; CI y aceptación de configuración externa pendientes.  
+**Estado al 2026-11-03:** 🟢 implementado e integrado en `main` mediante PR #39 (merge `ba0b9d484c6fbdba95a650ed008d0fa4a3ccad6d`). Repository CI #41576803777, Lighthouse #41576803763 y Cloudflare Preview Build/Deployment: PASS. **Pendiente de aceptación externa:** validar retención efectiva y control de acceso en Cloudflare Observability; esta implementación no puede verificar esos ajustes de cuenta.  
 **Alcance:** logging operacional de aplicación, Worker, Queue y tareas programadas.  
 **Fuera de alcance:** correlación extremo a extremo (10.7), error tracking (10.8), métricas operacionales (10.9) y ampliación de health/readiness (10.10).
 
@@ -61,7 +61,7 @@ Los logs de GitHub Actions y Cloudflare Workers Builds son distintos de los regi
 - niveles debug/info/warn/error y debug opt-in;
 - una única emisión por llamada de logger y mediciones operacionales.
 
-CI debe volver a ejecutar todo el conjunto en el SHA definitivo del PR. Una prueba unitaria de sanitización no demuestra por sí sola la configuración de retención de Cloudflare.
+Validación real del PR #39 sobre SHA `4f4f352c7f42aa77ab8b9c3e564eb55c90323d4b`: Repository CI aprobó 86 archivos de pruebas/357 tests, 23 E2E, `pnpm audit` sin vulnerabilidades conocidas y verificación de artefactos Cloudflare; Lighthouse validó 18 informes y Cloudflare Preview Build/Deployment terminó correctamente. El merge a `main` creó el commit `ba0b9d484c6fbdba95a650ed008d0fa4a3ccad6d`. Estas pruebas no demuestran por sí solas la configuración de retención ni el control de acceso de Cloudflare Observability.
 
 ## Límites de la subfase
 
