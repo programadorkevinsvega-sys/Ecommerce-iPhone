@@ -83,4 +83,3 @@ it against GitHub's published public keys.
 - Analytics 10.4/10.5 use read-only D1 `SELECT` queries. Missing real event classes or a missing provider-confirmed refund produce `INCONCLUSIVE`, never synthetic data.
 - Both analytics phases remain `PENDING_MANUAL_REVIEW` until their protected manual workflows pass and QA records final acceptance.
 - Real MFA, manual accessibility, real-traffic RUM, queue depth/lag, provider health and rollback/recovery exercises remain separate acceptance activities.
-

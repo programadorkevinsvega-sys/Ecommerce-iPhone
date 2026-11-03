@@ -9,7 +9,9 @@ const execFileAsync = promisify(execFile);
 const BASE_URL = (process.env.PRODUCTION_URL ?? "").replace(/\/$/, "");
 const monitor = new URL(BASE_URL);
 if (!monitor.hostname.toLowerCase().endsWith(".workers.dev")) {
-  throw new Error("Production certification must use the protected workers.dev monitor, not the public WAF edge.");
+  throw new Error(
+    "Production certification must use the protected workers.dev monitor, not the public WAF edge.",
+  );
 }
 const { getProductionMonitorHeaders } = await import("./production-monitor-auth.mjs");
 const monitorHeaders = await getProductionMonitorHeaders(BASE_URL);

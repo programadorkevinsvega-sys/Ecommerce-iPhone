@@ -131,8 +131,7 @@ describe("GitHub Actions production monitor access", () => {
     }
     // Change a significant signature bit. Mutating the final Base64URL character can
     // alter only unused padding bits and leave the decoded RSA signature unchanged.
-    const tamperedSignature =
-      (encodedSignature[0] === "A" ? "B" : "A") + encodedSignature.slice(1);
+    const tamperedSignature = (encodedSignature[0] === "A" ? "B" : "A") + encodedSignature.slice(1);
     const tampered = `${encodedHeader}.${encodedClaims}.${tamperedSignature}`;
     expect(await verifyGitHubActionsMonitorToken(`Bearer ${tampered}`)).toBeNull();
 
@@ -197,23 +196,13 @@ describe("GitHub Actions production monitor access", () => {
     const manual = claims({ event_name: "workflow_dispatch" }) as typeof automated;
     const url = "https://ecommerce-iphone.account.workers.dev/api/admin/analytics/revenue";
 
+    expect(await isAllowedProductionMonitorRequest(new Request(url), automated)).toBe(false);
+    expect(await isAllowedProductionMonitorRequest(new Request(url), manual)).toBe(true);
+    expect(await isAllowedProductionMonitorRequest(new Request(`${url}?period=30`), manual)).toBe(
+      false,
+    );
     expect(
-      await isAllowedProductionMonitorRequest(new Request(url), automated),
-    ).toBe(false);
-    expect(
-      await isAllowedProductionMonitorRequest(new Request(url), manual),
-    ).toBe(true);
-    expect(
-      await isAllowedProductionMonitorRequest(
-        new Request(`${url}?period=30`),
-        manual,
-      ),
-    ).toBe(false);
-    expect(
-      await isAllowedProductionMonitorRequest(
-        new Request(url, { method: "POST" }),
-        manual,
-      ),
+      await isAllowedProductionMonitorRequest(new Request(url, { method: "POST" }), manual),
     ).toBe(false);
   });
 

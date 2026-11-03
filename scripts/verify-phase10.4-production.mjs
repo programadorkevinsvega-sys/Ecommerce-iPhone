@@ -16,7 +16,10 @@ function equal(actual, expected, label) {
 
 function assertReadOnlySelect(sql) {
   assert(/^\s*SELECT\b/i.test(sql), "Production certification permits SELECT statements only.");
-  assert(!/;\s*\S/.test(sql), "Multiple SQL statements are not allowed in production certification.");
+  assert(
+    !/;\s*\S/.test(sql),
+    "Multiple SQL statements are not allowed in production certification.",
+  );
 }
 
 function parsePayload(row, label) {
@@ -30,7 +33,9 @@ function parsePayload(row, label) {
 
 function assertNoSensitivePayload(payloadJson, label) {
   assert(
-    !/(?:email|phone|address|recipient|token|secret|authorization|cardnumber|cvv)/i.test(payloadJson),
+    !/(?:email|phone|address|recipient|token|secret|authorization|cardnumber|cvv)/i.test(
+      payloadJson,
+    ),
     label + ": analytics payload contains a sensitive field",
   );
 }
@@ -68,7 +73,9 @@ async function d1(sql) {
 
 function validateCartEvents(rows, counts) {
   const seenIds = new Set();
-  for (const row of rows.filter((entry) => ["CartItemAdded", "CartItemRemoved", "CartAbandoned"].includes(entry.eventType))) {
+  for (const row of rows.filter((entry) =>
+    ["CartItemAdded", "CartItemRemoved", "CartAbandoned"].includes(entry.eventType),
+  )) {
     equal(row.source, "server", row.eventType + " source");
     equal(Number(row.eventVersion), 1, row.eventType + " event version");
     assert(!seenIds.has(row.eventId), "duplicate persisted event ID: " + row.eventId);
@@ -83,20 +90,47 @@ function validateCartEvents(rows, counts) {
         new RegExp("^" + prefix + "[a-f0-9]{64}$").test(row.eventId),
         row.eventType + ": event ID is not a deterministic SHA-256 fingerprint",
       );
-      assert(typeof payload.cartId === "string" && payload.cartId.length > 0, row.eventType + ": cartId is missing");
-      assert(typeof payload.productId === "string" && payload.productId.length > 0, row.eventType + ": productId is missing");
-      assert(typeof row.sessionId === "string" && row.sessionId.length > 0, row.eventType + ": session correlation is missing");
-      assert(typeof row.visitorId === "string" && row.visitorId.length > 0, row.eventType + ": visitor correlation is missing");
+      assert(
+        typeof payload.cartId === "string" && payload.cartId.length > 0,
+        row.eventType + ": cartId is missing",
+      );
+      assert(
+        typeof payload.productId === "string" && payload.productId.length > 0,
+        row.eventType + ": productId is missing",
+      );
+      assert(
+        typeof row.sessionId === "string" && row.sessionId.length > 0,
+        row.eventType + ": session correlation is missing",
+      );
+      assert(
+        typeof row.visitorId === "string" && row.visitorId.length > 0,
+        row.eventType + ": visitor correlation is missing",
+      );
       if (row.eventType === "CartItemAdded") {
-        assert(Number.isSafeInteger(Number(payload.quantity)) && Number(payload.quantity) > 0, "CartItemAdded quantity is invalid");
+        assert(
+          Number.isSafeInteger(Number(payload.quantity)) && Number(payload.quantity) > 0,
+          "CartItemAdded quantity is invalid",
+        );
       }
     } else {
-      assert(typeof payload.cartId === "string" && payload.cartId.length > 0, "CartAbandoned cartId is missing");
-      assert(row.eventId.startsWith("cart-abandoned:" + payload.cartId + ":"), "CartAbandoned event ID does not match its cart");
-      assert(typeof row.sessionId === "string" && row.sessionId === "cart:" + payload.cartId, "CartAbandoned session mismatch");
+      assert(
+        typeof payload.cartId === "string" && payload.cartId.length > 0,
+        "CartAbandoned cartId is missing",
+      );
+      assert(
+        row.eventId.startsWith("cart-abandoned:" + payload.cartId + ":"),
+        "CartAbandoned event ID does not match its cart",
+      );
+      assert(
+        typeof row.sessionId === "string" && row.sessionId === "cart:" + payload.cartId,
+        "CartAbandoned session mismatch",
+      );
       assert(row.visitorId === "cart:" + payload.cartId, "CartAbandoned visitor mismatch");
       assert(Number(payload.itemCount) > 0, "CartAbandoned must reference a cart with items");
-      assert(Number(payload.abandonmentMinutes) >= 30, "CartAbandoned did not meet the 30-minute threshold");
+      assert(
+        Number(payload.abandonmentMinutes) >= 30,
+        "CartAbandoned did not meet the 30-minute threshold",
+      );
       const receivedAt = Date.parse(row.receivedAt);
       const occurredAt = Date.parse(row.occurredAt);
       assert(
@@ -130,30 +164,74 @@ function validateCheckoutEvents(rows, counts) {
 
     if (row.eventType === "CheckoutStarted") {
       equal(row.eventId, "checkout-started:" + row.persistedOrderId, "CheckoutStarted event ID");
-      equal(payload.shippingMethod, row.shippingMethod, "CheckoutStarted canonical shipping method");
-      equal(Number(payload.itemCount), Number(row.orderItemCount), "CheckoutStarted persisted item count");
-      equal(Boolean(payload.hasDiscount), Number(row.discountInCents) > 0, "CheckoutStarted persisted discount flag");
+      equal(
+        payload.shippingMethod,
+        row.shippingMethod,
+        "CheckoutStarted canonical shipping method",
+      );
+      equal(
+        Number(payload.itemCount),
+        Number(row.orderItemCount),
+        "CheckoutStarted persisted item count",
+      );
+      equal(
+        Boolean(payload.hasDiscount),
+        Number(row.discountInCents) > 0,
+        "CheckoutStarted persisted discount flag",
+      );
     } else if (row.eventType === "ShippingMethodSelected") {
-      equal(row.eventId, "shipping-method-selected:" + row.persistedOrderId, "ShippingMethodSelected event ID");
-      equal(payload.shippingMethodId, row.shippingMethod, "ShippingMethodSelected canonical method");
-      assert(["PICKUP", "DELIVERY"].includes(String(payload.shippingMethodId)), "ShippingMethodSelected contains an unknown method");
+      equal(
+        row.eventId,
+        "shipping-method-selected:" + row.persistedOrderId,
+        "ShippingMethodSelected event ID",
+      );
+      equal(
+        payload.shippingMethodId,
+        row.shippingMethod,
+        "ShippingMethodSelected canonical method",
+      );
+      assert(
+        ["PICKUP", "DELIVERY"].includes(String(payload.shippingMethodId)),
+        "ShippingMethodSelected contains an unknown method",
+      );
     } else {
       assert(row.persistedPaymentId, row.eventType + " references a payment that does not exist");
       equal(payload.paymentId, row.persistedPaymentId, row.eventType + " payment reference");
       equal(row.paymentOrderId, row.persistedOrderId, row.eventType + " payment/order relation");
       equal(payload.provider, row.paymentProvider, row.eventType + " payment provider");
-      equal(Number(payload.amountInCents), Number(row.paymentAmountInCents), row.eventType + " payment amount");
+      equal(
+        Number(payload.amountInCents),
+        Number(row.paymentAmountInCents),
+        row.eventType + " payment amount",
+      );
       equal(payload.currency, row.paymentCurrency, row.eventType + " payment currency");
       equal(row.paymentCurrency, row.orderCurrency, row.eventType + " order/payment currency");
-      equal(Number(row.paymentAmountInCents), Number(row.orderTotalInCents), row.eventType + " order/payment amount");
+      equal(
+        Number(row.paymentAmountInCents),
+        Number(row.orderTotalInCents),
+        row.eventType + " order/payment amount",
+      );
 
       if (row.eventType === "PaymentStarted") {
         equal(row.eventId, "payment-started:" + row.persistedPaymentId, "PaymentStarted event ID");
       } else {
-        equal(row.eventId, "purchase-completed:" + row.persistedPaymentId, "PurchaseCompleted event ID");
-        assert(["PAID", "REFUNDED"].includes(row.paymentStatus), "PurchaseCompleted payment is not confirmed");
-        assert(allowedPaidOrderStates.includes(row.orderStatus), "PurchaseCompleted order is not in a paid lifecycle state");
-        assert(typeof payload.transactionId === "string" && payload.transactionId.length > 0, "PurchaseCompleted provider transaction reference is missing");
+        equal(
+          row.eventId,
+          "purchase-completed:" + row.persistedPaymentId,
+          "PurchaseCompleted event ID",
+        );
+        assert(
+          ["PAID", "REFUNDED"].includes(row.paymentStatus),
+          "PurchaseCompleted payment is not confirmed",
+        );
+        assert(
+          allowedPaidOrderStates.includes(row.orderStatus),
+          "PurchaseCompleted order is not in a paid lifecycle state",
+        );
+        assert(
+          typeof payload.transactionId === "string" && payload.transactionId.length > 0,
+          "PurchaseCompleted provider transaction reference is missing",
+        );
       }
     }
 
@@ -162,7 +240,10 @@ function validateCheckoutEvents(rows, counts) {
 }
 
 try {
-  assert(BASE_URL.length > 0, "PRODUCTION_URL must be the protected production workers.dev monitor URL.");
+  assert(
+    BASE_URL.length > 0,
+    "PRODUCTION_URL must be the protected production workers.dev monitor URL.",
+  );
   const monitor = new URL(BASE_URL);
   assert(
     monitor.hostname.toLowerCase().endsWith(".workers.dev"),
@@ -218,7 +299,9 @@ try {
   for (const [eventType, count] of counts) {
     if (count === 0) {
       throw new Error(
-        "INCONCLUSIVE: no real server-owned " + eventType + " events are available in production for certification",
+        "INCONCLUSIVE: no real server-owned " +
+          eventType +
+          " events are available in production for certification",
       );
     }
     console.log("PASS " + eventType + ": " + count + " real server-owned records validated");

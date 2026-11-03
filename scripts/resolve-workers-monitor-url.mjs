@@ -8,10 +8,7 @@ if (workerName !== "ecommerce-iphone") {
 }
 
 function isValidSubdomain(value) {
-  return (
-    typeof value === "string" &&
-    /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(value)
-  );
+  return typeof value === "string" && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i.test(value);
 }
 
 let subdomain = configuredSubdomain;
@@ -39,11 +36,7 @@ if (!subdomain) {
   );
 
   const payload = await response.json().catch(() => null);
-  if (
-    !response.ok ||
-    payload?.success !== true ||
-    !isValidSubdomain(payload?.result?.subdomain)
-  ) {
+  if (!response.ok || payload?.success !== true || !isValidSubdomain(payload?.result?.subdomain)) {
     throw new Error(
       `Unable to resolve the Cloudflare Workers subdomain (HTTP ${response.status}). Set the GitHub Actions variable CLOUDFLARE_WORKERS_DEV_SUBDOMAIN or ensure the API token has Workers Scripts Read permission and the account has a workers.dev subdomain configured.`,
     );
