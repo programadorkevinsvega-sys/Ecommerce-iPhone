@@ -66,6 +66,9 @@ jobs:
       - name: Temporary Prettier output for roadmap formatting
         run: pnpm exec prettier roadmap.md > /tmp/roadmap.prettier.md
 
+      - name: Temporary roadmap formatting diff
+        run: diff -u roadmap.md /tmp/roadmap.prettier.md || true
+
       - name: Upload temporary formatted roadmap
         uses: actions/upload-artifact@v7
         with:
