@@ -2,7 +2,7 @@
 
 **Fecha de actualización:** 2026-11-03  
 **Rama de continuación:** `feat/phase10-4-10-5-readonly-certification`  
-**Base auditada:** `main` en `c3b88d5ef37a31901c3cb3b2ed4b6f5ee19ebc62`
+**Base auditada:** `main` en `cc181dce59a4fed9df5b27576c5c16871fa31c19`
 
 Este documento separa la implementación en código, las pruebas automatizadas y la evidencia operativa/manual. Una prueba local o un build exitoso no certifican dependencias remotas, WAF, MFA real, accesibilidad manual ni métricas de campo.
 
@@ -68,13 +68,15 @@ Las Queues no tienen una lectura de salud no mutativa en este contrato. `configu
 
 Las certificaciones se ejecutan manualmente desde **Actions → Production Verification**, con la rama `main`, el Environment protegido `production` y el smoke autenticado de Worker en verde. Los inputs son independientes: `run_phase10_4_checks` y `run_phase10_5_checks`.
 
-- **10.4** consulta únicamente registros de eventos server-owned ya existentes en D1 y los relaciona con órdenes, items y pagos canónicos. Comprueba CartItemAdded, CartItemRemoved, CartAbandoned, CheckoutStarted, ShippingMethodSelected, PaymentStarted y PurchaseCompleted, incluida su correlación, idempotency key y consistencia de importes/monedas.
+La certificación de 10.4 registrada para el 2026-09-29 se conserva como evidencia histórica. Este PR prepara la revalidación read-only del verificador actual; no se considera recertificada hasta ejecutar el gate después de integrar el código en `main`.
+
+- **10.4** consulta únicamente registros de eventos server-owned ya existentes en D1 y los relaciona con órdenes, items y pagos canónicos. Comprueba CartItemAdded, CartItemRemoved, CartAbandoned, CheckoutStarted, ShippingMethodSelected, PaymentStarted y PurchaseCompleted, incluida su correlación temporal y de sesión/visitante, idempotency key, cantidad/item count y consistencia de importes/monedas de orden y pago. El flag `hasDiscount` se contrasta con `orders.discount_in_cents`; el evento no contiene el importe numérico del descuento.
 - **10.5** consulta únicamente payment_ledger, payments, orders, payment_refunds y RevenueRecorded. Compara cada asiento y proyección, separa monedas, verifica reembolsos confirmados por el proveedor y calcula conversión desde CheckoutStarted/PurchaseCompleted server-owned en la misma ventana UTC.
 - Ambos verificadores permiten exclusivamente sentencias D1 `SELECT` y una lectura HTTP del endpoint administrativo para confirmar que el acceso no autenticado responde 401 con `Cache-Control: no-store`.
 - No crean carritos, órdenes, eventos, intents, pagos, reembolsos ni filas financieras. La falta de datos reales se informa como `INCONCLUSIVE`; nunca se sustituye por tráfico sintético.
 - Las pruebas automatizadas locales cubren reintentos/idempotencia; la certificación productiva comprueba formato determinista y unicidad de los IDs observados, sin volver a enviar operaciones comerciales.
 
-**Requisito de monitor protegido:** definir la variable de repositorio `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` con el subdominio de cuenta `workers.dev` (solo el subdominio, sin protocolo), o reparar `CLOUDFLARE_API_TOKEN` con permiso Workers Scripts Read. El token de Cloudflare usado por Wrangler necesita, además, permiso D1 Read. Los jobs requieren `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, OIDC de GitHub Actions y aprobación del Environment `production`.
+**Requisito de monitor protegido:** definir la variable de repositorio `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` con el subdominio de cuenta `workers.dev` (solo el subdominio, sin protocolo), o reparar `CLOUDFLARE_API_TOKEN` con permiso Workers Scripts Read. `CLOUDFLARE_ACCOUNT_ID` y `CLOUDFLARE_API_TOKEN` deben estar disponibles como secrets de repositorio u organización porque el job `smoke` los utiliza sin declarar `environment`; los jobs de certificación 10.4/10.5 los reciben también con el Environment `production`. El token usado por Wrangler necesita D1 Read. Configurar `production` con reviewers requeridos y despliegues limitados a `main`. La existencia de la variable, los secrets y los reviewers debe verificarse en GitHub Settings; el YAML por sí solo no la demuestra.
 
 La implementación/CI verde no cierra estas fases. Para marcar PASS hacen falta las dos ejecuciones manuales aprobadas con muestra real suficiente y revisión del responsable de QA.
 
