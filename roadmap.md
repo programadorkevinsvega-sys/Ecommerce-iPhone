@@ -531,7 +531,9 @@ Los cambios posteriores de limpieza del warning ESLint en `worker.ts` son un aju
 
 **Issue:** #10 — Analytics, observabilidad, seguridad avanzada y producción
 
-**Estado actual:** 🟡 En ejecución — 10.1 completada; 10.2 Analytics Foundation y 10.3 catálogo/búsqueda certificadas en producción; 10.4 carrito/checkout implementada con gate productivo automatizado, pendiente de certificación.
+**Estado actual:** 🟡 En ejecución — 10.1 completada; 10.2 Analytics Foundation y 10.3 catálogo/búsqueda certificadas en producción; 10.4 y 10.5 implementadas e integradas en `main` mediante PR #38, con certificación productiva read-only pendiente; 10.6 Logging estructurado en implementación sobre una rama dedicada.
+
+**Actualización 2026-11-03 — 10.6:** se amplía el logger compartido con contrato JSON uniforme, niveles debug/info/warn/error, debug opt-in, campos service/environment/requestId/correlationId/route/duration/status/errorCode y sanitización de credenciales/PII/IMEI/serial. Se añaden pruebas y política documentada en `docs/observability-logging.md`. CI del PR y verificación manual de retención/acceso de Cloudflare Observability siguen pendientes. 10.7–10.10 no se consideran implementadas por estos cambios.
 
 ### Objetivo
 Preparar la plataforma para producción real con testing completo, seguridad, observabilidad, analítica y despliegue controlado.
