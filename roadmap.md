@@ -1,6 +1,23 @@
 # Ecommerce iPhone — Roadmap
 
-## Actualización viva — 2026-09-29
+## Estado vigente — 2026-11-03
+
+La Fase 10 sigue en ejecución; no debe marcarse completa por la integración de una subfase ni por CI verde. Situación verificada en `main` (`ba0b9d484c6fbdba95a650ed008d0fa4a3ccad6d`):
+
+| Subfase | Estado vigente |
+|---|---|
+| 10.1 | 🟢 Auditoría completada; el informe original es una fotografía histórica del 2026-09-29. |
+| 10.2–10.3 | 🟢 Certificadas en producción el 2026-09-29; conservar como evidencia histórica. |
+| 10.4 | 🟢 Implementación y verificador read-only integrados (PR #32/#38); 🟡 aceptación productiva pendiente de muestras reales y ejecución protegida. |
+| 10.5 | 🟢 Reconciliación y verificador read-only integrados (PR #32/#38); 🟡 aceptación productiva pendiente de ledger/payment/order real y evidencia protegida. |
+| 10.6 | 🟢 Logging estructurado integrado por PR #39; CI y Lighthouse pasaron. 🟡 Retención/acceso en Cloudflare Observability pendientes de aceptación manual. |
+| 10.7 | ⬜ Siguiente subfase de implementación: Correlation IDs y request tracing. |
+
+El Repository CI del merge a `main` pasó. El Production Verification del 2026-11-03 falló en el preflight del monitor Worker (HTTP 401; `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` no estaba configurada), por lo que runtime smoke no se completó y 10.4/10.5 quedaron `skipped`/`PENDING_MANUAL_REVIEW`. No se declara una nueva certificación de producción.
+
+---
+
+## Registro histórico — actualización del 2026-09-29
 
 La Fase 09 — SEO Avanzado quedó implementada, desplegada y certificada en producción. El release final fue verificado contra `https://iphone.jnmtortas.com` con `verify:production`, `verify:phase08:production` y `verify:phase09:production`. La versión desplegada fue `04c77cdd-4af1-4258-a76a-5a34140a9478` a partir del commit `dcfb1ad`. El warning de ESLint de `apps/web/worker.ts` fue posteriormente corregido separando el objeto Worker en una constante antes del `export default`.
 
@@ -531,7 +548,7 @@ Los cambios posteriores de limpieza del warning ESLint en `worker.ts` son un aju
 
 **Issue:** #10 — Analytics, observabilidad, seguridad avanzada y producción
 
-**Estado actual:** 🟡 En ejecución — 10.1 completada; 10.2 Analytics Foundation y 10.3 catálogo/búsqueda certificadas en producción; 10.4 carrito/checkout implementada con gate productivo automatizado, pendiente de certificación.
+**Estado registrado en esta entrada histórica (2026-09-29):** 10.1 completada; 10.2 y 10.3 certificadas en producción; 10.4 en implementación con aceptación productiva pendiente. Para el estado vigente consulta la actualización del 2026-11-03 al inicio de este documento y `docs/phase10-operational-acceptance.md`.
 
 ### Objetivo
 Preparar la plataforma para producción real con testing completo, seguridad, observabilidad, analítica y despliegue controlado.
@@ -662,7 +679,7 @@ Ejemplo para la Fase 01:
 └── 01.10 Architecture Documentation
 ```
 
-## Estado vivo — 2026-09-21
+## Registro histórico — estado vivo del 2026-09-21
 
 | Área | Estado |
 |---|---|
@@ -730,7 +747,7 @@ Una fase se considera terminada únicamente cuando:
 | 07 — Notifications realtime + Email | #7 | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente |
 | 08 — CMS + Marketing + Reviews | #8 | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify |
 | 09 — SEO | #9 | 🟢 **Cerrada y certificada en producción** |
-| 10 — Production Readiness | #10 | ⬜ Pendiente |
+| 10 — Production Readiness | #10 | 🟡 En ejecución: 10.1–10.3 completadas según evidencia histórica; 10.4–10.5 aceptación productiva pendiente; 10.6 integrada con aceptación Cloudflare pendiente; siguiente 10.7 |
 
 > Este archivo es la referencia central del roadmap. El detalle operativo de cada fase vive en su Issue correspondiente y posteriormente en sus sub-Issues técnicos.
 
