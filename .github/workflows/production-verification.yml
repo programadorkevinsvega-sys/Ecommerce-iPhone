@@ -63,17 +63,22 @@ jobs:
           echo "Production credential guard passed for $GITHUB_REF."
 
   smoke:
-    # A check_run event is accepted only for the exact production Workers Build
-    # check, created by Cloudflare's GitHub App, on main and with a successful
-    # deployment conclusion. Scheduled/manual smoke monitoring remains intact.
+    # Production monitoring always uses trusted main-branch code. Manual dispatches
+    # must be on main; credentialed dispatches also require the explicit ref guard.
+    needs: [production_ref_guard]
     if: >-
-      ${{ github.event_name != 'check_run' ||
-        (github.event.check_run.name == 'Workers Builds: ecommerce-iphone' &&
-         github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
-         github.event.check_run.conclusion == 'success' &&
-         github.event.check_run.check_suite.head_branch == 'main' &&
-         contains(github.event.check_run.details_url, '/workers/services/view/ecommerce-iphone/production/builds/') &&
-         !contains(github.event.check_run.details_url, '/previews/')) }}
+      ${{ always() &&
+        (github.event_name != 'workflow_dispatch' ||
+          (github.ref == 'refs/heads/main' &&
+            (needs.production_ref_guard.result == 'skipped' ||
+             needs.production_ref_guard.result == 'success'))) &&
+        (github.event_name != 'check_run' ||
+          (github.event.check_run.name == 'Workers Builds: ecommerce-iphone' &&
+           github.event.check_run.app.slug == 'cloudflare-workers-and-pages' &&
+           github.event.check_run.conclusion == 'success' &&
+           github.event.check_run.check_suite.head_branch == 'main' &&
+           contains(github.event.check_run.details_url, '/workers/services/view/ecommerce-iphone/production/builds/') &&
+           !contains(github.event.check_run.details_url, '/previews/'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
