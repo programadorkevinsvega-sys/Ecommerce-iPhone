@@ -15,6 +15,16 @@ on:
         required: false
         default: false
         type: boolean
+      run_phase10_4_checks:
+        description: "Run read-only Phase 10.4 production certification against real cart, checkout and payment events (requires production D1 read access)"
+        required: false
+        default: false
+        type: boolean
+      run_phase10_5_checks:
+        description: "Run read-only Phase 10.5 payment ledger, refund, revenue and conversion reconciliation (requires real confirmed payment and refund history)"
+        required: false
+        default: false
+        type: boolean
   schedule:
     - cron: "*/15 * * * *"
 
@@ -38,7 +48,7 @@ jobs:
     name: Guard credentialed production checks to main
     if: >-
       ${{ github.event_name == 'workflow_dispatch' &&
-        (inputs.run_deep_checks || inputs.run_admin_checks) }}
+        (inputs.run_deep_checks || inputs.run_admin_checks || inputs.run_phase10_4_checks || inputs.run_phase10_5_checks) }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -90,6 +100,7 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_WORKERS_DEV_SUBDOMAIN: ${{ vars.CLOUDFLARE_WORKERS_DEV_SUBDOMAIN }}
         run: node scripts/resolve-workers-monitor-url.mjs
 
       - name: Verify authenticated Worker health and rate limiting
@@ -195,7 +206,160 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: pnpm verify:phase10.3:production
 
-  # These phases are intentionally left to the responsible QA area for final
+
+  analytics-phase10-4-production:
+    name: Analytics Phase 10.4 — read-only production certification
+    needs: [smoke, production_ref_guard]
+    environment: production
+    if: >-
+      ${{ always() && github.event_name == 'workflow_dispatch' &&
+        inputs.run_phase10_4_checks && github.ref == 'refs/heads/main' &&
+        needs.production_ref_guard.result == 'success' &&
+        needs.smoke.outputs.production_health_verified == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PRODUCTION_URL: ${{ needs.smoke.outputs.production_monitor_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+        with:
+          version: 12.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify read-only D1 credentials
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing GitHub Secret CLOUDFLARE_ACCOUNT_ID."; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing GitHub Secret CLOUDFLARE_API_TOKEN."; exit 1; }
+          echo "Cloudflare D1 read credentials are available."
+
+      - name: Verify Phase 10.4 real cart and checkout analytics
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm verify:phase10.4:production
+
+      - name: Record Phase 10.4 evidence and acceptance boundary
+        if: always()
+        run: |
+          {
+            echo "## Phase 10.4 production certification"
+            echo
+            echo "This job reads existing server-owned production events and canonical order/payment rows only."
+            echo "It creates no carts, orders, payment intents, payments, refunds, analytics events or D1 mutations."
+            echo "No missing production event class is replaced by synthetic data; insufficient real sample is INCONCLUSIVE."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  analytics-phase10-5-production:
+    name: Analytics Phase 10.5 — read-only ledger and revenue reconciliation
+    needs: [smoke, production_ref_guard]
+    environment: production
+    if: >-
+      ${{ always() && github.event_name == 'workflow_dispatch' &&
+        inputs.run_phase10_5_checks && github.ref == 'refs/heads/main' &&
+        needs.production_ref_guard.result == 'success' &&
+        needs.smoke.outputs.production_health_verified == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PRODUCTION_URL: ${{ needs.smoke.outputs.production_monitor_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+        with:
+          version: 12.4.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+        with:
+          node-version: 24.18.0
+          cache: pnpm
+
+      - name: Install dependencies
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify read-only D1 credentials
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "::error::Missing GitHub Secret CLOUDFLARE_ACCOUNT_ID."; exit 1; }
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "::error::Missing GitHub Secret CLOUDFLARE_API_TOKEN."; exit 1; }
+          echo "Cloudflare D1 read credentials are available."
+
+      - name: Verify Phase 10.5 payment, refund and revenue reconciliation
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm verify:phase10.5:production
+
+      - name: Record Phase 10.5 evidence and acceptance boundary
+        if: always()
+        run: |
+          {
+            echo "## Phase 10.5 production certification"
+            echo
+            echo "This job reads the canonical payment ledger, payment/refund records and RevenueRecorded projections only."
+            echo "It never creates charges, payment intents, refunds, ledger entries or D1 mutations."
+            echo "A missing provider-confirmed real refund is INCONCLUSIVE; no refund is generated for certification."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # These phases remain under responsible QA acceptance after their protected manual production checks are run. The checks are opt-in and read-only; final sign-off remains with QA.
   # manual acceptance after the complete system has been implemented.
   # This informational job never gates CI, deployment or pull-request merging.
   analytics-manual-review-pending:
@@ -227,7 +391,7 @@ jobs:
             echo "- Phase 10.5 (payments, refunds and revenue reconciliation): **PENDING_MANUAL_REVIEW**"
             echo
             echo "These are final acceptance activities owned by the responsible QA/business area after the full system implementation is complete."
-            echo "They are not automated production gates and do not block engineering CI, deployment or pull-request integration."
+            echo "They do not run automatically on deploy and do not block engineering CI, deployment or pull-request integration. Start them only by selecting the Phase 10.4 and/or Phase 10.5 workflow_dispatch input on main after production smoke is green."
             echo "No production probes, synthetic payments or refunds are created by this job."
           } >> "$GITHUB_STEP_SUMMARY"
 
