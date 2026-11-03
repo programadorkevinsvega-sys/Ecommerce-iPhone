@@ -32,19 +32,19 @@ Plataforma e-commerce orientada a producción para smartphones y servicios legí
 
 ## Estado de las fases
 
-| Fase | Estado actual | Cierre |
-|---|---|---|
-| 01 — Foundation | 🟡 Implementada + hardening | Falta certificación final de gates/evidencia |
-| 02 — Storefront Premium | 🟡 Implementada + hardening | Falta E2E/accessibility/performance/SEO final |
-| 03 — Commerce Core | 🟢 Implementación cerrada | Falta certificación exhaustiva en producción |
-| 04 — Payments | 🟡 Multi-provider implementado | Falta certificación real de los 5 providers |
-| 05 — Services | 🟢 Implementación + hardening | Falta certificación final |
-| 06 — Admin + RBAC | 🟡 Implementación avanzada | Falta certificación de seguridad/gates |
-| 07 — Notifications + Queues | 🟡 Implementación de código completada + deploy | Falta certificación funcional/E2E/security/load/verify de producción |
-| 08 — CMS + Marketing + Reviews | 🟡 Código integrado | Certificación completa de release pendiente |
-| 09 — SEO | 🟢 Certificada en producción (2026-09-29) | La evidencia certifica aquel release, no automáticamente commits posteriores |
-| 10 — Production Readiness | 🟡 En ejecución | 10.1–10.3 completadas/certificadas según evidencia histórica; 10.4–10.5 aceptación productiva pendiente; 10.6 CI/merge verde con aceptación Cloudflare pendiente; siguiente 10.7 |
-| Reparaciones / Técnico | 🟡 Implementación operativa | Falta cierre funcional, visual y certificación |
+| Fase                           | Estado actual                                   | Cierre                                                                                                                                                                           |
+| ------------------------------ | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 01 — Foundation                | 🟡 Implementada + hardening                     | Falta certificación final de gates/evidencia                                                                                                                                     |
+| 02 — Storefront Premium        | 🟡 Implementada + hardening                     | Falta E2E/accessibility/performance/SEO final                                                                                                                                    |
+| 03 — Commerce Core             | 🟢 Implementación cerrada                       | Falta certificación exhaustiva en producción                                                                                                                                     |
+| 04 — Payments                  | 🟡 Multi-provider implementado                  | Falta certificación real de los 5 providers                                                                                                                                      |
+| 05 — Services                  | 🟢 Implementación + hardening                   | Falta certificación final                                                                                                                                                        |
+| 06 — Admin + RBAC              | 🟡 Implementación avanzada                      | Falta certificación de seguridad/gates                                                                                                                                           |
+| 07 — Notifications + Queues    | 🟡 Implementación de código completada + deploy | Falta certificación funcional/E2E/security/load/verify de producción                                                                                                             |
+| 08 — CMS + Marketing + Reviews | 🟡 Código integrado                             | Certificación completa de release pendiente                                                                                                                                      |
+| 09 — SEO                       | 🟢 Certificada en producción (2026-09-29)       | La evidencia certifica aquel release, no automáticamente commits posteriores                                                                                                     |
+| 10 — Production Readiness      | 🟡 En ejecución                                 | 10.1–10.3 completadas/certificadas según evidencia histórica; 10.4–10.5 aceptación productiva pendiente; 10.6 CI/merge verde con aceptación Cloudflare pendiente; siguiente 10.7 |
+| Reparaciones / Técnico         | 🟡 Implementación operativa                     | Falta cierre funcional, visual y certificación                                                                                                                                   |
 
 Una fase no se considera 100% terminada solo porque compile. El cierre exige implementación, integración, tests, seguridad, reproducibilidad, despliegue y evidencia operativa.
 
