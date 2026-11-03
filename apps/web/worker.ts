@@ -598,20 +598,20 @@ const worker = {
           await repo.markQueued(outboxEvent.id);
           logServerMetric("queue.publish.notification", {
             component: "cloudflare-worker",
-        environment: env.APP_ENV ?? "unknown",
+            environment: env.APP_ENV ?? "unknown",
             queue: "ecommerce-iphone-events",
             outcome: "published",
           });
         } catch (error) {
           logServerMetric("queue.publish.notification", {
             component: "cloudflare-worker",
-        environment: env.APP_ENV ?? "unknown",
+            environment: env.APP_ENV ?? "unknown",
             queue: "ecommerce-iphone-events",
             outcome: "retry",
           });
           logServerError("queue.publish.notification", error, {
             component: "cloudflare-worker",
-        environment: env.APP_ENV ?? "unknown",
+            environment: env.APP_ENV ?? "unknown",
             queue: "ecommerce-iphone-events",
             correlationId: outboxEvent.id,
             outcome: "retry",
@@ -669,7 +669,7 @@ const worker = {
           const terminal = error instanceof NotificationTerminalError;
           logServerError("queue.consume", error, {
             component: "cloudflare-worker",
-        environment: env.APP_ENV ?? "unknown",
+            environment: env.APP_ENV ?? "unknown",
             queue: batch.queue,
             correlationId,
             messageId: queueMessageId,
@@ -714,7 +714,7 @@ const worker = {
         } catch (error) {
           logServerError("queue.consume.dead_letter", error, {
             component: "cloudflare-worker",
-        environment: env.APP_ENV ?? "unknown",
+            environment: env.APP_ENV ?? "unknown",
             queue: batch.queue,
             correlationId: raw.id,
             messageId: raw.id,
@@ -746,7 +746,7 @@ const worker = {
         const terminal = error instanceof NotificationTerminalError;
         logServerError("queue.consume", error, {
           component: "cloudflare-worker",
-        environment: env.APP_ENV ?? "unknown",
+          environment: env.APP_ENV ?? "unknown",
           queue: batch.queue,
           correlationId,
           messageId: queueMessageId,
@@ -764,7 +764,7 @@ const worker = {
     }
     logServerMetric("queue.batch", {
       component: "cloudflare-worker",
-        environment: env.APP_ENV ?? "unknown",
+      environment: env.APP_ENV ?? "unknown",
       queue: batch.queue,
       batchSize: batch.messages.length,
       ...metrics,
