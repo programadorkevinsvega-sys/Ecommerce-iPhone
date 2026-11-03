@@ -8,17 +8,17 @@
 
 Cada registro emitido por `apps/web/server/serverLogger.ts` es una única línea JSON con estos campos:
 
-| Campo | Regla |
-|---|---|
-| `timestamp` | Fecha ISO-8601 UTC generada por el runtime |
-| `level` | `debug`, `info`, `warn` o `error` |
-| `service` | `ecommerce-iphone-web` |
-| `environment` | Valor explícito reconocido (`development`, `test`, `preview`, `staging`, `production`) o `unknown` |
-| `source` | `server` u `operational_metric` |
-| `operation` | Nombre estable y de baja cardinalidad |
-| `requestId`, `correlationId` | Opcionales; solo caracteres alfanuméricos, punto, guion, guion bajo y dos puntos; máximo 128 caracteres |
-| `route` | Opcional; sin query string |
-| `durationMs`, `status`, `errorCode` | Opcionales; validados antes de emitir |
+| Campo                               | Regla                                                                                                   |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `timestamp`                         | Fecha ISO-8601 UTC generada por el runtime                                                              |
+| `level`                             | `debug`, `info`, `warn` o `error`                                                                       |
+| `service`                           | `ecommerce-iphone-web`                                                                                  |
+| `environment`                       | Valor explícito reconocido (`development`, `test`, `preview`, `staging`, `production`) o `unknown`      |
+| `source`                            | `server` u `operational_metric`                                                                         |
+| `operation`                         | Nombre estable y de baja cardinalidad                                                                   |
+| `requestId`, `correlationId`        | Opcionales; solo caracteres alfanuméricos, punto, guion, guion bajo y dos puntos; máximo 128 caracteres |
+| `route`                             | Opcional; sin query string                                                                              |
+| `durationMs`, `status`, `errorCode` | Opcionales; validados antes de emitir                                                                   |
 
 El contexto operacional adicional debe ser escalar y de baja cardinalidad. No se deben añadir cuerpos HTTP, payloads de Queue, headers, URLs completas, query strings ni identificadores de personas.
 
