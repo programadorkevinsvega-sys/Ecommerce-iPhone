@@ -127,6 +127,12 @@ function writeRecord(
   context: LogContext,
   error?: unknown,
 ): void {
+  const requestId = safeTraceId(context.requestId);
+  const correlationId = safeTraceId(context.correlationId);
+  const route = safeRoute(context.route);
+  const durationMs = safeDuration(context.durationMs);
+  const status = safeStatus(context.status);
+  const errorCode = safeErrorCode(context.errorCode) ?? errorCodeFrom(error);
   const record = {
     ...sanitizeContext(context),
     timestamp: new Date().toISOString(),
@@ -135,18 +141,12 @@ function writeRecord(
     environment: resolveEnvironment(context.environment),
     source,
     operation: sanitizeText(operation).slice(0, 120),
-    ...(safeTraceId(context.requestId) ? { requestId: safeTraceId(context.requestId) } : {}),
-    ...(safeTraceId(context.correlationId)
-      ? { correlationId: safeTraceId(context.correlationId) }
-      : {}),
-    ...(safeRoute(context.route) ? { route: safeRoute(context.route) } : {}),
-    ...(safeDuration(context.durationMs) !== undefined
-      ? { durationMs: safeDuration(context.durationMs) }
-      : {}),
-    ...(safeStatus(context.status) !== undefined ? { status: safeStatus(context.status) } : {}),
-    ...(safeErrorCode(context.errorCode) ?? errorCodeFrom(error)
-      ? { errorCode: safeErrorCode(context.errorCode) ?? errorCodeFrom(error) }
-      : {}),
+    ...(requestId ? { requestId } : {}),
+    ...(correlationId ? { correlationId } : {}),
+    ...(route ? { route } : {}),
+    ...(durationMs !== undefined ? { durationMs } : {}),
+    ...(status !== undefined ? { status } : {}),
+    ...(errorCode ? { errorCode } : {}),
     ...(error === undefined ? {} : { error: serializeError(error) }),
   };
   const serialized = JSON.stringify(record);
