@@ -55,9 +55,7 @@ function sanitizeText(value: string): string {
     .slice(0, 1000);
 }
 
-function sanitizeContext(
-  context: LogContext,
-): Record<string, LogValue> {
+function sanitizeContext(context: LogContext): Record<string, LogValue> {
   const safe: Record<string, LogValue> = {};
   for (const [key, value] of Object.entries(context)) {
     if (RESERVED_CONTEXT_KEYS.has(key)) continue;
@@ -176,19 +174,11 @@ export function logServerInfo(operation: string, context: LogContext = {}): void
   writeRecord("info", "server", operation, context);
 }
 
-export function logServerWarn(
-  operation: string,
-  error?: unknown,
-  context: LogContext = {},
-): void {
+export function logServerWarn(operation: string, error?: unknown, context: LogContext = {}): void {
   writeRecord("warn", "server", operation, context, error);
 }
 
-export function logServerError(
-  operation: string,
-  error: unknown,
-  context: LogContext = {},
-): void {
+export function logServerError(operation: string, error: unknown, context: LogContext = {}): void {
   writeRecord("error", "server", operation, context, error);
 }
 
