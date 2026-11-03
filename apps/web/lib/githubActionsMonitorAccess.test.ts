@@ -125,7 +125,15 @@ describe("GitHub Actions production monitor access", () => {
 
   it("rejects a token with an invalid signature or an untrusted claim", async () => {
     const token = await signedToken(claims());
-    const tampered = token.replace(/.$/, token.endsWith("A") ? "B" : "A");
+    const [encodedHeader, encodedClaims, encodedSignature] = token.split(".");
+    if (!encodedHeader || !encodedClaims || !encodedSignature) {
+      throw new Error("Signed monitor token must contain three JWT segments.");
+    }
+    // Change a significant signature bit. Mutating the final Base64URL character can
+    // alter only unused padding bits and leave the decoded RSA signature unchanged.
+    const tamperedSignature =
+      (encodedSignature[0] === "A" ? "B" : "A") + encodedSignature.slice(1);
+    const tampered = `${encodedHeader}.${encodedClaims}.${tamperedSignature}`;
     expect(await verifyGitHubActionsMonitorToken(`Bearer ${tampered}`)).toBeNull();
 
     const wrongRepository = await signedToken(claims({ repository: "attacker/repository" }));
