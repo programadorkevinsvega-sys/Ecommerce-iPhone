@@ -135,7 +135,8 @@ jobs:
           PRODUCTION_URL: ${{ steps.monitor-url.outputs.monitor_url }}
         run: node scripts/verify-notifications-production.mjs
 
-  # Manual engineering probes cover Phase 10.2–10.3. Analytics 10.4/10.5 are reserved for final manual review by the responsible QA area.
+  # Manual engineering probes cover Phase 10.2–10.3. Analytics 10.4/10.5
+  # remain pending QA sign-off until the read-only production checks pass.
   deep-production:
     needs: [smoke, production_ref_guard]
     environment: production
@@ -205,7 +206,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: pnpm verify:phase10.3:production
-
 
   analytics-phase10-4-production:
     name: Analytics Phase 10.4 — read-only production certification
@@ -360,7 +360,6 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # These phases remain under responsible QA acceptance after their protected manual production checks are run. The checks are opt-in and read-only; final sign-off remains with QA.
-  # manual acceptance after the complete system has been implemented.
   # This informational job never gates CI, deployment or pull-request merging.
   analytics-manual-review-pending:
     name: Analytics Phase 10.4/10.5 — PENDING MANUAL REVIEW
