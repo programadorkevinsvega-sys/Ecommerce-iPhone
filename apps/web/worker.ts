@@ -205,21 +205,33 @@ async function checkReadiness(env: Env): Promise<{
   dependencies: Record<string, DependencyStatus>;
 }> {
   const [d1, r2, notificationHub] = await Promise.all([
-    checkDependency("d1", async () => {
-      const row = await env.DB.prepare("SELECT 1 AS ok").first<{ ok: number }>();
-      return row?.ok === 1;
-    }, env.APP_ENV ?? "unknown"),
-    checkDependency("r2", async () => {
-      await env.MEDIA_BUCKET.list({ limit: 1 });
-      return true;
-    }, env.APP_ENV ?? "unknown"),
-    checkDependency("notification_hub", async () => {
-      if (!env.NOTIFICATION_HUB) return false;
-      const namespace = env.NOTIFICATION_HUB;
-      const stub = namespace.get(namespace.idFromName("readiness"));
-      const response = await stub.fetch("https://notification-hub/healthz");
-      return response.ok;
-    }, env.APP_ENV ?? "unknown"),
+    checkDependency(
+      "d1",
+      async () => {
+        const row = await env.DB.prepare("SELECT 1 AS ok").first<{ ok: number }>();
+        return row?.ok === 1;
+      },
+      env.APP_ENV ?? "unknown",
+    ),
+    checkDependency(
+      "r2",
+      async () => {
+        await env.MEDIA_BUCKET.list({ limit: 1 });
+        return true;
+      },
+      env.APP_ENV ?? "unknown",
+    ),
+    checkDependency(
+      "notification_hub",
+      async () => {
+        if (!env.NOTIFICATION_HUB) return false;
+        const namespace = env.NOTIFICATION_HUB;
+        const stub = namespace.get(namespace.idFromName("readiness"));
+        const response = await stub.fetch("https://notification-hub/healthz");
+        return response.ok;
+      },
+      env.APP_ENV ?? "unknown",
+    ),
   ]);
 
   // Queue bindings expose no non-mutating health API. Their status is explicitly
