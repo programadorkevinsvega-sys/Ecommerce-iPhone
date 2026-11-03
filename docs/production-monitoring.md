@@ -61,11 +61,16 @@ The production workflow first checks the repository Actions variable
 (for example, `account-name`, without protocol or hostname) to construct
 `https://ecommerce-iphone.<subdomain>.workers.dev` without an API lookup.
 
-If the variable is absent, the workflow resolves the subdomain through
-`GET /accounts/{account_id}/workers/subdomain`. That fallback API lookup requires
-the GitHub Actions secret `CLOUDFLARE_API_TOKEN` to permit **Workers Scripts Read**
-(or Workers Scripts Write). The Wrangler D1 verification commands also need
-**D1 Read**. The account ID is non-secret metadata.
+The workflow reads `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` from
+GitHub Actions secrets. Keep them in repository or organization secrets because
+the recurring `smoke` job does not use the `production` Environment. The account
+ID is not intrinsically secret, but this workflow currently reads it from the
+secret namespace.
+
+If the subdomain variable is absent, the resolver calls
+`GET /accounts/{account_id}/workers/subdomain`. This fallback requires
+**Workers Scripts Read** on `CLOUDFLARE_API_TOKEN`; do not grant Workers Scripts
+Write. Wrangler D1 verification also requires **D1 Read**.
 
 The Wrangler production config sets `workers_dev: true`. Cloudflare must have an
 account `workers.dev` subdomain configured. The resolver validates the configured
