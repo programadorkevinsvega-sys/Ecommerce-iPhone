@@ -56,7 +56,6 @@ The browser contract intentionally excludes CartItemAdded, CartItemRemoved, Cart
 - The 10.5 production verifier reads payment_ledger, provider-confirmed refunds and RevenueRecorded projections only. It compares row-level values and per-currency aggregates, verifies conversion from server-owned CheckoutStarted/PurchaseCompleted events, and creates no financial or D1 data. A missing real refund is INCONCLUSIVE.
 - Production replay/idempotency behavior is covered by unit/integration tests; production verification inspects deterministic unique event IDs rather than replaying commercial mutations against customers.
 
-
 ## Current production acceptance status — 2026-11-03
 
 The read-only Phase 10.4 and 10.5 production verifiers are integrated into `main` (PR #38). Their acceptance is still `PENDING_MANUAL_REVIEW`: the 2026-11-03 Production Verification run failed during the monitor-host preflight (HTTP 401 resolving `workers.dev`; `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` was unset), so both certification jobs were skipped. No new production PASS is claimed. See `docs/phase10-operational-acceptance.md` for the exact run status and remediation. Phase 10.6 structured logging is documented separately in `docs/observability-logging.md`.
