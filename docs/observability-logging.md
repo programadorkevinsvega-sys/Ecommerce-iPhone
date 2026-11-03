@@ -8,17 +8,17 @@
 
 Cada registro emitido por `apps/web/server/serverLogger.ts` es una única línea JSON con estos campos:
 
-| Campo | Regla |
-|---|---|
-| `timestamp` | Fecha ISO-8601 UTC generada por el runtime |
-| `level` | `debug`, `info`, `warn` o `error` |
-| `service` | `ecommerce-iphone-web` |
-| `environment` | Valor explícito reconocido (`development`, `test`, `preview`, `staging`, `production`) o `unknown` |
-| `source` | `server` u `operational_metric` |
-| `operation` | Nombre estable y de baja cardinalidad |
-| `requestId`, `correlationId` | Opcionales; solo caracteres alfanuméricos, punto, guion, guion bajo y dos puntos; máximo 128 caracteres |
-| `route` | Opcional; sin query string |
-| `durationMs`, `status`, `errorCode` | Opcionales; validados antes de emitir |
+| Campo                               | Regla                                                                                                   |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `timestamp`                         | Fecha ISO-8601 UTC generada por el runtime                                                              |
+| `level`                             | `debug`, `info`, `warn` o `error`                                                                       |
+| `service`                           | `ecommerce-iphone-web`                                                                                  |
+| `environment`                       | Valor explícito reconocido (`development`, `test`, `preview`, `staging`, `production`) o `unknown`      |
+| `source`                            | `server` u `operational_metric`                                                                         |
+| `operation`                         | Nombre estable y de baja cardinalidad                                                                   |
+| `requestId`, `correlationId`        | Opcionales; solo caracteres alfanuméricos, punto, guion, guion bajo y dos puntos; máximo 128 caracteres |
+| `route`                             | Opcional; sin query string                                                                              |
+| `durationMs`, `status`, `errorCode` | Opcionales; validados antes de emitir                                                                   |
 
 El contexto operacional adicional debe ser escalar y de baja cardinalidad. No se deben añadir cuerpos HTTP, payloads de Queue, headers, URLs completas, query strings ni identificadores de personas.
 
@@ -34,6 +34,7 @@ No se aplica muestreo probabilístico a `warn` ni `error`. Los eventos `info` ex
 ## Redacción y datos prohibidos
 
 El logger:
+
 - redacta valores de claves sensibles como Authorization, cookies, contraseñas, tokens, secrets, API keys, firmas, email, teléfono, direcciones, nombres, datos de tarjeta, IP, identificadores de cuenta/usuario/cliente, IMEI y serial;
 - sanea texto de errores para bearer/API tokens, secretos en formato clave=valor, query parameters sensibles, credenciales URL, emails, números de tarjeta o identificadores numéricos largos, teléfonos internacionales, IMEI/serial etiquetados y claves privadas;
 - limita mensajes a 1.000 caracteres y normaliza CR/LF/tabulaciones;
@@ -52,6 +53,7 @@ Los logs de GitHub Actions y Cloudflare Workers Builds son distintos de los regi
 ## Pruebas
 
 `apps/web/server/serverLogger.test.ts` cubre:
+
 - sobre JSON uniforme y metadatos;
 - redacción de secretos, datos personales y de pago;
 - IMEI y seriales en texto libre;
