@@ -125,7 +125,14 @@ describe("GitHub Actions production monitor access", () => {
 
   it("rejects a token with an invalid signature or an untrusted claim", async () => {
     const token = await signedToken(claims());
-    const tampered = token.replace(/.$/, token.endsWith("A") ? "B" : "A");
+    const [encodedHeader, encodedClaims, encodedSignature] = token.split(".");
+    if (!encodedHeader || !encodedClaims || !encodedSignature) {
+      throw new Error("Signed monitor token must contain three JWT segments.");
+    }
+    // Change a significant signature bit. Mutating the final Base64URL character can
+    // alter only unused padding bits and leave the decoded RSA signature unchanged.
+    const tamperedSignature = (encodedSignature[0] === "A" ? "B" : "A") + encodedSignature.slice(1);
+    const tampered = `${encodedHeader}.${encodedClaims}.${tamperedSignature}`;
     expect(await verifyGitHubActionsMonitorToken(`Bearer ${tampered}`)).toBeNull();
 
     const wrongRepository = await signedToken(claims({ repository: "attacker/repository" }));
@@ -170,6 +177,32 @@ describe("GitHub Actions production monitor access", () => {
         }),
         trusted,
       ),
+    ).toBe(false);
+  });
+
+  it("allows the read-only revenue authorization probe only for manual production runs", async () => {
+    const automated = claims() as ReturnType<typeof claims> & {
+      iss: string;
+      aud: string;
+      sub: string;
+      exp: number;
+      iat: number;
+      repository: string;
+      repository_owner: string;
+      ref: string;
+      workflow_ref: string;
+      event_name: string;
+    };
+    const manual = claims({ event_name: "workflow_dispatch" }) as typeof automated;
+    const url = "https://ecommerce-iphone.account.workers.dev/api/admin/analytics/revenue";
+
+    expect(await isAllowedProductionMonitorRequest(new Request(url), automated)).toBe(false);
+    expect(await isAllowedProductionMonitorRequest(new Request(url), manual)).toBe(true);
+    expect(await isAllowedProductionMonitorRequest(new Request(`${url}?period=30`), manual)).toBe(
+      false,
+    );
+    expect(
+      await isAllowedProductionMonitorRequest(new Request(url, { method: "POST" }), manual),
     ).toBe(false);
   });
 

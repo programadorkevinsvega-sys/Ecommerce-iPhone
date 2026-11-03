@@ -50,6 +50,11 @@ button {
 .store-header nav a:focus-visible {
   color: #111;
 }
+.store-header a:focus-visible {
+  outline: 3px solid #171715;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
 .eyebrow {
   margin: 0 0 14px;
   font-size: 0.72rem;

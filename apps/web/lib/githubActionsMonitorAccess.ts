@@ -208,6 +208,13 @@ export async function isAllowedProductionMonitorRequest(
   const method = request.method.toUpperCase();
   const manual = claims.event_name === "workflow_dispatch";
 
+  // The revenue endpoint is reached only to prove the application still rejects
+  // unauthenticated administrators. The Worker strips the OIDC bearer before
+  // forwarding, and this read-only route is exposed only to manual main workflows.
+  if (pathname === "/api/admin/analytics/revenue") {
+    return method === "GET" && manual && searchParams.size === 0;
+  }
+
   if (method === "GET") {
     if (
       [

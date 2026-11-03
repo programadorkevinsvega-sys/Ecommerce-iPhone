@@ -56,26 +56,35 @@ This separation means a green authenticated Worker monitor does not certify that
 
 ## Configuration required
 
-The production workflow resolves the account's \`workers.dev\` subdomain through
-\`GET /accounts/{account_id}/workers/subdomain\` and constructs
-\`https://ecommerce-iphone.<subdomain>.workers.dev\`.
+The production workflow first checks the repository Actions variable
+`CLOUDFLARE_WORKERS_DEV_SUBDOMAIN`. Set it to the account subdomain only
+(for example, `account-name`, without protocol or hostname) to construct
+`https://ecommerce-iphone.<subdomain>.workers.dev` without an API lookup.
 
-The existing GitHub Actions secret \`CLOUDFLARE_API_TOKEN\` must permit
-**Workers Scripts Read** (or Workers Scripts Write) for this API lookup. The Cloudflare
-account ID used by this repository is non-secret metadata and is present in the workflow.
+The workflow reads `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` from
+GitHub Actions secrets. Keep them in repository or organization secrets because
+the recurring `smoke` job does not use the `production` Environment. The account
+ID is not intrinsically secret, but this workflow currently reads it from the
+secret namespace.
 
-The Wrangler production config sets \`workers_dev: true\`. Cloudflare must have an account
-\`workers.dev\` subdomain configured. The workflow fails closed with a specific error
-if either the API token scope or account subdomain is missing.
+If the subdomain variable is absent, the resolver calls
+`GET /accounts/{account_id}/workers/subdomain`. This fallback requires
+**Workers Scripts Read** on `CLOUDFLARE_API_TOKEN`; do not grant Workers Scripts
+Write. Wrangler D1 verification also requires **D1 Read**.
 
-No static monitor secret is added to Cloudflare or GitHub. GitHub Actions requests the
-OIDC token at runtime with \`id-token: write\`; the Worker validates it against GitHub's
-public keys.
+The Wrangler production config sets `workers_dev: true`. Cloudflare must have an
+account `workers.dev` subdomain configured. The resolver validates the configured
+subdomain and fails closed if it is missing or invalid.
+
+No static monitor secret is added to Cloudflare or GitHub. GitHub Actions requests
+a short-lived OIDC token at runtime with `id-token: write`; the Worker validates
+it against GitHub's published public keys.
 
 ## Operational boundaries
 
 - This monitor does not change Cloudflare zone WAF/Bot settings or allowlist GitHub-hosted runner IPs.
 - It does not apply D1 migrations. Cloudflare Workers Builds retains deploy/migration responsibility.
 - It does not create payment or refund transactions.
-- Analytics 10.4/10.5 remain \`PENDING_MANUAL_REVIEW\`.
+- Analytics 10.4/10.5 use read-only D1 `SELECT` queries. Missing real event classes or a missing provider-confirmed refund produce `INCONCLUSIVE`, never synthetic data.
+- Both analytics phases remain `PENDING_MANUAL_REVIEW` until their protected manual workflows pass and QA records final acceptance.
 - Real MFA, manual accessibility, real-traffic RUM, queue depth/lag, provider health and rollback/recovery exercises remain separate acceptance activities.
