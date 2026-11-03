@@ -2,18 +2,7 @@
 
 ## Actualización viva — 2026-11-03
 
-La certificación productiva histórica de Analytics 10.4 registrada el 2026-09-29 se conserva como
-evidencia de aquella versión. No sustituye la revalidación read-only que prepara el PR #38.
-
-- **10.4:** certificación histórica registrada; revalidación con el verificador de solo lectura
-  pendiente de ejecutarse después de integrar el PR #38 en `main`, con el Environment `production`
-  aprobado y eventos reales suficientes.
-- **10.5:** implementación completada; certificación productiva pendiente de conciliación real de
-  `RevenueRecorded` con `payment_ledger`, incluyendo pagos y reembolsos confirmados por el proveedor.
-- CI verde y Cloudflare Preview validan el código y el despliegue de Preview; no certifican evidencia
-  financiera ni eventos persistidos en producción.
-- No se generan carritos, pedidos, pagos, reembolsos ni escrituras D1 artificiales para cerrar estas
-  fases. La falta de evidencia real conserva el resultado `INCONCLUSIVE`.
+La certificación productiva histórica de Analytics 10.4 registrada el 2026-09-29 se conserva como evidencia de aquella versión; la nueva revalidación read-only que prepara el PR #38 sigue pendiente de ejecutarse después de integrar el código en `main`, aprobar el Environment `production` y disponer de eventos reales suficientes. Analytics 10.5 está implementada, pero su certificación productiva depende de conciliar `RevenueRecorded` con `payment_ledger`, incluyendo pagos y reembolsos confirmados por el proveedor. CI verde y Cloudflare Preview no equivalen a certificación financiera ni a evidencia de eventos persistidos en producción; no se generarán datos comerciales ficticios ni escrituras D1 artificiales para cerrar estas fases, y la falta de evidencia real conservará el resultado `INCONCLUSIVE`.
 
 ## Actualización viva — 2026-09-29
 
