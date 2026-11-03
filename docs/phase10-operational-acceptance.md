@@ -1,7 +1,7 @@
 # Fase 10 — Matriz de aceptación operativa
 
-**Fecha de actualización:** 2026-11-02  
-**Rama de continuación:** `fix/production-monitor-cloudflare-challenge`  
+**Fecha de actualización:** 2026-11-03  
+**Rama de continuación:** `feat/phase10-4-10-5-readonly-certification`  
 **Base auditada:** `main` en `c3b88d5ef37a31901c3cb3b2ed4b6f5ee19ebc62`
 
 Este documento separa la implementación en código, las pruebas automatizadas y la evidencia operativa/manual. Una prueba local o un build exitoso no certifican dependencias remotas, WAF, MFA real, accesibilidad manual ni métricas de campo.
@@ -63,6 +63,20 @@ Las Queues no tienen una lectura de salud no mutativa en este contrato. `configu
 4. No crear pagos/refunds, datos financieros ni tráfico comercial ficticio para conseguir una certificación.
 5. No aplicar D1 migrations remotas desde CI. Cloudflare Workers Builds sigue siendo responsable del deploy y migraciones productivas.
 6. Mantener Issue #10 y P0-05 abiertos hasta que cada aceptación aplicable tenga evidencia verificable y revisión del responsable.
+
+## Certificación Analytics 10.4 / 10.5 en producción
+
+Las certificaciones se ejecutan manualmente desde **Actions → Production Verification**, con la rama `main`, el Environment protegido `production` y el smoke autenticado de Worker en verde. Los inputs son independientes: `run_phase10_4_checks` y `run_phase10_5_checks`.
+
+- **10.4** consulta únicamente registros de eventos server-owned ya existentes en D1 y los relaciona con órdenes, items y pagos canónicos. Comprueba CartItemAdded, CartItemRemoved, CartAbandoned, CheckoutStarted, ShippingMethodSelected, PaymentStarted y PurchaseCompleted, incluida su correlación, idempotency key y consistencia de importes/monedas.
+- **10.5** consulta únicamente payment_ledger, payments, orders, payment_refunds y RevenueRecorded. Compara cada asiento y proyección, separa monedas, verifica reembolsos confirmados por el proveedor y calcula conversión desde CheckoutStarted/PurchaseCompleted server-owned en la misma ventana UTC.
+- Ambos verificadores permiten exclusivamente sentencias D1 `SELECT` y una lectura HTTP del endpoint administrativo para confirmar que el acceso no autenticado responde 401 con `Cache-Control: no-store`.
+- No crean carritos, órdenes, eventos, intents, pagos, reembolsos ni filas financieras. La falta de datos reales se informa como `INCONCLUSIVE`; nunca se sustituye por tráfico sintético.
+- Las pruebas automatizadas locales cubren reintentos/idempotencia; la certificación productiva comprueba formato determinista y unicidad de los IDs observados, sin volver a enviar operaciones comerciales.
+
+**Requisito de monitor protegido:** definir la variable de repositorio `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` con el subdominio de cuenta `workers.dev` (solo el subdominio, sin protocolo), o reparar `CLOUDFLARE_API_TOKEN` con permiso Workers Scripts Read. El token de Cloudflare usado por Wrangler necesita, además, permiso D1 Read. Los jobs requieren `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, OIDC de GitHub Actions y aprobación del Environment `production`.
+
+La implementación/CI verde no cierra estas fases. Para marcar PASS hacen falta las dos ejecuciones manuales aprobadas con muestra real suficiente y revisión del responsable de QA.
 
 ## Evidencia manual que debe adjuntarse al cierre
 
