@@ -2,29 +2,15 @@
 
 ## Actualización viva — 2026-09-29
 
-La Fase 09 — SEO Avanzado quedó implementada, desplegada y certificada en producción. El release
-final fue verificado contra `https://iphone.jnmtortas.com` con `verify:production`,
-`verify:phase08:production` y `verify:phase09:production`. La versión desplegada fue
-`04c77cdd-4af1-4258-a76a-5a34140a9478` a partir del commit `dcfb1ad`. El warning de ESLint de
-`apps/web/worker.ts` fue posteriormente corregido separando el objeto Worker en una constante antes
-del `export default`.
+La Fase 09 — SEO Avanzado quedó implementada, desplegada y certificada en producción. El release final fue verificado contra `https://iphone.jnmtortas.com` con `verify:production`, `verify:phase08:production` y `verify:phase09:production`. La versión desplegada fue `04c77cdd-4af1-4258-a76a-5a34140a9478` a partir del commit `dcfb1ad`. El warning de ESLint de `apps/web/worker.ts` fue posteriormente corregido separando el objeto Worker en una constante antes del `export default`.
 
 ## Actualización viva — 2026-09-21
 
-El hardening actual del bounded context technicians incluye: aislamiento de identidad respecto de
-admin_users, ownership server-side de órdenes, sesiones persistidas con token hash, lockout y
-auditoría, composición limpia de Application/Infrastructure y un portal técnico con navegación,
-formularios, loading/error/empty/success states y responsive coherentes con el lenguaje visual
-existente.
+El hardening actual del bounded context technicians incluye: aislamiento de identidad respecto de admin_users, ownership server-side de órdenes, sesiones persistidas con token hash, lockout y auditoría, composición limpia de Application/Infrastructure y un portal técnico con navegación, formularios, loading/error/empty/success states y responsive coherentes con el lenguaje visual existente.
 
-La corrección de exactOptionalPropertyTypes en StoreHeader y TechnicianHeader ya está presente en
-fuente. El estado de estas mejoras sigue siendo implementado/hardened, no certificado, hasta que el
-release pase todos los gates y exista evidencia directa de deploy/verificación productiva. La prueba
-autenticada del portal no se sustituye con una cuenta o dataset ficticio.
+La corrección de exactOptionalPropertyTypes en StoreHeader y TechnicianHeader ya está presente en fuente. El estado de estas mejoras sigue siendo implementado/hardened, no certificado, hasta que el release pase todos los gates y exista evidencia directa de deploy/verificación productiva. La prueba autenticada del portal no se sustituye con una cuenta o dataset ficticio.
 
-> Roadmap oficial de desarrollo. El proyecto se ejecutará por fases, manteniendo una arquitectura de
-> monolito modular preparada para extraer bounded contexts como servicios independientes en el
-> futuro.
+> Roadmap oficial de desarrollo. El proyecto se ejecutará por fases, manteniendo una arquitectura de monolito modular preparada para extraer bounded contexts como servicios independientes en el futuro.
 
 ## Principios de arquitectura
 
@@ -44,8 +30,7 @@ autenticada del portal no se sustituye con una cuenta o dataset ficticio.
                       ↘ reparación / técnicos (transversal)
 ```
 
-Las reparaciones y técnicos atraviesan Services, Admin/RBAC, Commerce y Notifications. El detalle
-operativo vive en `docs/PLAN-PLATAFORMA-REPARACIONES.md`.
+Las reparaciones y técnicos atraviesan Services, Admin/RBAC, Commerce y Notifications. El detalle operativo vive en `docs/PLAN-PLATAFORMA-REPARACIONES.md`.
 
 ---
 
@@ -54,8 +39,7 @@ operativo vive en `docs/PLAN-PLATAFORMA-REPARACIONES.md`.
 **Issue:** #1 — Foundation: Monolito modular + DDD + Clean Architecture + Cloudflare
 
 ### Objetivo
-Establecer la base técnica del e-commerce como monolito modular, preparado para evolucionar
-posteriormente hacia servicios independientes sin reescritura del dominio.
+Establecer la base técnica del e-commerce como monolito modular, preparado para evolucionar posteriormente hacia servicios independientes sin reescritura del dominio.
 
 ### Alcance
 
@@ -76,8 +60,7 @@ posteriormente hacia servicios independientes sin reescritura del dominio.
 - Documentación de arquitectura.
 
 ### Criterio de salida
-El proyecto debe poder clonarse, configurarse y ejecutarse desde cero, con las fronteras modulares
-establecidas y verificables.
+El proyecto debe poder clonarse, configurarse y ejecutarse desde cero, con las fronteras modulares establecidas y verificables.
 
 ---
 
@@ -186,8 +169,7 @@ PaymentProvider
 - Binance Pay cuando la operación sea elegible.
 
 ### Regla crítica
-Los redirects del navegador nunca serán la fuente definitiva para confirmar un pago. La confirmación
-deberá basarse en mecanismos server-side y webhooks verificados.
+Los redirects del navegador nunca serán la fuente definitiva para confirmar un pago. La confirmación deberá basarse en mecanismos server-side y webhooks verificados.
 
 ---
 
@@ -220,8 +202,7 @@ Crear el sistema de servicios técnicos y solicitudes de atención.
 - Nunca utilizar IMEI/serial en URLs públicas.
 
 ### Restricción
-No se implementarán bypass de Activation Lock, cuentas de terceros, credenciales ajenas ni
-mecanismos para evadir controles de seguridad del fabricante.
+No se implementarán bypass de Activation Lock, cuentas de terceros, credenciales ajenas ni mecanismos para evadir controles de seguridad del fabricante.
 
 ---
 
@@ -230,8 +211,7 @@ mecanismos para evadir controles de seguridad del fabricante.
 **Issue:** #6 — Admin: dashboard, productos, pedidos, inventario, pagos, clientes y RBAC
 
 ### Objetivo
-Construir el panel administrativo completo para operar el negocio sin manipulación manual de la base
-de datos.
+Construir el panel administrativo completo para operar el negocio sin manipulación manual de la base de datos.
 
 ### Alcance
 
@@ -264,8 +244,7 @@ de datos.
 - CONTENT_EDITOR
 
 ### Seguridad
-Los permisos deberán validarse server-side por recurso y acción. Ocultar botones en el frontend no
-constituye autorización.
+Los permisos deberán validarse server-side por recurso y acción. Ocultar botones en el frontend no constituye autorización.
 
 ---
 
@@ -275,8 +254,7 @@ constituye autorización.
 
 ### Objetivo
 
-Implementar una plataforma de notificaciones profesional, desacoplada y escalable que entregue
-eventos de negocio por varios canales sin bloquear las operaciones transaccionales.
+Implementar una plataforma de notificaciones profesional, desacoplada y escalable que entregue eventos de negocio por varios canales sin bloquear las operaciones transaccionales.
 
 ### Arquitectura objetivo
 
@@ -301,8 +279,7 @@ WebSocket Hibernation
 Authenticated client
 ```
 
-D1 es la fuente durable de verdad. Durable Objects coordinan conexiones realtime y no sustituyen el
-historial persistente.
+D1 es la fuente durable de verdad. Durable Objects coordinan conexiones realtime y no sustituyen el historial persistente.
 
 ### Alcance
 
@@ -359,17 +336,13 @@ El sistema no prometerá `exactly once`.
 
 ### Criterio de salida
 
-Fase 07 solo podrá declararse completa cuando la notificación sea durable, el realtime esté
-autenticado, exista recuperación tras desconexión, DLQ/replay funcionen, la autorización esté
-probada y pasen tests, build, deploy, smoke y `verify:production`.
+Fase 07 solo podrá declararse completa cuando la notificación sea durable, el realtime esté autenticado, exista recuperación tras desconexión, DLQ/replay funcionen, la autorización esté probada y pasen tests, build, deploy, smoke y `verify:production`.
 
 ## Fase 08 — CMS + Marketing + Reviews
 
 **Issue:** #8 — CMS, Marketing y Reviews
 
-**Estado previo auditado para 08.1:** 🟡 existen piezas funcionales heredadas de Fase 06 (CMS
-básico, promociones y reviews), pero Fase 08 no se considera iniciada/implementada hasta completar
-la auditoría y cerrar los gaps descritos en `docs/auditoria-fase-8.md`.
+**Estado previo auditado para 08.1:** 🟡 existen piezas funcionales heredadas de Fase 06 (CMS básico, promociones y reviews), pero Fase 08 no se considera iniciada/implementada hasta completar la auditoría y cerrar los gaps descritos en `docs/auditoria-fase-8.md`.
 
 ### Objetivo
 Convertir el e-commerce en una plataforma administrable de contenido, marketing y reputación.
@@ -411,37 +384,21 @@ Descuentos y cupones deben validarse server-side y sus eventos deben ser auditab
 
 ## Fase 08 — 08.1 Auditoría de estado existente
 
-La auditoría inicial del 2026-09-25 revisó el código real de `main` antes de reconstruir
-funcionalidades. Hallazgos principales:
+La auditoría inicial del 2026-09-25 revisó el código real de `main` antes de reconstruir funcionalidades. Hallazgos principales:
 
-- CMS: existe bounded context parcial (`AdminCms` + `D1CmsRepository`), API administrativa y
-  `/admin/cms`; actualmente cubre páginas CMS básicas y activación, no el CMS completo del Issue #8
-  (blog, categorías, banners, FAQs, landing pages y contenido destacado).
-- Marketing: existe bounded context `promotions`, `AdminPromotions`, repositorio D1, API
-  `/api/admin/promotions` y `/admin/promotions`; cubre promociones/códigos básicos, pero no cubre
-  todavía el modelo completo de cupones por cliente/producto/categoría, campañas, banners
-  programables y destacados.
-- Reviews: existe dominio `Review`, `ReviewService`, persistencia D1, creación condicionada a compra
-  entregada, prevención de duplicados, API de producto y moderación administrativa con respuesta;
-  `/admin/reviews` existe. Falta completar capacidades de reportes y endurecer/validar integralmente
-  el flujo público y administrativo requerido por Fase 08.
-- Frontend público: no se encontraron rutas dedicadas `/blog`, `/landing` o `/faq` en la estructura
-  revisada; el contenido CMS existente no constituye todavía un sistema público completo de
-  publicación.
-- Persistencia: `cms_pages`, `promotions` y `product_reviews` ya existen en migraciones anteriores,
-  por lo que 08.1 debe reutilizar/evolucionar el esquema en lugar de duplicarlo.
-- Arquitectura: las piezas existentes respetan en general la separación Application/Infrastructure y
-  composition root; antes de ampliar la fase deben eliminarse atajos de tipado como `any` presentes
-  en `apps/web/app/api/admin/promotions/route.ts` y revisar validación/auditoría/concurrencia.
+- CMS: existe bounded context parcial (`AdminCms` + `D1CmsRepository`), API administrativa y `/admin/cms`; actualmente cubre páginas CMS básicas y activación, no el CMS completo del Issue #8 (blog, categorías, banners, FAQs, landing pages y contenido destacado).
+- Marketing: existe bounded context `promotions`, `AdminPromotions`, repositorio D1, API `/api/admin/promotions` y `/admin/promotions`; cubre promociones/códigos básicos, pero no cubre todavía el modelo completo de cupones por cliente/producto/categoría, campañas, banners programables y destacados.
+- Reviews: existe dominio `Review`, `ReviewService`, persistencia D1, creación condicionada a compra entregada, prevención de duplicados, API de producto y moderación administrativa con respuesta; `/admin/reviews` existe. Falta completar capacidades de reportes y endurecer/validar integralmente el flujo público y administrativo requerido por Fase 08.
+- Frontend público: no se encontraron rutas dedicadas `/blog`, `/landing` o `/faq` en la estructura revisada; el contenido CMS existente no constituye todavía un sistema público completo de publicación.
+- Persistencia: `cms_pages`, `promotions` y `product_reviews` ya existen en migraciones anteriores, por lo que 08.1 debe reutilizar/evolucionar el esquema en lugar de duplicarlo.
+- Arquitectura: las piezas existentes respetan en general la separación Application/Infrastructure y composition root; antes de ampliar la fase deben eliminarse atajos de tipado como `any` presentes en `apps/web/app/api/admin/promotions/route.ts` y revisar validación/auditoría/concurrencia.
 
 ### 08.2 — Modelo de dominio, persistencia y contratos\n\n🟡 Backend inicial implementado en `main`: migración D1 `0035_phase08_cms_marketing_reviews.sql`, modelos/ports CMS y marketing, administración de cupones con redención atómica, reportes y moderación de reviews con auditoría, y corrección de identidad pública de reviews para usar sesión server-side. El sub-bloque no está cerrado: falta integración transaccional de cupones/aplicabilidad en checkout, CRUD completo, publicación pública, UI, tests de integración/concurrencia y verificación productiva.\n\n### Orden de implementación después de 08.2
 
-1. Diseñar el modelo completo CMS/Marketing/Reviews y migraciones incrementales sin romper datos
-   existentes.
+1. Diseñar el modelo completo CMS/Marketing/Reviews y migraciones incrementales sin romper datos existentes.
 2. Completar CMS Domain/Application/Infrastructure y APIs administrativas.
 3. Implementar publicación pública de páginas/blog/FAQs/landing con SEO-safe rendering.
-4. Construir motor de cupones/promociones server-side con reglas, límites, uso por cliente y
-   aplicación por producto/categoría.
+4. Construir motor de cupones/promociones server-side con reglas, límites, uso por cliente y aplicación por producto/categoría.
 5. Completar campañas, banners programables y contenido destacado.
 6. Completar reviews públicas, compra verificada, moderación, respuesta y reportes.
 7. Integrar auditoría, RBAC, idempotencia, concurrencia y tests.
@@ -450,38 +407,28 @@ funcionalidades. Hallazgos principales:
 
 ## Fase 08 — 08.4 Certificación productiva y hardening final
 
-**Objetivo:** convertir la implementación 08.3 en un release verificable de producción, cerrando los
-gates específicos de CMS, Marketing y Reviews sin introducir mocks, datos ficticios ni bypasses.
+**Objetivo:** convertir la implementación 08.3 en un release verificable de producción, cerrando los gates específicos de CMS, Marketing y Reviews sin introducir mocks, datos ficticios ni bypasses.
 
 ### Alcance
 
-- Gate de arquitectura, foundation, frontend production-data, formato, lint, typecheck, tests y
-  build.
+- Gate de arquitectura, foundation, frontend production-data, formato, lint, typecheck, tests y build.
 - Aplicación y verificación remota de la migración D1 de hardening de reviews.
-- Smoke tests reales contra `https://iphone.jnmtortas.com` para storefront, Blog, FAQ, APIs públicas
-  de CMS/Marketing y respuestas 4xx esperadas.
+- Smoke tests reales contra `https://iphone.jnmtortas.com` para storefront, Blog, FAQ, APIs públicas de CMS/Marketing y respuestas 4xx esperadas.
 - Verificación de aislamiento de las APIs administrativas sin sesión.
 - Verificación de políticas de caché de las APIs públicas de contenido.
-- Integración del gate 08.4 en el workflow de deploy para impedir declarar un release exitoso si
-  falla el comportamiento productivo del bounded context.
+- Integración del gate 08.4 en el workflow de deploy para impedir declarar un release exitoso si falla el comportamiento productivo del bounded context.
 - Documentación y evidencia de release antes de cerrar el Issue #8.
 
 ### Estado 08.4
 
-🟢 **Código implementado y conectado; certificación productiva pendiente.** El build Cloudflare del
-2026-09-26 ya supera compilación, typecheck, generación de 118 páginas y optimización. También se
-corrigió un error real del workflow de producción en el paso de verificación D1. El cierre de
-certificación requiere que el pipeline pase todos los gates y que exista evidencia de deploy + smoke
-+ verify sobre producción. Los runs 1490/1491 fallaron casi inmediatamente sin steps/logs expuestos
-por GitHub; el run 1491 fue reintentado y volvió a fallar.
+🟢 **Código implementado y conectado; certificación productiva pendiente.** El build Cloudflare del 2026-09-26 ya supera compilación, typecheck, generación de 118 páginas y optimización. También se corrigió un error real del workflow de producción en el paso de verificación D1. El cierre de certificación requiere que el pipeline pase todos los gates y que exista evidencia de deploy + smoke + verify sobre producción. Los runs 1490/1491 fallaron casi inmediatamente sin steps/logs expuestos por GitHub; el run 1491 fue reintentado y volvió a fallar.
 
 ## Fase 09 — SEO Avanzado
 
 **Issue:** #9 — SEO máximo: técnico, contenido, structured data y crecimiento orgánico
 
 ### Objetivo
-Implementar SEO técnico y de contenido al máximo nivel razonable, sin prometer rankings que dependen
-de los algoritmos de los buscadores.
+Implementar SEO técnico y de contenido al máximo nivel razonable, sin prometer rankings que dependen de los algoritmos de los buscadores.
 
 ### Technical SEO
 
@@ -526,8 +473,7 @@ JSON-LD contextual para:
 
 ### SEO programático
 
-Crear únicamente páginas con contenido útil y diferenciado. Evitar thin content, duplicados y
-combinaciones infinitas sin valor.
+Crear únicamente páginas con contenido útil y diferenciado. Evitar thin content, duplicados y combinaciones infinitas sin valor.
 
 ### SEO Admin
 
@@ -543,8 +489,7 @@ combinaciones infinitas sin valor.
 
 ### Fase 09 — Estado de implementación y certificación — 2026-09-29
 
-La Fase 09 fue implementada completamente sobre `main`, desplegada en Cloudflare Workers y
-certificada contra producción.
+La Fase 09 fue implementada completamente sobre `main`, desplegada en Cloudflare Workers y certificada contra producción.
 
 Implementado en código:
 - bounded context SEO con política central de canonical/indexability;
@@ -553,27 +498,21 @@ Implementado en código:
 - Product/Offer/Review con datos reales de producto e inventario y reviews aprobadas;
 - Article para blog;
 - FAQ estructurado únicamente cuando existe contenido publicado;
-- sitemap dinámico conectado a catálogo y CMS, con exclusión de URLs no indexables y respeto de
-  canonical overrides;
+- sitemap dinámico conectado a catálogo y CMS, con exclusión de URLs no indexables y respeto de canonical overrides;
 - robots.txt production-safe;
 - SSR real de la página pública de servicios;
 - noindex para superficies privadas/transaccionales;
 - persistencia D1 para overrides SEO y redirects 301/410;
 - redirect manager administrativo protegido por RBAC;
 - aplicación de redirects/410 en el Worker después de un 404 real;
-- panel administrativo SEO para metadata, index/noindex, canonical, OG image, redirects y estado
-  técnico;
+- panel administrativo SEO para metadata, index/noindex, canonical, OG image, redirects y estado técnico;
 - verificación productiva específica: `pnpm verify:phase09:production`;
 - tests unitarios para política SEO, metadata, structured data y validación de administración.
 
 Decisiones explícitas:
-- `hreflang` no se genera mientras no existan variantes lingüísticas reales y URLs localizadas
-  recíprocas.
-- `LocalBusiness` no se genera porque el modelo público actual no aporta datos verificados
-  suficientes.
-- Las superficies de más de 50.000 URLs deberán dividirse mediante sitemaps separados cuando los
-  datos reales del catálogo/CMS alcancen ese límite; el generador actual respeta el máximo de un
-  sitemap.
+- `hreflang` no se genera mientras no existan variantes lingüísticas reales y URLs localizadas recíprocas.
+- `LocalBusiness` no se genera porque el modelo público actual no aporta datos verificados suficientes.
+- Las superficies de más de 50.000 URLs deberán dividirse mediante sitemaps separados cuando los datos reales del catálogo/CMS alcancen ese límite; el generador actual respeta el máximo de un sitemap.
 
 Estado: 🟢 **Fase 09 cerrada y certificada en producción.**
 
@@ -583,33 +522,19 @@ Evidencia del release certificado del 2026-09-29:
 - Worker Version ID: `04c77cdd-4af1-4258-a76a-5a34140a9478`.
 - `verify:production.mjs`: PASS para `/api/health/live` y `/api/health/ready`.
 - `verify-phase08-production.mjs`: PASS, sin regresiones del CMS/Marketing/Reviews.
-- `verify-phase09-production.mjs`: PASS para `/robots.txt`, `/sitemap.xml`, producto real, Product
-  SEO/JSON-LD, FAQ, indexabilidad y 404 de producto inexistente.
+- `verify-phase09-production.mjs`: PASS para `/robots.txt`, `/sitemap.xml`, producto real, Product SEO/JSON-LD, FAQ, indexabilidad y 404 de producto inexistente.
 - Deploy de Cloudflare: SUCCESS.
 
-Los cambios posteriores de limpieza del warning ESLint en `worker.ts` son un ajuste de calidad
-independiente; cualquier release que incluya ese cambio deberá volver a pasar el ciclo normal de
-build/deploy/verify antes de considerarse una nueva versión certificada.
+Los cambios posteriores de limpieza del warning ESLint en `worker.ts` son un ajuste de calidad independiente; cualquier release que incluya ese cambio deberá volver a pasar el ciclo normal de build/deploy/verify antes de considerarse una nueva versión certificada.
 
 ## Fase 10 — Testing + Security + Observability + Production
 
 **Issue:** #10 — Analytics, observabilidad, seguridad avanzada y producción
 
-**Estado actual:** 🟡 En ejecución — 10.1 completada; 10.2 Analytics Foundation y 10.3
-catálogo/búsqueda certificadas en producción; 10.4 y 10.5 implementadas e integradas en `main`
-mediante PR #38, con certificación productiva read-only pendiente; 10.6 Logging estructurado en
-implementación sobre una rama dedicada.
-
-**Actualización 2026-11-03 — 10.6:** se amplía el logger compartido con contrato JSON uniforme,
-niveles debug/info/warn/error, debug opt-in, campos
-service/environment/requestId/correlationId/route/duration/status/errorCode y sanitización de
-credenciales/PII/IMEI/serial. Se añaden pruebas y política documentada en
-`docs/observability-logging.md`. CI del PR y verificación manual de retención/acceso de Cloudflare
-Observability siguen pendientes. 10.7–10.10 no se consideran implementadas por estos cambios.
+**Estado actual:** 🟡 En ejecución — 10.1 completada; 10.2 Analytics Foundation y 10.3 catálogo/búsqueda certificadas en producción; 10.4 carrito/checkout implementada con gate productivo automatizado, pendiente de certificación.
 
 ### Objetivo
-Preparar la plataforma para producción real con testing completo, seguridad, observabilidad,
-analítica y despliegue controlado.
+Preparar la plataforma para producción real con testing completo, seguridad, observabilidad, analítica y despliegue controlado.
 
 ### Analytics
 
@@ -716,8 +641,7 @@ Controlled Production Deploy
 
 # Descomposición posterior
 
-Las 10 fases son las **épicas principales**. No se pretende crear cientos de tareas antes de
-comenzar.
+Las 10 fases son las **épicas principales**. No se pretende crear cientos de tareas antes de comenzar.
 
 Cada fase se descompondrá progresivamente en sub-Issues técnicos cuando llegue su turno.
 
@@ -740,31 +664,28 @@ Ejemplo para la Fase 01:
 
 ## Estado vivo — 2026-09-21
 
-| Área          | Estado                                                                                                                           |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Foundation    | 🟡 Implementada + hardening; certificación final pendiente                                                                       |
-| Storefront    | 🟡 Implementada + hardening de navegación pública; certificación E2E/accessibility/performance/SEO pendiente                     |
-| Commerce Core | 🟢 Implementación cerrada; certificación productiva pendiente                                                                    |
-| Payments      | 🟡 Cinco adapters implementados; certificación real pendiente                                                                    |
-| Services      | 🟢 Implementación + hardening; certificación pendiente                                                                           |
-| Admin/RBAC    | 🟡 Implementación avanzada; certificación pendiente                                                                              |
-| Notifications | 🟡 Outbox/Queue/Resend funcional; arquitectura realtime definida; Durable Objects/WebSocket + inbox + DLQ/replay pendientes      |
-| Technicians   | 🟡 Identidad independiente implementada; portal funcional + hardening visual/UX implementado; certificación productiva pendiente |
+| Área | Estado |
+|---|---|
+| Foundation | 🟡 Implementada + hardening; certificación final pendiente |
+| Storefront | 🟡 Implementada + hardening de navegación pública; certificación E2E/accessibility/performance/SEO pendiente |
+| Commerce Core | 🟢 Implementación cerrada; certificación productiva pendiente |
+| Payments | 🟡 Cinco adapters implementados; certificación real pendiente |
+| Services | 🟢 Implementación + hardening; certificación pendiente |
+| Admin/RBAC | 🟡 Implementación avanzada; certificación pendiente |
+| Notifications | 🟡 Outbox/Queue/Resend funcional; arquitectura realtime definida; Durable Objects/WebSocket + inbox + DLQ/replay pendientes |
+| Technicians | 🟡 Identidad independiente implementada; portal funcional + hardening visual/UX implementado; certificación productiva pendiente |
 
 ### Última producción certificada
 
 Worker: `04c77cdd-4af1-4258-a76a-5a34140a9478`
 
-Release certificado: Cloudflare Workers Build `#6539623a`, commit `dcfb1ad`, con
-`verify:production`, `verify:phase08:production` y `verify:phase09:production` en PASS.
+Release certificado: Cloudflare Workers Build `#6539623a`, commit `dcfb1ad`, con `verify:production`, `verify:phase08:production` y `verify:phase09:production` en PASS.
 
 **Base de código de aplicación revisada:** `d6962439e434d5064a339648b5ed32174c7b602b`.
 
 Las actualizaciones documentales posteriores permanecen en `main` como commits separados.
 
-**Histórico de build:** un ciclo anterior terminó la compilación y falló en typecheck por
-`exactOptionalPropertyTypes` en `apps/web/app/components/StoreHeader.tsx`. La fuente actual ya
-contiene la corrección; ese fallo no representa el estado actual del archivo.
+**Histórico de build:** un ciclo anterior terminó la compilación y falló en typecheck por `exactOptionalPropertyTypes` en `apps/web/app/components/StoreHeader.tsx`. La fuente actual ya contiene la corrección; ese fallo no representa el estado actual del archivo.
 
 # Definition of Done Global
 
@@ -787,81 +708,58 @@ Una fase se considera terminada únicamente cuando:
 - CMS completo administrable: páginas, blog, categorías, FAQs, landing pages, banners y destacados.
 - Blog y landing pages públicas con metadata SEO/canonical.
 - Publicación programada mediante Cloudflare Worker scheduler.
-- Marketing completo: promociones, cupones, campañas, segmentación por producto/categoría y banners
-  programables.
-- Checkout aplica una única regla de descuento server-side sobre precios actuales de D1 y consume
-  cupón atómicamente.
+- Marketing completo: promociones, cupones, campañas, segmentación por producto/categoría y banners programables.
+- Checkout aplica una única regla de descuento server-side sobre precios actuales de D1 y consume cupón atómicamente.
 - Cupones soportan porcentaje, fijo, vigencia, uso máximo, uso por cliente, mínimo y activación.
 - Reviews soportan compra verificada, moderación, respuesta, reportes y auditoría.
 - RBAC y auditoría server-side en las mutaciones administrativas.
 - Tests de dominio y persistencia para descuentos y redención.
 - UI administrativa incorporada para promociones, cupones, campañas y contenido editorial.
 
-**Estado:** 🟢 implementación de 08.2 cerrada. La certificación de release permanece separada y
-requiere build/deploy/verify exitoso sobre el commit final.
+**Estado:** 🟢 implementación de 08.2 cerrada. La certificación de release permanece separada y requiere build/deploy/verify exitoso sobre el commit final.
 ## Estado del roadmap
 
-| Fase                                | Issue | Estado                                                                                                      |
-| ----------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------- |
-| 01 — Foundation                     | #1    | 🟡 Implementada, certificación pendiente                                                                    |
-| 02 — Storefront Premium             | #2    | 🟡 Implementada + hardening de navegación, certificación pendiente                                          |
-| 03 — Commerce Core                  | #3    | 🟢 Implementación cerrada, certificación pendiente                                                          |
-| 04 — Payments                       | #4    | 🟡 Implementado, certificación real pendiente                                                               |
-| 05 — Services                       | #5    | 🟢 Implementado + hardening, certificación pendiente                                                        |
-| 06 — Admin + RBAC                   | #6    | 🟡 Implementación avanzada, certificación pendiente                                                         |
-| 07 — Notifications realtime + Email | #7    | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente |
-| 08 — CMS + Marketing + Reviews      | #8    | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify          |
-| 09 — SEO                            | #9    | 🟢 **Cerrada y certificada en producción**                                                                  |
-| 10 — Production Readiness           | #10   | ⬜ Pendiente                                                                                                 |
+| Fase | Issue | Estado |
+|---|---:|---|
+| 01 — Foundation | #1 | 🟡 Implementada, certificación pendiente |
+| 02 — Storefront Premium | #2 | 🟡 Implementada + hardening de navegación, certificación pendiente |
+| 03 — Commerce Core | #3 | 🟢 Implementación cerrada, certificación pendiente |
+| 04 — Payments | #4 | 🟡 Implementado, certificación real pendiente |
+| 05 — Services | #5 | 🟢 Implementado + hardening, certificación pendiente |
+| 06 — Admin + RBAC | #6 | 🟡 Implementación avanzada, certificación pendiente |
+| 07 — Notifications realtime + Email | #7 | 🟡 Implementación de código completada + deploy; certificación funcional/E2E/security/load/verify pendiente |
+| 08 — CMS + Marketing + Reviews | #8 | 🟢 08.4 código implementado e integrado; certificación productiva pendiente de build/deploy/verify |
+| 09 — SEO | #9 | 🟢 **Cerrada y certificada en producción** |
+| 10 — Production Readiness | #10 | ⬜ Pendiente |
 
-> Este archivo es la referencia central del roadmap. El detalle operativo de cada fase vive en su
-> Issue correspondiente y posteriormente en sus sub-Issues técnicos.
+> Este archivo es la referencia central del roadmap. El detalle operativo de cada fase vive en su Issue correspondiente y posteriormente en sus sub-Issues técnicos.
 
 
 ## Actualización viva — 2026-09-21
 
-- La navegación pública fue centralizada en `apps/web/app/components/StoreHeader.tsx` con Inicio,
-  Catálogo, Servicios, Consultar reparación, Contacto, Carrito y Mi cuenta.
-- El componente de navegación compartido es compatible con las superficies Server/Client porque
-  también se utiliza desde el portal de cliente.
-- El bounded context `technicians` mantiene identidad, autenticación, sesiones, autorización por
-  asignación, dispositivos, evidencia y perfil propios.
+- La navegación pública fue centralizada en `apps/web/app/components/StoreHeader.tsx` con Inicio, Catálogo, Servicios, Consultar reparación, Contacto, Carrito y Mi cuenta.
+- El componente de navegación compartido es compatible con las superficies Server/Client porque también se utiliza desde el portal de cliente.
+- El bounded context `technicians` mantiene identidad, autenticación, sesiones, autorización por asignación, dispositivos, evidencia y perfil propios.
 - `/admin/technicians` trata TÉCNICO como identidad operativa y no como rol de `admin_users`.
 - El rediseño visual completo de `/technician/**` sigue pendiente.
-- `/technician/**` ya utiliza una cabecera operativa compartida (`TechnicianHeader`) para la
-  navegación técnica.
-- La última versión directamente verificada en producción continúa siendo el Worker
-  `f7d67832-8598-4f59-8db9-b538f543b3ef`; los cambios posteriores requieren un nuevo ciclo
-  build/deploy/verify.
-- El diseño realtime de notificaciones queda especificado en `docs/notifications.md` y
-  `docs/realtime-notifications.md`.
+- `/technician/**` ya utiliza una cabecera operativa compartida (`TechnicianHeader`) para la navegación técnica.
+- La última versión directamente verificada en producción continúa siendo el Worker `f7d67832-8598-4f59-8db9-b538f543b3ef`; los cambios posteriores requieren un nuevo ciclo build/deploy/verify.
+- El diseño realtime de notificaciones queda especificado en `docs/notifications.md` y `docs/realtime-notifications.md`.
 
 ### Evidencia de release actual — 2026-09-21
 
-El commit actual de `main` no está certificado en producción. Los runs de `Cloudflare Production
-Deploy` 1074–1080 terminaron en `failure`; los runs 1079 y 1080 fallaron casi inmediatamente y el
-conector disponible no expone los pasos/logs internos del job. Por esa limitación no se atribuye el
-fallo a typecheck, tests o build sin evidencia. Además, un `Workers Builds: ecommerce-iphone`
-asociado al commit `0ee4522` también terminó en `failure`.
+El commit actual de `main` no está certificado en producción. Los runs de `Cloudflare Production Deploy` 1074–1080 terminaron en `failure`; los runs 1079 y 1080 fallaron casi inmediatamente y el conector disponible no expone los pasos/logs internos del job. Por esa limitación no se atribuye el fallo a typecheck, tests o build sin evidencia. Además, un `Workers Builds: ecommerce-iphone` asociado al commit `0ee4522` también terminó en `failure`.
 
-Por lo tanto, el estado oficial sigue siendo **implementado/hardening, certificación pendiente**
-para las fases afectadas. No se marca ningún release como productivo certificado mientras no exista
-evidencia de build + deploy + `verify:production` sobre `https://iphone.jnmtortas.com`.
+Por lo tanto, el estado oficial sigue siendo **implementado/hardening, certificación pendiente** para las fases afectadas. No se marca ningún release como productivo certificado mientras no exista evidencia de build + deploy + `verify:production` sobre `https://iphone.jnmtortas.com`.
 
 ### Build Cloudflare — hallazgo 2026-09-21 22:58 UTC
 
-Un build de producción con Node.js 24.18.0, pnpm 12.4.1, Next.js 15.5.25 y OpenNext Cloudflare
-1.20.6 compiló Next.js correctamente y falló durante typecheck por `exactOptionalPropertyTypes` en
-`modules/repairs/application/RepairOrderManagement.ts:102`. La causa fue pasar `diagnosisSummary` y
-`workSummary` opcionales como propiedades explícitas con valor `undefined`. La corrección aplicada
-usa propagación condicional para omitir las propiedades cuando son `undefined` y se añadió una
-regresión específica. `exactOptionalPropertyTypes` permanece habilitado.
+Un build de producción con Node.js 24.18.0, pnpm 12.4.1, Next.js 15.5.25 y OpenNext Cloudflare 1.20.6 compiló Next.js correctamente y falló durante typecheck por `exactOptionalPropertyTypes` en `modules/repairs/application/RepairOrderManagement.ts:102`. La causa fue pasar `diagnosisSummary` y `workSummary` opcionales como propiedades explícitas con valor `undefined`. La corrección aplicada usa propagación condicional para omitir las propiedades cuando son `undefined` y se añadió una regresión específica. `exactOptionalPropertyTypes` permanece habilitado.
 
 
 ## Actualización viva — 2026-09-25 — Fase 07
 
-La Fase 07 ya no está limitada al Outbox/Queue/Resend inicial. El código actual incluye y el
-deployment de producción del 2026-09-25 confirmó la integración del Worker con estos recursos:
+La Fase 07 ya no está limitada al Outbox/Queue/Resend inicial. El código actual incluye y el deployment de producción del 2026-09-25 confirmó la integración del Worker con estos recursos:
 
 - inbox durable D1;
 - cursor/catch-up;
@@ -882,12 +780,9 @@ deployment de producción del 2026-09-25 confirmó la integración del Worker co
 
 Estado de código: **🟢 implementado**.
 
-Deployment 2026-09-25: **🟢 SUCCESS**. OpenNext build, bundle y Wrangler deploy completados; Queue
-`ecommerce-iphone-notifications`, DLQ `ecommerce-iphone-notifications-dlq` y Durable Object
-`NotificationHub` quedaron provisionados/enlazados.
+Deployment 2026-09-25: **🟢 SUCCESS**. OpenNext build, bundle y Wrangler deploy completados; Queue `ecommerce-iphone-notifications`, DLQ `ecommerce-iphone-notifications-dlq` y Durable Object `NotificationHub` quedaron provisionados/enlazados.
 
-Certificación de fase: **🟡 pendiente** de migraciones D1 remotas verificadas, tests
-E2E/security/load, pruebas reales de retry/DLQ/replay/idempotencia/reconnect y `verify:production`.
+Certificación de fase: **🟡 pendiente** de migraciones D1 remotas verificadas, tests E2E/security/load, pruebas reales de retry/DLQ/replay/idempotencia/reconnect y `verify:production`.
 
 
 
@@ -895,45 +790,26 @@ E2E/security/load, pruebas reales de retry/DLQ/replay/idempotencia/reconnect y `
 
 La auditoría profunda de rutas frontend/API detectó y corrigió los defectos concretos encontrados:
 
-- `/api/customer/devices/[id]` ahora tiene GET real con ownership por `customerId`; PATCH/DELETE
-  permanecen bloqueados para clientes.
-- `/orders/[id]` fue tipada sin `any`, endurecida y conectada desde el listado de pedidos del portal
-  de cliente.
+- `/api/customer/devices/[id]` ahora tiene GET real con ownership por `customerId`; PATCH/DELETE permanecen bloqueados para clientes.
+- `/orders/[id]` fue tipada sin `any`, endurecida y conectada desde el listado de pedidos del portal de cliente.
 - Se eliminó la copia obsoleta del flujo de pagos en el detalle de pedido.
-- `/api/customer` conserva compatibilidad pero dejó de aceptar `Record<string, any>`; el body se
-  valida como `unknown` y se transforma a tipos de dominio.
+- `/api/customer` conserva compatibilidad pero dejó de aceptar `Record<string, any>`; el body se valida como `unknown` y se transforma a tipos de dominio.
 - Se añadió regresión de ownership para lectura de dispositivos.
-- Las APIs legacy/indirectas no se eliminaron de forma especulativa: permanecen como compatibilidad
-  o interfaces públicas/operativas hasta demostrar ausencia de consumidores externos.
+- Las APIs legacy/indirectas no se eliminaron de forma especulativa: permanecen como compatibilidad o interfaces públicas/operativas hasta demostrar ausencia de consumidores externos.
 
 **Estado de implementación 08.4:** 🟢 corregido e integrado a nivel de código.
 
-**Certificación:** permanece separada de la implementación y solo se marcará como cerrada cuando el
-commit final pase tests, lint/typecheck, arquitectura, build Cloudflare, migraciones/verificación
-D1, deploy real, `verify:production` y smoke funcional contra producción.
+**Certificación:** permanece separada de la implementación y solo se marcará como cerrada cuando el commit final pase tests, lint/typecheck, arquitectura, build Cloudflare, migraciones/verificación D1, deploy real, `verify:production` y smoke funcional contra producción.
 
 
 ### Estado actual — 10.1 Auditoría de Production Readiness — 2026-09-29
 
-🟢 **10.1 completada.** Se auditó el estado real de `main` antes de implementar las subfases
-posteriores. La evidencia y el gap analysis quedan registrados en
-`docs/FASE-10.1-PRODUCTION-READINESS-AUDIT.md`.
+🟢 **10.1 completada.** Se auditó el estado real de `main` antes de implementar las subfases posteriores. La evidencia y el gap analysis quedan registrados en `docs/FASE-10.1-PRODUCTION-READINESS-AUDIT.md`.
 
-Hallazgos principales: analytics existe solo como bounded context/documentación inicial;
-observabilidad tiene base de Cloudflare/request IDs/health pero requiere correlación, structured
-logging, error tracking y métricas; seguridad cuenta con headers/CSP/CORS/rate limiting pero
-requiere auditoría transversal y verificación externa de WAF/bot/MFA/webhooks/PII; testing tiene
-Vitest/Playwright y verificaciones productivas pero requiere integración, contract, security,
-concurrency y regression suites completas; CI/CD tiene gates y verificación Cloudflare pero debe
-consolidar evidencia sin duplicar el deploy automático; rollback/recovery existe como base pero
-requiere validación ejecutable.
+Hallazgos principales: analytics existe solo como bounded context/documentación inicial; observabilidad tiene base de Cloudflare/request IDs/health pero requiere correlación, structured logging, error tracking y métricas; seguridad cuenta con headers/CSP/CORS/rate limiting pero requiere auditoría transversal y verificación externa de WAF/bot/MFA/webhooks/PII; testing tiene Vitest/Playwright y verificaciones productivas pero requiere integración, contract, security, concurrency y regression suites completas; CI/CD tiene gates y verificación Cloudflare pero debe consolidar evidencia sin duplicar el deploy automático; rollback/recovery existe como base pero requiere validación ejecutable.
 
 **10.4:** 🟢 certificada en producción el 2026-09-29.
 
-**10.5:** 🟡 implementación completada; pendiente certificación productiva mediante el gate
-`verify:phase10.5:production`.
+**10.5:** 🟡 implementación completada; pendiente certificación productiva mediante el gate `verify:phase10.5:production`.
 
-Implementación 10.5: `payment_ledger` es la fuente canónica; `RevenueRecorded` se proyecta
-server-side con idempotencia por `revenue:<ledgerId>`; refunds reducen revenue; voids no generan
-revenue; existe reconciliación periódica, reporte administrativo por periodo, conversion rate
-`PurchaseCompleted / CheckoutStarted`, desglose por moneda y gate productivo de trazabilidad.
+Implementación 10.5: `payment_ledger` es la fuente canónica; `RevenueRecorded` se proyecta server-side con idempotencia por `revenue:<ledgerId>`; refunds reducen revenue; voids no generan revenue; existe reconciliación periódica, reporte administrativo por periodo, conversion rate `PurchaseCompleted / CheckoutStarted`, desglose por moneda y gate productivo de trazabilidad.
