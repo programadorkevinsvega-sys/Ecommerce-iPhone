@@ -185,12 +185,14 @@ type DependencyStatus = "ok" | "configured" | "unavailable";
 async function checkDependency(
   name: string,
   probe: () => Promise<boolean>,
+  environment: string,
 ): Promise<"ok" | "unavailable"> {
   try {
     return (await probe()) ? "ok" : "unavailable";
   } catch (error) {
     logServerError("health.readiness_dependency", error, {
       component: "health",
+      environment,
       dependency: name,
       outcome: "unavailable",
     });
@@ -206,18 +208,18 @@ async function checkReadiness(env: Env): Promise<{
     checkDependency("d1", async () => {
       const row = await env.DB.prepare("SELECT 1 AS ok").first<{ ok: number }>();
       return row?.ok === 1;
-    }),
+    }, env.APP_ENV ?? "unknown"),
     checkDependency("r2", async () => {
       await env.MEDIA_BUCKET.list({ limit: 1 });
       return true;
-    }),
+    }, env.APP_ENV ?? "unknown"),
     checkDependency("notification_hub", async () => {
       if (!env.NOTIFICATION_HUB) return false;
       const namespace = env.NOTIFICATION_HUB;
       const stub = namespace.get(namespace.idFromName("readiness"));
       const response = await stub.fetch("https://notification-hub/healthz");
       return response.ok;
-    }),
+    }, env.APP_ENV ?? "unknown"),
   ]);
 
   // Queue bindings expose no non-mutating health API. Their status is explicitly
@@ -418,6 +420,7 @@ const worker = {
     const recordResponse = (response: Response): Response => {
       logServerMetric("http.request", {
         component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
         requestId: id,
         method: request.method,
         route,
@@ -538,6 +541,7 @@ const worker = {
     } catch (error) {
       logServerError("http.request", error, {
         component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
         requestId: id,
         method: request.method,
         route,
@@ -594,17 +598,20 @@ const worker = {
           await repo.markQueued(outboxEvent.id);
           logServerMetric("queue.publish.notification", {
             component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
             queue: "ecommerce-iphone-events",
             outcome: "published",
           });
         } catch (error) {
           logServerMetric("queue.publish.notification", {
             component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
             queue: "ecommerce-iphone-events",
             outcome: "retry",
           });
           logServerError("queue.publish.notification", error, {
             component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
             queue: "ecommerce-iphone-events",
             correlationId: outboxEvent.id,
             outcome: "retry",
@@ -618,6 +625,7 @@ const worker = {
       }
       logServerMetric("scheduled.run", {
         component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
         schedule: event.cron,
         durationMs: Math.max(0, Date.now() - startedAt),
         pendingOutboxBatchSize: pending.length,
@@ -626,12 +634,14 @@ const worker = {
     } catch (error) {
       logServerError("scheduled.run", error, {
         component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
         schedule: event.cron,
         correlationId,
         outcome: "failed",
       });
       logServerMetric("scheduled.run", {
         component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
         schedule: event.cron,
         durationMs: Math.max(0, Date.now() - startedAt),
         outcome: "failed",
@@ -659,6 +669,7 @@ const worker = {
           const terminal = error instanceof NotificationTerminalError;
           logServerError("queue.consume", error, {
             component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
             queue: batch.queue,
             correlationId,
             messageId: queueMessageId,
@@ -676,6 +687,7 @@ const worker = {
       }
       logServerMetric("queue.batch", {
         component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
         queue: batch.queue,
         batchSize: batch.messages.length,
         ...metrics,
@@ -702,6 +714,7 @@ const worker = {
         } catch (error) {
           logServerError("queue.consume.dead_letter", error, {
             component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
             queue: batch.queue,
             correlationId: raw.id,
             messageId: raw.id,
@@ -713,6 +726,7 @@ const worker = {
       }
       logServerMetric("queue.batch", {
         component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
         queue: batch.queue,
         batchSize: batch.messages.length,
         ...metrics,
@@ -732,6 +746,7 @@ const worker = {
         const terminal = error instanceof NotificationTerminalError;
         logServerError("queue.consume", error, {
           component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
           queue: batch.queue,
           correlationId,
           messageId: queueMessageId,
@@ -749,6 +764,7 @@ const worker = {
     }
     logServerMetric("queue.batch", {
       component: "cloudflare-worker",
+        environment: env.APP_ENV ?? "unknown",
       queue: batch.queue,
       batchSize: batch.messages.length,
       ...metrics,
