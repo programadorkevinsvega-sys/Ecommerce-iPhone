@@ -2,6 +2,8 @@ const BASE_URL = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").
 const timeoutMs = Number(process.env.PHASE10_2_TIMEOUT_MS ?? "15000");
 const pollIntervalMs = Number(process.env.PHASE10_2_POLL_INTERVAL_MS ?? "3000");
 const pollAttempts = Number(process.env.PHASE10_2_POLL_ATTEMPTS ?? "20");
+const { getProductionMonitorHeaders } = await import("./production-monitor-auth.mjs");
+const monitorHeaders = await getProductionMonitorHeaders(BASE_URL);
 const { execFile } = await import("node:child_process");
 const { promisify } = await import("node:util");
 
@@ -22,6 +24,7 @@ async function request(path, init = {}) {
       headers: {
         accept: "application/json",
         ...(init.headers ?? {}),
+        ...monitorHeaders,
       },
     });
   } finally {
@@ -71,7 +74,10 @@ try {
     body: JSON.stringify(event),
   });
   const firstBody = await first.text();
-  assert(first.status === 202, `analytics ingest: expected HTTP 202, got ${first.status}: ${firstBody.slice(0, 300)}`);
+  assert(
+    first.status === 202,
+    `analytics ingest: expected HTTP 202, got ${first.status}: ${firstBody.slice(0, 300)}`,
+  );
   console.log(`PASS analytics ingest: HTTP ${first.status}`);
 
   const duplicate = await request("/api/analytics/events", {
@@ -83,7 +89,10 @@ try {
     body: JSON.stringify(event),
   });
   const duplicateBody = await duplicate.text();
-  assert(duplicate.status === 202, `analytics idempotency ingest: expected HTTP 202, got ${duplicate.status}: ${duplicateBody.slice(0, 300)}`);
+  assert(
+    duplicate.status === 202,
+    `analytics idempotency ingest: expected HTTP 202, got ${duplicate.status}: ${duplicateBody.slice(0, 300)}`,
+  );
   console.log(`PASS analytics idempotency ingest: HTTP ${duplicate.status}`);
 
   const lookup = `SELECT event_id,event_type,event_version,session_id,visitor_id,request_id,source,payload_json FROM analytics_events WHERE event_id=${sqlString(eventId)} LIMIT 2`;
@@ -99,7 +108,10 @@ try {
       assert(row.visitor_id === visitorId, "analytics D1 visitor_id mismatch");
       assert(row.request_id === requestId, "analytics D1 request_id mismatch");
       assert(row.source === "web", "analytics D1 source mismatch");
-      assert(typeof row.payload_json === "string" && row.payload_json.includes("phase10.2-production"), "analytics D1 payload mismatch");
+      assert(
+        typeof row.payload_json === "string" && row.payload_json.includes("phase10.2-production"),
+        "analytics D1 payload mismatch",
+      );
       console.log(`PASS HTTP → EVENTS_QUEUE → D1: event persisted after ${attempt} poll(s)`);
       console.log("PASS analytics idempotency: exactly one D1 row for repeated event_id");
       completed = true;
@@ -108,17 +120,29 @@ try {
     await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
   }
 
-  assert(completed, `analytics queue persistence timeout: event ${eventId} was not observed in D1 after ${pollAttempts} polls`);
+  assert(
+    completed,
+    `analytics queue persistence timeout: event ${eventId} was not observed in D1 after ${pollAttempts} polls`,
+  );
 
-  const expiredCount = await d1("SELECT COUNT(*) AS count FROM analytics_events WHERE expires_at<=CURRENT_TIMESTAMP");
-  assert(expiredCount.length === 1, "analytics retention query did not return exactly one aggregate row");
-  console.log(`PASS analytics retention metadata query: expired rows currently visible=${expiredCount[0].count}`);
+  const expiredCount = await d1(
+    "SELECT COUNT(*) AS count FROM analytics_events WHERE expires_at<=CURRENT_TIMESTAMP",
+  );
+  assert(
+    expiredCount.length === 1,
+    "analytics retention query did not return exactly one aggregate row",
+  );
+  console.log(
+    `PASS analytics retention metadata query: expired rows currently visible=${expiredCount[0].count}`,
+  );
 } finally {
   try {
     await d1(`DELETE FROM analytics_events WHERE event_id=${sqlString(eventId)}`);
     console.log("PASS production verification cleanup: probe event removed from D1");
   } catch (error) {
-    console.error(`WARN production verification cleanup failed for probe ${eventId}: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `WARN production verification cleanup failed for probe ${eventId}: ${error instanceof Error ? error.message : String(error)}`,
+    );
     if (completed) throw error;
   }
 }

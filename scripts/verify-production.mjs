@@ -1,10 +1,12 @@
 import { isCloudflareEdgeBlock } from "./cloudflare-edge-response.mjs";
+import { getProductionMonitorHeaders } from "./production-monitor-auth.mjs";
 const BASE_URL = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
 const timeoutMs = Number(process.env.HEALTH_TIMEOUT_MS ?? "15000");
 const retries = Number(process.env.HEALTH_RETRIES ?? "30");
 const retryDelayMs = Number(process.env.HEALTH_RETRY_DELAY_MS ?? "10000");
 const rateLimitAttempts = Number(process.env.RATE_LIMIT_PROBE_ATTEMPTS ?? "21");
 const strictRateLimit = process.env.STRICT_RATE_LIMIT_VERIFICATION === "1";
+const monitorHeaders = await getProductionMonitorHeaders(BASE_URL);
 
 class CloudflareEdgeBlockedError extends Error {
   constructor(path, diagnostic) {
@@ -25,7 +27,7 @@ async function request(path, init = {}) {
     return await fetch(`${BASE_URL}${path}`, {
       ...init,
       signal: controller.signal,
-      headers: { accept: "application/json", ...(init.headers ?? {}) },
+      headers: { accept: "application/json", ...(init.headers ?? {}), ...monitorHeaders },
     });
   } finally {
     clearTimeout(timer);

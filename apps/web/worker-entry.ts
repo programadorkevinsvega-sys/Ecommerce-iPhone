@@ -8,7 +8,7 @@ type E2EEnv = CloudflareEnv & {
 
 export { NotificationHub };
 
-export default {
+const workerEntry = {
   ...worker,
   async queue(batch: MessageBatch<string>, env: E2EEnv) {
     if (
@@ -23,3 +23,5 @@ export default {
   },
   scheduled: runScheduledWorker,
 };
+
+export default workerEntry;

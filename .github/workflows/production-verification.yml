@@ -66,73 +66,63 @@ jobs:
          !contains(github.event.check_run.details_url, '/previews/')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      checks: read
+      id-token: write
     outputs:
-      cloudflare_edge_blocked: ${{ steps.production-health.outputs.cloudflare_edge_blocked }}
       production_health_verified: ${{ steps.production-health.outputs.production_health_verified }}
+      production_monitor_url: ${{ steps.monitor-url.outputs.monitor_url }}
+      public_edge_verified: ${{ steps.public-edge.outputs.public_edge_verified }}
     steps:
       - name: Checkout deployed commit
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event.check_run.head_sha || github.sha }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 12.4.1
-
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24.18.0
-          cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Resolve restricted Cloudflare workers.dev monitor host
+        id: monitor-url
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: node scripts/resolve-workers-monitor-url.mjs
 
-      - name: Verify production Worker health and rate limiting
+      - name: Verify authenticated Worker health and rate limiting
         id: production-health
+        env:
+          PRODUCTION_URL: ${{ steps.monitor-url.outputs.monitor_url }}
         shell: bash
         run: |
-          set +e
-          pnpm verify:production
-          status=$?
-          set -e
-
-          if [ "$status" -eq 2 ]; then
-            echo "cloudflare_edge_blocked=true" >> "$GITHUB_OUTPUT"
-            echo "production_health_verified=false" >> "$GITHUB_OUTPUT"
-            echo "::warning title=Production monitor blocked by Cloudflare::The edge returned a verified Cloudflare challenge/block response. Worker health is inconclusive; this is not reported as an application or deployment failure."
-            {
-              echo "### Production verification inconclusive"
-              echo
-              echo "Cloudflare blocked the GitHub Actions monitor before the health endpoint could be verified. The response diagnostics above include the Cloudflare Ray ID where available."
-              echo "Phase 08, Phase 09, notification checks and Analytics certification are skipped for this run because they use the same public edge."
-              echo
-              echo "This does **not** certify production runtime health; inspect the Workers Builds deployment check and a real browser request separately."
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-
-          if [ "$status" -ne 0 ]; then
-            echo "cloudflare_edge_blocked=false" >> "$GITHUB_OUTPUT"
-            echo "production_health_verified=false" >> "$GITHUB_OUTPUT"
-            exit "$status"
-          fi
-
-          echo "cloudflare_edge_blocked=false" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          node scripts/verify-production.mjs
           echo "production_health_verified=true" >> "$GITHUB_OUTPUT"
 
+      - name: Verify public edge health without bypassing Cloudflare
+        id: public-edge
+        env:
+          PUBLIC_PRODUCTION_URL: https://iphone.jnmtortas.com
+        run: node scripts/verify-production-edge.mjs
+
       - name: Verify Phase 08 public content and admin authorization
-        if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
-        run: pnpm verify:phase08:production
+        env:
+          PRODUCTION_URL: ${{ steps.monitor-url.outputs.monitor_url }}
+        run: node scripts/verify-phase08-production.mjs
 
       - name: Verify Phase 09 SEO
-        if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
-        run: pnpm verify:phase09:production
+        env:
+          PRODUCTION_URL: ${{ steps.monitor-url.outputs.monitor_url }}
+          PUBLIC_PRODUCTION_URL: https://iphone.jnmtortas.com
+        run: node scripts/verify-phase09-production.mjs
 
       - name: Verify notification authorization boundaries
-        if: steps.production-health.outputs.cloudflare_edge_blocked != 'true'
-        run: pnpm verify:notifications:production
+        env:
+          PRODUCTION_URL: ${{ steps.monitor-url.outputs.monitor_url }}
+        run: node scripts/verify-notifications-production.mjs
 
   # Manual engineering probes cover Phase 10.2–10.3. Analytics 10.4/10.5 are reserved for final manual review by the responsible QA area.
   deep-production:
@@ -145,28 +135,47 @@ jobs:
         needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
+    permissions:
+      contents: read
+      id-token: write
     env:
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      PRODUCTION_URL: ${{ needs.smoke.outputs.production_monitor_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
         with:
           version: 12.4.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
         with:
           node-version: 24.18.0
           cache: pnpm
 
       - name: Install dependencies
+        env:
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
         run: pnpm install --frozen-lockfile
 
       - name: Verify Cloudflare D1 credentials
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACTIONS_ID_TOKEN_REQUEST_URL: ""
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ""
         shell: bash
         run: |
           set -euo pipefail
@@ -175,9 +184,15 @@ jobs:
           echo "Cloudflare D1 verification credentials are available."
 
       - name: Verify Phase 10.2 analytics ingestion and idempotency
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: pnpm verify:phase10.2:production
 
       - name: Verify Phase 10.3 catalog and search analytics
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: pnpm verify:phase10.3:production
 
   # These phases are intentionally left to the responsible QA area for final
@@ -225,29 +240,25 @@ jobs:
         needs.smoke.outputs.production_health_verified == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
     env:
-      ADMIN_EMAIL: ${{ secrets.ADMIN_RBAC_ALLOWED_EMAIL }}
-      ADMIN_PASSWORD: ${{ secrets.ADMIN_RBAC_ALLOWED_PASSWORD }}
+      PRODUCTION_URL: ${{ needs.smoke.outputs.production_monitor_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: 12.4.1
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 24.18.0
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Verify production password-to-TOTP challenge and session gate
-        run: pnpm verify:admin:production
+        env:
+          ADMIN_EMAIL: ${{ secrets.ADMIN_RBAC_ALLOWED_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_RBAC_ALLOWED_PASSWORD }}
+        run: node scripts/verify-admin-production.mjs
       - name: Record remaining manual MFA acceptance
         if: always()
         run: |

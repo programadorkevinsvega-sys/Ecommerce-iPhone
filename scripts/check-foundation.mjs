@@ -110,8 +110,12 @@ const productionVerification = await readFile(
   ".github/workflows/production-verification.yml",
   "utf8",
 );
-if (!productionVerification.includes("pnpm verify:production"))
+if (
+  !productionVerification.includes("pnpm verify:production") &&
+  !productionVerification.includes("node scripts/verify-production.mjs")
+) {
   failures.push("production verification workflow must execute runtime verification");
+}
 const workerBuildDeploy = packageJson.scripts?.["cloudflare:deploy"] ?? "";
 if (workerBuildDeploy !== "pnpm cloudflare:deploy:production") {
   failures.push("Cloudflare Workers Builds deploy hook must run the guarded production deploy");

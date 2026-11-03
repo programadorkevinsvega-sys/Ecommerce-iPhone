@@ -1,8 +1,8 @@
-const BASE_URL = (
-  process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com"
-).replace(/\/$/, "");
+const BASE_URL = (process.env.PRODUCTION_URL ?? "https://iphone.jnmtortas.com").replace(/\/$/, "");
 
 const timeoutMs = Number(process.env.PHASE08_TIMEOUT_MS ?? "15000");
+const { getProductionMonitorHeaders } = await import("./production-monitor-auth.mjs");
+const monitorHeaders = await getProductionMonitorHeaders(BASE_URL);
 
 async function request(path) {
   const controller = new AbortController();
@@ -11,7 +11,7 @@ async function request(path) {
     return await fetch(`${BASE_URL}${path}`, {
       redirect: "manual",
       signal: controller.signal,
-      headers: { accept: "application/json,text/html" },
+      headers: { accept: "application/json,text/html", ...monitorHeaders },
     });
   } finally {
     clearTimeout(timer);
@@ -21,9 +21,7 @@ async function request(path) {
 async function assertStatus(path, expected) {
   const response = await request(path);
   if (response.status !== expected) {
-    throw new Error(
-      `${path}: expected HTTP ${expected}, got ${response.status}`,
-    );
+    throw new Error(`${path}: expected HTTP ${expected}, got ${response.status}`);
   }
   console.log(`PASS ${path}: HTTP ${response.status}`);
   return response;
@@ -53,14 +51,7 @@ for (const path of ["/", "/blog", "/faq", "/catalog", "/contacto"]) {
   await assertStatus(path, 200);
 }
 
-for (const kind of [
-  "blog",
-  "blog-categories",
-  "faqs",
-  "banners",
-  "featured",
-  "landing",
-]) {
+for (const kind of ["blog", "blog-categories", "faqs", "banners", "featured", "landing"]) {
   await assertPublicJson(`/api/content?kind=${kind}`);
 }
 
