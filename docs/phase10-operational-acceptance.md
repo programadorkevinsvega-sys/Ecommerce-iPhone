@@ -1,16 +1,18 @@
 # Fase 10 — Matriz de aceptación operativa
 
 **Fecha de actualización:** 2026-11-03  
-**Rama de continuación:** `feat/phase10-6-structured-logging`  
-**Base auditada:** `main` en `57286eae79f9bbc2b9ba44e28431ecf121011e74`
+**Base auditada:** `main` en `ba0b9d484c6fbdba95a650ed008d0fa4a3ccad6d` (merge de PR #39).  
+**Rama de actualización documental:** `docs/reconcile-phase10-and-project-status`.
 
 Este documento separa la implementación en código, las pruebas automatizadas y la evidencia operativa/manual. Una prueba local o un build exitoso no certifican dependencias remotas, WAF, MFA real, accesibilidad manual ni métricas de campo.
+
+**Última ejecución de Production Verification en `main` (2026-11-03):** Repository CI pasó en el commit de merge, pero el workflow `Production Verification` falló en `smoke` antes de probar el runtime: `scripts/resolve-workers-monitor-url.mjs` recibió HTTP 401 al resolver el subdominio `workers.dev`; `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` estaba vacío y el token no tenía permiso `Workers Scripts Read` (o no pudo consultar la cuenta). Los pasos autenticados de runtime quedaron omitidos y los jobs de certificación 10.4/10.5 también quedaron `skipped`; el agregador registró `PENDING_MANUAL_REVIEW`. Esto no prueba que la aplicación productiva esté caída, pero tampoco permite declarar el smoke ni las fases 10.4/10.5 aprobados. Corregir la variable de repositorio o los permisos mínimos del token y volver a ejecutar el workflow protegido.
 
 ## Estado por área
 
 | Área                                  | Implementación comprobada en código                                                                                                               | Evidencia automatizada                                                                              | Aceptación pendiente                                                                                                                                                  |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Logging estructurado / error tracking | Logger JSON uniforme con service/environment/source/operation y metadatos operacionales; sanitización de credenciales y PII; Worker/Queue/Cron    | Tests de esquema y redacción; CI del PR 10.6 pendiente                                              | Confirmar retención y control de acceso en Cloudflare Observability; correlación y clasificación transversal quedan en 10.7/10.8                                      |
+| Logging estructurado (10.6)            | Logger JSON uniforme, niveles, validación y redacción de secretos/PII; Worker y contextos operacionales | PR #39 fusionado; Repository CI #41576803777: 86 archivos/357 tests, 23 E2E, build-artifact verification y audit sin vulnerabilidades conocidas; Lighthouse #41576803763: 18 informes; Preview Build/Deployment PASS | Confirmar retención efectiva y control de acceso en Cloudflare Observability. 10.7 (correlación), 10.8 (error tracking) y 10.9 (series/alertas) siguen siendo subfases separadas |
 | Métricas HTTP                         | Evento estructurado por solicitud con route group, método, estado, duración y request ID                                                          | Unit tests de normalización; E2E del Worker                                                         | Confirmar volumen/retención en Cloudflare y crear consultas/alertas de error rate y latencia                                                                          |
 | Métricas Queue/DLQ                    | Batch metrics de mensajes acknowledged/retried/dead-lettered; errores individuales conservan correlación                                          | Tests de procesamiento y CI                                                                         | Medir profundidad y lag desde Cloudflare; no se afirma que los contadores de batch los sustituyan                                                                     |
 | Health/liveness                       | `/api/health/live` no depende de D1                                                                                                               | E2E de liveness                                                                                     | Validar respuesta desde el dominio real después del deploy                                                                                                            |
@@ -31,7 +33,7 @@ El logger compartido emite JSON con timestamp, level, service, environment, sour
 
 El destino de logs runtime es Cloudflare Observability; no se persisten en D1/R2 ni se usan como audit trail. Warn/error no se muestrean. La retención real y los controles de acceso de la cuenta Cloudflare requieren revisión manual. No se silencia salida de GitHub Actions, OpenNext o Cloudflare Builds.
 
-La aceptación de 10.6 requiere CI verde y confirmación de retención/acceso de Cloudflare; la prueba unitaria no sustituye esa comprobación externa.
+**Estado 10.6:** CI verde y merge completado en PR #39. La aceptación integral sigue parcialmente pendiente hasta confirmar manualmente en Cloudflare Observability la retención efectiva y los controles de acceso. CI verde no prueba esa configuración externa.
 
 ## Contratos de observabilidad añadidos
 
@@ -101,4 +103,4 @@ La implementación/CI verde no cierra estas fases. Para marcar PASS hacen falta 
 | RUM                    | periodo, migration 0046, tasa de muestreo, conteos por métrica/device/route y p75                                               | Pendiente |
 | Recovery               | version IDs, verificación D1 compatible, pasos y resultado de rollback aislado                                                  | Pendiente |
 
-**Conclusión:** el código y la automatización pueden reducir brechas, pero la aceptación integral continúa pendiente de CI de la rama, despliegue Cloudflare y evidencias humanas/operativas descritas arriba.
+**Conclusión vigente (2026-11-03):** el Repository CI del merge a `main` pasó, pero el workflow Production Verification falló en el preflight del monitor (HTTP 401 al resolver `workers.dev`; variable `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` vacía), antes de los probes autenticados. Los verificadores 10.4/10.5 quedaron omitidos y permanecen `PENDING_MANUAL_REVIEW`. La aceptación integral de Fase 10 sigue pendiente de completar las verificaciones protegidas y las evidencias humanas/operativas descritas arriba.
