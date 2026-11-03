@@ -212,50 +212,36 @@ No existe revenue analítico ficticio ni derivado exclusivamente de eventos fron
 
 ### Objetivo
 
-Convertir los logs en una fuente operacional útil y segura.
+Convertir los logs operacionales en una fuente útil, uniforme y segura para investigar el runtime.
 
-### Trabajo
+### Implementación en código
 
-Definir formato estructurado con campos como:
+- Contrato JSON compartido en `apps/web/server/serverLogger.ts`: timestamp, nivel, service, environment, source y operation; campos operacionales opcionales requestId, correlationId, route, durationMs, status y errorCode.
+- Niveles normalizados debug/info/warn/error. Debug queda desactivado por defecto y requiere APP_LOG_LEVEL=debug o habilitación explícita.
+- Contexto escalar y sanitizado; validación de IDs, ruta, status, duración y códigos de error.
+- Redacción de credenciales, Authorization, cookies, PII, datos de pago, IMEI/serial etiquetados, claves privadas y secuencias sensibles en mensajes.
+- Errores serializados sin stack trace; mensajes acotados y CR/LF normalizados.
+- Worker propaga APP_ENV explícito a registros HTTP, readiness, Queue y Scheduled cuando la configuración está disponible.
 
-- timestamp;
-- level;
-- service;
-- environment;
-- requestId;
-- correlationId;
-- route;
-- operation;
-- duration;
-- status;
-- error code.
+### Política de volumen, auditoría y retención
 
-### Seguridad
-
-Nunca registrar:
-
-- passwords;
-- session tokens;
-- API keys;
-- payment secrets;
-- webhook secrets;
-- Authorization headers;
-- cookies sensibles;
-- PII innecesaria;
-- IMEI/serial completos cuando no sea imprescindible.
-
-### Además
-
-- Normalizar niveles debug/info/warn/error.
-- Evitar logs duplicados.
-- Evitar logs excesivamente verbosos.
-- Definir sampling cuando corresponda.
-- Separar logs operacionales de auditoría.
-- Definir política de retención.
+- No se aplica sampling probabilístico a warn/error. Debug está opt-in; los eventos info existentes se conservan en los límites operacionales actuales.
+- No se agregan logs exitosos por elemento procesado ni se duplica el mismo evento deliberadamente. Métricas y agregaciones adicionales se reservan para 10.9.
+- Los logs operacionales no sustituyen los audit logs persistidos.
+- El destino runtime es stdout/stderr y Cloudflare Observability, habilitado en wrangler.jsonc; no se copian registros a D1/R2.
+- La retención efectiva, el acceso al dashboard y el periodo contractual dependen de la cuenta Cloudflare y requieren comprobación manual. No se inventa una duración ni se declara aceptación externa desde el repositorio.
 
 ### Build logs
 
-Evaluar específicamente el ruido producido por Next.js/OpenNext/Cloudflare Builds y reducir únicamente output no útil sin ocultar errores o warnings reales.
+Se revisó la separación entre logs runtime y salida de CI/Cloudflare Builds. No se silencian comandos, warnings ni fallos; no se añade `--silent`, redirección a /dev/null ni tolerancia a errores. La retención/ruido visual específico del dashboard Cloudflare permanece sujeto a aceptación operativa.
+
+### Validación
+
+Las pruebas de `serverLogger.test.ts` cubren contrato JSON, niveles, debug opt-in, metadatos, validación de campos, sanitización de secretos/PII/tarjetas/teléfonos/IMEI/serial y emisión individual. CI del PR debe validar el SHA final antes de integrar.
+
+**Estado:** implementación en rama; CI y aceptación de retención/acceso Cloudflare pendientes.
+
+Ver `docs/observability-logging.md` para contrato, seguridad, volumen y límites.
 
 ---
 
@@ -1027,7 +1013,7 @@ Antes de cada bloque:
 
 **10.5:** 🟡 implementación completada; certificación productiva pendiente del deploy/gate 10.5.
 
-**Siguiente tarea:** certificar 10.5 en producción.
+**Siguiente tarea de implementación:** 10.6 — Logging estructurado. La aceptación productiva de 10.4/10.5 continúa pendiente por separado.
 
 Las subfases posteriores continúan sin implementar hasta cerrar sus gaps con código, pruebas e integración real.
 
