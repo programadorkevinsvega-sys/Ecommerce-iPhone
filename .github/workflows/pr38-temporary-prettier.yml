@@ -50,22 +50,30 @@ jobs:
             scripts/verify-phase10.4-production.mjs \
             scripts/verify-phase10.5-production.mjs
 
-      - name: Commit formatting on the existing PR branch
+      - name: Upload formatted workflow source for reviewed API update
+        uses: actions/upload-artifact@v7
+        with:
+          name: production-verification-prettier
+          path: .github/workflows/production-verification.yml
+          retention-days: 7
+
+      - name: Commit non-workflow formatting on the existing PR branch
         shell: bash
         run: |
           set -euo pipefail
-          if git diff --quiet; then
-            echo "Prettier made no changes."
+          format_files=(
+            apps/web/lib/githubActionsMonitorAccess.test.ts
+            docs/production-monitoring.md
+            scripts/resolve-workers-monitor-url.mjs
+            scripts/verify-phase10.4-production.mjs
+            scripts/verify-phase10.5-production.mjs
+          )
+          if git diff --quiet -- "${format_files[@]}"; then
+            echo "Prettier made no changes to the non-workflow files."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- \
-            .github/workflows/production-verification.yml \
-            apps/web/lib/githubActionsMonitorAccess.test.ts \
-            docs/production-monitoring.md \
-            scripts/resolve-workers-monitor-url.mjs \
-            scripts/verify-phase10.4-production.mjs \
-            scripts/verify-phase10.5-production.mjs
+          git add -- "${format_files[@]}"
           git commit -m "chore(format): apply repository Prettier to Phase 10 certification"
           git push origin HEAD:refs/heads/feat/phase10-4-10-5-readonly-certification
