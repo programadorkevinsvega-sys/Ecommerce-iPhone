@@ -30,7 +30,7 @@ const RESERVED_CONTEXT_KEYS = new Set([
 function sanitizeText(value: string): string {
   return value
     .replace(
-      /(\bimei(?:[\s_-]?(?:number|no|#))?\s*[:=#-]\s*)[A-Z0-9 -]{14,20}/gi,
+      /(\bimei(?:[\s_-]?(?:number|no|#))?\s*[:=#-]\s*)(?:\d[ -]?){14,16}(?=\s|$|[,;])/gi,
       "$1[REDACTED_IMEI]",
     )
     .replace(
