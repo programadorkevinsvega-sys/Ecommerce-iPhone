@@ -157,15 +157,24 @@ function validateCheckoutEvents(rows, counts) {
   ];
 
   for (const row of rows) {
-    assert(typeof row.eventId === "string" && row.eventId.length > 0, row.eventType + ": event ID is missing");
+    assert(
+      typeof row.eventId === "string" && row.eventId.length > 0,
+      row.eventType + ": event ID is missing",
+    );
     assert(!seenIds.has(row.eventId), "duplicate persisted event ID: " + row.eventId);
     seenIds.add(row.eventId);
     equal(row.source, "server", row.eventType + " source");
     equal(Number(row.eventVersion), 1, row.eventType + " event version");
     assert(Number.isFinite(Date.parse(row.occurredAt)), row.eventType + ": invalid occurred_at");
     assert(Number.isFinite(Date.parse(row.receivedAt)), row.eventType + ": invalid received_at");
-    assert(typeof row.sessionId === "string" && row.sessionId.length > 0, row.eventType + ": session correlation is missing");
-    assert(typeof row.visitorId === "string" && row.visitorId.length > 0, row.eventType + ": visitor correlation is missing");
+    assert(
+      typeof row.sessionId === "string" && row.sessionId.length > 0,
+      row.eventType + ": session correlation is missing",
+    );
+    assert(
+      typeof row.visitorId === "string" && row.visitorId.length > 0,
+      row.eventType + ": visitor correlation is missing",
+    );
     assertNoSensitivePayload(row.payloadJson, row.eventType);
     const payload = parsePayload(row, row.eventType);
     assert(row.persistedOrderId, row.eventType + " references an order that does not exist");
@@ -288,7 +297,8 @@ try {
   const persistedCheckoutRows = await d1(
     [
       "SELECT ae.event_id AS eventId,ae.event_type AS eventType,ae.event_version AS eventVersion,",
-      "ae.occurred_at AS occurredAt,ae.received_at AS receivedAt,ae.session_id AS sessionId,ae.visitor_id AS visitorId,",
+      "ae.occurred_at AS occurredAt,ae.received_at AS receivedAt,",
+      "ae.session_id AS sessionId,ae.visitor_id AS visitorId,",
       "ae.source,ae.payload_json AS payloadJson,o.id AS persistedOrderId,o.status AS orderStatus,",
       "o.shipping_method AS shippingMethod,o.discount_in_cents AS discountInCents,",
       "o.total_in_cents AS orderTotalInCents,o.currency AS orderCurrency,",
