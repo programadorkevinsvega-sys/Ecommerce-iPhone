@@ -226,6 +226,10 @@ La certificación global permanece pendiente hasta completar regresiones y evide
 - `docs/services.md`
 - `docs/notifications.md`
 - `docs/cloudflare-deployment.md`
+- `docs/FASE-10-PRODUCTION-READINESS.md`
+- `docs/phase10-operational-acceptance.md`
+- `docs/observability-logging.md`
+- `docs/production-monitoring.md`
 - `modules/README.md`
 - `modules/technicians/README.md`
 
