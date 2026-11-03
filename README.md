@@ -1,6 +1,14 @@
 # Ecommerce iPhone
 
-## Estado vivo — 2026-09-21
+## Estado actual — 2026-11-03
+
+- `main` contiene el merge de PR #39 (`ba0b9d484c6fbdba95a650ed008d0fa4a3ccad6d`), que integra logging estructurado de Fase 10.6.
+- Repository CI del merge: PASS. PR #39: 86 archivos de pruebas/357 tests, 23 E2E, audit sin vulnerabilidades conocidas y verificación de artefactos Cloudflare aprobada. Lighthouse: 18 informes verificados. La aceptación de Cloudflare Observability (retención y acceso) sigue pendiente.
+- Fase 10.4 y 10.5 están implementadas y sus verificadores read-only están en `main` (PR #38), pero la aceptación productiva actual sigue pendiente de ejecución protegida con muestras reales.
+- El Production Verification del 2026-11-03 falló antes de los probes autenticados porque el monitor no pudo resolver el host `workers.dev` (HTTP 401; `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` estaba vacío y el token no pudo consultar el subdominio). Los verificadores 10.4/10.5 quedaron `skipped`; no se declara certificación productiva nueva. Ver [`docs/phase10-operational-acceptance.md`](docs/phase10-operational-acceptance.md).
+- Próxima subfase de implementación: 10.7 — Correlation IDs y request tracing.
+
+## Nota histórica — estado revisado el 2026-09-21
 
 La revisión del código de main y del ciclo de hardening confirma que la corrección de exactOptionalPropertyTypes en StoreHeader y TechnicianHeader ya está aplicada en fuente. El portal técnico mantiene identidad independiente de admin_users y ahora incluye hardening de UX, estados de carga/error, prevención de dobles operaciones y una composición de aplicación que evita acceso directo de las rutas a repositorios y adaptadores.
 
@@ -33,35 +41,26 @@ Plataforma e-commerce orientada a producción para smartphones y servicios legí
 | 05 — Services | 🟢 Implementación + hardening | Falta certificación final |
 | 06 — Admin + RBAC | 🟡 Implementación avanzada | Falta certificación de seguridad/gates |
 | 07 — Notifications + Queues | 🟡 Implementación de código completada + deploy | Falta certificación funcional/E2E/security/load/verify de producción |
+| 08 — CMS + Marketing + Reviews | 🟡 Código integrado | Certificación completa de release pendiente |
+| 09 — SEO | 🟢 Certificada en producción (2026-09-29) | La evidencia certifica aquel release, no automáticamente commits posteriores |
+| 10 — Production Readiness | 🟡 En ejecución | 10.1–10.3 completadas/certificadas según evidencia histórica; 10.4–10.5 aceptación productiva pendiente; 10.6 CI/merge verde con aceptación Cloudflare pendiente; siguiente 10.7 |
 | Reparaciones / Técnico | 🟡 Implementación operativa | Falta cierre funcional, visual y certificación |
 
 Una fase no se considera 100% terminada solo porque compile. El cierre exige implementación, integración, tests, seguridad, reproducibilidad, despliegue y evidencia operativa.
 
 ## Estado de producción
 
-El último deployment informado exitosamente por Cloudflare es el Worker `3ba65c06-6090-4fb3-a7f2-f6bcc2b8378a` (2026-09-25). El build OpenNext, el bundle y el deploy terminaron correctamente. Este deployment todavía requiere `verify:production` y pruebas funcionales autenticadas para considerarse certificado.
+El último commit integrado en `main` y verificado mediante Repository CI es `ba0b9d484c6fbdba95a650ed008d0fa4a3ccad6d` (PR #39). El workflow de Production Verification de ese commit no terminó: el job `smoke` falló en el paso de resolución del monitor Worker por HTTP 401 y por la ausencia de `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN`. Las pruebas autenticadas posteriores y los verificadores 10.4/10.5 quedaron omitidos. Este resultado no permite declarar la salud integral del runtime ni una nueva certificación productiva; tampoco demuestra por sí solo que el storefront esté caído.
 
-con:
-
-- `/api/health/live` → `200`
-- `/api/health/ready` → `200`
-- `verify:production` → PASS.
-
-La ejecución del 2026-09-25 confirmó build y deploy exitosos sobre `main`. La certificación funcional de producción permanece pendiente hasta ejecutar los gates y verificaciones correspondientes.
-
-Los commits de documentación posteriores no cambian este código funcional de referencia.
-
-Este commit y los sucesores permanecen sin certificación productiva hasta un nuevo build/deploy/verify exitoso.
-
-Un build remoto reciente falló por secuencias `\\n` literales inválidas en `modules/technicians/domain/TechnicianUser.ts`; esa fuente ya fue corregida. Posteriormente el build alcanzó `Compiled successfully` y detectó incompatibilidades de `exactOptionalPropertyTypes` en las cabeceras compartidas; `StoreHeader` y `TechnicianHeader` ya fueron ajustados. El estado actual continúa sin certificación productiva hasta un nuevo build/deploy/verify exitoso.
+La configuración del monitor debe corregirse mediante la variable de repositorio `CLOUDFLARE_WORKERS_DEV_SUBDOMAIN` (solo el subdominio, sin protocolo) o concediendo al token el permiso mínimo `Workers Scripts Read`, y luego debe repetirse el workflow protegido. No se deben desactivar WAF/Bot Protection ni ejecutar migraciones D1 desde CI.
 
 ## Toolchain actual
 
 - Node.js `24.18.0`
 - pnpm `12.4.1`
-- Next.js `15.5.25`
-- `@opennextjs/cloudflare` `1.20.6`
-- Wrangler `4.131.1` en la última build Cloudflare verificada
+- Next.js `15.5.28`
+- `@opennextjs/cloudflare` `1.20.14`
+- Wrangler `4.155.0`
 - workerd compatibility date `2026-09-09`
 
 Build:
